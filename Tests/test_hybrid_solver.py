@@ -77,7 +77,7 @@ def create_cqm_for_food_problem(farms, foods, food_groups, config):
         for food in foods:
             if food in min_planting_area:
                 # Either x = 0 OR x >= min_area (this is a disjunctive constraint)
-                # We'll handle this through penalty in objective or separate formulation
+                #TODO 
                 pass
 
     # 4. Food group constraints: min/max number of foods from each group
