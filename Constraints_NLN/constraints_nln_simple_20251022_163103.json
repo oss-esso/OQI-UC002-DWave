@@ -1,0 +1,433 @@
+{
+  "scenario": "simple",
+  "timestamp": "20251022_163103",
+  "farms": [
+    "Farm1",
+    "Farm2",
+    "Farm3"
+  ],
+  "foods": [
+    "Wheat",
+    "Corn",
+    "Rice",
+    "Soybeans",
+    "Potatoes",
+    "Apples"
+  ],
+  "foods_data": {
+    "Wheat": {
+      "nutritional_value": 0.7,
+      "nutrient_density": 0.6,
+      "environmental_impact": 0.3,
+      "affordability": 0.8,
+      "sustainability": 0.7
+    },
+    "Corn": {
+      "nutritional_value": 0.6,
+      "nutrient_density": 0.5,
+      "environmental_impact": 0.4,
+      "affordability": 0.9,
+      "sustainability": 0.6
+    },
+    "Rice": {
+      "nutritional_value": 0.8,
+      "nutrient_density": 0.7,
+      "environmental_impact": 0.6,
+      "affordability": 0.7,
+      "sustainability": 0.5
+    },
+    "Soybeans": {
+      "nutritional_value": 0.9,
+      "nutrient_density": 0.8,
+      "environmental_impact": 0.2,
+      "affordability": 0.6,
+      "sustainability": 0.8
+    },
+    "Potatoes": {
+      "nutritional_value": 0.5,
+      "nutrient_density": 0.4,
+      "environmental_impact": 0.3,
+      "affordability": 0.9,
+      "sustainability": 0.7
+    },
+    "Apples": {
+      "nutritional_value": 0.7,
+      "nutrient_density": 0.6,
+      "environmental_impact": 0.2,
+      "affordability": 0.5,
+      "sustainability": 0.8
+    }
+  },
+  "food_groups": {
+    "Grains": [
+      "Wheat",
+      "Corn",
+      "Rice"
+    ],
+    "Legumes": [
+      "Soybeans"
+    ],
+    "Vegetables": [
+      "Potatoes"
+    ],
+    "Fruits": [
+      "Apples"
+    ]
+  },
+  "config": {
+    "parameters": {
+      "weights": {
+        "nutritional_value": 0.25,
+        "nutrient_density": 0.25,
+        "affordability": 0,
+        "sustainability": 0,
+        "environmental_impact": 0.5
+      },
+      "land_availability": {
+        "Farm1": 75,
+        "Farm2": 100,
+        "Farm3": 50
+      },
+      "food_groups": {
+        "Grains": [
+          "Wheat",
+          "Corn",
+          "Rice"
+        ],
+        "Legumes": [
+          "Soybeans"
+        ],
+        "Vegetables": [
+          "Potatoes"
+        ],
+        "Fruits": [
+          "Apples"
+        ]
+      }
+    }
+  },
+  "power": 0.548,
+  "num_breakpoints": 5,
+  "approximation_metadata": {
+    "power": 0.548,
+    "num_interior_points": 5,
+    "approximations": {
+      "50.0": {
+        "max_value": 50,
+        "total_breakpoints": 7,
+        "breakpoints": [
+          0.0,
+          8.333333333333334,
+          16.666666666666668,
+          25.0,
+          33.333333333333336,
+          41.66666666666667,
+          50.0
+        ],
+        "function_values": [
+          0.0,
+          3.196014030258651,
+          4.67275611813067,
+          5.835406633666033,
+          6.8318378870697725,
+          7.720478885023081,
+          8.531699733194388
+        ],
+        "max_absolute_error": 0.6967026043203124,
+        "max_relative_error_percent": 90.09348812430011,
+        "average_absolute_error": 0.0909171326506043
+      },
+      "75.0": {
+        "max_value": 75,
+        "total_breakpoints": 7,
+        "breakpoints": [
+          0.0,
+          12.5,
+          25.0,
+          37.5,
+          50.0,
+          62.5,
+          75.0
+        ],
+        "function_values": [
+          0.0,
+          3.9912293734092783,
+          5.835406633666033,
+          7.287341714263484,
+          8.531699733194388,
+          9.641447694206919,
+          10.654512232375195
+        ],
+        "max_absolute_error": 0.8700524692843521,
+        "max_relative_error_percent": 90.09348812430011,
+        "average_absolute_error": 0.11353865375612046
+      },
+      "100.0": {
+        "max_value": 100,
+        "total_breakpoints": 7,
+        "breakpoints": [
+          0.0,
+          16.666666666666668,
+          33.333333333333336,
+          50.0,
+          66.66666666666667,
+          83.33333333333334,
+          100.0
+        ],
+        "function_values": [
+          0.0,
+          4.67275611813067,
+          6.8318378870697725,
+          8.531699733194388,
+          9.988539469051908,
+          11.28778365906318,
+          12.473835142429433
+        ],
+        "max_absolute_error": 1.0186192319662142,
+        "max_relative_error_percent": 90.09348812430011,
+        "average_absolute_error": 0.13292607097899
+      }
+    }
+  },
+  "constraint_metadata": {
+    "land_availability": {
+      "Farm1": {
+        "type": "land_availability",
+        "farm": "Farm1",
+        "max_land": 75
+      },
+      "Farm2": {
+        "type": "land_availability",
+        "farm": "Farm2",
+        "max_land": 100
+      },
+      "Farm3": {
+        "type": "land_availability",
+        "farm": "Farm3",
+        "max_land": 50
+      }
+    },
+    "min_area_if_selected": {
+      "('Farm1', 'Wheat')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm1",
+        "food": "Wheat",
+        "min_area": 0
+      },
+      "('Farm1', 'Corn')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm1",
+        "food": "Corn",
+        "min_area": 0
+      },
+      "('Farm1', 'Rice')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm1",
+        "food": "Rice",
+        "min_area": 0
+      },
+      "('Farm1', 'Soybeans')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm1",
+        "food": "Soybeans",
+        "min_area": 0
+      },
+      "('Farm1', 'Potatoes')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm1",
+        "food": "Potatoes",
+        "min_area": 0
+      },
+      "('Farm1', 'Apples')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm1",
+        "food": "Apples",
+        "min_area": 0
+      },
+      "('Farm2', 'Wheat')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm2",
+        "food": "Wheat",
+        "min_area": 0
+      },
+      "('Farm2', 'Corn')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm2",
+        "food": "Corn",
+        "min_area": 0
+      },
+      "('Farm2', 'Rice')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm2",
+        "food": "Rice",
+        "min_area": 0
+      },
+      "('Farm2', 'Soybeans')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm2",
+        "food": "Soybeans",
+        "min_area": 0
+      },
+      "('Farm2', 'Potatoes')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm2",
+        "food": "Potatoes",
+        "min_area": 0
+      },
+      "('Farm2', 'Apples')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm2",
+        "food": "Apples",
+        "min_area": 0
+      },
+      "('Farm3', 'Wheat')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm3",
+        "food": "Wheat",
+        "min_area": 0
+      },
+      "('Farm3', 'Corn')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm3",
+        "food": "Corn",
+        "min_area": 0
+      },
+      "('Farm3', 'Rice')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm3",
+        "food": "Rice",
+        "min_area": 0
+      },
+      "('Farm3', 'Soybeans')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm3",
+        "food": "Soybeans",
+        "min_area": 0
+      },
+      "('Farm3', 'Potatoes')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm3",
+        "food": "Potatoes",
+        "min_area": 0
+      },
+      "('Farm3', 'Apples')": {
+        "type": "min_area_if_selected",
+        "farm": "Farm3",
+        "food": "Apples",
+        "min_area": 0
+      }
+    },
+    "max_area_if_selected": {
+      "('Farm1', 'Wheat')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm1",
+        "food": "Wheat",
+        "max_land": 75
+      },
+      "('Farm1', 'Corn')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm1",
+        "food": "Corn",
+        "max_land": 75
+      },
+      "('Farm1', 'Rice')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm1",
+        "food": "Rice",
+        "max_land": 75
+      },
+      "('Farm1', 'Soybeans')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm1",
+        "food": "Soybeans",
+        "max_land": 75
+      },
+      "('Farm1', 'Potatoes')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm1",
+        "food": "Potatoes",
+        "max_land": 75
+      },
+      "('Farm1', 'Apples')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm1",
+        "food": "Apples",
+        "max_land": 75
+      },
+      "('Farm2', 'Wheat')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm2",
+        "food": "Wheat",
+        "max_land": 100
+      },
+      "('Farm2', 'Corn')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm2",
+        "food": "Corn",
+        "max_land": 100
+      },
+      "('Farm2', 'Rice')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm2",
+        "food": "Rice",
+        "max_land": 100
+      },
+      "('Farm2', 'Soybeans')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm2",
+        "food": "Soybeans",
+        "max_land": 100
+      },
+      "('Farm2', 'Potatoes')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm2",
+        "food": "Potatoes",
+        "max_land": 100
+      },
+      "('Farm2', 'Apples')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm2",
+        "food": "Apples",
+        "max_land": 100
+      },
+      "('Farm3', 'Wheat')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm3",
+        "food": "Wheat",
+        "max_land": 50
+      },
+      "('Farm3', 'Corn')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm3",
+        "food": "Corn",
+        "max_land": 50
+      },
+      "('Farm3', 'Rice')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm3",
+        "food": "Rice",
+        "max_land": 50
+      },
+      "('Farm3', 'Soybeans')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm3",
+        "food": "Soybeans",
+        "max_land": 50
+      },
+      "('Farm3', 'Potatoes')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm3",
+        "food": "Potatoes",
+        "max_land": 50
+      },
+      "('Farm3', 'Apples')": {
+        "type": "max_area_if_selected",
+        "farm": "Farm3",
+        "food": "Apples",
+        "max_land": 50
+      }
+    },
+    "food_group_min": {},
+    "food_group_max": {}
+  }
+}
