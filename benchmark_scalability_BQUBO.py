@@ -48,11 +48,11 @@ def clean_solution_for_json(solution):
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    1096#, 19, 72, 279, 1096, 1535
+    5#, 19, 72, 279, 1096, 1535
 ]
 
 # Number of runs per configuration for statistical analysis
-NUM_RUNS = 2
+NUM_RUNS = 5
 
 def load_full_family_with_n_farms(n_farms, seed=42):
     """
