@@ -22,6 +22,7 @@ from solver_runner_NLD import (
     solve_with_dwave,
     solve_with_dwave_charnes_cooper
 )
+from benchmark_cache import BenchmarkCache, serialize_cqm
 import pulp as pl
 
 # Benchmark configurations
