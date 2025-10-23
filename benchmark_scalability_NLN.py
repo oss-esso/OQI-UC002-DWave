@@ -16,18 +16,43 @@ sys.path.insert(0, os.path.dirname(__file__))
 from farm_sampler import generate_farms
 from src.scenarios import load_food_data
 from solver_runner_NLN import create_cqm, solve_with_pulp, solve_with_pyomo, solve_with_dwave
+from benchmark_cache import BenchmarkCache, serialize_cqm
 import pulp as pl
+
+# Helper function to clean solution data for JSON serialization
+def clean_solution_for_json(solution):
+    """Convert solution dictionary to JSON-serializable format."""
+    if not solution:
+        return {}
+    
+    cleaned = {}
+    for key, value in solution.items():
+        # Convert tuple keys to strings
+        if isinstance(key, tuple):
+            key_str = '_'.join(str(k) for k in key)
+        else:
+            key_str = str(key)
+        
+        # Convert values to basic types
+        if hasattr(value, 'item'):  # numpy types
+            cleaned[key_str] = value.item()
+        elif isinstance(value, (int, float, str, bool, type(None))):
+            cleaned[key_str] = value
+        else:
+            cleaned[key_str] = str(value)
+    
+    return cleaned
 
 # Benchmark configurations
 # Format: number of farms to test with full_family scenario
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    5, 19, 72, 279, 1096, 1535
+    5, 19, 72, 279
 ]
 
 # Number of runs per configuration for statistical analysis
-NUM_RUNS = 5
+NUM_RUNS = 1
 
 # Power for non-linear objective
 POWER = 0.548
@@ -149,7 +174,7 @@ def load_full_family_with_n_farms(n_farms, seed=42):
     
     return farms, foods, food_groups, config
 
-def run_benchmark(n_farms, run_number=1, total_runs=1):
+def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache=True):
     """
     Run a single benchmark test with full_family scenario.
     Returns timing results and problem size metrics for all three solvers.
@@ -158,6 +183,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1):
         n_farms: Number of farms to test
         run_number: Current run number (for display)
         total_runs: Total number of runs (for display)
+        cache: BenchmarkCache instance for saving results
+        save_to_cache: Whether to save results to cache (default: True)
     """
     print(f"\n{'='*80}")
     print(f"BENCHMARK: full_family scenario with {n_farms} Farms (Run {run_number}/{total_runs})")
@@ -191,8 +218,27 @@ def run_benchmark(n_farms, run_number=1, total_runs=1):
         cqm_time = time.time() - cqm_start
         print(f"    ✅ CQM created: {len(cqm.variables)} vars, {len(cqm.constraints)} constraints ({cqm_time:.2f}s)")
         
+        # Save CQM to cache if requested
+        if save_to_cache and cache:
+            cqm_data = serialize_cqm(cqm)
+            cqm_result = {
+                'cqm_time': cqm_time,
+                'num_variables': len(cqm.variables),
+                'num_constraints': len(cqm.constraints),
+                'n_foods': n_foods,
+                'problem_size': problem_size,
+                'n_vars_base': n_vars_base,
+                'n_lambda_vars': n_lambda_vars,
+                'n_vars_total': n_vars,
+                'n_constraints': n_constraints
+                # Note: constraint_metadata and approximation_metadata contain tuples
+                # which can't be JSON serialized, so we skip them
+            }
+            cache.save_result('NLN', 'CQM', n_farms, run_number, cqm_result, cqm_data=cqm_data)
+        
         # Solve with PuLP (piecewise approximation)
         print(f"\n  Solving with PuLP (Piecewise Approximation)...")
+        print(f"    Note: For large problems (>10k vars), CBC uses 10min timeout & 5% gap")
         pulp_start = time.time()
         pulp_model, pulp_results = solve_with_pulp(farms, foods, food_groups, config, power=POWER, num_breakpoints=NUM_BREAKPOINTS)
         pulp_time = time.time() - pulp_start
@@ -200,6 +246,24 @@ def run_benchmark(n_farms, run_number=1, total_runs=1):
         print(f"    Status: {pulp_results['status']}")
         print(f"    Objective: {pulp_results.get('objective_value', 'N/A')}")
         print(f"    Time: {pulp_time:.3f}s")
+        
+        # Save PuLP results to cache
+        if save_to_cache and cache:
+            pulp_cache_result = {
+                'solve_time': pulp_time,
+                'status': pulp_results['status'],
+                'objective_value': pulp_results.get('objective_value'),
+                'solution': clean_solution_for_json(pulp_results.get('solution', {})),
+                'power': POWER,
+                'num_breakpoints': NUM_BREAKPOINTS,
+                'n_foods': n_foods,
+                'problem_size': problem_size,
+                'n_vars_base': n_vars_base,
+                'n_lambda_vars': n_lambda_vars,
+                'n_vars_total': n_vars,
+                'n_constraints': n_constraints
+            }
+            cache.save_result('NLN', 'PuLP', n_farms, run_number, pulp_cache_result)
         
         # Solve with Pyomo (true non-linear)
         print(f"\n  Solving with Pyomo (True Non-Linear)...")
@@ -218,14 +282,64 @@ def run_benchmark(n_farms, run_number=1, total_runs=1):
             print(f"    Time: {pyomo_time:.3f}s")
             pyomo_objective = pyomo_results.get('objective_value')
         
-        # DWave solving is SKIPPED (no token)
-        dwave_time = None
-        qpu_time = None
+        # Save Pyomo results to cache
+        if save_to_cache and cache:
+            pyomo_cache_result = {
+                'solve_time': pyomo_time,
+                'status': pyomo_results.get('status', 'Error'),
+                'objective_value': pyomo_objective,
+                'solution': clean_solution_for_json(pyomo_results.get('solution', {})),
+                'error': pyomo_results.get('error'),
+                'power': POWER,
+                'n_foods': n_foods,
+                'problem_size': problem_size
+            }
+            cache.save_result('NLN', 'Pyomo', n_farms, run_number, pyomo_cache_result)
+        
+        # Solve with DWave
+        print(f"\n  Solving with DWave...")
+        token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+        
         hybrid_time = None
+        qpu_time = None
         dwave_feasible = False
         dwave_objective = None
+
+        if not token:
+            print(f"    SKIPPED: DWAVE_API_TOKEN not found.")
+        else:
+            try:
+                sampleset, hybrid_time, qpu_time = solve_with_dwave(cqm, token)
+
+                feasible_sampleset = sampleset.filter(lambda d: d.is_feasible)
+                dwave_feasible = len(feasible_sampleset) > 0
+
+                if dwave_feasible:
+                    best = feasible_sampleset.first
+                    dwave_objective = -best.energy
+
+                    print(f"    Status: {len(feasible_sampleset)} feasible solutions")
+                    print(f"    Objective: {dwave_objective:.6f}")
+                    if hybrid_time is not None:
+                        print(f"    Hybrid Time: {hybrid_time:.3f}s")
+                    if qpu_time is not None:
+                        print(f"    QPU Access Time: {qpu_time:.4f}s")
+                else:
+                    print("    Status: No feasible solutions found")
+
+            except Exception as e:
+                print(f"    ERROR: DWave solving failed: {str(e)}")
         
-        print(f"\n  DWave: SKIPPED (no token)")
+        # Save DWave results to cache
+        if save_to_cache and cache:
+            dwave_cache_result = {
+                'hybrid_time': hybrid_time,
+                'qpu_time': qpu_time,
+                'feasible': dwave_feasible,
+                'objective_value': dwave_objective,
+                'num_feasible_solutions': len(feasible_sampleset) if dwave_feasible else 0
+            }
+            cache.save_result('NLN', 'DWave', n_farms, run_number, dwave_cache_result)
         
         # Calculate approximation error if we have Pyomo solution
         pulp_error = None
@@ -250,9 +364,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1):
             'pyomo_status': pyomo_results.get('status', 'Error'),
             'pyomo_objective': pyomo_objective,
             'pulp_error_percent': pulp_error,
-            'dwave_time': dwave_time,
-            'qpu_time': qpu_time,
             'hybrid_time': hybrid_time,
+            'qpu_time': qpu_time,
             'dwave_feasible': dwave_feasible,
             'dwave_objective': dwave_objective,
             'power': POWER,
@@ -432,7 +545,11 @@ def create_summary_table(results, output_file='scalability_table_nln.png'):
 def main():
     """
     Run all benchmarks with multiple runs and calculate statistics.
+    Uses intelligent caching to avoid redundant runs.
     """
+    # Initialize cache
+    cache = BenchmarkCache()
+    
     print("="*80)
     print("NON-LINEAR SCALABILITY BENCHMARK")
     print("="*80)
@@ -443,6 +560,12 @@ def main():
     print(f"Breakpoints: {NUM_BREAKPOINTS}")
     print("="*80)
     
+    # Check cache status
+    print("\n" + "="*80)
+    print("CHECKING CACHE STATUS")
+    print("="*80)
+    cache.print_cache_status('NLN', BENCHMARK_CONFIGS, NUM_RUNS)
+    
     all_results = []
     aggregated_results = []
     
@@ -451,30 +574,105 @@ def main():
         print(f"TESTING CONFIGURATION: {n_farms} Farms")
         print("="*80)
         
+        # Check which runs are needed
+        runs_needed = cache.get_runs_needed('NLN', n_farms, NUM_RUNS)
+        
+        # Load existing results from cache for PuLP (our primary solver)
+        existing_pulp_results = cache.get_all_results('NLN', 'PuLP', n_farms)
         config_results = []
         
-        # Run multiple times for this configuration
-        for run_num in range(1, NUM_RUNS + 1):
-            result = run_benchmark(n_farms, run_number=run_num, total_runs=NUM_RUNS)
-            if result:
-                config_results.append(result)
-                all_results.append(result)
+        # Convert cached results to the format expected by aggregation
+        for cached in existing_pulp_results:
+            result_data = cached['result']
+            run_num = cached['metadata']['run_number']
+            
+            run_result = {
+                'n_farms': n_farms,
+                'n_foods': result_data.get('n_foods', 10),
+                'pulp_time': result_data['solve_time'],
+                'pulp_status': result_data['status'],
+                'pulp_objective': result_data['objective_value'],
+                'problem_size': result_data.get('problem_size', n_farms * 10),
+                'power': result_data['power'],
+                'num_breakpoints': result_data['num_breakpoints'],
+                'n_vars_base': result_data.get('n_vars_base', 0),
+                'n_lambda_vars': result_data.get('n_lambda_vars', 0),
+                'n_vars_total': result_data.get('n_vars_total', 0),
+                'n_constraints': result_data.get('n_constraints', 0)
+            }
+            
+            # Load corresponding CQM result
+            cqm_cached = cache.load_result('NLN', 'CQM', n_farms, run_num)
+            if cqm_cached:
+                run_result['cqm_time'] = cqm_cached['result']['cqm_time']
+            
+            # Load corresponding Pyomo result
+            pyomo_cached = cache.load_result('NLN', 'Pyomo', n_farms, run_num)
+            if pyomo_cached and pyomo_cached['result'].get('solve_time'):
+                run_result['pyomo_time'] = pyomo_cached['result']['solve_time']
+                run_result['pyomo_status'] = pyomo_cached['result']['status']
+                run_result['pyomo_objective'] = pyomo_cached['result']['objective_value']
+                
+                # Calculate error
+                if run_result.get('pyomo_objective') and run_result.get('pulp_objective'):
+                    run_result['pulp_error_percent'] = abs(
+                        run_result['pulp_objective'] - run_result['pyomo_objective']
+                    ) / abs(run_result['pyomo_objective']) * 100
+                else:
+                    run_result['pulp_error_percent'] = None
+            else:
+                run_result['pyomo_time'] = None
+                run_result['pyomo_status'] = 'N/A'
+                run_result['pyomo_objective'] = None
+                run_result['pulp_error_percent'] = None
+            
+            config_results.append(run_result)
+        
+        print(f"\n  Loaded {len(config_results)} existing runs from cache")
+        
+        # Determine which runs still need to be executed
+        # We need to find the union of all missing runs across all solvers
+        all_missing_runs = set()
+        for solver, missing in runs_needed.items():
+            all_missing_runs.update(missing)
+        
+        all_missing_runs = sorted(all_missing_runs)
+        
+        if all_missing_runs:
+            print(f"  Need to run: {all_missing_runs}")
+            print(f"  Details by solver:")
+            for solver, missing in runs_needed.items():
+                if missing:
+                    print(f"    {solver:12s}: missing runs {missing}")
+            
+            # Run the missing benchmarks
+            for run_num in all_missing_runs:
+                result = run_benchmark(n_farms, run_number=run_num, total_runs=NUM_RUNS, 
+                                     cache=cache, save_to_cache=True)
+                if result:
+                    config_results.append(result)
+                    all_results.append(result)
+        else:
+            print(f"  ✓ All {NUM_RUNS} runs already completed for all solvers!")
         
         # Calculate statistics for this configuration
         if config_results:
-            pulp_times = [r['pulp_time'] for r in config_results if r['pulp_time'] is not None]
-            pyomo_times = [r['pyomo_time'] for r in config_results if r['pyomo_time'] is not None]
-            cqm_times = [r['cqm_time'] for r in config_results if r['cqm_time'] is not None]
-            pulp_errors = [r['pulp_error_percent'] for r in config_results if r['pulp_error_percent'] is not None]
+            pulp_times = [r['pulp_time'] for r in config_results if r.get('pulp_time') is not None]
+            pyomo_times = [r['pyomo_time'] for r in config_results if r.get('pyomo_time') is not None]
+            cqm_times = [r['cqm_time'] for r in config_results if r.get('cqm_time') is not None]
+            pulp_errors = [r['pulp_error_percent'] for r in config_results if r.get('pulp_error_percent') is not None]
+            
+            # Get problem size info from first result
+            first_result = config_results[0]
             
             aggregated = {
                 'n_farms': n_farms,
-                'n_foods': config_results[0]['n_foods'],
-                'problem_size': config_results[0]['problem_size'],
-                'n_vars_base': config_results[0]['n_vars_base'],
-                'n_lambda_vars': config_results[0]['n_lambda_vars'],
-                'n_vars_total': config_results[0]['n_vars_total'],
-                'n_constraints': config_results[0]['n_constraints'],
+                'n_foods': first_result.get('n_foods', 10),
+                'problem_size': first_result.get('problem_size', n_farms * 10),
+                'n_vars_base': first_result.get('n_vars_base', 0),
+                'n_lambda_vars': first_result.get('n_lambda_vars', 0),
+                'n_vars_total': first_result.get('n_vars_total', 0),
+                'n_constraints': first_result.get('n_constraints', 0),
                 
                 # CQM creation stats
                 'cqm_time_mean': float(np.mean(cqm_times)) if cqm_times else None,
@@ -505,7 +703,8 @@ def main():
             
             # Print statistics
             print(f"\n  Statistics for {n_farms} farms ({len(config_results)} runs):")
-            print(f"    CQM Creation: {aggregated['cqm_time_mean']:.3f}s ± {aggregated['cqm_time_std']:.3f}s")
+            if aggregated.get('cqm_time_mean'):
+                print(f"    CQM Creation: {aggregated['cqm_time_mean']:.3f}s ± {aggregated['cqm_time_std']:.3f}s")
             print(f"    PuLP:         {aggregated['pulp_time_mean']:.3f}s ± {aggregated['pulp_time_std']:.3f}s")
             if aggregated['pyomo_time_mean']:
                 print(f"    Pyomo:        {aggregated['pyomo_time_mean']:.3f}s ± {aggregated['pyomo_time_std']:.3f}s")

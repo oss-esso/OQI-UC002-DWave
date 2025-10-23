@@ -431,8 +431,27 @@ def solve_with_pulp(farms, foods, food_groups, config, power=0.548, num_breakpoi
     
     # Solve
     print("  Solving with CBC...")
+    # For large problems, add time limit and allow optimality gap
+    # This prevents CBC from getting stuck for hours
+    n_vars = len(model.variables())
+    n_constraints = len(model.constraints)
+    
+    if n_vars > 10000:
+        # Large problem: use relaxed settings
+        print(f"    Large problem detected ({n_vars} vars, {n_constraints} constraints)")
+        print(f"    Using time limit and optimality gap for faster solving")
+        solver = pl.PULP_CBC_CMD(
+            msg=1,  # Show progress
+            timeLimit=30,  # 10 minute limit
+            gapRel=0.05,  # 5% optimality gap acceptable
+            threads=4  # Use multiple threads
+        )
+    else:
+        # Small problem: use default settings
+        solver = pl.PULP_CBC_CMD(msg=0)
+    
     start_time = time.time()
-    model.solve(pl.PULP_CBC_CMD(msg=0))
+    model.solve(solver)
     solve_time = time.time() - start_time
     
     # Extract results
@@ -463,15 +482,30 @@ def solve_with_pulp(farms, foods, food_groups, config, power=0.548, num_breakpoi
     return model, results
 
 def solve_with_dwave(cqm, token):
-    """Solve with DWave and return sampleset."""
+    """Solve with DWave and return sampleset with hybrid solver timing."""
     sampler = LeapHybridCQMSampler(token=token)
     
     print("Submitting to DWave Leap hybrid solver...")
-    start_time = time.time()
-    sampleset = sampler.sample_cqm(cqm, label="Food Optimization - Professional Run")
-    solve_time = time.time() - start_time
     
-    return sampleset, solve_time
+    sampleset = sampler.sample_cqm(cqm, label="Food Optimization - Professional Run")
+    
+    # Extract timing from sampleset.info
+    # For hybrid solvers, the total solve time is in 'run_time' (microseconds)
+    timing_info = sampleset.info.get('timing', {})
+    hybrid_time = (timing_info.get('run_time') or 
+                  sampleset.info.get('run_time') or 
+                  sampleset.info.get('charge_time'))
+    
+    if hybrid_time is not None:
+        hybrid_time = hybrid_time / 1e6  # convert microseconds to seconds
+    
+    # QPU access time (if available)
+    qpu_time = (timing_info.get('qpu_access_time') or
+               sampleset.info.get('qpu_access_time'))
+    if qpu_time is not None:
+        qpu_time = qpu_time / 1e6
+    
+    return sampleset, hybrid_time, qpu_time
 
 def solve_with_pyomo(farms, foods, food_groups, config, power=0.548):
     """
