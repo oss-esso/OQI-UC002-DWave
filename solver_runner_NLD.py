@@ -525,7 +525,7 @@ def solve_with_dwave_charnes_cooper(farms, foods, food_groups, config, token):
     
     print("  Building Charnes-Cooper transformed CQM...")
     
-    start_time = time.time()
+    
     
     # Create CQM with transformed variables
     cqm = ConstrainedQuadraticModel()
@@ -613,7 +613,7 @@ def solve_with_dwave_charnes_cooper(farms, foods, food_groups, config, token):
     print("  Submitting Charnes-Cooper CQM to D-Wave...")
     sampleset = sampler.sample_cqm(cqm, label="Food Optimization - Charnes-Cooper")
     
-    solve_time = time.time() - start_time
+    solve_time = sampleset.info.get('charge_time', 0) / 1e6
     
     # Extract results
     feasible_sampleset = sampleset.filter(lambda d: d.is_feasible)
