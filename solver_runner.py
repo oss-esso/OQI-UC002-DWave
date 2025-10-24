@@ -233,10 +233,10 @@ def solve_with_dwave(cqm, token):
     sampler = LeapHybridCQMSampler(token=token)
 
     print("Submitting to DWave Leap hybrid solver...")
-    start_time = time.time()
+    
     sampleset = sampler.sample_cqm(
         cqm, label="Food Optimization - Professional Run")
-    solve_time = time.time() - start_time
+    solve_time = sampleset.info.get('charge_time', 0) / 1e6  # Convert to seconds
 
     return sampleset, solve_time
 

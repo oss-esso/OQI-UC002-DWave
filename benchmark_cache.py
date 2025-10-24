@@ -32,14 +32,15 @@ class BenchmarkCache:
     """Manages benchmark result caching and storage."""
     
     # Valid benchmark types
-    BENCHMARK_TYPES = ['BQUBO', 'NLD', 'NLN', 'LQ']
+    BENCHMARK_TYPES = ['BQUBO', 'NLD', 'NLN', 'LQ', 'PATCH']
     
     # Valid solver types per benchmark
     SOLVER_TYPES = {
         'BQUBO': ['CQM', 'PuLP', 'DWave'],
         'NLD': ['CQM', 'PuLP', 'Pyomo', 'DWave'],
         'NLN': ['CQM', 'PuLP', 'Pyomo', 'DWave'],
-        'LQ': ['CQM', 'PuLP', 'Pyomo', 'DWave']
+        'LQ': ['CQM', 'PuLP', 'Pyomo', 'DWave'],
+        'PATCH': ['CQM', 'PuLP', 'DWave']
     }
     
     def __init__(self, base_dir: str = None):
