@@ -345,7 +345,29 @@ def solve_with_pulp(farms, foods, food_groups, config):
                     model += pl.lpSum([Y_pulp[crop] for crop in foods_in_group]) <= constraints['max_foods'], f"FoodGroup_Max_{group}"
     
     start_time = time.time()
-    model.solve(pl.PULP_CBC_CMD(msg=0))
+    # Use Gurobi with GPU acceleration enabled
+    # Parameters:
+    # - msg=0: Suppress output
+    # - options: List of Gurobi parameters
+    #   - RINS=2: More aggressive RINS heuristic (for MIP)
+    #   - MIPFocus=1: Focus on finding feasible solutions quickly
+    #   - Threads=0: Use all available threads
+    #   - NumericFocus=0: Default numeric precision
+    # GPU-specific parameters (requires Gurobi 9.0+ and CUDA-compatible GPU):
+    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
+    #   - Crossover=0: Disable crossover (barrier stays on GPU)
+    #   - Method=2: Use barrier method (GPU-accelerated)
+    gurobi_options = [
+        ('Method', 2),           # Barrier method (can use GPU)
+        ('Crossover', 0),        # Disable crossover to keep computation on GPU
+        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
+        ('Threads', 0),          # Use all available CPU threads
+        ('MIPFocus', 1),         # Focus on finding good solutions quickly
+    ]
+    
+    # Convert options to command-line format for GUROBI_CMD
+    options_str = ' '.join([f'{k}={v}' for k, v in gurobi_options])
+    model.solve(pl.GUROBI_CMD(msg=0, options=[options_str]))
     solve_time = time.time() - start_time
     
     # Extract results
