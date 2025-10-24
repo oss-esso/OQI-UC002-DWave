@@ -18,6 +18,7 @@ from src.scenarios import load_food_data
 from solver_runner_PATCH import create_cqm, solve_with_pulp, solve_with_dwave, solve_with_simulated_annealing
 from dimod import cqm_to_bqm
 from benchmark_cache import BenchmarkCache, serialize_cqm
+from constraint_validator import validate_bqm_patch_constraints, validate_pulp_patch_constraints, print_validation_report
 import pulp as pl
 
 # Helper function to clean solution data for JSON serialization
@@ -288,6 +289,15 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
         print(f"    Objective: {pulp_results.get('objective_value', 'N/A')}")
         print(f"    Time: {pulp_time:.3f}s")
         
+        # Validate PuLP constraints
+        print(f"\n    Validating PuLP solution constraints...")
+        pulp_validation = validate_pulp_patch_constraints(
+            pulp_results.get('X_variables', {}),
+            pulp_results.get('Y_variables', {}),
+            patches, foods, food_groups, config
+        )
+        print_validation_report(pulp_validation, verbose=False)
+        
         # Save PuLP results to cache
         if save_to_cache and cache:
             pulp_cache_result = {
@@ -299,7 +309,8 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
                 'n_foods': n_foods,
                 'problem_size': problem_size,
                 'n_vars': n_vars,
-                'n_constraints': len(cqm.constraints)
+                'n_constraints': len(cqm.constraints),
+                'validation': pulp_validation if 'pulp_validation' in locals() else None
             }
             cache.save_result('PATCH', 'PuLP', n_patches, run_number, pulp_cache_result)
         
@@ -348,6 +359,13 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
                     dwave_feasible = True
                     print(f"    BQM Energy: {best.energy:.6f}")
                     print(f"    Actual Objective: {dwave_objective:.6f}")
+                    
+                    # Validate constraints
+                    print(f"\n    Validating DWave solution constraints...")
+                    dwave_validation = validate_bqm_patch_constraints(
+                        best.sample, invert, patches, foods, food_groups, config
+                    )
+                    print_validation_report(dwave_validation, verbose=False)
                 
             except Exception as e:
                 print(f"    ERROR: {e}")
@@ -380,6 +398,13 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
                 )
                 print(f"    BQM Energy: {sa_best.energy:.6f}")
                 print(f"    Actual Objective: {sa_objective:.6f}")
+                
+                # Validate constraints
+                print(f"\n    Validating Simulated Annealing solution constraints...")
+                sa_validation = validate_bqm_patch_constraints(
+                    sa_best.sample, invert, patches, foods, food_groups, config
+                )
+                print_validation_report(sa_validation, verbose=False)
         except Exception as e:
             print(f"    ERROR: {e}")
         
@@ -393,7 +418,9 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
                 'objective_value': dwave_objective,
                 'num_samples': len(sampleset) if 'sampleset' in locals() else 0,
                 'sa_time': sa_time,
-                'sa_objective': sa_objective
+                'sa_objective': sa_objective,
+                'dwave_validation': dwave_validation if 'dwave_validation' in locals() else None,
+                'sa_validation': sa_validation if 'sa_validation' in locals() else None
             }
             cache.save_result('PATCH', 'DWave', n_patches, run_number, dwave_cache_result)
         
