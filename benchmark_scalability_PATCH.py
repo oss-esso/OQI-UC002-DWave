@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from patch_sampler import generate_farms as generate_patches
 from src.scenarios import load_food_data
-from solver_runner_PATCH import create_cqm, solve_with_pulp, solve_with_dwave, solve_with_simulated_annealing
+from solver_runner_PATCH import create_cqm, solve_with_pulp, solve_with_dwave, solve_with_simulated_annealing, solve_with_gurobi_qubo
 from dimod import cqm_to_bqm
 from benchmark_cache import BenchmarkCache, serialize_cqm
 from constraint_validator import validate_bqm_patch_constraints, validate_pulp_patch_constraints, print_validation_report
@@ -399,6 +399,59 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
         elif save_to_cache and cache and dwave_token is None:
             print(f"⚠️  Skipping DWave cache save (token disabled) - preserving existing DWave results")
         
+        # Gurobi QUBO solving
+        gurobi_time = None
+        gurobi_feasible = False
+        gurobi_objective = None
+        gurobi_validation = None
+        
+        if dwave_token:  # Only run if BQM was created
+            print(f"\n  Solving with Gurobi QUBO...")
+            try:
+                gurobi_result = solve_with_gurobi_qubo(bqm)
+                gurobi_time = gurobi_result['solve_time']
+                gurobi_feasible = gurobi_result['status'] == 'Optimal'
+                
+                if gurobi_feasible:
+                    # Calculate actual objective using the invert function
+                    gurobi_objective = calculate_objective_from_bqm_sample(
+                        gurobi_result['solution'], invert, patches, foods, config
+                    )
+                    print(f"    Status: {gurobi_result['status']}")
+                    print(f"    BQM Energy: {gurobi_result['bqm_energy']:.6f}")
+                    print(f"    Actual Objective: {gurobi_objective:.6f}")
+                    print(f"    Solve Time: {gurobi_time:.3f}s")
+                    
+                    # Validate constraints
+                    print(f"\n    Validating Gurobi QUBO solution constraints...")
+                    gurobi_validation = validate_bqm_patch_constraints(
+                        gurobi_result['solution'], invert, patches, foods, food_groups, config
+                    )
+                    print_validation_report(gurobi_validation, verbose=False)
+                else:
+                    print(f"    Status: {gurobi_result['status']}")
+                    print(f"    Solve Time: {gurobi_time:.3f}s")
+                    
+            except Exception as e:
+                print(f"    ERROR: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"\n  Gurobi QUBO: SKIPPED (no BQM available)")
+        
+        # Save Gurobi results to cache 
+        if save_to_cache and cache and dwave_token is not None:
+            gurobi_cache_result = {
+                'gurobi_time': gurobi_time,
+                'feasible': gurobi_feasible,
+                'objective_value': gurobi_objective,
+                'gurobi_validation': gurobi_validation
+            }
+            cache.save_result('PATCH', 'GurobiQUBO', n_patches, run_number, gurobi_cache_result)
+            print(f"✓ Saved Gurobi QUBO result: config_{n_patches}_run_{run_number}")
+        elif save_to_cache and cache and dwave_token is None:
+            print(f"⚠️  Skipping Gurobi QUBO cache save (no BQM available)")
+        
         result = {
             'n_patches': n_patches,
             'n_foods': n_foods,
@@ -413,7 +466,10 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
             'qpu_time': qpu_time,
             'bqm_conversion_time': bqm_conversion_time,
             'dwave_feasible': dwave_feasible,
-            'dwave_objective': dwave_objective
+            'dwave_objective': dwave_objective,
+            'gurobi_time': gurobi_time,
+            'gurobi_feasible': gurobi_feasible,
+            'gurobi_objective': gurobi_objective
         }
         
         return result
@@ -453,6 +509,11 @@ def plot_results(results, output_file='scalability_benchmark_patch.png'):
     qpu_errors = [r['qpu_time_std'] for r in valid_results if r['qpu_time_mean'] is not None]
     qpu_problem_sizes = [r['problem_size'] for r in valid_results if r['qpu_time_mean'] is not None]
     
+    # Gurobi QUBO times
+    gurobi_times = [r['gurobi_time_mean'] for r in valid_results if r.get('gurobi_time_mean') is not None]
+    gurobi_errors = [r['gurobi_time_std'] for r in valid_results if r.get('gurobi_time_mean') is not None]
+    gurobi_problem_sizes = [r['problem_size'] for r in valid_results if r.get('gurobi_time_mean') is not None]
+    
     # Solution quality (we can plot objective values if needed)
     
     # Create figure with professional styling
@@ -468,6 +529,11 @@ def plot_results(results, output_file='scalability_benchmark_patch.png'):
         ax1.errorbar(hybrid_problem_sizes, hybrid_times, yerr=hybrid_errors, marker='D', linestyle='-',
                     linewidth=2.5, markersize=8, capsize=5, capthick=2,
                     label='DWave BQM_PATCH (Hybrid)', color='#F18F01', alpha=0.9)
+    
+    if gurobi_times:
+        ax1.errorbar(gurobi_problem_sizes, gurobi_times, yerr=gurobi_errors, marker='s', linestyle='-',
+                    linewidth=2.5, markersize=8, capsize=5, capthick=2,
+                    label='Gurobi QUBO (GPU)', color='#A4243B', alpha=0.9)
     
     ax1.set_xlabel('Problem Size (n = Patches × Crops)', fontsize=14, fontweight='bold')
     ax1.set_ylabel('Solve Time (seconds)', fontsize=14, fontweight='bold')

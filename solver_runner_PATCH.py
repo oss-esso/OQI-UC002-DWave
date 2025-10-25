@@ -489,6 +489,142 @@ def solve_with_simulated_annealing(bqm):
     
     return sampleset, solve_time
 
+def solve_with_gurobi_qubo(bqm):
+    """
+    Solve a Binary Quadratic Model (BQM) using Gurobi's QUBO capabilities.
+    
+    Converts the BQM to a Gurobi model by iterating over linear and quadratic terms,
+    then solves it using Gurobi's optimization engine with GPU acceleration.
+    
+    Args:
+        bqm: dimod.BinaryQuadraticModel object
+        
+    Returns:
+        dict: Solution containing status, solution dict, objective value, and solve time
+    """
+    try:
+        import gurobipy as gp
+        from gurobipy import GRB
+    except ImportError:
+        raise ImportError("gurobipy is required for Gurobi QUBO solving. Install with: pip install gurobipy")
+    
+    print("\n" + "=" * 80)
+    print("SOLVING QUBO WITH GUROBI (BQM → GUROBI MODEL)")
+    print("=" * 80)
+    
+    # Create Gurobi model
+    model = gp.Model("QUBO_BQM")
+    
+    # Get variables from BQM
+    variables = list(bqm.variables)
+    print(f"  BQM Variables: {len(variables)}")
+    print(f"  BQM Linear terms: {len(bqm.linear)}")
+    print(f"  BQM Quadratic terms: {len(bqm.quadratic)}")
+    
+    # Create binary variables in Gurobi
+    gurobi_vars = {}
+    for var in variables:
+        gurobi_vars[var] = model.addVar(vtype=GRB.BINARY, name=f"x_{var}")
+    
+    # Set up objective function: minimize BQM energy
+    # BQM energy = sum(linear) + sum(quadratic) + offset
+    objective = gp.QuadExpr()
+    
+    # Add linear terms
+    for var, coeff in bqm.linear.items():
+        objective += coeff * gurobi_vars[var]
+    
+    # Add quadratic terms
+    for (var1, var2), coeff in bqm.quadratic.items():
+        objective += coeff * gurobi_vars[var1] * gurobi_vars[var2]
+    
+    # Add constant offset
+    objective += bqm.offset
+    
+    # Set objective (BQM energy minimization)
+    model.setObjective(objective, GRB.MINIMIZE)
+    
+    # Configure Gurobi for GPU acceleration and performance
+    # Same parameters as in solve_with_pulp for consistency
+    gurobi_options = [
+        ('Method', 2),           # Barrier method (GPU-accelerated)
+        ('Crossover', 0),        # Disable crossover to keep computation on GPU
+        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
+        ('Threads', 0),          # Use all available CPU threads for parallelization
+        ('MIPFocus', 1),         # Focus on finding good solutions quickly
+        ('Presolve', 2),         # Aggressive presolve
+        ('OutputFlag', 0),       # Suppress output
+        ('TimeLimit', 300)       # 5 minute time limit
+    ]
+    
+    # Set parameters
+    for param, value in gurobi_options:
+        model.setParam(param, value)
+    
+    print("  Solving QUBO with Gurobi (GPU-accelerated)...")
+    start_time = time.time()
+    model.optimize()
+    solve_time = time.time() - start_time
+    
+    # Extract results
+    if model.status == GRB.OPTIMAL:
+        status = "Optimal"
+        # Extract solution
+        solution = {}
+        for var_name, gurobi_var in gurobi_vars.items():
+            solution[var_name] = int(round(gurobi_var.X))
+        
+        # Calculate objective value (negative of BQM energy for maximization problems)
+        objective_value = model.ObjVal
+        bqm_energy = objective_value
+        # For maximization problems, we typically want -energy
+        solution_objective = -bqm_energy + bqm.offset
+        
+        print(f"  ✅ Optimal solution found")
+        print(f"  BQM Energy: {bqm_energy:.6f}")
+        print(f"  Solution objective: {solution_objective:.6f}")
+        print(f"  Active variables: {sum(solution.values())}")
+        
+    elif model.status == GRB.TIME_LIMIT:
+        status = "Time limit reached"
+        # Extract best solution found
+        solution = {}
+        for var_name, gurobi_var in gurobi_vars.items():
+            solution[var_name] = int(round(gurobi_var.X))
+        objective_value = model.ObjVal
+        solution_objective = -objective_value + bqm.offset
+        print(f"  ⚠️ Time limit reached, best solution found:")
+        print(f"  BQM Energy: {objective_value:.6f}")
+        print(f"  Solution objective: {solution_objective:.6f}")
+        
+    elif model.status == GRB.INFEASIBLE:
+        status = "Infeasible"
+        solution = {}
+        objective_value = float('inf')
+        solution_objective = float('-inf')
+        print(f"  ❌ Problem is infeasible")
+        
+    else:
+        status = f"Gurobi status {model.status}"
+        solution = {}
+        objective_value = float('inf')
+        solution_objective = float('-inf')
+        print(f"  ❌ Gurobi status: {model.status}")
+    
+    print(f"  Solve time: {solve_time:.3f} seconds")
+    
+    return {
+        'status': status,
+        'solution': solution,
+        'objective_value': solution_objective,
+        'bqm_energy': objective_value,
+        'solve_time': solve_time,
+        'gurobi_status': model.status,
+        'variables_count': len(variables),
+        'linear_terms': len(bqm.linear),
+        'quadratic_terms': len(bqm.quadratic)
+    }
+
 def main(scenario='simple', n_patches=None):
     """Main execution function."""
     print("=" * 80)
