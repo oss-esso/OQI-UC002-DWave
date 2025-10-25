@@ -313,13 +313,21 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
                 'validation': pulp_validation if 'pulp_validation' in locals() else None
             }
             cache.save_result('PATCH', 'PuLP', n_patches, run_number, pulp_cache_result)
+            print(f"✓ Saved PuLP result: config_{n_patches}_run_{run_number}")
         
-        # Convert CQM to BQM once for both samplers
-        print(f"\n  Converting CQM to BQM...")
-        convert_start = time.time()
-        bqm, invert = cqm_to_bqm(cqm)
-        bqm_conversion_time = time.time() - convert_start
-        print(f"    ✅ BQM created: {len(bqm.variables)} vars, {len(bqm.quadratic)} interactions ({bqm_conversion_time:.2f}s)")
+        # Only convert to BQM and run DWave/SA if DWave token is available
+        # This prevents overwriting existing DWave results when running PuLP-only benchmarks
+        if dwave_token:
+            # Convert CQM to BQM once for both samplers
+            print(f"\n  Converting CQM to BQM...")
+            convert_start = time.time()
+            bqm, invert = cqm_to_bqm(cqm)
+            bqm_conversion_time = time.time() - convert_start
+            print(f"    ✅ BQM created: {len(bqm.variables)} vars, {len(bqm.quadratic)} interactions ({bqm_conversion_time:.2f}s)")
+        else:
+            # Skip BQM conversion and DWave/SA when token is disabled
+            bqm_conversion_time = None
+            print(f"\n  ⚠️  Skipping BQM conversion and DWave/SA (token disabled)")
         
         # DWave HybridBQM solving
         hybrid_time = None
@@ -374,42 +382,9 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
         else:
             print(f"\n  DWave: SKIPPED (no token)")
         
-        # Simulated Annealing solving
-        sa_time = None
-        sa_objective = None
-        
-        print(f"\n  Solving with Simulated Annealing...")
-        try:
-            from dwave.samplers import SimulatedAnnealingSampler
-            sa_sampler = SimulatedAnnealingSampler()
-            
-            sa_start = time.time()
-            sa_sampleset = sa_sampler.sample(bqm, num_reads=100)
-            sa_time = time.time() - sa_start
-            
-            print(f"    Samples: {len(sa_sampleset)}")
-            print(f"    Time: {sa_time:.3f}s")
-            
-            if len(sa_sampleset) > 0:
-                sa_best = sa_sampleset.first
-                # Calculate actual objective using the invert function
-                sa_objective = calculate_objective_from_bqm_sample(
-                    sa_best.sample, invert, patches, foods, config
-                )
-                print(f"    BQM Energy: {sa_best.energy:.6f}")
-                print(f"    Actual Objective: {sa_objective:.6f}")
-                
-                # Validate constraints
-                print(f"\n    Validating Simulated Annealing solution constraints...")
-                sa_validation = validate_bqm_patch_constraints(
-                    sa_best.sample, invert, patches, foods, food_groups, config
-                )
-                print_validation_report(sa_validation, verbose=False)
-        except Exception as e:
-            print(f"    ERROR: {e}")
-        
-        # Save DWave results to cache
-        if save_to_cache and cache:
+        # Save DWave results to cache ONLY if DWave actually ran
+        # Don't overwrite existing DWave results with Simulated Annealing-only runs
+        if save_to_cache and cache and dwave_token is not None:
             dwave_cache_result = {
                 'hybrid_time': hybrid_time,
                 'qpu_time': qpu_time,
@@ -417,12 +392,12 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
                 'feasible': dwave_feasible,
                 'objective_value': dwave_objective,
                 'num_samples': len(sampleset) if 'sampleset' in locals() else 0,
-                'sa_time': sa_time,
-                'sa_objective': sa_objective,
-                'dwave_validation': dwave_validation if 'dwave_validation' in locals() else None,
-                'sa_validation': sa_validation if 'sa_validation' in locals() else None
+                'dwave_validation': dwave_validation if 'dwave_validation' in locals() else None
             }
             cache.save_result('PATCH', 'DWave', n_patches, run_number, dwave_cache_result)
+            print(f"✓ Saved DWave result: config_{n_patches}_run_{run_number}")
+        elif save_to_cache and cache and dwave_token is None:
+            print(f"⚠️  Skipping DWave cache save (token disabled) - preserving existing DWave results")
         
         result = {
             'n_patches': n_patches,
@@ -438,9 +413,7 @@ def run_benchmark(n_patches, run_number=1, total_runs=1, dwave_token=None, cache
             'qpu_time': qpu_time,
             'bqm_conversion_time': bqm_conversion_time,
             'dwave_feasible': dwave_feasible,
-            'dwave_objective': dwave_objective,
-            'sa_time': sa_time,
-            'sa_objective': sa_objective
+            'dwave_objective': dwave_objective
         }
         
         return result
@@ -668,13 +641,11 @@ def main():
     print("="*80)
     cache.print_cache_status('PATCH', BENCHMARK_CONFIGS, NUM_RUNS)
     
-    # Get DWave token
-    dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
-    if dwave_token:
-        print(f"\n✅ DWave API token found - QPU-enabled benchmarking active")
-    else:
-        print(f"\n⚠️  No DWave API token - DWave benchmarks will be skipped")
-        print(f"   Set DWAVE_API_TOKEN environment variable to enable DWave")
+    # Get DWave token - COMMENTED OUT TO PRESERVE BUDGET
+    # dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    dwave_token = None  # Disable DWave to preserve budget
+    print(f"\n⚠️  DWave disabled to preserve budget - skipping all DWave tests")
+    print(f"   To enable: uncomment dwave_token line and set DWAVE_API_TOKEN")
     
     all_results = []
     aggregated_results = []

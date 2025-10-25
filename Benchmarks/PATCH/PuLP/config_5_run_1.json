@@ -4,12 +4,12 @@
     "solver": "PuLP",
     "n_farms": 5,
     "run_number": 1,
-    "timestamp": "2025-10-24T15:49:28.867237"
+    "timestamp": "2025-10-25T17:00:44.337589"
   },
   "result": {
-    "solve_time": 0.2082662582397461,
+    "solve_time": 0.0365753173828125,
     "status": "Infeasible",
-    "objective_value": 0.09386558922122953,
+    "objective_value": null,
     "X_variables": {
       "X_Patch1_Beef": 0.0,
       "X_Patch1_Chicken": 0.0,
@@ -30,7 +30,7 @@
       "X_Patch1_Tempeh": 0.0,
       "X_Patch1_Tofu": 0.0,
       "X_Patch1_Corn": 0.0,
-      "X_Patch1_Potato": 1.0,
+      "X_Patch1_Potato": 0.0,
       "X_Patch1_Cabbage": 0.0,
       "X_Patch1_Cucumber": 0.0,
       "X_Patch1_Eggplant": 0.0,
@@ -52,7 +52,7 @@
       "X_Patch2_Orange": 0.0,
       "X_Patch2_Papaya": 0.0,
       "X_Patch2_Watermelon": 0.0,
-      "X_Patch2_Chickpeas": 1.0,
+      "X_Patch2_Chickpeas": 0.0,
       "X_Patch2_Peanuts": 0.0,
       "X_Patch2_Tempeh": 0.0,
       "X_Patch2_Tofu": 0.0,
@@ -74,7 +74,7 @@
       "X_Patch3_Avocado": 0.0,
       "X_Patch3_Banana": 0.0,
       "X_Patch3_Durian": 0.0,
-      "X_Patch3_Guava": 1.0,
+      "X_Patch3_Guava": 0.0,
       "X_Patch3_Mango": 0.0,
       "X_Patch3_Orange": 0.0,
       "X_Patch3_Papaya": 0.0,
@@ -96,7 +96,7 @@
       "X_Patch4_Chicken": 0.0,
       "X_Patch4_Egg": 0.0,
       "X_Patch4_Lamb": 0.0,
-      "X_Patch4_Pork": 0.6,
+      "X_Patch4_Pork": 0.0,
       "X_Patch4_Apple": 0.0,
       "X_Patch4_Avocado": 0.0,
       "X_Patch4_Banana": 0.0,
@@ -117,13 +117,13 @@
       "X_Patch4_Eggplant": 0.0,
       "X_Patch4_Long bean": 0.0,
       "X_Patch4_Pumpkin": 0.0,
-      "X_Patch4_Spinach": 0.4,
+      "X_Patch4_Spinach": 0.0,
       "X_Patch4_Tomatoes": 0.0,
       "X_Patch5_Beef": 0.0,
       "X_Patch5_Chicken": 0.0,
       "X_Patch5_Egg": 0.0,
       "X_Patch5_Lamb": 0.0,
-      "X_Patch5_Pork": 0.4,
+      "X_Patch5_Pork": 0.0,
       "X_Patch5_Apple": 0.0,
       "X_Patch5_Avocado": 0.0,
       "X_Patch5_Banana": 0.0,
@@ -144,7 +144,7 @@
       "X_Patch5_Eggplant": 0.0,
       "X_Patch5_Long bean": 0.0,
       "X_Patch5_Pumpkin": 0.0,
-      "X_Patch5_Spinach": 0.6,
+      "X_Patch5_Spinach": 0.0,
       "X_Patch5_Tomatoes": 0.0
     },
     "Y_variables": {
@@ -152,33 +152,148 @@
       "Y_Chicken": 0.0,
       "Y_Egg": 0.0,
       "Y_Lamb": 0.0,
-      "Y_Pork": 1.0,
+      "Y_Pork": 0.0,
       "Y_Apple": 0.0,
       "Y_Avocado": 0.0,
       "Y_Banana": 0.0,
       "Y_Durian": 0.0,
-      "Y_Guava": 1.0,
+      "Y_Guava": 0.0,
       "Y_Mango": 0.0,
       "Y_Orange": 0.0,
       "Y_Papaya": 0.0,
       "Y_Watermelon": 0.0,
-      "Y_Chickpeas": 1.0,
+      "Y_Chickpeas": 0.0,
       "Y_Peanuts": 0.0,
       "Y_Tempeh": 0.0,
       "Y_Tofu": 0.0,
       "Y_Corn": 0.0,
-      "Y_Potato": 1.0,
+      "Y_Potato": 0.0,
       "Y_Cabbage": 0.0,
       "Y_Cucumber": 0.0,
       "Y_Eggplant": 0.0,
       "Y_Long bean": 0.0,
       "Y_Pumpkin": 0.0,
-      "Y_Spinach": 1.0,
+      "Y_Spinach": 0.0,
       "Y_Tomatoes": 0.0
     },
     "n_foods": 27,
     "problem_size": 135,
     "n_vars": 162,
-    "n_constraints": 204
+    "n_constraints": 204,
+    "validation": {
+      "all_satisfied": false,
+      "violations": [],
+      "constraint_details": {
+        "at_most_one_per_plot": {
+          "satisfied": true,
+          "num_constraints": 5,
+          "num_violations": 0,
+          "violations": []
+        },
+        "x_y_linking": {
+          "satisfied": true,
+          "num_constraints": 135,
+          "num_violations": 0,
+          "violations": []
+        },
+        "y_activation": {
+          "satisfied": true,
+          "num_constraints": 27,
+          "num_violations": 0,
+          "violations": []
+        },
+        "area_bounds": {
+          "satisfied": true,
+          "num_constraints": 54,
+          "num_violations": 0,
+          "violations": [],
+          "crop_areas": {
+            "Beef": 0.0,
+            "Chicken": 0.0,
+            "Egg": 0.0,
+            "Lamb": 0.0,
+            "Pork": 0.0,
+            "Apple": 0.0,
+            "Avocado": 0.0,
+            "Banana": 0.0,
+            "Durian": 0.0,
+            "Guava": 0.0,
+            "Mango": 0.0,
+            "Orange": 0.0,
+            "Papaya": 0.0,
+            "Watermelon": 0.0,
+            "Chickpeas": 0.0,
+            "Peanuts": 0.0,
+            "Tempeh": 0.0,
+            "Tofu": 0.0,
+            "Corn": 0.0,
+            "Potato": 0.0,
+            "Cabbage": 0.0,
+            "Cucumber": 0.0,
+            "Eggplant": 0.0,
+            "Long bean": 0.0,
+            "Pumpkin": 0.0,
+            "Spinach": 0.0,
+            "Tomatoes": 0.0
+          }
+        },
+        "food_group_diversity": {
+          "satisfied": false,
+          "num_constraints": 10,
+          "num_violations": 5,
+          "violations": [
+            {
+              "group": "Animal-source foods",
+              "num_selected": 0,
+              "min_required": 1,
+              "max_allowed": 5,
+              "violation_type": "min",
+              "violation": 1
+            },
+            {
+              "group": "Fruits",
+              "num_selected": 0,
+              "min_required": 1,
+              "max_allowed": 9,
+              "violation_type": "min",
+              "violation": 1
+            },
+            {
+              "group": "Pulses, nuts, and seeds",
+              "num_selected": 0,
+              "min_required": 1,
+              "max_allowed": 4,
+              "violation_type": "min",
+              "violation": 1
+            },
+            {
+              "group": "Starchy staples",
+              "num_selected": 0,
+              "min_required": 1,
+              "max_allowed": 2,
+              "violation_type": "min",
+              "violation": 1
+            },
+            {
+              "group": "Vegetables",
+              "num_selected": 0,
+              "min_required": 1,
+              "max_allowed": 7,
+              "violation_type": "min",
+              "violation": 1
+            }
+          ]
+        }
+      },
+      "summary": {
+        "total_constraints": 231,
+        "total_violations": 5,
+        "plots_assigned": 0,
+        "crops_selected": 0,
+        "total_area_used": 0.0,
+        "total_area_available": 0.212,
+        "area_utilization": 0.0
+      }
+    }
   }
 }

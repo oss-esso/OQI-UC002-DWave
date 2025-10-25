@@ -345,29 +345,37 @@ def solve_with_pulp(farms, foods, food_groups, config):
                     model += pl.lpSum([Y_pulp[crop] for crop in foods_in_group]) <= constraints['max_foods'], f"FoodGroup_Max_{group}"
     
     start_time = time.time()
-    # Use Gurobi with GPU acceleration enabled
-    # Parameters:
-    # - msg=0: Suppress output
-    # - options: List of Gurobi parameters
-    #   - RINS=2: More aggressive RINS heuristic (for MIP)
-    #   - MIPFocus=1: Focus on finding feasible solutions quickly
-    #   - Threads=0: Use all available threads
-    #   - NumericFocus=0: Default numeric precision
+    # Use Gurobi with GPU acceleration and aggressive parallelization
     # GPU-specific parameters (requires Gurobi 9.0+ and CUDA-compatible GPU):
-    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
-    #   - Crossover=0: Disable crossover (barrier stays on GPU)
     #   - Method=2: Use barrier method (GPU-accelerated)
+    #   - Crossover=0: Disable crossover to keep computation on GPU
+    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
+    #   - Threads=0: Use all available CPU threads for parallel processing
+    #   - MIPFocus=1: Focus on finding good solutions quickly
+    #   - Presolve=2: Aggressive presolve
     gurobi_options = [
-        ('Method', 2),           # Barrier method (can use GPU)
+        ('Method', 2),           # Barrier method (GPU-accelerated)
         ('Crossover', 0),        # Disable crossover to keep computation on GPU
         ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
-        ('Threads', 0),          # Use all available CPU threads
+        ('Threads', 0),          # Use all available CPU threads for parallelization
         ('MIPFocus', 1),         # Focus on finding good solutions quickly
+        ('Presolve', 2),         # Aggressive presolve
     ]
     
-    # Convert options to command-line format for GUROBI_CMD
-    options_str = ' '.join([f'{k}={v}' for k, v in gurobi_options])
-    model.solve(pl.GUROBI_CMD(msg=0, options=[options_str]))
+    try:
+        # Try using GUROBI API directly for better GPU support
+        print("  Using Gurobi API with GPU acceleration and parallelization...")
+        solver = pl.GUROBI(msg=0, timeLimit=300)
+        # Set parameters directly on the solver
+        for param, value in gurobi_options:
+            solver.optionsDict[param] = value
+        model.solve(solver)
+    except Exception as e:
+        # Fallback to GUROBI_CMD if direct API is not available
+        print(f"  Gurobi API failed ({str(e)[:50]}...), using GUROBI_CMD...")
+        # GUROBI_CMD expects options as a list of "key=value" strings
+        options_list = [f'{k}={v}' for k, v in gurobi_options]
+        model.solve(pl.GUROBI_CMD(msg=0, options=options_list))
     solve_time = time.time() - start_time
     
     # Extract results
