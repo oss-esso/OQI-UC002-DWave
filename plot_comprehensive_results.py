@@ -89,7 +89,7 @@ def load_benchmark_data(benchmark_dir):
     }
     
     # Configuration files to load
-    configs = [10, 15, 20, 25, 100]
+    configs = [10, 15, 20, 25]
     
     for solver_name in data.keys():
         solver_dir = comp_dir / solver_name

@@ -1,0 +1,813 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-26T18:56:04.600385",
+    "config_values": [
+      50
+    ],
+    "total_runtime": 336.4086232185364,
+    "dwave_enabled": true,
+    "scenarios": [
+      "farm",
+      "patch"
+    ],
+    "solvers": {
+      "farm": [
+        "gurobi",
+        "dwave_cqm"
+      ],
+      "patch": [
+        "gurobi",
+        "dwave_cqm",
+        "gurobi_qubo",
+        "dwave_bqm"
+      ]
+    }
+  },
+  "farm_results": [
+    {
+      "sample_id": 0,
+      "scenario_type": "farm",
+      "n_units": 50,
+      "total_area": 238.01,
+      "n_foods": 6,
+      "n_variables": 306,
+      "n_constraints": 356,
+      "cqm_time": 0.030386686325073242,
+      "solvers": {
+        "gurobi": {
+          "status": "Optimal",
+          "objective_value": 153.51645000000002,
+          "solve_time": 0.017757892608642578,
+          "solver_time": 0.010343790054321289,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 50,
+          "total_area": 238.01,
+          "n_foods": 6,
+          "n_variables": 306,
+          "n_constraints": 356
+        },
+        "dwave_cqm": {
+          "status": "Optimal",
+          "objective_value": 225.108,
+          "solve_time": 5.000997,
+          "qpu_time": 0.034773,
+          "hybrid_time": 5.000997,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 50,
+          "total_area": 238.01,
+          "n_foods": 6,
+          "n_variables": 306,
+          "n_constraints": 356
+        }
+      }
+    }
+  ],
+  "patch_results": [
+    {
+      "sample_id": 0,
+      "scenario_type": "patch",
+      "n_units": 50,
+      "total_area": 24.775,
+      "n_foods": 6,
+      "n_variables": 306,
+      "n_constraints": 356,
+      "cqm_time": 0.02431178092956543,
+      "solvers": {
+        "gurobi": {
+          "status": "Optimal",
+          "objective_value": 15.979875,
+          "solve_time": 0.017032861709594727,
+          "solver_time": 0.009495258331298828,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 50,
+          "total_area": 24.775,
+          "n_foods": 6,
+          "n_variables": 306,
+          "n_constraints": 356
+        },
+        "dwave_cqm": {
+          "status": "Optimal",
+          "objective_value": 27.067825000000003,
+          "solve_time": 5.128172,
+          "qpu_time": 0.034735,
+          "hybrid_time": 5.128172,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 50,
+          "total_area": 24.775,
+          "n_foods": 6,
+          "n_variables": 306,
+          "n_constraints": 356
+        },
+        "dwave_bqm": {
+          "status": "Optimal",
+          "objective_value": 19.96396,
+          "solve_time": 2.990242,
+          "qpu_time": 0.103619,
+          "hybrid_time": 2.990242,
+          "bqm_conversion_time": 0.01779317855834961,
+          "bqm_energy": 655.036039999999,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 50,
+          "total_area": 24.775,
+          "n_foods": 6,
+          "n_variables": 692,
+          "n_quadratic": 11226,
+          "note": "objective_value is reconstructed from BQM solution; comparable to CQM",
+          "solution_summary": {
+            "crops_selected": [
+              "Wheat",
+              "Corn",
+              "Rice",
+              "Soybeans",
+              "Potatoes",
+              "Apples"
+            ],
+            "n_crops": 6,
+            "plot_assignments": [
+              {
+                "crop": "Wheat",
+                "total_area": 11.861,
+                "n_plots": 20,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.017
+                  },
+                  {
+                    "plot": "Patch8",
+                    "area": 0.093
+                  },
+                  {
+                    "plot": "Patch12",
+                    "area": 0.148
+                  },
+                  {
+                    "plot": "Patch14",
+                    "area": 0.147
+                  },
+                  {
+                    "plot": "Patch16",
+                    "area": 0.062
+                  },
+                  {
+                    "plot": "Patch17",
+                    "area": 0.08
+                  },
+                  {
+                    "plot": "Patch20",
+                    "area": 0.128
+                  },
+                  {
+                    "plot": "Patch22",
+                    "area": 0.152
+                  },
+                  {
+                    "plot": "Patch26",
+                    "area": 0.334
+                  },
+                  {
+                    "plot": "Patch27",
+                    "area": 0.235
+                  },
+                  {
+                    "plot": "Patch29",
+                    "area": 0.239
+                  },
+                  {
+                    "plot": "Patch32",
+                    "area": 0.333
+                  },
+                  {
+                    "plot": "Patch33",
+                    "area": 0.753
+                  },
+                  {
+                    "plot": "Patch41",
+                    "area": 0.891
+                  },
+                  {
+                    "plot": "Patch42",
+                    "area": 0.887
+                  },
+                  {
+                    "plot": "Patch43",
+                    "area": 1.107
+                  },
+                  {
+                    "plot": "Patch46",
+                    "area": 2.162
+                  },
+                  {
+                    "plot": "Patch47",
+                    "area": 1.322
+                  },
+                  {
+                    "plot": "Patch49",
+                    "area": 1.574
+                  },
+                  {
+                    "plot": "Patch50",
+                    "area": 1.197
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 0.141,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch18",
+                    "area": 0.141
+                  }
+                ]
+              },
+              {
+                "crop": "Rice",
+                "total_area": 9.184000000000001,
+                "n_plots": 17,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.155
+                  },
+                  {
+                    "plot": "Patch3",
+                    "area": 0.083
+                  },
+                  {
+                    "plot": "Patch9",
+                    "area": 0.086
+                  },
+                  {
+                    "plot": "Patch10",
+                    "area": 0.163
+                  },
+                  {
+                    "plot": "Patch12",
+                    "area": 0.148
+                  },
+                  {
+                    "plot": "Patch20",
+                    "area": 0.128
+                  },
+                  {
+                    "plot": "Patch21",
+                    "area": 0.139
+                  },
+                  {
+                    "plot": "Patch23",
+                    "area": 0.203
+                  },
+                  {
+                    "plot": "Patch24",
+                    "area": 0.25
+                  },
+                  {
+                    "plot": "Patch30",
+                    "area": 0.205
+                  },
+                  {
+                    "plot": "Patch33",
+                    "area": 0.753
+                  },
+                  {
+                    "plot": "Patch37",
+                    "area": 0.632
+                  },
+                  {
+                    "plot": "Patch38",
+                    "area": 0.68
+                  },
+                  {
+                    "plot": "Patch39",
+                    "area": 0.738
+                  },
+                  {
+                    "plot": "Patch44",
+                    "area": 0.831
+                  },
+                  {
+                    "plot": "Patch45",
+                    "area": 2.793
+                  },
+                  {
+                    "plot": "Patch50",
+                    "area": 1.197
+                  }
+                ]
+              },
+              {
+                "crop": "Soybeans",
+                "total_area": 1.274,
+                "n_plots": 5,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.092
+                  },
+                  {
+                    "plot": "Patch14",
+                    "area": 0.147
+                  },
+                  {
+                    "plot": "Patch15",
+                    "area": 0.087
+                  },
+                  {
+                    "plot": "Patch27",
+                    "area": 0.235
+                  },
+                  {
+                    "plot": "Patch35",
+                    "area": 0.713
+                  }
+                ]
+              },
+              {
+                "crop": "Potatoes",
+                "total_area": 8.831,
+                "n_plots": 17,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.14
+                  },
+                  {
+                    "plot": "Patch6",
+                    "area": 0.15
+                  },
+                  {
+                    "plot": "Patch8",
+                    "area": 0.093
+                  },
+                  {
+                    "plot": "Patch13",
+                    "area": 0.063
+                  },
+                  {
+                    "plot": "Patch18",
+                    "area": 0.141
+                  },
+                  {
+                    "plot": "Patch19",
+                    "area": 0.15
+                  },
+                  {
+                    "plot": "Patch24",
+                    "area": 0.25
+                  },
+                  {
+                    "plot": "Patch26",
+                    "area": 0.334
+                  },
+                  {
+                    "plot": "Patch28",
+                    "area": 0.194
+                  },
+                  {
+                    "plot": "Patch29",
+                    "area": 0.239
+                  },
+                  {
+                    "plot": "Patch32",
+                    "area": 0.333
+                  },
+                  {
+                    "plot": "Patch35",
+                    "area": 0.713
+                  },
+                  {
+                    "plot": "Patch36",
+                    "area": 0.64
+                  },
+                  {
+                    "plot": "Patch39",
+                    "area": 0.738
+                  },
+                  {
+                    "plot": "Patch40",
+                    "area": 0.39
+                  },
+                  {
+                    "plot": "Patch46",
+                    "area": 2.162
+                  },
+                  {
+                    "plot": "Patch48",
+                    "area": 2.101
+                  }
+                ]
+              },
+              {
+                "crop": "Apples",
+                "total_area": 7.674,
+                "n_plots": 17,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.155
+                  },
+                  {
+                    "plot": "Patch2",
+                    "area": 0.14
+                  },
+                  {
+                    "plot": "Patch3",
+                    "area": 0.083
+                  },
+                  {
+                    "plot": "Patch4",
+                    "area": 0.092
+                  },
+                  {
+                    "plot": "Patch7",
+                    "area": 0.072
+                  },
+                  {
+                    "plot": "Patch11",
+                    "area": 0.129
+                  },
+                  {
+                    "plot": "Patch15",
+                    "area": 0.087
+                  },
+                  {
+                    "plot": "Patch16",
+                    "area": 0.062
+                  },
+                  {
+                    "plot": "Patch17",
+                    "area": 0.08
+                  },
+                  {
+                    "plot": "Patch25",
+                    "area": 0.308
+                  },
+                  {
+                    "plot": "Patch28",
+                    "area": 0.194
+                  },
+                  {
+                    "plot": "Patch31",
+                    "area": 0.175
+                  },
+                  {
+                    "plot": "Patch34",
+                    "area": 0.411
+                  },
+                  {
+                    "plot": "Patch38",
+                    "area": 0.68
+                  },
+                  {
+                    "plot": "Patch41",
+                    "area": 0.891
+                  },
+                  {
+                    "plot": "Patch45",
+                    "area": 2.793
+                  },
+                  {
+                    "plot": "Patch47",
+                    "area": 1.322
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 38.965,
+            "total_available": 24.775,
+            "idle_area": -14.190000000000005,
+            "utilization": 1.5727547931382444
+          },
+          "validation": {
+            "is_feasible": false,
+            "n_violations": 27,
+            "violations": [
+              "Plot Patch1: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch2: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch3: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch4: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch8: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch12: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch14: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch15: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch16: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch17: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch18: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch20: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch24: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch26: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch27: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch28: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch29: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch32: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch33: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch35: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch38: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch39: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch41: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch45: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch46: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch47: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch50: 2.000 crops assigned (should be \u2264 1)"
+            ],
+            "summary": {
+              "total_checks": 362,
+              "total_passed": 335,
+              "total_failed": 27,
+              "pass_rate": 0.925414364640884
+            }
+          }
+        },
+        "gurobi_qubo": {
+          "status": "Time limit reached",
+          "objective_value": 13.02905,
+          "solve_time": 300.30604243278503,
+          "bqm_energy": -13.029050000001007,
+          "bqm_conversion_time": 0.01779317855834961,
+          "success": false,
+          "sample_id": 0,
+          "n_units": 50,
+          "total_area": 24.775,
+          "n_foods": 6,
+          "n_variables": 692,
+          "n_quadratic": 11226,
+          "note": "objective_value is reconstructed from BQM solution; comparable to CQM",
+          "solution_summary": {
+            "crops_selected": [
+              "Corn",
+              "Rice",
+              "Soybeans",
+              "Potatoes",
+              "Apples"
+            ],
+            "n_crops": 5,
+            "plot_assignments": [
+              {
+                "crop": "Corn",
+                "total_area": 0.579,
+                "n_plots": 3,
+                "plots": [
+                  {
+                    "plot": "Patch19",
+                    "area": 0.15
+                  },
+                  {
+                    "plot": "Patch27",
+                    "area": 0.235
+                  },
+                  {
+                    "plot": "Patch28",
+                    "area": 0.194
+                  }
+                ]
+              },
+              {
+                "crop": "Rice",
+                "total_area": 6.956,
+                "n_plots": 15,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.017
+                  },
+                  {
+                    "plot": "Patch6",
+                    "area": 0.15
+                  },
+                  {
+                    "plot": "Patch7",
+                    "area": 0.072
+                  },
+                  {
+                    "plot": "Patch10",
+                    "area": 0.163
+                  },
+                  {
+                    "plot": "Patch12",
+                    "area": 0.148
+                  },
+                  {
+                    "plot": "Patch16",
+                    "area": 0.062
+                  },
+                  {
+                    "plot": "Patch21",
+                    "area": 0.139
+                  },
+                  {
+                    "plot": "Patch22",
+                    "area": 0.152
+                  },
+                  {
+                    "plot": "Patch26",
+                    "area": 0.334
+                  },
+                  {
+                    "plot": "Patch31",
+                    "area": 0.175
+                  },
+                  {
+                    "plot": "Patch33",
+                    "area": 0.753
+                  },
+                  {
+                    "plot": "Patch34",
+                    "area": 0.411
+                  },
+                  {
+                    "plot": "Patch40",
+                    "area": 0.39
+                  },
+                  {
+                    "plot": "Patch45",
+                    "area": 2.793
+                  },
+                  {
+                    "plot": "Patch50",
+                    "area": 1.197
+                  }
+                ]
+              },
+              {
+                "crop": "Soybeans",
+                "total_area": 6.6290000000000004,
+                "n_plots": 16,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.14
+                  },
+                  {
+                    "plot": "Patch4",
+                    "area": 0.092
+                  },
+                  {
+                    "plot": "Patch11",
+                    "area": 0.129
+                  },
+                  {
+                    "plot": "Patch13",
+                    "area": 0.063
+                  },
+                  {
+                    "plot": "Patch14",
+                    "area": 0.147
+                  },
+                  {
+                    "plot": "Patch17",
+                    "area": 0.08
+                  },
+                  {
+                    "plot": "Patch18",
+                    "area": 0.141
+                  },
+                  {
+                    "plot": "Patch20",
+                    "area": 0.128
+                  },
+                  {
+                    "plot": "Patch23",
+                    "area": 0.203
+                  },
+                  {
+                    "plot": "Patch24",
+                    "area": 0.25
+                  },
+                  {
+                    "plot": "Patch29",
+                    "area": 0.239
+                  },
+                  {
+                    "plot": "Patch35",
+                    "area": 0.713
+                  },
+                  {
+                    "plot": "Patch37",
+                    "area": 0.632
+                  },
+                  {
+                    "plot": "Patch38",
+                    "area": 0.68
+                  },
+                  {
+                    "plot": "Patch41",
+                    "area": 0.891
+                  },
+                  {
+                    "plot": "Patch48",
+                    "area": 2.101
+                  }
+                ]
+              },
+              {
+                "crop": "Potatoes",
+                "total_area": 7.442,
+                "n_plots": 8,
+                "plots": [
+                  {
+                    "plot": "Patch15",
+                    "area": 0.087
+                  },
+                  {
+                    "plot": "Patch25",
+                    "area": 0.308
+                  },
+                  {
+                    "plot": "Patch39",
+                    "area": 0.738
+                  },
+                  {
+                    "plot": "Patch42",
+                    "area": 0.887
+                  },
+                  {
+                    "plot": "Patch43",
+                    "area": 1.107
+                  },
+                  {
+                    "plot": "Patch44",
+                    "area": 0.831
+                  },
+                  {
+                    "plot": "Patch46",
+                    "area": 2.162
+                  },
+                  {
+                    "plot": "Patch47",
+                    "area": 1.322
+                  }
+                ]
+              },
+              {
+                "crop": "Apples",
+                "total_area": 3.169,
+                "n_plots": 8,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.155
+                  },
+                  {
+                    "plot": "Patch3",
+                    "area": 0.083
+                  },
+                  {
+                    "plot": "Patch8",
+                    "area": 0.093
+                  },
+                  {
+                    "plot": "Patch9",
+                    "area": 0.086
+                  },
+                  {
+                    "plot": "Patch30",
+                    "area": 0.205
+                  },
+                  {
+                    "plot": "Patch32",
+                    "area": 0.333
+                  },
+                  {
+                    "plot": "Patch36",
+                    "area": 0.64
+                  },
+                  {
+                    "plot": "Patch49",
+                    "area": 1.574
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 24.775000000000002,
+            "total_available": 24.775,
+            "idle_area": -3.552713678800501e-15,
+            "utilization": 1.0000000000000002
+          },
+          "validation": {
+            "is_feasible": true,
+            "n_violations": 0,
+            "violations": [],
+            "summary": {
+              "total_checks": 362,
+              "total_passed": 362,
+              "total_failed": 0,
+              "pass_rate": 1.0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "farm_samples_completed": 1,
+    "patch_samples_completed": 1,
+    "total_solver_runs": 6
+  }
+}

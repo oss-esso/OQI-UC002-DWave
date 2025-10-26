@@ -39,7 +39,7 @@ from src.scenarios import load_food_data
 
 # Import solvers
 from solver_runner_PATCH import (
-    create_cqm, solve_with_pulp, solve_with_dwave, 
+    create_cqm, solve_with_pulp, solve_with_dwave, solve_with_dwave_cqm,
     solve_with_simulated_annealing, solve_with_gurobi_qubo,
     calculate_original_objective, extract_solution_summary,
     validate_solution_constraints
@@ -49,18 +49,19 @@ from dimod import cqm_to_bqm
 # Benchmark configurations
 # Format: number of units (farms or patches) to test
 BENCHMARK_CONFIGS = [
-    10,
-    15, 20, 25,
-    #50,
-    100
-
+    #10,
+    #15,
+    #20,
+    #25,
+    50,
+    #100
 ]
 
 # Number of runs per configuration for statistical analysis
 NUM_RUNS = 1
 
-# Gurobi QUBO timeout in seconds (for preliminary testing)
-GUROBI_QUBO_TIMEOUT = 30  # 30 seconds for quick testing
+# Gurobi QUBO timeout in seconds
+GUROBI_QUBO_TIMEOUT = 30  # 300 seconds (5 minutes) to match TimeLimit in solver
 
 def generate_sample_data(config_values: List[int], seed_offset: int = 0) -> Tuple[List[Dict], List[Dict]]:
     """
@@ -319,8 +320,8 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     # 1. Gurobi Solver
     print(f"     Running Gurobi...")
     
-    # Check for cached result first
-    cached = check_cached_results('farm', 'gurobi', sample_data['n_units'], sample_data['sample_id'] + 1)
+    # Check for cached result first (config_id = n_units, run_id = 1)
+    cached = check_cached_results('farm', 'gurobi', sample_data['n_units'], run_id=1)
     if cached:
         print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
         results['solvers']['gurobi'] = cached
@@ -346,8 +347,8 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
             
             results['solvers']['gurobi'] = gurobi_result
             
-            # Save individual result file
-            save_solver_result(gurobi_result, 'farm', 'gurobi', sample_data['n_units'], sample_data['sample_id'] + 1)
+            # Save individual result file (config_id = n_units, run_id = 1)
+            save_solver_result(gurobi_result, 'farm', 'gurobi', sample_data['n_units'], run_id=1)
             
             print(f"       ✓ Gurobi: {pulp_results['status']} in {pulp_time:.3f}s")
             
@@ -359,15 +360,15 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     if dwave_token:
         print(f"     Running DWave CQM...")
         
-        # Check for cached result first
-        cached = check_cached_results('farm', 'dwave_cqm', sample_data['n_units'], sample_data['sample_id'] + 1)
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('farm', 'dwave_cqm', sample_data['n_units'], run_id=1)
         if cached:
             print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                
-                sampleset, hybrid_time, qpu_time, bqm_conversion_time, invert = solve_with_dwave(cqm, dwave_token)
+                # Use NATIVE CQM solver - no BQM conversion!
+                sampleset, hybrid_time, qpu_time = solve_with_dwave_cqm(cqm, dwave_token)
                 
                 success = len(sampleset) > 0
                 objective_value = None
@@ -393,8 +394,8 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                 
                 results['solvers']['dwave_cqm'] = dwave_result
                 
-                # Save individual result file
-                save_solver_result(dwave_result, 'farm', 'dwave_cqm', sample_data['n_units'], sample_data['sample_id'] + 1)
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(dwave_result, 'farm', 'dwave_cqm', sample_data['n_units'], run_id=1)
                 
                 print(f"       ✓ DWave CQM: {'Optimal' if success else 'No solution'} in {hybrid_time:.3f}s")
                 
@@ -445,8 +446,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     # 1. Gurobi Solver
     print(f"     Running Gurobi...")
     
-    # Check for cached result first
-    cached = check_cached_results('patch', 'gurobi', sample_data['n_units'], sample_data['sample_id'] + 1)
+    # Check for cached result first (config_id = n_units, run_id = 1)
+    cached = check_cached_results('patch', 'gurobi', sample_data['n_units'], run_id=1)
     if cached:
         print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
         results['solvers']['gurobi'] = cached
@@ -472,8 +473,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
             
             results['solvers']['gurobi'] = gurobi_result
             
-            # Save individual result file
-            save_solver_result(gurobi_result, 'patch', 'gurobi', sample_data['n_units'], sample_data['sample_id'] + 1)
+            # Save individual result file (config_id = n_units, run_id = 1)
+            save_solver_result(gurobi_result, 'patch', 'gurobi', sample_data['n_units'], run_id=1)
             
             print(f"       ✓ Gurobi: {pulp_results['status']} in {pulp_time:.3f}s")
             
@@ -485,14 +486,15 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     if dwave_token:
         print(f"     Running DWave CQM...")
         
-        # Check for cached result first
-        cached = check_cached_results('patch', 'dwave_cqm', sample_data['n_units'], sample_data['sample_id'] + 1)
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('patch', 'dwave_cqm', sample_data['n_units'], run_id=1)
         if cached:
             print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                sampleset_cqm, hybrid_time_cqm, qpu_time_cqm, bqm_conversion_time_cqm, invert_cqm = solve_with_dwave(cqm, dwave_token)
+                # Use NATIVE CQM solver - no BQM conversion!
+                sampleset_cqm, hybrid_time_cqm, qpu_time_cqm = solve_with_dwave_cqm(cqm, dwave_token)
                 
                 success = len(sampleset_cqm) > 0
                 objective_value = None
@@ -517,8 +519,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                 
                 results['solvers']['dwave_cqm'] = dwave_result
                 
-                # Save individual result file
-                save_solver_result(dwave_result, 'patch', 'dwave_cqm', sample_data['n_units'], sample_data['sample_id'] + 1)
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(dwave_result, 'patch', 'dwave_cqm', sample_data['n_units'], run_id=1)
                 
                 print(f"       ✓ DWave CQM: {'Optimal' if success else 'No solution'} in {hybrid_time_cqm:.3f}s")
                 
@@ -539,32 +541,14 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     try:
         bqm_start = time.time()
         
-        # Calculate strong Lagrange multiplier to enforce constraints
-        # Default is 10x largest objective bias, but we need much stronger
-        # to prevent constraint violations
+        # Manually set a strong Lagrange multiplier to enforce constraints.
+        # The automatic multiplier was found to be too weak for this complex formulation,
+        # leading to constraint violations where multiple crops were assigned to the same plot.
+        # A value of 25 is chosen to be significantly larger than the objective coefficients,
+        # ensuring that violating a constraint is always more "expensive" than respecting it.
         
-        # Get maximum objective coefficient
-        max_obj_coeff = 0
-        for plot in land_data:
-            s_p = land_data[plot]
-            for crop in foods:
-                B_c = (
-                    config['parameters']['weights'].get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                    config['parameters']['weights'].get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                    config['parameters']['weights'].get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                    config['parameters']['weights'].get('affordability', 0) * foods[crop].get('affordability', 0) +
-                    config['parameters']['weights'].get('sustainability', 0) * foods[crop].get('sustainability', 0)
-                )
-                idle_penalty = config['parameters'].get('idle_penalty_lambda', 0.1)
-                coeff = abs((B_c + idle_penalty) * s_p)
-                max_obj_coeff = max(max_obj_coeff, coeff)
-        
-        # Use 10000x the max coefficient to VERY strongly enforce constraints
-        # This ensures constraint violations have massive penalties
-        lagrange_multiplier = 10000 * max_obj_coeff if max_obj_coeff > 0 else 10000.0
-        
-        print(f"       Max objective coefficient: {max_obj_coeff:.6f}")
-        print(f"       Lagrange multiplier: {lagrange_multiplier:.2f} (10000x)")
+        lagrange_multiplier = 150.0
+        print(f"       Using manual Lagrange multiplier: {lagrange_multiplier}")
         
         bqm, invert = cqm_to_bqm(cqm, lagrange_multiplier=lagrange_multiplier)
         bqm_conversion_time = time.time() - bqm_start
@@ -576,8 +560,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     if bqm is not None and dwave_token:
         print(f"     Running DWave BQM...")
         
-        # Check for cached result first
-        cached = check_cached_results('patch', 'dwave_bqm', sample_data['n_units'], sample_data['sample_id'] + 1)
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('patch', 'dwave_bqm', sample_data['n_units'], run_id=1)
         if cached:
             print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
             results['solvers']['dwave_bqm'] = cached
@@ -673,8 +657,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                 
                 results['solvers']['dwave_bqm'] = dwave_bqm_result
                 
-                # Save individual result file
-                save_solver_result(dwave_bqm_result, 'patch', 'dwave_bqm', sample_data['n_units'], sample_data['sample_id'] + 1)
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(dwave_bqm_result, 'patch', 'dwave_bqm', sample_data['n_units'], run_id=1)
                 
                 print(f"       ✓ DWave BQM: {'Optimal' if success else 'No solution'} in {dwave_bqm_time:.3f}s")
                 
@@ -689,8 +673,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     if bqm is not None:
         print(f"     Running Gurobi QUBO...")
         
-        # Check for cached result first
-        cached = check_cached_results('patch', 'gurobi_qubo', sample_data['n_units'], sample_data['sample_id'] + 1)
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('patch', 'gurobi_qubo', sample_data['n_units'], run_id=1)
         if cached:
             print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
             results['solvers']['gurobi_qubo'] = cached
@@ -739,8 +723,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                 
                 results['solvers']['gurobi_qubo'] = gurobi_qubo_result
                 
-                # Save individual result file
-                save_solver_result(gurobi_qubo_result, 'patch', 'gurobi_qubo', sample_data['n_units'], sample_data['sample_id'] + 1)
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(gurobi_qubo_result, 'patch', 'gurobi_qubo', sample_data['n_units'], run_id=1)
                 
                 print(f"       ✓ Gurobi QUBO: {gurobi_qubo_result_raw['status']} in {gurobi_qubo_result_raw['solve_time']:.3f}s")
                 
@@ -891,7 +875,7 @@ Examples:
         if args.token:
             dwave_token = args.token
         else:
-            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-7b81782896495d7c6a061bda257a9d9b03b082cd')
+            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
         
         if not dwave_token:
             print("Warning: D-Wave enabled but no token found. Set DWAVE_API_TOKEN environment variable or use --token")

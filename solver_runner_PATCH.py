@@ -610,10 +610,63 @@ def solve_with_pulp(farms, foods, food_groups, config):
     
     return model, results
 
+def solve_with_dwave_cqm(cqm, token):
+    """
+    Solve with DWave using native HybridCQMSampler (NO BQM conversion).
+    This is the proper way to solve CQM problems - keeps constraints native.
+    
+    Args:
+        cqm: ConstrainedQuadraticModel to solve
+        token: DWave API token
+    
+    Returns tuple of (sampleset, hybrid_time, qpu_time)
+    """
+    print("\nSubmitting CQM to DWave Leap HybridCQM solver...")
+    print("  Using native CQM solver - no BQM conversion needed!")
+    
+    # Use HybridCQM sampler - handles constraints natively
+    sampler = LeapHybridCQMSampler(token=token)
+    
+    solve_start = time.time()
+    sampleset = sampler.sample_cqm(cqm, label="Food Optimization - CQM Native")
+    total_solve_time = time.time() - solve_start
+    
+    # Extract timing from sampleset.info
+    timing_info = sampleset.info.get('timing', {})
+    
+    # Hybrid solve time (total time including QPU)
+    hybrid_time = (timing_info.get('run_time') or 
+                  sampleset.info.get('run_time') or
+                  timing_info.get('charge_time') or
+                  sampleset.info.get('charge_time'))
+    
+    if hybrid_time is not None:
+        hybrid_time = hybrid_time / 1e6  # Convert from microseconds to seconds
+    else:
+        hybrid_time = total_solve_time  # Fallback to measured time
+    
+    # QPU access time
+    qpu_time = (timing_info.get('qpu_access_time') or
+               sampleset.info.get('qpu_access_time'))
+    
+    if qpu_time is not None:
+        qpu_time = qpu_time / 1e6  # Convert from microseconds to seconds
+    
+    if hybrid_time is not None:
+        print(f"  Hybrid Time: {hybrid_time:.2f}s")
+    if qpu_time is not None:
+        print(f"  QPU Access Time: {qpu_time:.4f}s")
+    
+    return sampleset, hybrid_time, qpu_time
+
 def solve_with_dwave(cqm, token):
     """
     Solve with DWave using HybridBQM solver after converting CQM to BQM.
     This enables QPU usage and better scaling for quadratic problems.
+    
+    NOTE: This converts CQM→BQM which can cause constraint violations if
+    Lagrange multiplier is not chosen correctly. For native CQM solving,
+    use solve_with_dwave_cqm() instead.
     
     Args:
         cqm: ConstrainedQuadraticModel to convert and solve
@@ -768,18 +821,16 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
     
     # Configure Gurobi for GPU acceleration and performance
     # Same parameters as in solve_with_pulp for consistency
-    # Note: TimeLimit is set to 30 seconds for preliminary testing
+    # Note: TimeLimit is set to 300 seconds
     gurobi_options = [
-        ('Method', 2),           # Barrier method (GPU-accelerated)
-        ('Crossover', 0),        # Disable crossover to keep computation on GPU
-        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
-        ('Threads', 0),          # Use all available CPU threads for parallelization
-        ('MIPFocus', 1),         # Focus on finding good solutions quickly
-        ('Presolve', 2),         # Aggressive presolve
-        ('OutputFlag', 0),       # Suppress output
-        ('TimeLimit', 300),       # 30 second time limit for preliminary testing
-        ('BestObjStop', -1e10),  # Stop if objective reaches this value (for minimization)
-        ('MIPGap', 0.01)         # Stop if gap is within 1%
+        ('Threads', 0),             # use all available CPU cores
+        ('MIPFocus', 1),            # focus on finding good feasible solutions early
+        ('MIPGap', 0.1),            # allow 10% gap to stop earlier (relaxed from 5%)
+        ('TimeLimit', 300),         # 300 seconds max
+        ('Heuristics', 0.5),        # more aggressive heuristics (find feasible solutions faster)
+        ('Presolve', 2),            # aggressive presolve to reduce model size
+        ('Cuts', 0),                # disable or reduce cuts to speed node processing (trade bound strength)
+        # Note: SolutionLimit removed - we want Gurobi to find the best solution within time/gap limits
     ]
     
     # Set parameters
@@ -791,7 +842,7 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
         """Callback to enforce strict time limit."""
         if where == GRB.Callback.MIP:
             runtime = model.cbGet(GRB.Callback.RUNTIME)
-            if runtime > 30:  # 30 seconds timeout
+            if runtime > 300:  # 300 seconds timeout (matches TimeLimit parameter)
                 print(f"  ⏰ Enforcing time limit at {runtime:.1f}s")
                 model.terminate()
     
@@ -909,6 +960,49 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
         solution_summary = None
         validation = None
         print(f"  ❌ Problem is infeasible")
+    
+    elif model.status == 10:  # GRB.SOLUTION_LIMIT
+        status = "Solution limit reached"
+        # Extract best solution found
+        solution = {}
+        try:
+            for var_name, gurobi_var in gurobi_vars.items():
+                solution[var_name] = int(round(gurobi_var.X))
+            bqm_energy = model.ObjVal
+        except:
+            bqm_energy = float('inf')
+        
+        # Calculate original CQM objective if parameters provided
+        original_objective = None
+        solution_summary = None
+        validation = None
+        
+        if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
+            if bqm_energy != float('inf'):
+                original_objective = calculate_original_objective(
+                    solution, farms, foods, land_availability, weights, idle_penalty
+                )
+                solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
+                
+                # Validate constraints if full config provided
+                if config is not None and food_groups is not None:
+                    validation = validate_solution_constraints(
+                        solution, farms, foods, food_groups, land_availability, config
+                    )
+                    
+                    print(f"  ⚠️ Solution limit reached (first solution found):")
+                    print(f"  BQM Energy: {bqm_energy:.6f}")
+                    print(f"  Original CQM Objective: {original_objective:.6f}")
+                    print(f"  Constraint validation: {validation['n_violations']} violations")
+                else:
+                    print(f"  ⚠️ Solution limit reached (first solution found):")
+                    print(f"  BQM Energy: {bqm_energy:.6f}")
+                    print(f"  Original CQM Objective: {original_objective:.6f}")
+            else:
+                print(f"  ⚠️ Solution limit reached, no valid solution available")
+        else:
+            print(f"  ⚠️ Solution limit reached (first solution found):")
+            print(f"  BQM Energy: {bqm_energy:.6f}")
         
     else:
         status = f"Gurobi status {model.status}"
