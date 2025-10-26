@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Comprehensive Benchmark Results Visualization
-Creates plots showing solve times, solution quality, and speedup comparisons
-across Farm and Patch scenarios with multiple solvers.
+Comprehensive Benchmark Visualization: Farm and Patch Scenarios
+Creates beautiful plots showing solve times and speedup comparisons
+in linear, log-y, and log-log scales.
 """
 
 import json
@@ -70,75 +70,53 @@ def extract_times(data):
         'Patch_DWaveBQM_Hybrid': []
     }
     
-    objectives = {
-        'n_units': configs,
-        'Farm_PuLP': [],
-        'Farm_DWave': [],
-        'Patch_PuLP': [],
-        'Patch_DWave': [],
-        'Patch_GurobiQUBO': [],
-        'Patch_DWaveBQM': []
-    }
-    
     for config in configs:
         # Farm PuLP
         if config in data['Farm_PuLP']:
             times['Farm_PuLP'].append(data['Farm_PuLP'][config].get('solve_time'))
-            objectives['Farm_PuLP'].append(data['Farm_PuLP'][config].get('objective_value'))
         else:
             times['Farm_PuLP'].append(None)
-            objectives['Farm_PuLP'].append(None)
         
         # Farm DWave
         if config in data['Farm_DWave']:
             d = data['Farm_DWave'][config]
             times['Farm_DWave_QPU'].append(d.get('qpu_time'))
             times['Farm_DWave_Hybrid'].append(d.get('hybrid_time') or d.get('solve_time'))
-            objectives['Farm_DWave'].append(d.get('objective_value'))
         else:
             times['Farm_DWave_QPU'].append(None)
             times['Farm_DWave_Hybrid'].append(None)
-            objectives['Farm_DWave'].append(None)
         
         # Patch PuLP
         if config in data['Patch_PuLP']:
             times['Patch_PuLP'].append(data['Patch_PuLP'][config].get('solve_time'))
-            objectives['Patch_PuLP'].append(data['Patch_PuLP'][config].get('objective_value'))
         else:
             times['Patch_PuLP'].append(None)
-            objectives['Patch_PuLP'].append(None)
         
         # Patch DWave
         if config in data['Patch_DWave']:
             d = data['Patch_DWave'][config]
             times['Patch_DWave_QPU'].append(d.get('qpu_time'))
             times['Patch_DWave_Hybrid'].append(d.get('hybrid_time') or d.get('solve_time'))
-            objectives['Patch_DWave'].append(d.get('objective_value'))
         else:
             times['Patch_DWave_QPU'].append(None)
             times['Patch_DWave_Hybrid'].append(None)
-            objectives['Patch_DWave'].append(None)
         
         # Patch Gurobi QUBO
         if config in data['Patch_GurobiQUBO']:
             times['Patch_GurobiQUBO'].append(data['Patch_GurobiQUBO'][config].get('solve_time'))
-            objectives['Patch_GurobiQUBO'].append(data['Patch_GurobiQUBO'][config].get('objective_value'))
         else:
             times['Patch_GurobiQUBO'].append(None)
-            objectives['Patch_GurobiQUBO'].append(None)
         
         # Patch DWave BQM
         if config in data['Patch_DWaveBQM']:
             d = data['Patch_DWaveBQM'][config]
             times['Patch_DWaveBQM_QPU'].append(d.get('qpu_time'))
             times['Patch_DWaveBQM_Hybrid'].append(d.get('hybrid_time') or d.get('solve_time'))
-            objectives['Patch_DWaveBQM'].append(d.get('objective_value'))
         else:
             times['Patch_DWaveBQM_QPU'].append(None)
             times['Patch_DWaveBQM_Hybrid'].append(None)
-            objectives['Patch_DWaveBQM'].append(None)
     
-    return times, objectives
+    return times
 
 def calculate_speedups(times):
     """Calculate speedup factors comparing quantum to classical solvers."""
@@ -340,55 +318,13 @@ def plot_solve_times(times, output_path):
     
     print(f"✅ Plot saved to {output_path}")
 
-def plot_solution_quality(objectives, output_path):
-    """Create solution quality comparison plots."""
-    fig, axes = plt.subplots(1, 2, figsize=(18, 7))
-    fig.suptitle('Comprehensive Benchmark: Solution Quality Comparison', 
-                 fontsize=18, fontweight='bold', y=1.00)
-    
-    n_units = objectives['n_units']
-    
-    # Farm solution quality
-    ax = axes[0]
-    ax.plot(n_units, objectives['Farm_PuLP'], 'o-', linewidth=2.5, 
-            markersize=10, color='#E63946', label='Farm PuLP', alpha=0.8)
-    ax.plot(n_units, objectives['Farm_DWave'], 'D-', linewidth=2.5, 
-            markersize=10, color='#118AB2', label='Farm D-Wave CQM', alpha=0.8)
-    ax.set_xlabel('Number of Units', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Objective Value', fontsize=12, fontweight='bold')
-    ax.set_title('Farm Scenario: Solution Quality', fontsize=14, fontweight='bold')
-    ax.legend(loc='upper left', fontsize=11)
-    ax.grid(True, alpha=0.3)
-    
-    # Patch solution quality
-    ax = axes[1]
-    ax.plot(n_units, objectives['Patch_PuLP'], 's-', linewidth=2.5, 
-            markersize=10, color='#E63946', label='Patch PuLP', alpha=0.8)
-    ax.plot(n_units, objectives['Patch_DWave'], '^-', linewidth=2.5, 
-            markersize=10, color='#118AB2', label='Patch D-Wave CQM', alpha=0.8)
-    ax.plot(n_units, objectives['Patch_DWaveBQM'], 'p-', linewidth=2.5, 
-            markersize=10, color='#06FFA5', label='Patch D-Wave BQM', alpha=0.8)
-    ax.plot(n_units, objectives['Patch_GurobiQUBO'], 'v-', linewidth=2.5, 
-            markersize=10, color='#A4243B', label='Patch Gurobi QUBO', alpha=0.8)
-    ax.set_xlabel('Number of Units', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Objective Value', fontsize=12, fontweight='bold')
-    ax.set_title('Patch Scenario: Solution Quality', fontsize=14, fontweight='bold')
-    ax.legend(loc='upper left', fontsize=11)
-    ax.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    print(f"✅ Solution quality plot saved to {output_path}")
-
-def print_summary_table(times, objectives):
-    """Print summary table of all solver times and objectives."""
-    print("\n" + "="*120)
-    print("COMPREHENSIVE BENCHMARK SUMMARY: SOLVE TIMES")
-    print("="*120)
-    print(f"{'Config':<10} {'Farm PuLP':<15} {'Farm DWave':<15} {'Patch PuLP':<15} {'Patch DWave':<15} {'Patch BQM':<15} {'Patch QUBO':<15}")
-    print("-"*120)
+def print_summary_table(times):
+    """Print summary table of all solver times."""
+    print("\n" + "="*80)
+    print("COMPREHENSIVE BENCHMARK SUMMARY TABLE")
+    print("="*80)
+    print(f"{'Config':<10} {'Farm PuLP':<12} {'Farm DWave':<12} {'Patch PuLP':<12} {'Patch DWave':<12} {'Patch BQM':<12} {'Patch QUBO':<12}")
+    print("-"*92)
     
     for i, n in enumerate(times['n_units']):
         farm_pulp = f"{times['Farm_PuLP'][i]:.4f}s" if times['Farm_PuLP'][i] else "N/A"
@@ -398,63 +334,44 @@ def print_summary_table(times, objectives):
         patch_bqm = f"{times['Patch_DWaveBQM_Hybrid'][i]:.4f}s" if times['Patch_DWaveBQM_Hybrid'][i] else "N/A"
         patch_qubo = f"{times['Patch_GurobiQUBO'][i]:.4f}s" if times['Patch_GurobiQUBO'][i] else "N/A"
         
-        print(f"{n:<10} {farm_pulp:<15} {farm_dwave:<15} {patch_pulp:<15} {patch_dwave:<15} {patch_bqm:<15} {patch_qubo:<15}")
-    
-    print("\n" + "="*120)
-    print("COMPREHENSIVE BENCHMARK SUMMARY: OBJECTIVE VALUES")
-    print("="*120)
-    print(f"{'Config':<10} {'Farm PuLP':<15} {'Farm DWave':<15} {'Patch PuLP':<15} {'Patch DWave':<15} {'Patch BQM':<15} {'Patch QUBO':<15}")
-    print("-"*120)
-    
-    for i, n in enumerate(objectives['n_units']):
-        farm_pulp_obj = f"{objectives['Farm_PuLP'][i]:.4f}" if objectives['Farm_PuLP'][i] else "N/A"
-        farm_dwave_obj = f"{objectives['Farm_DWave'][i]:.4f}" if objectives['Farm_DWave'][i] else "N/A"
-        patch_pulp_obj = f"{objectives['Patch_PuLP'][i]:.4f}" if objectives['Patch_PuLP'][i] else "N/A"
-        patch_dwave_obj = f"{objectives['Patch_DWave'][i]:.4f}" if objectives['Patch_DWave'][i] else "N/A"
-        patch_bqm_obj = f"{objectives['Patch_DWaveBQM'][i]:.4f}" if objectives['Patch_DWaveBQM'][i] else "N/A"
-        patch_qubo_obj = f"{objectives['Patch_GurobiQUBO'][i]:.4f}" if objectives['Patch_GurobiQUBO'][i] else "N/A"
-        
-        print(f"{n:<10} {farm_pulp_obj:<15} {farm_dwave_obj:<15} {patch_pulp_obj:<15} {patch_dwave_obj:<15} {patch_bqm_obj:<15} {patch_qubo_obj:<15}")
-    print("="*120)
+        print(f"{n:<10} {farm_pulp:<12} {farm_dwave:<12} {patch_pulp:<12} {patch_dwave:<12} {patch_bqm:<12} {patch_qubo:<12}")
 
 def main():
     """Main execution function."""
-    print("="*120)
-    print("COMPREHENSIVE BENCHMARK PLOTTING")
-    print("="*120)
+    # Determine benchmark directory
+    if len(sys.argv) > 1:
+        benchmark_dir = sys.argv[1]
+    else:
+        benchmark_dir = "Benchmarks"
     
-    # Load data
-    benchmark_dir = Path(__file__).parent / "Benchmarks"
+    print("="*80)
+    print("COMPREHENSIVE BENCHMARK PLOTTING")
+    print("="*80)
     print(f"Loading data from: {benchmark_dir}/COMPREHENSIVE")
     
+    # Load data
     data = load_benchmark_data(benchmark_dir)
     
-    # Extract times and objectives
-    print("\nExtracting solve times and objective values...")
-    times, objectives = extract_times(data)
+    # Extract times
+    print("\nExtracting solve times...")
+    times = extract_times(data)
     
     # Create output directory
-    output_dir = Path(__file__).parent / "Plots"
+    output_dir = Path("Plots")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Create plots
     print("\nCreating plots...")
-    plot_solve_times(times, output_dir / "comprehensive_speedup_comparison.png")
-    plot_solution_quality(objectives, output_dir / "comprehensive_solution_quality.png")
+    output_path = output_dir / "comprehensive_speedup_comparison.png"
+    plot_solve_times(times, output_path)
     
     # Print summary
-    print_summary_table(times, objectives)
+    print_summary_table(times)
     
-    print("\n" + "="*120)
+    print("\n" + "="*80)
     print("PLOTTING COMPLETE")
-    print("="*120)
-    print(f"Plots saved to: {output_dir}")
-    print("  - comprehensive_speedup_comparison.png")
-    print("  - comprehensive_solution_quality.png")
-    
-    # Close all figures
-    plt.close('all')
-    print("\n✓ All plots saved successfully!")
+    print("="*80)
+    print(f"Plot saved to: {output_path}")
 
 if __name__ == "__main__":
     main()

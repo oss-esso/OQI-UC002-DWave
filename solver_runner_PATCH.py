@@ -29,6 +29,234 @@ from dwave.samplers import SimulatedAnnealingSampler
 import pulp as pl
 from tqdm import tqdm
 
+def calculate_original_objective(solution, farms, foods, land_availability, weights, idle_penalty):
+    """
+    Calculate the original CQM objective from a solution.
+    
+    This reconstructs the objective: sum_{p,c} (B_c + λ) * s_p * X_{p,c}
+    
+    Args:
+        solution: Dictionary with variable assignments (X_{plot}_{crop}, Y_{crop})
+        farms: List of farm/plot names
+        foods: Dictionary of food data with nutritional values
+        land_availability: Dictionary mapping plot to area
+        weights: Dictionary of objective weights
+        idle_penalty: Lambda penalty for idle land
+        
+    Returns:
+        float: The original objective value (to be maximized)
+    """
+    objective = 0.0
+    
+    for plot in farms:
+        s_p = land_availability[plot]  # Area of plot p
+        for crop in foods:
+            # Get X_{p,c} value from solution
+            var_name = f"X_{plot}_{crop}"
+            x_pc = solution.get(var_name, 0)
+            
+            if x_pc > 0:  # Only count if assigned
+                # Calculate B_c: weighted benefit per unit area
+                B_c = (
+                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                )
+                # Add (B_c + λ) * s_p * X_{p,c} to objective
+                objective += (B_c + idle_penalty) * s_p * x_pc
+    
+    return objective
+
+def extract_solution_summary(solution, farms, foods, land_availability):
+    """
+    Extract a summary of the solution showing crop selections and plot assignments.
+    
+    Args:
+        solution: Dictionary with variable assignments (X_{plot}_{crop}, Y_{crop})
+        farms: List of farm/plot names
+        foods: Dictionary of food data
+        land_availability: Dictionary mapping plot to area
+        
+    Returns:
+        dict: Summary with crops selected, areas, and plot assignments
+    """
+    crops_selected = []
+    plot_assignments = []
+    total_allocated = 0.0
+    
+    for crop in foods:
+        # Check if crop is selected (Y_c = 1)
+        y_var = f"Y_{crop}"
+        if solution.get(y_var, 0) > 0:
+            # Calculate total area allocated to this crop
+            total_area = sum(
+                solution.get(f"X_{plot}_{crop}", 0) * land_availability[plot]
+                for plot in farms
+            )
+            
+            # Get list of plots assigned to this crop
+            assigned_plots = [
+                {'plot': plot, 'area': land_availability[plot]}
+                for plot in farms 
+                if solution.get(f"X_{plot}_{crop}", 0) > 0
+            ]
+            
+            if total_area > 0:  # Only include if actually allocated
+                crops_selected.append(crop)
+                plot_assignments.append({
+                    'crop': crop,
+                    'total_area': total_area,
+                    'n_plots': len(assigned_plots),
+                    'plots': assigned_plots
+                })
+                total_allocated += total_area
+    
+    total_available = sum(land_availability.values())
+    idle_area = total_available - total_allocated
+    
+    return {
+        'crops_selected': crops_selected,
+        'n_crops': len(crops_selected),
+        'plot_assignments': plot_assignments,
+        'total_allocated': total_allocated,
+        'total_available': total_available,
+        'idle_area': idle_area,
+        'utilization': total_allocated / total_available if total_available > 0 else 0
+    }
+
+def validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config):
+    """
+    Validate if a solution satisfies all original CQM constraints.
+    
+    Args:
+        solution: Dictionary with variable assignments (X_{plot}_{crop}, Y_{crop})
+        farms: List of farm/plot names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food groups
+        land_availability: Dictionary mapping plot to area
+        config: Configuration dictionary with parameters
+        
+    Returns:
+        dict: Validation results with violations and constraint checks
+    """
+    params = config['parameters']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    total_land = sum(land_availability.values())
+    
+    violations = []
+    constraint_checks = {
+        'at_most_one_per_plot': {'passed': 0, 'failed': 0, 'violations': []},
+        'x_y_linking': {'passed': 0, 'failed': 0, 'violations': []},
+        'y_activation': {'passed': 0, 'failed': 0, 'violations': []},
+        'area_bounds_min': {'passed': 0, 'failed': 0, 'violations': []},
+        'food_group_constraints': {'passed': 0, 'failed': 0, 'violations': []}
+    }
+    
+    # 1. Check: At most one crop per plot
+    for plot in farms:
+        assigned = sum(solution.get(f"X_{plot}_{crop}", 0) for crop in foods)
+        if assigned > 1.01:  # Allow small numerical tolerance
+            violation = f"Plot {plot}: {assigned:.3f} crops assigned (should be ≤ 1)"
+            violations.append(violation)
+            constraint_checks['at_most_one_per_plot']['violations'].append(violation)
+            constraint_checks['at_most_one_per_plot']['failed'] += 1
+        else:
+            constraint_checks['at_most_one_per_plot']['passed'] += 1
+    
+    # 2. Check: X-Y Linking (X_{p,c} <= Y_c)
+    for plot in farms:
+        for crop in foods:
+            x_pc = solution.get(f"X_{plot}_{crop}", 0)
+            y_c = solution.get(f"Y_{crop}", 0)
+            if x_pc > y_c + 0.01:  # Allow small tolerance
+                violation = f"X_{plot}_{crop}={x_pc:.3f} > Y_{crop}={y_c:.3f}"
+                violations.append(violation)
+                constraint_checks['x_y_linking']['violations'].append(violation)
+                constraint_checks['x_y_linking']['failed'] += 1
+            else:
+                constraint_checks['x_y_linking']['passed'] += 1
+    
+    # 3. Check: Y Activation (Y_c <= sum_p X_{p,c})
+    for crop in foods:
+        y_c = solution.get(f"Y_{crop}", 0)
+        sum_x = sum(solution.get(f"X_{plot}_{crop}", 0) for plot in farms)
+        if y_c > sum_x + 0.01:  # Allow small tolerance
+            violation = f"Y_{crop}={y_c:.3f} > sum(X_{{p,{crop}}})={sum_x:.3f}"
+            violations.append(violation)
+            constraint_checks['y_activation']['violations'].append(violation)
+            constraint_checks['y_activation']['failed'] += 1
+        else:
+            constraint_checks['y_activation']['passed'] += 1
+    
+    # 4. Check: Area bounds (minimum and maximum per crop)
+    for crop in foods:
+        crop_area = sum(
+            solution.get(f"X_{plot}_{crop}", 0) * land_availability[plot]
+            for plot in farms
+        )
+        
+        # Check minimum area
+        if crop in min_planting_area:
+            min_area = min_planting_area[crop]
+            y_c = solution.get(f"Y_{crop}", 0)
+            if y_c > 0.5 and crop_area < min_area - 0.001:  # If crop selected, check min
+                violation = f"Crop {crop}: area={crop_area:.4f} < min={min_area:.4f}"
+                violations.append(violation)
+                constraint_checks['area_bounds_min']['violations'].append(violation)
+                constraint_checks['area_bounds_min']['failed'] += 1
+            else:
+                constraint_checks['area_bounds_min']['passed'] += 1
+    
+    # NOTE: No maximum area constraints - matches original solver_runner.py
+    
+    # 5. Check: Food group constraints
+    if food_group_constraints:
+        for group_name, group_data in food_group_constraints.items():
+            if group_name in food_groups:
+                crops_in_group = food_groups[group_name]
+                n_selected = sum(
+                    1 for crop in crops_in_group 
+                    if solution.get(f"Y_{crop}", 0) > 0.5
+                )
+                
+                min_crops = group_data.get('min', 0)
+                max_crops = group_data.get('max', len(crops_in_group))
+                
+                if n_selected < min_crops:
+                    violation = f"Group {group_name}: {n_selected} crops < min={min_crops}"
+                    violations.append(violation)
+                    constraint_checks['food_group_constraints']['violations'].append(violation)
+                    constraint_checks['food_group_constraints']['failed'] += 1
+                elif n_selected > max_crops:
+                    violation = f"Group {group_name}: {n_selected} crops > max={max_crops}"
+                    violations.append(violation)
+                    constraint_checks['food_group_constraints']['violations'].append(violation)
+                    constraint_checks['food_group_constraints']['failed'] += 1
+                else:
+                    constraint_checks['food_group_constraints']['passed'] += 1
+    
+    # Calculate summary statistics
+    total_checks = sum(check['passed'] + check['failed'] for check in constraint_checks.values())
+    total_passed = sum(check['passed'] for check in constraint_checks.values())
+    total_failed = sum(check['failed'] for check in constraint_checks.values())
+    
+    return {
+        'is_feasible': len(violations) == 0,
+        'n_violations': len(violations),
+        'violations': violations,
+        'constraint_checks': constraint_checks,
+        'summary': {
+            'total_checks': total_checks,
+            'total_passed': total_passed,
+            'total_failed': total_failed,
+            'pass_rate': total_passed / total_checks if total_checks > 0 else 0
+        }
+    }
+
 def create_cqm(farms, foods, food_groups, config):
     """
     Creates a CQM for the plot-crop assignment problem (BQM_PATCH formulation).
@@ -56,7 +284,6 @@ def create_cqm(farms, foods, food_groups, config):
     land_availability = params['land_availability']  # s_p: area of each plot
     weights = params['weights']
     min_planting_area = params.get('minimum_planting_area', {})  # A_c^min
-    max_percentage_per_crop = params.get('max_percentage_per_crop', {})
     food_group_constraints = params.get('food_group_constraints', {})
     idle_penalty = params.get('idle_penalty_lambda', 0.1)  # λ: penalty for unused area
     
@@ -67,13 +294,8 @@ def create_cqm(farms, foods, food_groups, config):
     # Calculate total land available
     total_land = sum(land_availability.values())
     
-    # Calculate A_c^max for each crop (from max_percentage_per_crop)
-    max_planting_area = {}
-    for crop in foods:
-        if crop in max_percentage_per_crop:
-            max_planting_area[crop] = max_percentage_per_crop[crop] * total_land
-        else:
-            max_planting_area[crop] = total_land  # No limit if not specified
+    # NOTE: Maximum area per crop = total land (no artificial limit)
+    # This matches the original solver_runner.py formulation
     
     # Calculate total operations for progress bar
     total_ops = (
@@ -83,7 +305,7 @@ def create_cqm(farms, foods, food_groups, config):
         n_farms +                 # At most one crop per plot
         n_farms * n_foods +       # X-Y linking constraints
         n_foods +                 # Y activation constraints
-        n_foods * 2 +             # Area bounds per crop (min and max)
+        n_foods +                 # Area bounds (min only)
         n_food_groups * 2         # Food group constraints (min and max)
     )
     
@@ -185,12 +407,13 @@ def create_cqm(farms, foods, food_groups, config):
         pbar.update(1)
     
     # Constraint 4: Area bounds per crop
-    # For each crop c: A_c^min <= sum_p (s_p * X_{p,c}) <= A_c^max
+    # For each crop c: A_c^min <= sum_p (s_p * X_{p,c})
+    # NOTE: No maximum area constraint - matches original solver_runner.py
     pbar.set_description("Adding area bounds constraints")
     for crop in foods:
         total_crop_area = sum(land_availability[plot] * X[(plot, crop)] for plot in farms)
         
-        # Minimum area constraint
+        # Minimum area constraint (only if Y_c = 1, i.e., crop is selected)
         if crop in min_planting_area and min_planting_area[crop] > 0:
             cqm.add_constraint(
                 total_crop_area >= min_planting_area[crop],
@@ -200,19 +423,6 @@ def create_cqm(farms, foods, food_groups, config):
                 'type': 'area_bounds_min',
                 'crop': crop,
                 'min_area': min_planting_area[crop]
-            }
-        pbar.update(1)
-        
-        # Maximum area constraint
-        if crop in max_planting_area and max_planting_area[crop] < total_land:
-            cqm.add_constraint(
-                total_crop_area <= max_planting_area[crop],
-                label=f"MaxArea_{crop}"
-            )
-            constraint_metadata['area_bounds_max'][crop] = {
-                'type': 'area_bounds_max',
-                'crop': crop,
-                'max_area': max_planting_area[crop]
             }
         pbar.update(1)
     
@@ -489,18 +699,30 @@ def solve_with_simulated_annealing(bqm):
     
     return sampleset, solve_time
 
-def solve_with_gurobi_qubo(bqm):
+def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_availability=None, 
+                          weights=None, idle_penalty=None, config=None):
     """
     Solve a Binary Quadratic Model (BQM) using Gurobi's QUBO capabilities.
     
     Converts the BQM to a Gurobi model by iterating over linear and quadratic terms,
     then solves it using Gurobi's optimization engine with GPU acceleration.
     
+    If farms/foods/config parameters are provided, also calculates the original CQM objective
+    and validates constraints.
+    
     Args:
         bqm: dimod.BinaryQuadraticModel object
+        farms: List of farm/plot names (optional, for objective calculation)
+        foods: Dictionary of food data (optional, for objective calculation)
+        food_groups: Dictionary of food groups (optional, for validation)
+        land_availability: Dictionary mapping plot to area (optional)
+        weights: Dictionary of objective weights (optional)
+        idle_penalty: Lambda penalty for idle land (optional)
+        config: Full configuration dictionary (optional, for validation)
         
     Returns:
-        dict: Solution containing status, solution dict, objective value, and solve time
+        dict: Solution containing status, solution dict, BQM energy, solve time,
+              original objective, and constraint validation (if config provided)
     """
     try:
         import gurobipy as gp
@@ -546,6 +768,7 @@ def solve_with_gurobi_qubo(bqm):
     
     # Configure Gurobi for GPU acceleration and performance
     # Same parameters as in solve_with_pulp for consistency
+    # Note: TimeLimit is set to 30 seconds for preliminary testing
     gurobi_options = [
         ('Method', 2),           # Barrier method (GPU-accelerated)
         ('Crossover', 0),        # Disable crossover to keep computation on GPU
@@ -554,16 +777,27 @@ def solve_with_gurobi_qubo(bqm):
         ('MIPFocus', 1),         # Focus on finding good solutions quickly
         ('Presolve', 2),         # Aggressive presolve
         ('OutputFlag', 0),       # Suppress output
-        ('TimeLimit', 300)       # 5 minute time limit
+        ('TimeLimit', 300),       # 30 second time limit for preliminary testing
+        ('BestObjStop', -1e10),  # Stop if objective reaches this value (for minimization)
+        ('MIPGap', 0.01)         # Stop if gap is within 1%
     ]
     
     # Set parameters
     for param, value in gurobi_options:
         model.setParam(param, value)
     
+    # Add callback to enforce time limit more strictly
+    def time_limit_callback(model, where):
+        """Callback to enforce strict time limit."""
+        if where == GRB.Callback.MIP:
+            runtime = model.cbGet(GRB.Callback.RUNTIME)
+            if runtime > 30:  # 30 seconds timeout
+                print(f"  ⏰ Enforcing time limit at {runtime:.1f}s")
+                model.terminate()
+    
     print("  Solving QUBO with Gurobi (GPU-accelerated)...")
     start_time = time.time()
-    model.optimize()
+    model.optimize(time_limit_callback)
     solve_time = time.time() - start_time
     
     # Extract results
@@ -574,56 +808,139 @@ def solve_with_gurobi_qubo(bqm):
         for var_name, gurobi_var in gurobi_vars.items():
             solution[var_name] = int(round(gurobi_var.X))
         
-        # Calculate objective value (negative of BQM energy for maximization problems)
-        objective_value = model.ObjVal
-        bqm_energy = objective_value
-        # For maximization problems, we typically want -energy
-        solution_objective = -bqm_energy + bqm.offset
+        # Get BQM energy (this is NOT the original CQM objective!)
+        bqm_energy = model.ObjVal
         
-        print(f"  ✅ Optimal solution found")
-        print(f"  BQM Energy: {bqm_energy:.6f}")
-        print(f"  Solution objective: {solution_objective:.6f}")
-        print(f"  Active variables: {sum(solution.values())}")
+        # Calculate original CQM objective if parameters provided
+        original_objective = None
+        solution_summary = None
+        validation = None
         
-    elif model.status == GRB.TIME_LIMIT:
+        if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
+            original_objective = calculate_original_objective(
+                solution, farms, foods, land_availability, weights, idle_penalty
+            )
+            solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
+            
+            # Validate constraints if full config provided
+            if config is not None and food_groups is not None:
+                validation = validate_solution_constraints(
+                    solution, farms, foods, food_groups, land_availability, config
+                )
+                
+                print(f"  ✅ Optimal solution found")
+                print(f"  BQM Energy: {bqm_energy:.6f}")
+                print(f"  Original CQM Objective: {original_objective:.6f}")
+                print(f"  Active variables: {sum(solution.values())}")
+                print(f"  Constraint validation: {validation['n_violations']} violations")
+                if validation['n_violations'] > 0:
+                    print(f"  ⚠️ CONSTRAINT VIOLATIONS DETECTED:")
+                    for violation in validation['violations'][:5]:  # Show first 5
+                        print(f"     - {violation}")
+                    if len(validation['violations']) > 5:
+                        print(f"     ... and {len(validation['violations']) - 5} more")
+                else:
+                    print(f"  ✅ All constraints satisfied!")
+            else:
+                print(f"  ✅ Optimal solution found")
+                print(f"  BQM Energy: {bqm_energy:.6f}")
+                print(f"  Original CQM Objective: {original_objective:.6f}")
+                print(f"  Active variables: {sum(solution.values())}")
+        else:
+            print(f"  ✅ Optimal solution found")
+            print(f"  BQM Energy: {bqm_energy:.6f}")
+            print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
+            print(f"  Active variables: {sum(solution.values())}")
+        
+    elif model.status == GRB.TIME_LIMIT or model.status == GRB.INTERRUPTED:
         status = "Time limit reached"
-        # Extract best solution found
+        # Extract best solution found if available
         solution = {}
-        for var_name, gurobi_var in gurobi_vars.items():
-            solution[var_name] = int(round(gurobi_var.X))
-        objective_value = model.ObjVal
-        solution_objective = -objective_value + bqm.offset
-        print(f"  ⚠️ Time limit reached, best solution found:")
-        print(f"  BQM Energy: {objective_value:.6f}")
-        print(f"  Solution objective: {solution_objective:.6f}")
+        try:
+            for var_name, gurobi_var in gurobi_vars.items():
+                solution[var_name] = int(round(gurobi_var.X))
+            bqm_energy = model.ObjVal
+        except:
+            # No solution available
+            bqm_energy = float('inf')
+        
+        # Calculate original CQM objective if parameters provided
+        original_objective = None
+        solution_summary = None
+        validation = None
+        
+        if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
+            if bqm_energy != float('inf'):
+                original_objective = calculate_original_objective(
+                    solution, farms, foods, land_availability, weights, idle_penalty
+                )
+                solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
+                
+                # Validate constraints if full config provided
+                if config is not None and food_groups is not None:
+                    validation = validate_solution_constraints(
+                        solution, farms, foods, food_groups, land_availability, config
+                    )
+                    
+                    print(f"  ⚠️ Time limit reached, best solution found:")
+                    print(f"  BQM Energy: {bqm_energy:.6f}")
+                    print(f"  Original CQM Objective: {original_objective:.6f}")
+                    print(f"  Constraint validation: {validation['n_violations']} violations")
+                    if validation['n_violations'] > 0:
+                        print(f"  ⚠️ CONSTRAINT VIOLATIONS DETECTED:")
+                        for violation in validation['violations'][:5]:
+                            print(f"     - {violation}")
+                else:
+                    print(f"  ⚠️ Time limit reached, best solution found:")
+                    print(f"  BQM Energy: {bqm_energy:.6f}")
+                    print(f"  Original CQM Objective: {original_objective:.6f}")
+            else:
+                print(f"  ⚠️ Time limit reached, no solution available")
+        else:
+            print(f"  ⚠️ Time limit reached, best solution found:")
+            print(f"  BQM Energy: {bqm_energy:.6f}")
+            print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
         
     elif model.status == GRB.INFEASIBLE:
         status = "Infeasible"
         solution = {}
-        objective_value = float('inf')
-        solution_objective = float('-inf')
+        bqm_energy = float('inf')
+        original_objective = None
+        solution_summary = None
+        validation = None
         print(f"  ❌ Problem is infeasible")
         
     else:
         status = f"Gurobi status {model.status}"
         solution = {}
-        objective_value = float('inf')
-        solution_objective = float('-inf')
+        bqm_energy = float('inf')
+        original_objective = None
+        solution_summary = None
+        validation = None
         print(f"  ❌ Gurobi status: {model.status}")
     
     print(f"  Solve time: {solve_time:.3f} seconds")
     
-    return {
+    result = {
         'status': status,
         'solution': solution,
-        'objective_value': solution_objective,
-        'bqm_energy': objective_value,
+        'objective_value': original_objective,  # Original CQM objective (if calculated)
+        'bqm_energy': bqm_energy,
         'solve_time': solve_time,
         'gurobi_status': model.status,
         'variables_count': len(variables),
         'linear_terms': len(bqm.linear),
-        'quadratic_terms': len(bqm.quadratic)
+        'quadratic_terms': len(bqm.quadratic),
+        'note': 'objective_value is reconstructed CQM objective; bqm_energy includes penalties'
     }
+    
+    # Add optional fields if calculated
+    if solution_summary is not None:
+        result['solution_summary'] = solution_summary
+    if validation is not None:
+        result['validation'] = validation
+    
+    return result
 
 def main(scenario='simple', n_patches=None):
     """Main execution function."""
