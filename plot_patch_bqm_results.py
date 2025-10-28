@@ -340,7 +340,10 @@ def plot_crop_diversity(metrics, output_path):
     ax.set_title('Crop Diversity', fontweight='bold')
     ax.grid(True, alpha=0.3, axis='y')
     ax.set_xticks(n_units)
-    ax.set_ylim([0, 7])
+
+    # Set y-axis limit dynamically based on data
+    max_crops = max(metrics['n_crops']) if metrics['n_crops'] else 10
+    ax.set_ylim([0, max(max_crops + 2, 10)])
 
     # Annotate crop counts
     for i, (x, y) in enumerate(zip(n_units, metrics['n_crops'])):
@@ -350,9 +353,25 @@ def plot_crop_diversity(metrics, output_path):
 
     # Plot 2: Crop selection heatmap
     ax = axes[1]
-    all_crops = ['Wheat', 'Corn', 'Rice', 'Soybeans', 'Potatoes', 'Apples']
-    crop_matrix = []
 
+    # Dynamically get all unique crops from the data
+    all_crops = set()
+    for config_crops in metrics['crops_selected']:
+        all_crops.update(config_crops)
+    all_crops = sorted(list(all_crops))
+
+    # Limit display to top crops if there are too many
+    max_crops_display = 15
+    if len(all_crops) > max_crops_display:
+        # Count frequency and take most common
+        crop_freq = {}
+        for config_crops in metrics['crops_selected']:
+            for crop in config_crops:
+                crop_freq[crop] = crop_freq.get(crop, 0) + 1
+        all_crops = sorted(crop_freq.keys(), key=lambda x: crop_freq[x], reverse=True)[
+            :max_crops_display]
+
+    crop_matrix = []
     for config_crops in metrics['crops_selected']:
         row = [1 if crop in config_crops else 0 for crop in all_crops]
         crop_matrix.append(row)
@@ -361,11 +380,12 @@ def plot_crop_diversity(metrics, output_path):
 
     im = ax.imshow(crop_matrix, cmap='YlGn', aspect='auto', vmin=0, vmax=1)
     ax.set_yticks(range(len(all_crops)))
-    ax.set_yticklabels(all_crops, fontweight='bold')
+    ax.set_yticklabels(all_crops, fontweight='bold', fontsize=9)
     ax.set_xticks(range(len(n_units)))
     ax.set_xticklabels(n_units)
     ax.set_xlabel('Number of Patches', fontweight='bold')
-    ax.set_title('Crop Selection Matrix', fontweight='bold')
+    ax.set_title(
+        f'Crop Selection Matrix (Top {len(all_crops)} Crops)', fontweight='bold')
 
     # Add colorbar legend
     cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02, aspect=30)
@@ -384,7 +404,7 @@ def plot_crop_diversity(metrics, output_path):
         for j, crop in enumerate(all_crops):
             if crop in crops:
                 ax.text(i, j, '✓', ha='center', va='center',
-                        fontsize=16, fontweight='bold', color='darkgreen')
+                        fontsize=12, fontweight='bold', color='darkgreen')
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -400,15 +420,23 @@ def plot_area_distribution(data, metrics, output_path):
                  fontsize=16, fontweight='bold', y=0.995)
 
     configs = sorted(data.keys())
-    all_crops = ['Wheat', 'Corn', 'Rice', 'Soybeans', 'Potatoes', 'Apples']
-    crop_colors = {
-        'Wheat': '#F4A460',
-        'Corn': '#FFD700',
-        'Rice': '#98D8C8',
-        'Soybeans': '#90EE90',
-        'Potatoes': '#DEB887',
-        'Apples': '#FF6B6B'
-    }
+
+    # Dynamically get all crops from data
+    all_crops_set = set()
+    for config in configs:
+        for assignment in data[config]['solution_summary']['plot_assignments']:
+            all_crops_set.add(assignment['crop'])
+    all_crops = sorted(list(all_crops_set))
+
+    # Generate colors dynamically using a colormap
+    n_crops = len(all_crops)
+    colors_list = plt.cm.tab20(np.linspace(0, 1, min(n_crops, 20)))
+    if n_crops > 20:
+        colors_list = np.vstack(
+            [colors_list, plt.cm.tab20b(np.linspace(0, 1, n_crops - 20))])
+
+    crop_colors = {crop: matplotlib.colors.rgb2hex(colors_list[i % len(colors_list)])
+                   for i, crop in enumerate(all_crops)}
 
     # Create one subplot for each configuration
     for idx, config in enumerate(configs):
@@ -916,22 +944,36 @@ def plot_advanced_analysis(data, metrics, output_path):
 
 
 def plot_violation_details(data, output_path):
-    """Create detailed visualization of constraint violations for 50-patch config."""
+    """Create detailed visualization of constraint violations for largest config with violations."""
+    configs = sorted(data.keys())
+
+    # Find largest config or one with violations
+    target_config = None
+    for config in reversed(configs):
+        if data[config]['validation']['n_violations'] > 0:
+            target_config = config
+            break
+
+    # If no violations, use largest config
+    if target_config is None:
+        target_config = configs[-1]
+
+    config_data = data[target_config]
+    n_patches = target_config
+
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle('Patch D-Wave BQM Constraint Violation Analysis (50 Patches)',
+    fig.suptitle(f'Patch D-Wave BQM Constraint Violation Analysis ({n_patches} Patches)',
                  fontsize=16, fontweight='bold', y=0.995)
 
-    # Focus on the 50-patch configuration
-    config_50 = data[50]
     # Ensure variable is always defined even if there are no violations
     violated_patches = []
 
     # Plot 1: Violation locations (which patches have issues)
     ax = axes[0, 0]
 
-    if config_50['validation']['n_violations'] > 0:
+    if config_data['validation']['n_violations'] > 0:
         # Extract patch numbers from violations
-        for violation in config_50['validation']['violations']:
+        for violation in config_data['validation']['violations']:
             # Parse "Plot PatchX: ..." to get X, guard against unexpected formats
             try:
                 patch_num = int(violation.split('Patch')[1].split(':')[0])
@@ -970,11 +1012,11 @@ def plot_violation_details(data, output_path):
         cbar.set_ticks([0, 1])
         cbar.set_ticklabels(['Valid', 'Violated'])
 
-    # Plot 2: Crop assignment distribution for 50-patch
+    # Plot 2: Crop assignment distribution
     ax = axes[0, 1]
 
     crop_areas = {}
-    for assignment in config_50['solution_summary']['plot_assignments']:
+    for assignment in config_data['solution_summary']['plot_assignments']:
         crop_areas[assignment['crop']] = assignment['total_area']
 
     sorted_crops = sorted(crop_areas.items(), key=lambda x: x[1], reverse=True)
@@ -987,7 +1029,8 @@ def plot_violation_details(data, output_path):
                    edgecolor='black', linewidth=1.5)
 
     ax.set_xlabel('Total Area (ha)', fontweight='bold')
-    ax.set_title('Crop Area Allocation (50 Patches)', fontweight='bold')
+    ax.set_title(
+        f'Crop Area Allocation ({n_patches} Patches)', fontweight='bold')
     ax.grid(True, alpha=0.3, axis='x')
 
     # Add area annotations
@@ -996,8 +1039,8 @@ def plot_violation_details(data, output_path):
                 fontweight='bold', fontsize=9)
 
     # Add total line
-    total_allocated = config_50['solution_summary']['total_allocated']
-    total_available = config_50['solution_summary']['total_available']
+    total_allocated = config_data['solution_summary']['total_allocated']
+    total_available = config_data['solution_summary']['total_available']
     ax.axvline(x=total_available, color=COLORS['danger'], linestyle='--',
                linewidth=2.5, label=f'Available: {total_available:.2f} ha')
     ax.legend()
@@ -1037,26 +1080,26 @@ def plot_violation_details(data, output_path):
     CONSTRAINT VIOLATION SUMMARY
     {'='*50}
     
-    Configuration: 50 patches
-    Total Area Available: {config_50['total_area']:.3f} ha
-    Total Area Allocated: {config_50['solution_summary']['total_allocated']:.3f} ha
-    Over-Allocation: {config_50['solution_summary']['idle_area']:.3f} ha
-    Utilization Rate: {config_50['solution_summary']['utilization']*100:.2f}%
+    Configuration: {n_patches} patches
+    Total Area Available: {config_data['total_area']:.3f} ha
+    Total Area Allocated: {config_data['solution_summary']['total_allocated']:.3f} ha
+    Over-Allocation: {config_data['solution_summary']['idle_area']:.3f} ha
+    Utilization Rate: {config_data['solution_summary']['utilization']*100:.2f}%
     
     CONSTRAINT VALIDATION
     {'='*50}
-    Total Checks: {config_50['validation']['summary']['total_checks']}
-    Passed: {config_50['validation']['summary']['total_passed']}
-    Failed: {config_50['validation']['summary']['total_failed']}
-    Pass Rate: {config_50['validation']['summary']['pass_rate']*100:.2f}%
+    Total Checks: {config_data['validation']['summary']['total_checks']}
+    Passed: {config_data['validation']['summary']['total_passed']}
+    Failed: {config_data['validation']['summary']['total_failed']}
+    Pass Rate: {config_data['validation']['summary']['pass_rate']*100:.2f}%
     
-    VIOLATIONS ({config_50['validation']['n_violations']} total)
+    VIOLATIONS ({config_data['validation']['n_violations']} total)
     {'='*50}
     Type: Multiple crops assigned to single patch
-    Affected Patches: {len(violated_patches) if config_50['validation']['n_violations'] > 0 else 0}
+    Affected Patches: {len(violated_patches) if config_data['validation']['n_violations'] > 0 else 0}
     
     Violated Patches:
-    {', '.join([f'Patch{p}' for p in sorted(violated_patches[:10])])}
+    {', '.join([f'Patch{p}' for p in sorted(violated_patches[:10])]) if violated_patches else 'None'}
     {'...' if len(violated_patches) > 10 else ''}
     
     PROBABLE CAUSE

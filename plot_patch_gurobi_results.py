@@ -327,7 +327,10 @@ def plot_crop_diversity(metrics, output_path):
     ax.set_title('Crop Diversity (Lower due to Time Limit)', fontweight='bold')
     ax.grid(True, alpha=0.3, axis='y')
     ax.set_xticks(n_units)
-    ax.set_ylim([0, 7])
+
+    # Set y-axis limit dynamically based on data
+    max_crops = max(metrics['n_crops']) if metrics['n_crops'] else 10
+    ax.set_ylim([0, max(max_crops + 2, 10)])
 
     # Annotate crop counts
     for i, (x, y) in enumerate(zip(n_units, metrics['n_crops'])):
@@ -337,9 +340,25 @@ def plot_crop_diversity(metrics, output_path):
 
     # Plot 2: Crop selection heatmap
     ax = axes[1]
-    all_crops = ['Wheat', 'Corn', 'Rice', 'Soybeans', 'Potatoes', 'Apples']
-    crop_matrix = []
 
+    # Dynamically get all unique crops from the data
+    all_crops = set()
+    for config_crops in metrics['crops_selected']:
+        all_crops.update(config_crops)
+    all_crops = sorted(list(all_crops))
+
+    # Limit display to top crops if there are too many
+    max_crops_display = 15
+    if len(all_crops) > max_crops_display:
+        # Count frequency and take most common
+        crop_freq = {}
+        for config_crops in metrics['crops_selected']:
+            for crop in config_crops:
+                crop_freq[crop] = crop_freq.get(crop, 0) + 1
+        all_crops = sorted(crop_freq.keys(), key=lambda x: crop_freq[x], reverse=True)[
+            :max_crops_display]
+
+    crop_matrix = []
     for config_crops in metrics['crops_selected']:
         row = [1 if crop in config_crops else 0 for crop in all_crops]
         crop_matrix.append(row)
@@ -348,11 +367,12 @@ def plot_crop_diversity(metrics, output_path):
 
     im = ax.imshow(crop_matrix, cmap='YlGn', aspect='auto', vmin=0, vmax=1)
     ax.set_yticks(range(len(all_crops)))
-    ax.set_yticklabels(all_crops, fontweight='bold')
+    ax.set_yticklabels(all_crops, fontweight='bold', fontsize=9)
     ax.set_xticks(range(len(n_units)))
     ax.set_xticklabels(n_units)
     ax.set_xlabel('Number of Patches', fontweight='bold')
-    ax.set_title('Crop Selection Matrix', fontweight='bold')
+    ax.set_title(
+        f'Crop Selection Matrix (Top {len(all_crops)} Crops)', fontweight='bold')
 
     # Add colorbar legend
     cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02, aspect=30)
@@ -371,7 +391,7 @@ def plot_crop_diversity(metrics, output_path):
         for j, crop in enumerate(all_crops):
             if crop in crops:
                 ax.text(i, j, '✓', ha='center', va='center',
-                        fontsize=16, fontweight='bold', color='darkgreen')
+                        fontsize=12, fontweight='bold', color='darkgreen')
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -387,15 +407,23 @@ def plot_area_distribution(data, metrics, output_path):
                  fontsize=16, fontweight='bold', y=0.995)
 
     configs = sorted(data.keys())
-    all_crops = ['Wheat', 'Corn', 'Rice', 'Soybeans', 'Potatoes', 'Apples']
-    crop_colors = {
-        'Wheat': '#F4A460',
-        'Corn': '#FFD700',
-        'Rice': '#98D8C8',
-        'Soybeans': '#90EE90',
-        'Potatoes': '#DEB887',
-        'Apples': '#FF6B6B'
-    }
+
+    # Dynamically get all crops from data
+    all_crops_set = set()
+    for config in configs:
+        for assignment in data[config]['solution_summary']['plot_assignments']:
+            all_crops_set.add(assignment['crop'])
+    all_crops = sorted(list(all_crops_set))
+
+    # Generate colors dynamically using a colormap
+    n_crops = len(all_crops)
+    colors_list = plt.cm.tab20(np.linspace(0, 1, min(n_crops, 20)))
+    if n_crops > 20:
+        colors_list = np.vstack(
+            [colors_list, plt.cm.tab20b(np.linspace(0, 1, n_crops - 20))])
+
+    crop_colors = {crop: matplotlib.colors.rgb2hex(colors_list[i % len(colors_list)])
+                   for i, crop in enumerate(all_crops)}
 
     # Create one subplot for each configuration
     for idx, config in enumerate(configs):
