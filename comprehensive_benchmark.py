@@ -37,19 +37,18 @@ from farm_sampler import generate_farms as generate_farms_large
 from patch_sampler import generate_farms as generate_patches_small
 from src.scenarios import load_food_data
 
-# Import solvers
-from solver_runner_PATCH import (
-    create_cqm, solve_with_pulp, solve_with_dwave, solve_with_dwave_cqm,
-    solve_with_simulated_annealing, solve_with_gurobi_qubo,
-    calculate_original_objective, extract_solution_summary,
-    validate_solution_constraints
-)
+# Import solvers for FARM scenario (original formulation)
+import solver_runner as solver_farm
+
+# Import solvers for PATCH scenario (BQM_PATCH formulation)
+import solver_runner_PATCH as solver_patch
+
 from dimod import cqm_to_bqm
 
 # Benchmark configurations
 # Format: number of units (farms or patches) to test
 BENCHMARK_CONFIGS = [
-    #10,
+    10,
     15,
     #20,
     25,
@@ -303,9 +302,9 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     land_data = sample_data['data']
     foods, food_groups, config = create_food_config(land_data, 'farm')
     
-    # Create CQM
+    # Create CQM using FARM formulation (original solver_runner.py)
     cqm_start = time.time()
-    cqm, (X, Y), constraint_metadata = create_cqm(land_data, foods, food_groups, config)
+    cqm, (X, Y), constraint_metadata = solver_farm.create_cqm(land_data, foods, food_groups, config)
     cqm_time = time.time() - cqm_start
     
     results = {
@@ -331,7 +330,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     else:
         try:
             pulp_start = time.time()
-            pulp_model, pulp_results = solve_with_pulp(land_data, foods, food_groups, config)
+            pulp_model, pulp_results = solver_farm.solve_with_pulp(land_data, foods, food_groups, config)
             pulp_time = time.time() - pulp_start
             
             gurobi_result = {
@@ -353,7 +352,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                 solution_dict = {}
                 solution_dict.update(pulp_results.get('X_variables', {}))
                 solution_dict.update(pulp_results.get('Y_variables', {}))
-                solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                solution_summary = solver_farm.extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
                 gurobi_result['solution_summary'] = solution_summary
             
             results['solvers']['gurobi'] = gurobi_result
@@ -378,8 +377,8 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                # Use NATIVE CQM solver - no BQM conversion!
-                sampleset, hybrid_time, qpu_time = solve_with_dwave_cqm(cqm, dwave_token)
+                # Use D-Wave solver for farm scenario (original formulation)
+                sampleset, hybrid_time, qpu_time = solver_farm.solve_with_dwave(cqm, dwave_token)
                 
                 success = len(sampleset) > 0
                 objective_value = None
@@ -412,7 +411,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                         solution_dict[var_name] = var_value
                     
                     # Extract solution summary
-                    solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                    solution_summary = solver_farm.extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
                     dwave_result['solution_summary'] = solution_summary
                 
                 results['solvers']['dwave_cqm'] = dwave_result
@@ -449,9 +448,9 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     land_data = sample_data['data']
     foods, food_groups, config = create_food_config(land_data, 'patch')
     
-    # Create CQM
+    # Create CQM using PATCH formulation (solver_runner_PATCH.py)
     cqm_start = time.time()
-    cqm, (X, Y), constraint_metadata = create_cqm(land_data, foods, food_groups, config)
+    cqm, (X, Y), constraint_metadata = solver_patch.create_cqm(land_data, foods, food_groups, config)
     cqm_time = time.time() - cqm_start
     
     results = {
@@ -477,7 +476,7 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
     else:
         try:
             pulp_start = time.time()
-            pulp_model, pulp_results = solve_with_pulp(land_data, foods, food_groups, config)
+            pulp_model, pulp_results = solver_patch.solve_with_pulp(land_data, foods, food_groups, config)
             pulp_time = time.time() - pulp_start
             
             gurobi_result = {
@@ -499,10 +498,10 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                 solution_dict = {}
                 solution_dict.update(pulp_results.get('X_variables', {}))
                 solution_dict.update(pulp_results.get('Y_variables', {}))
-                solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                solution_summary = solver_patch.extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
                 gurobi_result['solution_summary'] = solution_summary
                 # Also add validation
-                validation = validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
+                validation = solver_patch.validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
                 gurobi_result['validation'] = validation
             
             results['solvers']['gurobi'] = gurobi_result
@@ -527,8 +526,8 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                # Use NATIVE CQM solver - no BQM conversion!
-                sampleset_cqm, hybrid_time_cqm, qpu_time_cqm = solve_with_dwave_cqm(cqm, dwave_token)
+                # Use D-Wave CQM solver for patch scenario
+                sampleset_cqm, hybrid_time_cqm, qpu_time_cqm = solver_patch.solve_with_dwave_cqm(cqm, dwave_token)
                 
                 success = len(sampleset_cqm) > 0
                 objective_value = None
@@ -560,9 +559,9 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                         solution_dict[var_name] = var_value
                     
                     # Extract solution summary and validation
-                    solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                    solution_summary = solver_patch.extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
                     dwave_result['solution_summary'] = solution_summary
-                    validation = validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
+                    validation = solver_patch.validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
                     dwave_result['validation'] = validation
                 
                 results['solvers']['dwave_cqm'] = dwave_result
@@ -635,7 +634,7 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                     
                     # Extract solution and calculate original objective
                     solution = dict(best.sample)
-                    original_objective = calculate_original_objective(
+                    original_objective = solver_patch.calculate_original_objective(
                         solution,
                         farms=list(land_data.keys()),
                         foods=foods,
@@ -645,10 +644,10 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                     )
                     
                     # Extract solution summary
-                    solution_summary = extract_solution_summary(solution, list(land_data.keys()), foods, land_data)
+                    solution_summary = solver_patch.extract_solution_summary(solution, list(land_data.keys()), foods, land_data)
                     
                     # Validate constraints
-                    validation = validate_solution_constraints(
+                    validation = solver_patch.validate_solution_constraints(
                         solution, list(land_data.keys()), foods, food_groups, land_data, config
                     )
                     
@@ -729,7 +728,7 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
         else:
             try:
                 # Pass parameters to calculate original objective and validate
-                gurobi_qubo_result_raw = solve_with_gurobi_qubo(
+                gurobi_qubo_result_raw = solver_patch.solve_with_gurobi_qubo(
                     bqm,
                     farms=list(land_data.keys()),
                     foods=foods,

@@ -364,7 +364,7 @@ def create_cqm(farms, foods, food_groups, config):
     pbar.set_description("Adding at-most-one-crop-per-plot constraints")
     for plot in farms:
         cqm.add_constraint(
-            sum(X[(plot, crop)] for crop in foods) <= 1,
+            sum(X[(plot, crop)] for crop in foods) - 1 <= 0,
             label=f"AtMostOne_{plot}"
         )
         constraint_metadata['at_most_one_per_plot'][plot] = {
@@ -417,7 +417,7 @@ def create_cqm(farms, foods, food_groups, config):
         # This ensures the constraint only applies to selected crops
         if crop in min_planting_area and min_planting_area[crop] > 0:
             cqm.add_constraint(
-                total_crop_area >= min_planting_area[crop] * Y[crop],
+                total_crop_area - min_planting_area[crop] * Y[crop] >= 0,
                 label=f"MinArea_{crop}"
             )
             constraint_metadata['area_bounds_min'][crop] = {
@@ -437,7 +437,7 @@ def create_cqm(farms, foods, food_groups, config):
                 # Minimum number of crops from this group
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[crop] for crop in foods_in_group) >= constraints['min_foods'],
+                        sum(Y[crop] for crop in foods_in_group) - constraints['min_foods'] >= 0,
                         label=f"FoodGroup_Min_{group}"
                     )
                     constraint_metadata['food_group_min'][group] = {
@@ -451,7 +451,7 @@ def create_cqm(farms, foods, food_groups, config):
                 # Maximum number of crops from this group
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[crop] for crop in foods_in_group) <= constraints['max_foods'],
+                        sum(Y[crop] for crop in foods_in_group) - constraints['max_foods'] <= 0,
                         label=f"FoodGroup_Max_{group}"
                     )
                     constraint_metadata['food_group_max'][group] = {
