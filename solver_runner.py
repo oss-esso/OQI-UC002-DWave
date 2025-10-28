@@ -205,7 +205,37 @@ def solve_with_pulp(farms, foods, food_groups, config):
     model += goal, "Objective"
 
     start_time = time.time()
-    model.solve(pl.PULP_CBC_CMD(msg=0))
+    # Use Gurobi with GPU acceleration and aggressive parallelization
+    # GPU-specific parameters (requires Gurobi 9.0+ and CUDA-compatible GPU):
+    #   - Method=2: Use barrier method (GPU-accelerated)
+    #   - Crossover=0: Disable crossover to keep computation on GPU
+    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
+    #   - Threads=0: Use all available CPU threads for parallel processing
+    #   - MIPFocus=1: Focus on finding good solutions quickly
+    #   - Presolve=2: Aggressive presolve
+    gurobi_options = [
+        ('Method', 2),           # Barrier method (GPU-accelerated)
+        ('Crossover', 0),        # Disable crossover to keep computation on GPU
+        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
+        ('Threads', 0),          # Use all available CPU threads for parallelization
+        ('MIPFocus', 1),         # Focus on finding good solutions quickly
+        ('Presolve', 2),         # Aggressive presolve
+    ]
+    
+    try:
+        # Try using GUROBI API directly for better GPU support
+        print("  Using Gurobi API with GPU acceleration and parallelization...")
+        solver = pl.GUROBI(msg=0, timeLimit=100)
+        # Set parameters directly on the solver
+        for param, value in gurobi_options:
+            solver.optionsDict[param] = value
+        model.solve(solver)
+    except Exception as e:
+        # Fallback to GUROBI_CMD if direct API is not available
+        print(f"  Gurobi API failed ({str(e)[:50]}...), using GUROBI_CMD...")
+        # GUROBI_CMD expects options as a list of "key=value" strings
+        options_list = [f'{k}={v}' for k, v in gurobi_options]
+        model.solve(pl.GUROBI_CMD(msg=0, options=options_list))
     solve_time = time.time() - start_time
 
     # Extract results

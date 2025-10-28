@@ -577,7 +577,7 @@ def solve_with_pulp(farms, foods, food_groups, config):
     try:
         # Try using GUROBI API directly for better GPU support
         print("  Using Gurobi API with GPU acceleration and parallelization...")
-        solver = pl.GUROBI(msg=0, timeLimit=300)
+        solver = pl.GUROBI(msg=0, timeLimit=100)
         # Set parameters directly on the solver
         for param, value in gurobi_options:
             solver.optionsDict[param] = value

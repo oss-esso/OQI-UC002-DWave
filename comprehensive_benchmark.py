@@ -60,7 +60,7 @@ BENCHMARK_CONFIGS = [
 NUM_RUNS = 1
 
 # Gurobi QUBO timeout in seconds
-GUROBI_QUBO_TIMEOUT = 30  # 300 seconds (5 minutes) to match TimeLimit in solver
+#GUROBI_QUBO_TIMEOUT = 0  # 300 seconds (5 minutes) to match TimeLimit in solver
 
 def generate_sample_data(config_values: List[int], seed_offset: int = 0) -> Tuple[List[Dict], List[Dict]]:
     """
@@ -176,7 +176,7 @@ def create_food_config(land_data: Dict[str, float], scenario_type: str = 'compre
                 'affordability': 0.15,
                 'sustainability': 0.15
             },
-            'idle_penalty_lambda': 0.0
+            'idle_penalty_lambda': 0.0 #set to zero to avoid too big weights
         }
     }
     
@@ -295,7 +295,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     Returns:
         Dictionary with results for both solvers
     """
-    print(f"\n  🏢 FARM SCENARIO - Sample {sample_data['sample_id']}")
+    print(f"\n  FARM SCENARIO - Sample {sample_data['sample_id']}")
     print(f"     {sample_data['n_units']} farms, {sample_data['total_area']:.1f} ha")
     
     # Create problem setup
