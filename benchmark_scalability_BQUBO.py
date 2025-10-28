@@ -1,6 +1,6 @@
 """
-Scalability Benchmark Script for BQUBO (CQM→BQM with HybridBQM Solver)
-Tests different combinations of farms and food groups to analyze QPU-enabled solver performance
+Scalability Benchmark Script for BQUBO (CQM→BQM with Gurobi QUBO Solver)
+Tests different combinations of farms and food groups to analyze QUBO solver performance
 """
 import os
 import sys
@@ -15,7 +15,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from farm_sampler import generate_farms
 from src.scenarios import load_food_data
-from solver_runner_BQUBO import create_cqm, solve_with_pulp, solve_with_dwave
+from solver_runner_BQUBO import create_cqm
+from solver_runner_PATCH import solve_with_gurobi_qubo
+from dimod import cqm_to_bqm
 from benchmark_cache import BenchmarkCache, serialize_cqm
 import pulp as pl
 
@@ -48,11 +50,11 @@ def clean_solution_for_json(solution):
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    5#, 19, 72, 279, 1096, 1535
+    5, 19, 72, 279, 1096, 1535
 ]
 
 # Number of runs per configuration for statistical analysis
-NUM_RUNS = 5
+NUM_RUNS = 1
 
 def load_full_family_with_n_farms(n_farms, seed=42):
     """
@@ -182,13 +184,13 @@ def load_full_family_with_n_farms(n_farms, seed=42):
 def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=None, save_to_cache=True):
     """
     Run a single benchmark test with full_family scenario.
-    Returns timing results and problem size metrics for all solvers including DWave BQUBO.
+    Returns timing results and problem size metrics for Gurobi QUBO and optionally DWave BQUBO.
     
     Args:
         n_farms: Number of farms to test
         run_number: Current run number (for display)
         total_runs: Total number of runs (for display)
-        dwave_token: DWave API token (optional)
+        dwave_token: DWave API token (optional, set to None to skip DWave)
         cache: BenchmarkCache instance for saving results
         save_to_cache: Whether to save results to cache (default: True)
     """
@@ -212,7 +214,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
         print(f"  Problem Size (n): {problem_size}")
         print(f"  Formulation: Binary - each farm-crop = 1 acre plantation if selected")
         
-        # Create CQM (needed for DWave)
+        # Create CQM (needed for conversion to BQM)
         print(f"\n  Creating CQM model...")
         cqm_start = time.time()
         cqm, Y, constraint_metadata = create_cqm(
@@ -221,13 +223,23 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
         cqm_time = time.time() - cqm_start
         print(f"    ✅ CQM created: {len(cqm.variables)} vars, {len(cqm.constraints)} constraints ({cqm_time:.2f}s)")
         
+        # Convert CQM to BQM for QUBO solving
+        print(f"\n  Converting CQM to BQM...")
+        bqm_convert_start = time.time()
+        bqm, invert = cqm_to_bqm(cqm)
+        bqm_conversion_time = time.time() - bqm_convert_start
+        print(f"    ✅ BQM created: {len(bqm.variables)} vars, {len(bqm.quadratic)} quadratic terms ({bqm_conversion_time:.2f}s)")
+        
         # Save CQM to cache if requested
         if save_to_cache and cache:
             cqm_data = serialize_cqm(cqm)
             cqm_result = {
                 'cqm_time': cqm_time,
+                'bqm_conversion_time': bqm_conversion_time,
                 'num_variables': len(cqm.variables),
                 'num_constraints': len(cqm.constraints),
+                'num_bqm_variables': len(bqm.variables),
+                'num_bqm_quadratic': len(bqm.quadratic),
                 'n_foods': n_foods,
                 'problem_size': problem_size,
                 'n_vars': n_vars,
@@ -235,48 +247,68 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
             }
             cache.save_result('BQUBO', 'CQM', n_farms, run_number, cqm_result, cqm_data=cqm_data)
         
-        # Solve with PuLP (linear)
-        print(f"\n  Solving with PuLP (Linear)...")
-        pulp_start = time.time()
-        pulp_model, pulp_results = solve_with_pulp(farms, foods, food_groups, config)
-        pulp_time = time.time() - pulp_start
+        # Solve with Gurobi QUBO
+        print(f"\n  Solving with Gurobi QUBO (BQM formulation)...")
+        gurobi_start = time.time()
         
-        print(f"    Status: {pulp_results['status']}")
-        print(f"    Objective: {pulp_results.get('objective_value', 'N/A')}")
-        print(f"    Time: {pulp_time:.3f}s")
+        # Get list of farms as list (not dict keys)
+        farms_list = list(farms) if isinstance(farms, dict) else farms
         
-        # Save PuLP results to cache
+        gurobi_result = solve_with_gurobi_qubo(
+            bqm,
+            farms=farms_list,
+            foods=foods,
+            food_groups=food_groups,
+            land_availability=config['parameters']['land_availability'],
+            weights=config['parameters']['weights'],
+            idle_penalty=config['parameters'].get('idle_penalty_lambda', 0.1),
+            config=config
+        )
+        gurobi_time = time.time() - gurobi_start
+        
+        print(f"    Status: {gurobi_result['status']}")
+        print(f"    BQM Energy: {gurobi_result.get('bqm_energy', 'N/A')}")
+        print(f"    Original Objective: {gurobi_result.get('objective_value', 'N/A')}")
+        print(f"    Time: {gurobi_time:.3f}s")
+        
+        # Save Gurobi QUBO results to cache
         if save_to_cache and cache:
-            pulp_cache_result = {
-                'solve_time': pulp_time,
-                'status': pulp_results['status'],
-                'objective_value': pulp_results.get('objective_value'),
-                'solution': clean_solution_for_json(pulp_results.get('solution', {})),
+            gurobi_cache_result = {
+                'solve_time': gurobi_time,
+                'status': gurobi_result['status'],
+                'bqm_energy': gurobi_result.get('bqm_energy'),
+                'objective_value': gurobi_result.get('objective_value'),
+                'solution': clean_solution_for_json(gurobi_result.get('solution', {})),
                 'n_foods': n_foods,
                 'problem_size': problem_size,
                 'n_vars': n_vars,
-                'n_constraints': n_constraints
+                'n_constraints': n_constraints,
+                'num_bqm_variables': len(bqm.variables),
+                'num_bqm_quadratic': len(bqm.quadratic)
             }
-            cache.save_result('BQUBO', 'PuLP', n_farms, run_number, pulp_cache_result)
+            cache.save_result('BQUBO', 'GurobiQUBO', n_farms, run_number, gurobi_cache_result)
+        
+            cache.save_result('BQUBO', 'GurobiQUBO', n_farms, run_number, gurobi_cache_result)
         
         # DWave solving with BQUBO (CQM→BQM + HybridBQM)
         hybrid_time = None
         qpu_time = None
-        bqm_conversion_time = None
+        bqm_conversion_time_dwave = None
         dwave_feasible = False
         dwave_objective = None
         
         if dwave_token:
             print(f"\n  Solving with DWave (BQUBO: CQM→BQM + HybridBQM)...")
             try:
-                sampleset, hybrid_time, qpu_time, bqm_conversion_time, invert = solve_with_dwave(cqm, dwave_token)
+                from solver_runner_BQUBO import solve_with_dwave
+                sampleset, hybrid_time, qpu_time, bqm_conversion_time_dwave, invert = solve_with_dwave(cqm, dwave_token)
                 
                 # BQM samplesets don't have feasibility - all samples are valid
                 print(f"    Status: {'Optimal' if len(sampleset) > 0 else 'No solutions'}")
                 print(f"    Samples: {len(sampleset)}")
                 if hybrid_time is not None:
                     print(f"    Hybrid Time: {hybrid_time:.3f}s")
-                print(f"    BQM Conversion: {bqm_conversion_time:.3f}s")
+                print(f"    BQM Conversion: {bqm_conversion_time_dwave:.3f}s")
                 if qpu_time is not None:
                     print(f"    QPU Access: {qpu_time:.4f}s")
                 
@@ -298,7 +330,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
             dwave_cache_result = {
                 'hybrid_time': hybrid_time,
                 'qpu_time': qpu_time,
-                'bqm_conversion_time': bqm_conversion_time,
+                'bqm_conversion_time': bqm_conversion_time_dwave,
                 'feasible': dwave_feasible,
                 'objective_value': dwave_objective,
                 'num_samples': len(sampleset) if 'sampleset' in locals() else 0
@@ -312,14 +344,17 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
             'n_constraints': n_constraints,
             'problem_size': problem_size,
             'cqm_time': cqm_time,
-            'pulp_time': pulp_time,
-            'pulp_status': pulp_results['status'],
-            'pulp_objective': pulp_results.get('objective_value'),
+            'bqm_conversion_time': bqm_conversion_time,
+            'gurobi_time': gurobi_time,
+            'gurobi_status': gurobi_result['status'],
+            'gurobi_objective': gurobi_result.get('objective_value'),
             'hybrid_time': hybrid_time,
             'qpu_time': qpu_time,
-            'bqm_conversion_time': bqm_conversion_time,
+            'bqm_conversion_time_dwave': bqm_conversion_time_dwave,
             'dwave_feasible': dwave_feasible,
-            'dwave_objective': dwave_objective
+            'dwave_objective': dwave_objective,
+            'num_bqm_variables': len(bqm.variables),
+            'num_bqm_quadratic': len(bqm.quadratic)
         }
         
         return result
@@ -345,9 +380,9 @@ def plot_results(results, output_file='scalability_benchmark_bqubo.png'):
     # Extract data
     problem_sizes = [r['problem_size'] for r in valid_results]
     
-    # PuLP times
-    pulp_times = [r['pulp_time_mean'] for r in valid_results]
-    pulp_errors = [r['pulp_time_std'] for r in valid_results]
+    # Gurobi QUBO times
+    gurobi_times = [r['gurobi_time_mean'] for r in valid_results]
+    gurobi_errors = [r['gurobi_time_std'] for r in valid_results]
     
     # DWave times
     hybrid_times = [r['hybrid_time_mean'] for r in valid_results if r.get('hybrid_time_mean') is not None]
@@ -355,9 +390,9 @@ def plot_results(results, output_file='scalability_benchmark_bqubo.png'):
     hybrid_problem_sizes = [r['problem_size'] for r in valid_results if r.get('hybrid_time_mean') is not None]
     
     # QPU times
-    qpu_times = [r['qpu_time_mean'] for r in valid_results if r['qpu_time_mean'] is not None]
-    qpu_errors = [r['qpu_time_std'] for r in valid_results if r['qpu_time_mean'] is not None]
-    qpu_problem_sizes = [r['problem_size'] for r in valid_results if r['qpu_time_mean'] is not None]
+    qpu_times = [r['qpu_time_mean'] for r in valid_results if r.get('qpu_time_mean') is not None]
+    qpu_errors = [r['qpu_time_std'] for r in valid_results if r.get('qpu_time_mean') is not None]
+    qpu_problem_sizes = [r['problem_size'] for r in valid_results if r.get('qpu_time_mean') is not None]
     
     # Solution quality (we can plot objective values if needed)
     
@@ -366,9 +401,9 @@ def plot_results(results, output_file='scalability_benchmark_bqubo.png'):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 12))
     
     # Plot 1: Solve times with error bars
-    ax1.errorbar(problem_sizes, pulp_times, yerr=pulp_errors, marker='o', linestyle='-', 
+    ax1.errorbar(problem_sizes, gurobi_times, yerr=gurobi_errors, marker='o', linestyle='-', 
                 linewidth=2.5, markersize=8, capsize=5, capthick=2,
-                label='PuLP (Linear)', color='#2E86AB', alpha=0.9)
+                label='Gurobi QUBO (BQM)', color='#2E86AB', alpha=0.9)
     
     if hybrid_times:
         ax1.errorbar(hybrid_problem_sizes, hybrid_times, yerr=hybrid_errors, marker='D', linestyle='-',
@@ -420,9 +455,9 @@ def plot_results(results, output_file='scalability_benchmark_bqubo.png'):
     ax3.set_ylim(0, 1)
     ax3.set_title('Solution Quality', fontsize=16, fontweight='bold', pad=20)
     
-    # Plot 4: Speedup Analysis (DWave vs PuLP)
-    if hybrid_times and len(hybrid_times) == len(pulp_times):
-        speedups = [pulp_times[i] / hybrid_times[i] for i in range(len(hybrid_times))]
+    # Plot 4: Speedup Analysis (DWave vs Gurobi QUBO)
+    if hybrid_times and len(hybrid_times) == len(gurobi_times):
+        speedups = [gurobi_times[i] / hybrid_times[i] for i in range(len(hybrid_times))]
         ax4.plot(hybrid_problem_sizes, speedups, marker='D', linestyle='-',
                 linewidth=2.5, markersize=8, color='#C73E1D', alpha=0.9,
                 label='DWave Speedup Factor')
@@ -430,8 +465,8 @@ def plot_results(results, output_file='scalability_benchmark_bqubo.png'):
         ax4.axhline(y=1.0, color='black', linestyle='--', linewidth=2, alpha=0.5, label='No Speedup')
         
         ax4.set_xlabel('Problem Size (n = Farms × Foods)', fontsize=14, fontweight='bold')
-        ax4.set_ylabel('Speedup Factor (PuLP / DWave)', fontsize=14, fontweight='bold')
-        ax4.set_title('DWave BQUBO Speedup vs Classical Solver', 
+        ax4.set_ylabel('Speedup Factor (Gurobi / DWave)', fontsize=14, fontweight='bold')
+        ax4.set_title('DWave BQUBO Speedup vs Gurobi QUBO', 
                      fontsize=16, fontweight='bold', pad=20)
         ax4.grid(True, alpha=0.3, linestyle='--')
         ax4.set_xscale('log')
@@ -468,15 +503,15 @@ def create_summary_table(results, output_file='scalability_table_bqubo.png'):
     ax.axis('off')
     
     # Prepare table data
-    headers = ['Farms', 'Foods', 'n', 'Vars', 'Constraints', 
-               'PuLP\nTime (s)', 'DWave\nTime (s)', 'QPU\nTime (s)', 'BQM Conv\nTime (s)', 'Runs', 'Winner']
+    headers = ['Farms', 'Foods', 'n', 'BQM Vars', 'BQM Quad', 
+               'Gurobi\nTime (s)', 'DWave\nTime (s)', 'QPU\nTime (s)', 'BQM Conv\nTime (s)', 'Runs', 'Winner']
     
     table_data = []
     for r in results:
         # Determine winner (faster solver)
         times = []
-        if r.get('pulp_time_mean') is not None:
-            times.append(('PuLP', r['pulp_time_mean']))
+        if r.get('gurobi_time_mean') is not None:
+            times.append(('Gurobi', r['gurobi_time_mean']))
         if r.get('hybrid_time_mean') is not None:
             times.append(('DWave', r['hybrid_time_mean']))
         
@@ -490,9 +525,9 @@ def create_summary_table(results, output_file='scalability_table_bqubo.png'):
             r['n_farms'],
             r['n_foods'],
             r['problem_size'],
-            r.get('n_vars', 'N/A'),
-            r['n_constraints'],
-            f"{r['pulp_time_mean']:.3f} ± {r['pulp_time_std']:.3f}",
+            r.get('num_bqm_variables', 'N/A'),
+            r.get('num_bqm_quadratic', 'N/A'),
+            f"{r['gurobi_time_mean']:.3f} ± {r['gurobi_time_std']:.3f}",
             f"{r['hybrid_time_mean']:.3f} ± {r['hybrid_time_std']:.3f}" if r.get('hybrid_time_mean') else 'N/A',
             f"{r['qpu_time_mean']:.4f}" if r.get('qpu_time_mean') else 'N/A',
             f"{r['bqm_conversion_time_mean']:.3f}" if r.get('bqm_conversion_time_mean') else 'N/A',
@@ -533,7 +568,7 @@ def main():
     cache = BenchmarkCache()
     
     print("="*80)
-    print("BQUBO SCALABILITY BENCHMARK (CQM→BQM + HybridBQM)")
+    print("BQUBO SCALABILITY BENCHMARK (CQM→BQM + Gurobi QUBO)")
     print("="*80)
     print(f"Configurations: {len(BENCHMARK_CONFIGS)} points")
     print(f"Runs per configuration: {NUM_RUNS}")
@@ -548,7 +583,7 @@ def main():
     cache.print_cache_status('BQUBO', BENCHMARK_CONFIGS, NUM_RUNS)
     
     # Get DWave token
-    dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-7b81782896495d7c6a061bda257a9d9b03b082cd')
+    dwave_token = None #os.getenv('DWAVE_API_TOKEN', '45FS-7b81782896495d7c6a061bda257a9d9b03b082cd')
     if dwave_token:
         print(f"\n✅ DWave API token found - QPU-enabled benchmarking active")
     else:
@@ -566,30 +601,33 @@ def main():
         # Check which runs are needed
         runs_needed = cache.get_runs_needed('BQUBO', n_farms, NUM_RUNS)
         
-        # Load existing results from cache for PuLP (our primary solver)
-        existing_pulp_results = cache.get_all_results('BQUBO', 'PuLP', n_farms)
+        # Load existing results from cache for GurobiQUBO (our primary solver)
+        existing_gurobi_results = cache.get_all_results('BQUBO', 'GurobiQUBO', n_farms)
         config_results = []
         
         # Convert cached results to the format expected by aggregation
-        for cached in existing_pulp_results:
+        for cached in existing_gurobi_results:
             result_data = cached['result']
             run_num = cached['metadata']['run_number']
             
             run_result = {
                 'n_farms': n_farms,
                 'n_foods': result_data.get('n_foods', 10),
-                'pulp_time': result_data['solve_time'],
-                'pulp_status': result_data['status'],
-                'pulp_objective': result_data['objective_value'],
+                'gurobi_time': result_data['solve_time'],
+                'gurobi_status': result_data['status'],
+                'gurobi_objective': result_data['objective_value'],
                 'problem_size': result_data.get('problem_size', n_farms * 10),
                 'n_vars': result_data.get('n_vars', 0),
-                'n_constraints': result_data.get('n_constraints', 0)
+                'n_constraints': result_data.get('n_constraints', 0),
+                'num_bqm_variables': result_data.get('num_bqm_variables', 0),
+                'num_bqm_quadratic': result_data.get('num_bqm_quadratic', 0)
             }
             
             # Load corresponding CQM result
             cqm_cached = cache.load_result('BQUBO', 'CQM', n_farms, run_num)
             if cqm_cached:
                 run_result['cqm_time'] = cqm_cached['result']['cqm_time']
+                run_result['bqm_conversion_time'] = cqm_cached['result'].get('bqm_conversion_time', 0)
             
             # Load corresponding DWave result
             dwave_cached = cache.load_result('BQUBO', 'DWave', n_farms, run_num)
@@ -637,28 +675,30 @@ def main():
         
         # Calculate statistics for this configuration
         if config_results:
-            pulp_times = [r['pulp_time'] for r in config_results if r['pulp_time'] is not None]
-            cqm_times = [r['cqm_time'] for r in config_results if r['cqm_time'] is not None]
-            hybrid_times = [r['hybrid_time'] for r in config_results if r['hybrid_time'] is not None]
-            qpu_times = [r['qpu_time'] for r in config_results if r['qpu_time'] is not None]
-            bqm_conv_times = [r['bqm_conversion_time'] for r in config_results if r['bqm_conversion_time'] is not None]
+            gurobi_times = [r['gurobi_time'] for r in config_results if r.get('gurobi_time') is not None]
+            cqm_times = [r.get('cqm_time') for r in config_results if r.get('cqm_time') is not None]
+            hybrid_times = [r.get('hybrid_time') for r in config_results if r.get('hybrid_time') is not None]
+            qpu_times = [r.get('qpu_time') for r in config_results if r.get('qpu_time') is not None]
+            bqm_conv_times = [r.get('bqm_conversion_time') for r in config_results if r.get('bqm_conversion_time') is not None]
             
             aggregated = {
                 'n_farms': n_farms,
                 'n_foods': config_results[0]['n_foods'],
                 'problem_size': config_results[0]['problem_size'],
-                'n_vars': config_results[0]['n_vars'],
-                'n_constraints': config_results[0]['n_constraints'],
+                'n_vars': config_results[0].get('n_vars', 0),
+                'n_constraints': config_results[0].get('n_constraints', 0),
+                'num_bqm_variables': config_results[0].get('num_bqm_variables', 0),
+                'num_bqm_quadratic': config_results[0].get('num_bqm_quadratic', 0),
                 
                 # CQM creation stats
                 'cqm_time_mean': float(np.mean(cqm_times)) if cqm_times else None,
                 'cqm_time_std': float(np.std(cqm_times)) if cqm_times else None,
                 
-                # PuLP stats
-                'pulp_time_mean': float(np.mean(pulp_times)) if pulp_times else None,
-                'pulp_time_std': float(np.std(pulp_times)) if pulp_times else None,
-                'pulp_time_min': float(np.min(pulp_times)) if pulp_times else None,
-                'pulp_time_max': float(np.max(pulp_times)) if pulp_times else None,
+                # Gurobi QUBO stats
+                'gurobi_time_mean': float(np.mean(gurobi_times)) if gurobi_times else None,
+                'gurobi_time_std': float(np.std(gurobi_times)) if gurobi_times else None,
+                'gurobi_time_min': float(np.min(gurobi_times)) if gurobi_times else None,
+                'gurobi_time_max': float(np.max(gurobi_times)) if gurobi_times else None,
                 
                 # DWave hybrid solver stats
                 'hybrid_time_mean': float(np.mean(hybrid_times)) if hybrid_times else None,
@@ -682,9 +722,9 @@ def main():
             # Print statistics
             print(f"\n  Statistics for {n_farms} farms ({len(config_results)} runs):")
             print(f"    CQM Creation:     {aggregated['cqm_time_mean']:.3f}s ± {aggregated['cqm_time_std']:.3f}s")
-            print(f"    PuLP:             {aggregated['pulp_time_mean']:.3f}s ± {aggregated['pulp_time_std']:.3f}s")
-            if aggregated['dwave_time_mean']:
-                print(f"    DWave (Total):    {aggregated['dwave_time_mean']:.3f}s ± {aggregated['dwave_time_std']:.3f}s")
+            print(f"    Gurobi QUBO:      {aggregated['gurobi_time_mean']:.3f}s ± {aggregated['gurobi_time_std']:.3f}s")
+            if aggregated['hybrid_time_mean']:
+                print(f"    DWave (Total):    {aggregated['hybrid_time_mean']:.3f}s ± {aggregated['hybrid_time_std']:.3f}s")
                 print(f"    BQM Conversion:   {aggregated['bqm_conversion_time_mean']:.3f}s ± {aggregated['bqm_conversion_time_std']:.3f}s")
                 print(f"    QPU Access:       {aggregated['qpu_time_mean']:.4f}s ± {aggregated['qpu_time_std']:.4f}s")
     
@@ -711,7 +751,7 @@ def main():
     print(f"\nGenerating plots...")
     plot_results(aggregated_results, f'scalability_benchmark_bqubo_{timestamp}.png')
     
-    print(f"\n🎉 BQUBO Benchmark Complete! QPU-enabled scaling analysis ready!")
+    print(f"\n🎉 BQUBO Benchmark Complete! Gurobi QUBO scaling analysis ready!")
 
 if __name__ == "__main__":
     main()

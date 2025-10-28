@@ -1,0 +1,352 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\title{Technical Analysis: Constraint Violation in BQM Formulations for Agricultural Optimization}
+\author{OQI-UC002-DWave Project}
+\date{October 28, 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This technical report presents a comprehensive diagnostic analysis of constraint violations observed when using D-Wave's Hybrid BQM solver for agricultural land allocation problems. We compare three formulations (BQUBO, PATCH, and PATCH\_NO\_IDLE) and identify the root cause of constraint violations: catastrophic coefficient scaling during CQM-to-BQM conversion. Our analysis reveals that the PATCH formulation exhibits quadratic coefficient ranges 1,782× larger than BQUBO, leading to penalty term dominance and infeasible solutions. We propose a scaled BQUBO formulation that maintains well-behaved coefficient properties while supporting variable-sized plots.
+\end{abstract}
+
+\section{Introduction}
+
+Agricultural land allocation optimization involves assigning crops to plots to maximize nutritional value, cost efficiency, environmental sustainability, and other objectives while satisfying various constraints. Two primary formulations have been developed:
+
+\begin{itemize}
+    \item \textbf{BQUBO}: Binary Quadratic Unconstrained Binary Optimization formulation using uniform 1-acre plot units
+    \item \textbf{PATCH}: Direct plot assignment formulation using heterogeneous plot sizes with explicit area tracking
+\end{itemize}
+
+While both formulations represent the same underlying problem, empirical testing revealed that PATCH consistently violates constraints when solved via D-Wave's Hybrid BQM solver (after CQM-to-BQM conversion), whereas BQUBO maintains 100\% feasibility. This report presents a systematic diagnostic investigation to identify the root cause.
+
+\section{Methodology}
+
+\subsection{Problem Formulations}
+
+\subsubsection{BQUBO Formulation}
+
+The BQUBO formulation discretizes land into uniform 1-acre units. For $N$ plots and $C$ crops:
+
+\textbf{Decision Variables:}
+\begin{equation}
+x_{i,c} \in \{0,1\} \quad \text{where } i \in [1,N], \; c \in [1,C]
+\end{equation}
+
+\textbf{Objective:}
+\begin{equation}
+\text{maximize} \sum_{i=1}^{N} \sum_{c=1}^{C} b_c \cdot x_{i,c}
+\end{equation}
+where $b_c$ represents the benefit (weighted combination of nutritional value, cost efficiency, etc.) for crop $c$.
+
+\textbf{Constraints:}
+\begin{align}
+\sum_{c=1}^{C} x_{i,c} &\leq 1 \quad \forall i \quad \text{(at most one crop per plot)} \\
+\sum_{i=1}^{N} x_{i,c} &\leq \text{capacity}_c \quad \forall c \quad \text{(crop-specific limits)} \\
+\sum_{i=1}^{N} x_{i,c} &\geq \text{min}_c \quad \forall c \quad \text{(minimum requirements)}
+\end{align}
+
+\subsubsection{PATCH Formulation}
+
+The PATCH formulation uses explicit plot areas $A_p$ for each plot $p$.
+
+\textbf{Decision Variables:}
+\begin{align}
+X_{p,c} &\in \{0,1\} \quad \text{(plot $p$ assigned to crop $c$)} \\
+Y_c &\in \{0,1\} \quad \text{(crop $c$ is used)} \\
+a_c &\in [0, \sum_p A_p] \quad \text{(total area of crop $c$)}
+\end{align}
+
+\textbf{Objective (with idle penalty):}
+\begin{equation}
+\text{maximize} \sum_{c=1}^{C} b_c \cdot a_c - \lambda \cdot \text{idle\_area}
+\end{equation}
+
+\textbf{Constraints:}
+\begin{align}
+\sum_{c=1}^{C} X_{p,c} &\leq 1 \quad \forall p \quad \text{(at most one crop per plot)} \\
+a_c &= \sum_p A_p \cdot X_{p,c} \quad \forall c \quad \text{(area tracking)} \\
+X_{p,c} &\leq Y_c \quad \forall p, c \quad \text{(activation linking)} \\
+a_c &\leq \text{max}_c \quad \forall c \quad \text{(area bounds)}
+\end{align}
+
+\subsection{Diagnostic Methodology}
+
+We developed a comprehensive diagnostic script that analyzes:
+
+\begin{enumerate}
+    \item \textbf{Instance Characterization}: Problem size, graph density, coefficient distributions
+    \item \textbf{Solver-Independent Hardness}: Spectral properties, energy landscape, local minima
+    \item \textbf{Constraint Structure}: Number of constraints, types, overlap, complexity
+    \item \textbf{Penalty Sensitivity}: Feasibility vs. Lagrange multiplier strength
+\end{enumerate}
+
+Test instances were generated with 10 variables (for rapid iteration) and 50 variables (for realistic scale).
+
+\section{Results}
+
+\subsection{Instance Characteristics (10 Variables)}
+
+\begin{table}[H]
+\centering
+\caption{Problem Size and Complexity Comparison}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BQUBO} & \textbf{PATCH} & \textbf{PATCH\_NO\_IDLE} \\
+\midrule
+Variables & 70 & 160 & 160 \\
+Interactions & 169 & 960 & 960 \\
+Density & 0.0700 & 0.0755 & 0.0755 \\
+Offset & 2.56 & 86.33 & 71.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Critical Finding: Coefficient Scaling}
+
+\begin{table}[H]
+\centering
+\caption{Coefficient Distribution Analysis}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Quadratic Coefficients} & \textbf{BQUBO} & \textbf{PATCH} & \textbf{Ratio} \\
+\midrule
+Mean & 0.174 & 0.540 & 3.1× \\
+Std Dev & 0.051 & 37.204 & 729.0× \\
+Range & 0.155 & 276.262 & \textbf{1,782.0×} \\
+\bottomrule
+\end{tabular}
+\label{tab:coefficients}
+\end{table}
+
+\textbf{Key Observation:} PATCH exhibits quadratic coefficient ranges \textbf{1,782× larger} than BQUBO. This catastrophic scaling difference is the primary cause of constraint violations.
+
+\subsection{Energy Landscape}
+
+Random sampling of 1,000 solutions reveals dramatic energy scale differences:
+
+\begin{table}[H]
+\centering
+\caption{Energy Landscape Characteristics}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BQUBO} & \textbf{PATCH} & \textbf{Ratio} \\
+\midrule
+Mean Energy & 3.54 & 1,735.35 & 490.0× \\
+Std Energy & 1.39 & 351.80 & 253.0× \\
+Energy Range & 7.76 & 2,398.14 & 309.0× \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The PATCH formulation operates in a fundamentally different energy regime, making optimization significantly harder.
+
+\subsection{Constraint Structure}
+
+\begin{table}[H]
+\centering
+\caption{Constraint Complexity Analysis}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BQUBO} & \textbf{PATCH} & \textbf{Observation} \\
+\midrule
+Number of Constraints & 90 & 76 & Fewer, but more complex \\
+Constraint Overlap & 3.00\% & 15.79\% & \textbf{5.3× higher coupling} \\
+Constraint Types & Le+Ge & Le only & Different structure \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+PATCH exhibits significantly higher constraint coupling, meaning variables participate in multiple constraints simultaneously, creating complex interdependencies.
+
+\subsection{Penalty Weight Sensitivity}
+
+\begin{table}[H]
+\centering
+\caption{Feasibility vs. Lagrange Multiplier}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Multiplier} & \textbf{BQUBO} & \textbf{PATCH} & \textbf{PATCH\_NO\_IDLE} \\
+\midrule
+0.1 & 100.0\% & 0.0\% & 0.0\% \\
+1.0 & 100.0\% & 23.0\% & 40.0\% \\
+10.0 & 100.0\% & 51.0\% & 47.0\% \\
+100.0 & 100.0\% & 57.0\% & 62.0\% \\
+1000.0 & 100.0\% & 63.0\% & 55.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Critical Observation:} BQUBO achieves 100\% feasibility at \textit{all} Lagrange multipliers, while PATCH never exceeds 63\% feasibility even at $\lambda = 1000$.
+
+\section{Root Cause Analysis}
+
+\subsection{The Coefficient Scaling Catastrophe}
+
+When \texttt{cqm\_to\_bqm()} converts constraints to penalty terms, it adds quadratic interactions of the form:
+
+\begin{equation}
+E_{\text{penalty}} = \lambda \cdot (g(x))^2
+\end{equation}
+
+where $g(x)$ represents a constraint. For PATCH:
+
+\begin{enumerate}
+    \item \textbf{Heterogeneous Areas}: Plot areas vary significantly (e.g., 1.5 to 15 acres)
+    \item \textbf{Area Constraints}: Constraints involve sums like $\sum_p A_p \cdot X_{p,c}$
+    \item \textbf{Quadratic Expansion}: When squared, these create terms with coefficients $\sim A_p \cdot A_q$
+    \item \textbf{Magnitude Explosion}: Large areas (15 acres) produce coefficients $\sim 225$
+\end{enumerate}
+
+For BQUBO, all implicit areas are 1, so coefficient scaling remains uniform.
+
+\subsection{Why Auto-Selected Multipliers Fail}
+
+The \texttt{cqm\_to\_bqm()} function estimates appropriate Lagrange multipliers based on objective function scale. However:
+
+\begin{itemize}
+    \item PATCH's objective coefficients: $\mathcal{O}(1)$ to $\mathcal{O}(10)$
+    \item PATCH's penalty coefficients after squaring: $\mathcal{O}(100)$ to $\mathcal{O}(1000)$
+    \item Auto-selected multipliers are too small relative to heterogeneous penalty terms
+    \item Penalty terms dominate, but their massive variance creates optimization "noise"
+\end{itemize}
+
+\subsection{Constraint Coupling Amplification}
+
+With 15.79\% constraint overlap (vs. 3\% in BQUBO), PATCH variables are "pulled" in multiple directions by different penalty terms. This creates a rugged, multi-modal energy landscape where:
+
+\begin{itemize}
+    \item Local minima are abundant
+    \item Gradient information is noisy
+    \item Simulated annealing struggles to find feasible regions
+\end{itemize}
+
+\section{Proposed Solution: Scaled BQUBO}
+
+\subsection{Concept}
+
+We propose a "Scaled BQUBO" formulation that combines BQUBO's well-behaved coefficient properties with PATCH's ability to handle variable-sized plots.
+
+\subsection{Key Idea: Benefit Scaling}
+
+Instead of tracking areas explicitly, we scale the benefit coefficients proportionally to plot size:
+
+\textbf{Modified BQUBO Objective:}
+\begin{equation}
+\text{maximize} \sum_{p=1}^{N} \sum_{c=1}^{C} (b_c \cdot A_p) \cdot x_{p,c}
+\end{equation}
+
+where $A_p$ is the area of plot $p$, and $b_c$ is the benefit per unit area for crop $c$.
+
+\subsection{Constraint Adaptation}
+
+\textbf{Plot Assignment} (unchanged):
+\begin{equation}
+\sum_{c=1}^{C} x_{p,c} \leq 1 \quad \forall p
+\end{equation}
+
+\textbf{Area Bounds} (converted to "number of units"):
+\begin{equation}
+\sum_{p=1}^{N} A_p \cdot x_{p,c} \leq \text{max\_area}_c \quad \forall c
+\end{equation}
+
+When converted to BQM penalties, the $A_p$ factors appear linearly (not quadratically), avoiding coefficient explosion.
+
+\subsection{Advantages}
+
+\begin{enumerate}
+    \item \textbf{Preserves Linearity}: Area factors appear only once, not squared
+    \item \textbf{Natural Scaling}: Larger plots automatically contribute more to objective
+    \item \textbf{Bounded Coefficients}: Coefficient range scales with area range, not area range squared
+    \item \textbf{Simple Implementation}: Minimal changes to existing BQUBO code
+\end{enumerate}
+
+\subsection{Mathematical Formulation}
+
+\textbf{Decision Variables:}
+\begin{equation}
+x_{p,c} \in \{0,1\} \quad p \in [1,N], \; c \in [1,C]
+\end{equation}
+
+\textbf{Objective (to minimize negative):}
+\begin{equation}
+\min_{x} \left\{ -\sum_{p=1}^{N} \sum_{c=1}^{C} w_c \cdot A_p \cdot x_{p,c} \right\}
+\end{equation}
+
+where $w_c$ is the weighted benefit for crop $c$ per unit area.
+
+\textbf{Constraints (as CQM):}
+\begin{align}
+\sum_{c=1}^{C} x_{p,c} &\leq 1 \quad \forall p \quad \text{(one crop per plot)} \\
+\sum_{p=1}^{N} A_p \cdot x_{p,c} &\leq U_c \quad \forall c \quad \text{(max area for crop $c$)} \\
+\sum_{p=1}^{N} A_p \cdot x_{p,c} &\geq L_c \quad \forall c \quad \text{(min area for crop $c$)}
+\end{align}
+
+\textbf{Coefficient Scaling Analysis:}
+
+After CQM-to-BQM conversion with Lagrange multiplier $\lambda$:
+
+\begin{itemize}
+    \item \textbf{Linear terms}: $\mathcal{O}(w_c \cdot A_p) = \mathcal{O}(A_{\text{max}})$
+    \item \textbf{Quadratic penalty terms}: $\mathcal{O}(\lambda \cdot A_p \cdot A_q) = \mathcal{O}(\lambda \cdot A_{\text{max}}^2)$
+\end{itemize}
+
+By setting $\lambda \sim 1/A_{\text{max}}$, we can normalize all coefficients to $\mathcal{O}(A_{\text{max}})$, maintaining bounded ranges similar to BQUBO.
+
+\subsection{Normalization Strategy}
+
+To ensure well-behaved coefficients:
+
+\begin{enumerate}
+    \item Compute $A_{\text{max}} = \max_p A_p$
+    \item Normalize areas: $\tilde{A}_p = A_p / A_{\text{max}}$
+    \item Use normalized areas in formulation: $\sum_p \tilde{A}_p \cdot x_{p,c}$
+    \item Scale upper/lower bounds: $\tilde{U}_c = U_c / A_{\text{max}}$, $\tilde{L}_c = L_c / A_{\text{max}}$
+\end{enumerate}
+
+This ensures all area coefficients are in $[0, 1]$, preventing coefficient explosion.
+
+\section{Recommendations}
+
+\begin{enumerate}
+    \item \textbf{Primary Solution}: Use \texttt{LeapHybridCQMSampler} directly instead of converting to BQM. The CQM solver handles constraints natively without penalty weight issues.
+    
+    \item \textbf{If BQM Required}: Implement Scaled BQUBO with normalization as described in Section 5.
+    
+    \item \textbf{For Existing PATCH}: If PATCH must be used as BQM:
+    \begin{itemize}
+        \item Manually set $\lambda \geq 10000$ in \texttt{cqm\_to\_bqm()}
+        \item Normalize plot areas before formulation
+        \item Add coefficient normalization pass
+    \end{itemize}
+    
+    \item \textbf{Further Testing}: Validate Scaled BQUBO with:
+    \begin{itemize}
+        \item 10, 50, 100 variable instances
+        \item Multiple solver backends (hybrid, quantum annealing, classical)
+        \item Comparison against PATCH with CQM solver
+    \end{itemize}
+\end{enumerate}
+
+\section{Conclusion}
+
+This diagnostic analysis has identified the root cause of constraint violations in the PATCH formulation: catastrophic coefficient scaling during CQM-to-BQM conversion. The 1,782× larger quadratic coefficient range in PATCH compared to BQUBO creates penalty terms that dominate and obscure the optimization objective, leading to infeasible solutions.
+
+The proposed Scaled BQUBO formulation provides a path forward, combining the flexibility of variable-sized plots with the well-behaved coefficient properties that make BQUBO successful. By scaling benefits rather than tracking areas explicitly, we maintain linear coefficient growth instead of quadratic explosion.
+
+The key insight is that \textit{how} we encode problem structure dramatically affects solver performance when penalties are involved. Careful attention to coefficient scaling is essential for successful quantum and quantum-inspired optimization.
+
+\end{document}
