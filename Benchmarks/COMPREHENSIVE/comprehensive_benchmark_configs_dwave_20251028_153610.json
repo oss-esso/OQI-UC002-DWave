@@ -1,0 +1,2332 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-28T15:41:10.429836",
+    "config_values": [
+      15,
+      25
+    ],
+    "total_runtime": 299.7047872543335,
+    "dwave_enabled": true,
+    "scenarios": [
+      "farm",
+      "patch"
+    ],
+    "solvers": {
+      "farm": [
+        "gurobi",
+        "dwave_cqm"
+      ],
+      "patch": [
+        "gurobi",
+        "dwave_cqm",
+        "gurobi_qubo",
+        "dwave_bqm"
+      ]
+    }
+  },
+  "farm_results": [
+    {
+      "sample_id": 0,
+      "scenario_type": "farm",
+      "n_units": 15,
+      "total_area": 115.10000000000001,
+      "n_foods": 27,
+      "n_variables": 486,
+      "n_constraints": 540,
+      "cqm_time": 0.16635632514953613,
+      "solvers": {
+        "gurobi": {
+          "status": "Infeasible",
+          "objective_value": null,
+          "solve_time": 0.12736082077026367,
+          "solver_time": 0.10457134246826172,
+          "success": false,
+          "sample_id": 0,
+          "n_units": 15,
+          "total_area": 115.10000000000001,
+          "n_foods": 27,
+          "n_variables": 486,
+          "n_constraints": 540
+        },
+        "dwave_cqm": {
+          "status": "Optimal",
+          "objective_value": 70.35747037904095,
+          "solve_time": 5.277539,
+          "qpu_time": 0.069544,
+          "hybrid_time": 5.277539,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 15,
+          "total_area": 115.10000000000001,
+          "n_foods": 27,
+          "n_variables": 486,
+          "n_constraints": 540,
+          "solution_summary": {
+            "crops_selected": [
+              "Beef",
+              "Egg",
+              "Avocado",
+              "Durian",
+              "Guava",
+              "Mango",
+              "Chickpeas",
+              "Peanuts",
+              "Tempeh",
+              "Cabbage",
+              "Cucumber",
+              "Eggplant",
+              "Spinach"
+            ],
+            "n_crops": 13,
+            "plot_assignments": [
+              {
+                "crop": "Beef",
+                "total_area": 4.66,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm7",
+                    "area": 0.51
+                  },
+                  {
+                    "plot": "Farm8",
+                    "area": 4.15
+                  }
+                ]
+              },
+              {
+                "crop": "Egg",
+                "total_area": 14.4,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm1",
+                    "area": 1.47
+                  },
+                  {
+                    "plot": "Farm11",
+                    "area": 12.93
+                  }
+                ]
+              },
+              {
+                "crop": "Avocado",
+                "total_area": 11.7,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm8",
+                    "area": 4.15
+                  },
+                  {
+                    "plot": "Farm14",
+                    "area": 7.55
+                  }
+                ]
+              },
+              {
+                "crop": "Durian",
+                "total_area": 2.96,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm4",
+                    "area": 2.15
+                  },
+                  {
+                    "plot": "Farm6",
+                    "area": 0.81
+                  }
+                ]
+              },
+              {
+                "crop": "Guava",
+                "total_area": 4.02,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm1",
+                    "area": 1.47
+                  },
+                  {
+                    "plot": "Farm3",
+                    "area": 2.55
+                  }
+                ]
+              },
+              {
+                "crop": "Mango",
+                "total_area": 3.21,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm2",
+                    "area": 3.21
+                  }
+                ]
+              },
+              {
+                "crop": "Chickpeas",
+                "total_area": 4.699999999999999,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm3",
+                    "area": 2.55
+                  },
+                  {
+                    "plot": "Farm4",
+                    "area": 2.15
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 13.0,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm16",
+                    "area": 13.0
+                  }
+                ]
+              },
+              {
+                "crop": "Tempeh",
+                "total_area": 10.520000000000001,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm5",
+                    "area": 0.81
+                  },
+                  {
+                    "plot": "Farm13",
+                    "area": 9.71
+                  }
+                ]
+              },
+              {
+                "crop": "Cabbage",
+                "total_area": 38.8,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm15",
+                    "area": 23.02
+                  },
+                  {
+                    "plot": "Farm17",
+                    "area": 15.78
+                  }
+                ]
+              },
+              {
+                "crop": "Cucumber",
+                "total_area": 3.21,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm2",
+                    "area": 3.21
+                  }
+                ]
+              },
+              {
+                "crop": "Eggplant",
+                "total_area": 1.62,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm5",
+                    "area": 0.81
+                  },
+                  {
+                    "plot": "Farm6",
+                    "area": 0.81
+                  }
+                ]
+              },
+              {
+                "crop": "Spinach",
+                "total_area": 35.95,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm11",
+                    "area": 12.93
+                  },
+                  {
+                    "plot": "Farm15",
+                    "area": 23.02
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 148.75,
+            "total_available": 115.10000000000001,
+            "idle_area": -33.64999999999999,
+            "utilization": 1.2923544743701127
+          }
+        }
+      }
+    },
+    {
+      "sample_id": 1,
+      "scenario_type": "farm",
+      "n_units": 25,
+      "total_area": 150.17,
+      "n_foods": 27,
+      "n_variables": 702,
+      "n_constraints": 764,
+      "cqm_time": 0.15444207191467285,
+      "solvers": {
+        "gurobi": {
+          "status": "Infeasible",
+          "objective_value": null,
+          "solve_time": 0.057533979415893555,
+          "solver_time": 0.030033349990844727,
+          "success": false,
+          "sample_id": 1,
+          "n_units": 25,
+          "total_area": 150.17,
+          "n_foods": 27,
+          "n_variables": 702,
+          "n_constraints": 764
+        },
+        "dwave_cqm": {
+          "status": "Optimal",
+          "objective_value": 65.07458424530347,
+          "solve_time": 5.332944,
+          "qpu_time": 0.069552,
+          "hybrid_time": 5.332944,
+          "success": true,
+          "sample_id": 1,
+          "n_units": 25,
+          "total_area": 150.17,
+          "n_foods": 27,
+          "n_variables": 702,
+          "n_constraints": 764,
+          "solution_summary": {
+            "crops_selected": [
+              "Beef",
+              "Chicken",
+              "Egg",
+              "Lamb",
+              "Pork",
+              "Apple",
+              "Avocado",
+              "Durian",
+              "Guava",
+              "Mango",
+              "Orange",
+              "Papaya",
+              "Chickpeas",
+              "Peanuts",
+              "Tempeh",
+              "Tofu",
+              "Corn",
+              "Potato",
+              "Cabbage",
+              "Cucumber",
+              "Eggplant",
+              "Long bean",
+              "Pumpkin",
+              "Spinach",
+              "Tomatoes"
+            ],
+            "n_crops": 25,
+            "plot_assignments": [
+              {
+                "crop": "Beef",
+                "total_area": 2.74,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm16",
+                    "area": 2.74
+                  }
+                ]
+              },
+              {
+                "crop": "Chicken",
+                "total_area": 4.99,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm2",
+                    "area": 0.94
+                  },
+                  {
+                    "plot": "Farm13",
+                    "area": 4.05
+                  }
+                ]
+              },
+              {
+                "crop": "Egg",
+                "total_area": 4.91,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm11",
+                    "area": 1.88
+                  },
+                  {
+                    "plot": "Farm15",
+                    "area": 3.03
+                  }
+                ]
+              },
+              {
+                "crop": "Lamb",
+                "total_area": 2.22,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm14",
+                    "area": 2.22
+                  }
+                ]
+              },
+              {
+                "crop": "Pork",
+                "total_area": 14.52,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm13",
+                    "area": 4.05
+                  },
+                  {
+                    "plot": "Farm21",
+                    "area": 10.47
+                  }
+                ]
+              },
+              {
+                "crop": "Apple",
+                "total_area": 18.54,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm24",
+                    "area": 18.54
+                  }
+                ]
+              },
+              {
+                "crop": "Avocado",
+                "total_area": 1.61,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm10",
+                    "area": 1.61
+                  }
+                ]
+              },
+              {
+                "crop": "Durian",
+                "total_area": 15.040000000000001,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm12",
+                    "area": 2.98
+                  },
+                  {
+                    "plot": "Farm22",
+                    "area": 12.06
+                  }
+                ]
+              },
+              {
+                "crop": "Guava",
+                "total_area": 31.91,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm11",
+                    "area": 1.88
+                  },
+                  {
+                    "plot": "Farm23",
+                    "area": 30.03
+                  }
+                ]
+              },
+              {
+                "crop": "Mango",
+                "total_area": 0.73,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm1",
+                    "area": 0.73
+                  }
+                ]
+              },
+              {
+                "crop": "Orange",
+                "total_area": 6.05,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm18",
+                    "area": 6.05
+                  }
+                ]
+              },
+              {
+                "crop": "Papaya",
+                "total_area": 13.690000000000001,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm6",
+                    "area": 1.63
+                  },
+                  {
+                    "plot": "Farm22",
+                    "area": 12.06
+                  }
+                ]
+              },
+              {
+                "crop": "Chickpeas",
+                "total_area": 20.0,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm9",
+                    "area": 1.0
+                  },
+                  {
+                    "plot": "Farm25",
+                    "area": 19.0
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 10.09,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm8",
+                    "area": 0.51
+                  },
+                  {
+                    "plot": "Farm19",
+                    "area": 9.58
+                  }
+                ]
+              },
+              {
+                "crop": "Tempeh",
+                "total_area": 20.51,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm5",
+                    "area": 1.51
+                  },
+                  {
+                    "plot": "Farm25",
+                    "area": 19.0
+                  }
+                ]
+              },
+              {
+                "crop": "Tofu",
+                "total_area": 4.53,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm7",
+                    "area": 1.79
+                  },
+                  {
+                    "plot": "Farm16",
+                    "area": 2.74
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 38.79,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm20",
+                    "area": 8.76
+                  },
+                  {
+                    "plot": "Farm23",
+                    "area": 30.03
+                  }
+                ]
+              },
+              {
+                "crop": "Potato",
+                "total_area": 21.52,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm12",
+                    "area": 2.98
+                  },
+                  {
+                    "plot": "Farm24",
+                    "area": 18.54
+                  }
+                ]
+              },
+              {
+                "crop": "Cabbage",
+                "total_area": 6.58,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm2",
+                    "area": 0.94
+                  },
+                  {
+                    "plot": "Farm17",
+                    "area": 5.64
+                  }
+                ]
+              },
+              {
+                "crop": "Cucumber",
+                "total_area": 1.61,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Farm10",
+                    "area": 1.61
+                  }
+                ]
+              },
+              {
+                "crop": "Eggplant",
+                "total_area": 7.68,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm6",
+                    "area": 1.63
+                  },
+                  {
+                    "plot": "Farm18",
+                    "area": 6.05
+                  }
+                ]
+              },
+              {
+                "crop": "Long bean",
+                "total_area": 10.42,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm3",
+                    "area": 1.66
+                  },
+                  {
+                    "plot": "Farm20",
+                    "area": 8.76
+                  }
+                ]
+              },
+              {
+                "crop": "Pumpkin",
+                "total_area": 7.3999999999999995,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm4",
+                    "area": 1.76
+                  },
+                  {
+                    "plot": "Farm17",
+                    "area": 5.64
+                  }
+                ]
+              },
+              {
+                "crop": "Spinach",
+                "total_area": 11.34,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm4",
+                    "area": 1.76
+                  },
+                  {
+                    "plot": "Farm19",
+                    "area": 9.58
+                  }
+                ]
+              },
+              {
+                "crop": "Tomatoes",
+                "total_area": 4.01,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Farm7",
+                    "area": 1.79
+                  },
+                  {
+                    "plot": "Farm14",
+                    "area": 2.22
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 281.42999999999995,
+            "total_available": 150.17,
+            "idle_area": -131.25999999999996,
+            "utilization": 1.874076047146567
+          }
+        }
+      }
+    }
+  ],
+  "patch_results": [
+    {
+      "sample_id": 0,
+      "scenario_type": "patch",
+      "n_units": 15,
+      "total_area": 7.59,
+      "n_foods": 27,
+      "n_variables": 432,
+      "n_constraints": 484,
+      "cqm_time": 0.10268402099609375,
+      "solvers": {
+        "gurobi": {
+          "status": "Infeasible",
+          "objective_value": null,
+          "solve_time": 0.08052897453308105,
+          "solver_time": 0.03146004676818848,
+          "success": false,
+          "sample_id": 0,
+          "n_units": 15,
+          "total_area": 7.59,
+          "n_foods": 27,
+          "n_variables": 432,
+          "n_constraints": 484
+        },
+        "dwave_cqm": {
+          "status": "Optimal",
+          "objective_value": 4.480207293686771,
+          "solve_time": 5.310984,
+          "qpu_time": 0.069557,
+          "hybrid_time": 5.310984,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 15,
+          "total_area": 7.59,
+          "n_foods": 27,
+          "n_variables": 432,
+          "n_constraints": 484,
+          "solution_summary": {
+            "crops_selected": [
+              "Chicken",
+              "Lamb",
+              "Avocado",
+              "Mango",
+              "Orange",
+              "Papaya",
+              "Watermelon",
+              "Chickpeas",
+              "Peanuts",
+              "Tempeh",
+              "Corn",
+              "Eggplant",
+              "Spinach",
+              "Tomatoes"
+            ],
+            "n_crops": 14,
+            "plot_assignments": [
+              {
+                "crop": "Chicken",
+                "total_area": 1.138,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch13",
+                    "area": 1.138
+                  }
+                ]
+              },
+              {
+                "crop": "Lamb",
+                "total_area": 1.44,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.302
+                  },
+                  {
+                    "plot": "Patch13",
+                    "area": 1.138
+                  }
+                ]
+              },
+              {
+                "crop": "Avocado",
+                "total_area": 2.063,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.166
+                  },
+                  {
+                    "plot": "Patch15",
+                    "area": 1.897
+                  }
+                ]
+              },
+              {
+                "crop": "Mango",
+                "total_area": 1.995,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.098
+                  },
+                  {
+                    "plot": "Patch15",
+                    "area": 1.897
+                  }
+                ]
+              },
+              {
+                "crop": "Orange",
+                "total_area": 0.089,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch3",
+                    "area": 0.089
+                  }
+                ]
+              },
+              {
+                "crop": "Papaya",
+                "total_area": 0.302,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.302
+                  }
+                ]
+              },
+              {
+                "crop": "Watermelon",
+                "total_area": 0.166,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.166
+                  }
+                ]
+              },
+              {
+                "crop": "Chickpeas",
+                "total_area": 0.244,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.019
+                  },
+                  {
+                    "plot": "Patch9",
+                    "area": 0.225
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 0.22699999999999998,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.15
+                  },
+                  {
+                    "plot": "Patch7",
+                    "area": 0.077
+                  }
+                ]
+              },
+              {
+                "crop": "Tempeh",
+                "total_area": 1.684,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.166
+                  },
+                  {
+                    "plot": "Patch14",
+                    "area": 1.518
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 0.232,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch8",
+                    "area": 0.232
+                  }
+                ]
+              },
+              {
+                "crop": "Eggplant",
+                "total_area": 1.138,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch13",
+                    "area": 1.138
+                  }
+                ]
+              },
+              {
+                "crop": "Spinach",
+                "total_area": 1.82,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.302
+                  },
+                  {
+                    "plot": "Patch14",
+                    "area": 1.518
+                  }
+                ]
+              },
+              {
+                "crop": "Tomatoes",
+                "total_area": 0.16899999999999998,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.15
+                  },
+                  {
+                    "plot": "Patch5",
+                    "area": 0.019
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 12.707,
+            "total_available": 7.59,
+            "idle_area": -5.117000000000001,
+            "utilization": 1.6741765480895916
+          },
+          "validation": {
+            "is_feasible": false,
+            "n_violations": 35,
+            "violations": [
+              "Plot Patch1: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch2: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch3: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch4: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch5: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch6: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch7: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch8: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch9: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch10: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch11: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch12: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch13: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch14: 3.000 crops assigned (should be \u2264 1)",
+              "Plot Patch15: 2.000 crops assigned (should be \u2264 1)",
+              "X_Patch2_Long bean=1.000 > Y_Long bean=0.000",
+              "X_Patch3_Egg=1.000 > Y_Egg=0.000",
+              "X_Patch3_Guava=1.000 > Y_Guava=0.000",
+              "X_Patch4_Long bean=1.000 > Y_Long bean=0.000",
+              "X_Patch5_Potato=1.000 > Y_Potato=0.000",
+              "X_Patch6_Apple=1.000 > Y_Apple=0.000",
+              "X_Patch6_Pumpkin=1.000 > Y_Pumpkin=0.000",
+              "X_Patch7_Beef=1.000 > Y_Beef=0.000",
+              "X_Patch7_Pork=1.000 > Y_Pork=0.000",
+              "X_Patch8_Guava=1.000 > Y_Guava=0.000",
+              "X_Patch8_Potato=1.000 > Y_Potato=0.000",
+              "X_Patch9_Pumpkin=1.000 > Y_Pumpkin=0.000",
+              "X_Patch11_Beef=1.000 > Y_Beef=0.000",
+              "X_Patch11_Cucumber=1.000 > Y_Cucumber=0.000",
+              "X_Patch12_Cabbage=1.000 > Y_Cabbage=0.000",
+              "X_Patch12_Cucumber=1.000 > Y_Cucumber=0.000",
+              "X_Patch14_Pork=1.000 > Y_Pork=0.000",
+              "Y_Banana=1.000 > sum(X_{p,Banana})=0.000",
+              "Y_Durian=1.000 > sum(X_{p,Durian})=0.000",
+              "Y_Tofu=1.000 > sum(X_{p,Tofu})=0.000"
+            ],
+            "constraint_checks": {
+              "at_most_one_per_plot": {
+                "passed": 0,
+                "failed": 15,
+                "violations": [
+                  "Plot Patch1: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch2: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch3: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch4: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch5: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch6: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch7: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch8: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch9: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch10: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch11: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch12: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch13: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch14: 3.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch15: 2.000 crops assigned (should be \u2264 1)"
+                ]
+              },
+              "x_y_linking": {
+                "passed": 388,
+                "failed": 17,
+                "violations": [
+                  "X_Patch2_Long bean=1.000 > Y_Long bean=0.000",
+                  "X_Patch3_Egg=1.000 > Y_Egg=0.000",
+                  "X_Patch3_Guava=1.000 > Y_Guava=0.000",
+                  "X_Patch4_Long bean=1.000 > Y_Long bean=0.000",
+                  "X_Patch5_Potato=1.000 > Y_Potato=0.000",
+                  "X_Patch6_Apple=1.000 > Y_Apple=0.000",
+                  "X_Patch6_Pumpkin=1.000 > Y_Pumpkin=0.000",
+                  "X_Patch7_Beef=1.000 > Y_Beef=0.000",
+                  "X_Patch7_Pork=1.000 > Y_Pork=0.000",
+                  "X_Patch8_Guava=1.000 > Y_Guava=0.000",
+                  "X_Patch8_Potato=1.000 > Y_Potato=0.000",
+                  "X_Patch9_Pumpkin=1.000 > Y_Pumpkin=0.000",
+                  "X_Patch11_Beef=1.000 > Y_Beef=0.000",
+                  "X_Patch11_Cucumber=1.000 > Y_Cucumber=0.000",
+                  "X_Patch12_Cabbage=1.000 > Y_Cabbage=0.000",
+                  "X_Patch12_Cucumber=1.000 > Y_Cucumber=0.000",
+                  "X_Patch14_Pork=1.000 > Y_Pork=0.000"
+                ]
+              },
+              "y_activation": {
+                "passed": 24,
+                "failed": 3,
+                "violations": [
+                  "Y_Banana=1.000 > sum(X_{p,Banana})=0.000",
+                  "Y_Durian=1.000 > sum(X_{p,Durian})=0.000",
+                  "Y_Tofu=1.000 > sum(X_{p,Tofu})=0.000"
+                ]
+              },
+              "area_bounds_min": {
+                "passed": 27,
+                "failed": 0,
+                "violations": []
+              },
+              "food_group_constraints": {
+                "passed": 5,
+                "failed": 0,
+                "violations": []
+              }
+            },
+            "summary": {
+              "total_checks": 479,
+              "total_passed": 444,
+              "total_failed": 35,
+              "pass_rate": 0.9269311064718163
+            }
+          }
+        },
+        "dwave_bqm": {
+          "status": "Optimal",
+          "objective_value": 1.855554617184921,
+          "solve_time": 3.062794,
+          "qpu_time": 0.10362,
+          "hybrid_time": 3.062794,
+          "bqm_conversion_time": 0.14446496963500977,
+          "bqm_energy": 1094.5329953827168,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 15,
+          "total_area": 7.59,
+          "n_foods": 27,
+          "n_variables": 1054,
+          "n_quadratic": 13075,
+          "note": "objective_value is reconstructed from BQM solution; comparable to CQM",
+          "solution_summary": {
+            "crops_selected": [
+              "Egg",
+              "Lamb",
+              "Avocado",
+              "Banana",
+              "Durian",
+              "Guava",
+              "Papaya",
+              "Watermelon",
+              "Chickpeas",
+              "Peanuts",
+              "Tempeh",
+              "Tofu",
+              "Corn",
+              "Cabbage",
+              "Cucumber",
+              "Long bean"
+            ],
+            "n_crops": 16,
+            "plot_assignments": [
+              {
+                "crop": "Egg",
+                "total_area": 0.077,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch7",
+                    "area": 0.077
+                  }
+                ]
+              },
+              {
+                "crop": "Lamb",
+                "total_area": 0.225,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch9",
+                    "area": 0.225
+                  }
+                ]
+              },
+              {
+                "crop": "Avocado",
+                "total_area": 0.166,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.166
+                  }
+                ]
+              },
+              {
+                "crop": "Banana",
+                "total_area": 0.161,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch6",
+                    "area": 0.161
+                  }
+                ]
+              },
+              {
+                "crop": "Durian",
+                "total_area": 0.019,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.019
+                  }
+                ]
+              },
+              {
+                "crop": "Guava",
+                "total_area": 0.791,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch12",
+                    "area": 0.791
+                  }
+                ]
+              },
+              {
+                "crop": "Papaya",
+                "total_area": 0.727,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch11",
+                    "area": 0.727
+                  }
+                ]
+              },
+              {
+                "crop": "Watermelon",
+                "total_area": 0.225,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch9",
+                    "area": 0.225
+                  }
+                ]
+              },
+              {
+                "crop": "Chickpeas",
+                "total_area": 0.089,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch3",
+                    "area": 0.089
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 0.232,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch8",
+                    "area": 0.232
+                  }
+                ]
+              },
+              {
+                "crop": "Tempeh",
+                "total_area": 0.15,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.15
+                  }
+                ]
+              },
+              {
+                "crop": "Tofu",
+                "total_area": 0.302,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.302
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 1.518,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch14",
+                    "area": 1.518
+                  }
+                ]
+              },
+              {
+                "crop": "Cabbage",
+                "total_area": 1.897,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch15",
+                    "area": 1.897
+                  }
+                ]
+              },
+              {
+                "crop": "Cucumber",
+                "total_area": 0.098,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.098
+                  }
+                ]
+              },
+              {
+                "crop": "Long bean",
+                "total_area": 1.138,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch13",
+                    "area": 1.138
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 7.815,
+            "total_available": 7.59,
+            "idle_area": -0.22500000000000053,
+            "utilization": 1.0296442687747036
+          },
+          "validation": {
+            "is_feasible": false,
+            "n_violations": 1,
+            "violations": [
+              "Plot Patch9: 2.000 crops assigned (should be \u2264 1)"
+            ],
+            "summary": {
+              "total_checks": 479,
+              "total_passed": 478,
+              "total_failed": 1,
+              "pass_rate": 0.9979123173277662
+            }
+          }
+        },
+        "gurobi_qubo": {
+          "status": "Time limit reached",
+          "objective_value": 1.4570751891855631,
+          "solve_time": 100.11088109016418,
+          "bqm_energy": 1036.3852748107165,
+          "bqm_conversion_time": 0.14446496963500977,
+          "success": false,
+          "sample_id": 0,
+          "n_units": 15,
+          "total_area": 7.59,
+          "n_foods": 27,
+          "n_variables": 1054,
+          "n_quadratic": 13075,
+          "note": "objective_value is reconstructed from BQM solution; comparable to CQM",
+          "solution_summary": {
+            "crops_selected": [
+              "Chicken",
+              "Egg",
+              "Lamb",
+              "Pork",
+              "Durian",
+              "Chickpeas",
+              "Peanuts",
+              "Tempeh",
+              "Corn",
+              "Potato",
+              "Eggplant",
+              "Tomatoes"
+            ],
+            "n_crops": 12,
+            "plot_assignments": [
+              {
+                "crop": "Chicken",
+                "total_area": 1.897,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch15",
+                    "area": 1.897
+                  }
+                ]
+              },
+              {
+                "crop": "Egg",
+                "total_area": 0.089,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch3",
+                    "area": 0.089
+                  }
+                ]
+              },
+              {
+                "crop": "Lamb",
+                "total_area": 0.15,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.15
+                  }
+                ]
+              },
+              {
+                "crop": "Pork",
+                "total_area": 0.166,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.166
+                  }
+                ]
+              },
+              {
+                "crop": "Durian",
+                "total_area": 0.727,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch11",
+                    "area": 0.727
+                  }
+                ]
+              },
+              {
+                "crop": "Chickpeas",
+                "total_area": 0.098,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.098
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 0.302,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.302
+                  }
+                ]
+              },
+              {
+                "crop": "Tempeh",
+                "total_area": 0.232,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch8",
+                    "area": 0.232
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 0.077,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch7",
+                    "area": 0.077
+                  }
+                ]
+              },
+              {
+                "crop": "Potato",
+                "total_area": 0.405,
+                "n_plots": 3,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.019
+                  },
+                  {
+                    "plot": "Patch6",
+                    "area": 0.161
+                  },
+                  {
+                    "plot": "Patch9",
+                    "area": 0.225
+                  }
+                ]
+              },
+              {
+                "crop": "Eggplant",
+                "total_area": 1.518,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch14",
+                    "area": 1.518
+                  }
+                ]
+              },
+              {
+                "crop": "Tomatoes",
+                "total_area": 1.138,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch13",
+                    "area": 1.138
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 6.7989999999999995,
+            "total_available": 7.59,
+            "idle_area": 0.7910000000000004,
+            "utilization": 0.8957839262187087
+          },
+          "validation": {
+            "is_feasible": true,
+            "n_violations": 0,
+            "violations": [],
+            "summary": {
+              "total_checks": 479,
+              "total_passed": 479,
+              "total_failed": 0,
+              "pass_rate": 1.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "sample_id": 1,
+      "scenario_type": "patch",
+      "n_units": 25,
+      "total_area": 13.042,
+      "n_foods": 27,
+      "n_variables": 702,
+      "n_constraints": 764,
+      "cqm_time": 0.15772080421447754,
+      "solvers": {
+        "gurobi": {
+          "status": "Infeasible",
+          "objective_value": null,
+          "solve_time": 0.05867195129394531,
+          "solver_time": 0.0284578800201416,
+          "success": false,
+          "sample_id": 1,
+          "n_units": 25,
+          "total_area": 13.042,
+          "n_foods": 27,
+          "n_variables": 702,
+          "n_constraints": 764
+        },
+        "dwave_cqm": {
+          "status": "Optimal",
+          "objective_value": 5.316286206378147,
+          "solve_time": 5.296212,
+          "qpu_time": 0.069544,
+          "hybrid_time": 5.296212,
+          "success": true,
+          "sample_id": 1,
+          "n_units": 25,
+          "total_area": 13.042,
+          "n_foods": 27,
+          "n_variables": 702,
+          "n_constraints": 764,
+          "solution_summary": {
+            "crops_selected": [
+              "Beef",
+              "Egg",
+              "Lamb",
+              "Pork",
+              "Avocado",
+              "Banana",
+              "Durian",
+              "Guava",
+              "Mango",
+              "Orange",
+              "Papaya",
+              "Watermelon",
+              "Chickpeas",
+              "Peanuts",
+              "Tempeh",
+              "Tofu",
+              "Corn",
+              "Potato",
+              "Cabbage",
+              "Cucumber",
+              "Eggplant",
+              "Long bean",
+              "Pumpkin",
+              "Tomatoes"
+            ],
+            "n_crops": 24,
+            "plot_assignments": [
+              {
+                "crop": "Beef",
+                "total_area": 0.46499999999999997,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.154
+                  },
+                  {
+                    "plot": "Patch16",
+                    "area": 0.311
+                  }
+                ]
+              },
+              {
+                "crop": "Egg",
+                "total_area": 1.527,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch20",
+                    "area": 0.704
+                  },
+                  {
+                    "plot": "Patch22",
+                    "area": 0.823
+                  }
+                ]
+              },
+              {
+                "crop": "Lamb",
+                "total_area": 2.055,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.056
+                  },
+                  {
+                    "plot": "Patch25",
+                    "area": 1.999
+                  }
+                ]
+              },
+              {
+                "crop": "Pork",
+                "total_area": 0.27,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch14",
+                    "area": 0.27
+                  }
+                ]
+              },
+              {
+                "crop": "Avocado",
+                "total_area": 0.221,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch13",
+                    "area": 0.221
+                  }
+                ]
+              },
+              {
+                "crop": "Banana",
+                "total_area": 0.213,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch6",
+                    "area": 0.213
+                  }
+                ]
+              },
+              {
+                "crop": "Durian",
+                "total_area": 0.636,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch3",
+                    "area": 0.048
+                  },
+                  {
+                    "plot": "Patch17",
+                    "area": 0.588
+                  }
+                ]
+              },
+              {
+                "crop": "Guava",
+                "total_area": 1.527,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch20",
+                    "area": 0.704
+                  },
+                  {
+                    "plot": "Patch22",
+                    "area": 0.823
+                  }
+                ]
+              },
+              {
+                "crop": "Mango",
+                "total_area": 0.048,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.048
+                  }
+                ]
+              },
+              {
+                "crop": "Orange",
+                "total_area": 2.169,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch7",
+                    "area": 0.17
+                  },
+                  {
+                    "plot": "Patch25",
+                    "area": 1.999
+                  }
+                ]
+              },
+              {
+                "crop": "Papaya",
+                "total_area": 0.22899999999999998,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.154
+                  },
+                  {
+                    "plot": "Patch10",
+                    "area": 0.075
+                  }
+                ]
+              },
+              {
+                "crop": "Watermelon",
+                "total_area": 2.608,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch23",
+                    "area": 2.608
+                  }
+                ]
+              },
+              {
+                "crop": "Chickpeas",
+                "total_area": 0.381,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch8",
+                    "area": 0.16
+                  },
+                  {
+                    "plot": "Patch13",
+                    "area": 0.221
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 0.979,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch6",
+                    "area": 0.213
+                  },
+                  {
+                    "plot": "Patch18",
+                    "area": 0.766
+                  }
+                ]
+              },
+              {
+                "crop": "Tempeh",
+                "total_area": 1.261,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch24",
+                    "area": 1.261
+                  }
+                ]
+              },
+              {
+                "crop": "Tofu",
+                "total_area": 1.316,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch18",
+                    "area": 0.766
+                  },
+                  {
+                    "plot": "Patch19",
+                    "area": 0.55
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 0.101,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.101
+                  }
+                ]
+              },
+              {
+                "crop": "Potato",
+                "total_area": 0.6629999999999999,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.075
+                  },
+                  {
+                    "plot": "Patch17",
+                    "area": 0.588
+                  }
+                ]
+              },
+              {
+                "crop": "Cabbage",
+                "total_area": 3.8689999999999998,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch23",
+                    "area": 2.608
+                  },
+                  {
+                    "plot": "Patch24",
+                    "area": 1.261
+                  }
+                ]
+              },
+              {
+                "crop": "Cucumber",
+                "total_area": 0.246,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch15",
+                    "area": 0.246
+                  }
+                ]
+              },
+              {
+                "crop": "Eggplant",
+                "total_area": 1.134,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch21",
+                    "area": 1.134
+                  }
+                ]
+              },
+              {
+                "crop": "Long bean",
+                "total_area": 0.066,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch9",
+                    "area": 0.066
+                  }
+                ]
+              },
+              {
+                "crop": "Pumpkin",
+                "total_area": 0.502,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch12",
+                    "area": 0.256
+                  },
+                  {
+                    "plot": "Patch15",
+                    "area": 0.246
+                  }
+                ]
+              },
+              {
+                "crop": "Tomatoes",
+                "total_area": 0.47,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch11",
+                    "area": 0.214
+                  },
+                  {
+                    "plot": "Patch12",
+                    "area": 0.256
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 22.955999999999996,
+            "total_available": 13.042,
+            "idle_area": -9.913999999999996,
+            "utilization": 1.7601594847416038
+          },
+          "validation": {
+            "is_feasible": false,
+            "n_violations": 18,
+            "violations": [
+              "Plot Patch2: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch5: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch6: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch10: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch12: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch13: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch15: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch17: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch18: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch20: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch21: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch22: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch23: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch24: 2.000 crops assigned (should be \u2264 1)",
+              "Plot Patch25: 2.000 crops assigned (should be \u2264 1)",
+              "X_Patch5_Spinach=1.000 > Y_Spinach=0.000",
+              "X_Patch21_Chicken=1.000 > Y_Chicken=0.000",
+              "Y_Apple=1.000 > sum(X_{p,Apple})=0.000"
+            ],
+            "constraint_checks": {
+              "at_most_one_per_plot": {
+                "passed": 10,
+                "failed": 15,
+                "violations": [
+                  "Plot Patch2: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch5: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch6: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch10: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch12: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch13: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch15: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch17: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch18: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch20: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch21: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch22: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch23: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch24: 2.000 crops assigned (should be \u2264 1)",
+                  "Plot Patch25: 2.000 crops assigned (should be \u2264 1)"
+                ]
+              },
+              "x_y_linking": {
+                "passed": 673,
+                "failed": 2,
+                "violations": [
+                  "X_Patch5_Spinach=1.000 > Y_Spinach=0.000",
+                  "X_Patch21_Chicken=1.000 > Y_Chicken=0.000"
+                ]
+              },
+              "y_activation": {
+                "passed": 26,
+                "failed": 1,
+                "violations": [
+                  "Y_Apple=1.000 > sum(X_{p,Apple})=0.000"
+                ]
+              },
+              "area_bounds_min": {
+                "passed": 27,
+                "failed": 0,
+                "violations": []
+              },
+              "food_group_constraints": {
+                "passed": 5,
+                "failed": 0,
+                "violations": []
+              }
+            },
+            "summary": {
+              "total_checks": 759,
+              "total_passed": 741,
+              "total_failed": 18,
+              "pass_rate": 0.9762845849802372
+            }
+          }
+        },
+        "dwave_bqm": {
+          "status": "Optimal",
+          "objective_value": 2.638592827216876,
+          "solve_time": 4.441308,
+          "qpu_time": 0.103626,
+          "hybrid_time": 4.441308,
+          "bqm_conversion_time": 0.08057498931884766,
+          "bqm_energy": 94.63160717323262,
+          "success": true,
+          "sample_id": 1,
+          "n_units": 25,
+          "total_area": 13.042,
+          "n_foods": 27,
+          "n_variables": 1658,
+          "n_quadratic": 26386,
+          "note": "objective_value is reconstructed from BQM solution; comparable to CQM",
+          "solution_summary": {
+            "crops_selected": [
+              "Beef",
+              "Chicken",
+              "Egg",
+              "Lamb",
+              "Apple",
+              "Avocado",
+              "Durian",
+              "Orange",
+              "Papaya",
+              "Peanuts",
+              "Tofu",
+              "Corn",
+              "Potato",
+              "Cabbage",
+              "Cucumber",
+              "Eggplant",
+              "Long bean",
+              "Pumpkin",
+              "Spinach",
+              "Tomatoes"
+            ],
+            "n_crops": 20,
+            "plot_assignments": [
+              {
+                "crop": "Beef",
+                "total_area": 0.213,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch6",
+                    "area": 0.213
+                  }
+                ]
+              },
+              {
+                "crop": "Chicken",
+                "total_area": 1.93,
+                "n_plots": 3,
+                "plots": [
+                  {
+                    "plot": "Patch15",
+                    "area": 0.246
+                  },
+                  {
+                    "plot": "Patch19",
+                    "area": 0.55
+                  },
+                  {
+                    "plot": "Patch21",
+                    "area": 1.134
+                  }
+                ]
+              },
+              {
+                "crop": "Egg",
+                "total_area": 0.101,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch5",
+                    "area": 0.101
+                  }
+                ]
+              },
+              {
+                "crop": "Lamb",
+                "total_area": 0.256,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch12",
+                    "area": 0.256
+                  }
+                ]
+              },
+              {
+                "crop": "Apple",
+                "total_area": 1.077,
+                "n_plots": 2,
+                "plots": [
+                  {
+                    "plot": "Patch16",
+                    "area": 0.311
+                  },
+                  {
+                    "plot": "Patch18",
+                    "area": 0.766
+                  }
+                ]
+              },
+              {
+                "crop": "Avocado",
+                "total_area": 1.999,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch25",
+                    "area": 1.999
+                  }
+                ]
+              },
+              {
+                "crop": "Durian",
+                "total_area": 2.608,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch23",
+                    "area": 2.608
+                  }
+                ]
+              },
+              {
+                "crop": "Orange",
+                "total_area": 0.823,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch22",
+                    "area": 0.823
+                  }
+                ]
+              },
+              {
+                "crop": "Papaya",
+                "total_area": 0.27,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch14",
+                    "area": 0.27
+                  }
+                ]
+              },
+              {
+                "crop": "Peanuts",
+                "total_area": 0.066,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch9",
+                    "area": 0.066
+                  }
+                ]
+              },
+              {
+                "crop": "Tofu",
+                "total_area": 1.261,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch24",
+                    "area": 1.261
+                  }
+                ]
+              },
+              {
+                "crop": "Corn",
+                "total_area": 0.154,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch2",
+                    "area": 0.154
+                  }
+                ]
+              },
+              {
+                "crop": "Potato",
+                "total_area": 0.075,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch10",
+                    "area": 0.075
+                  }
+                ]
+              },
+              {
+                "crop": "Cabbage",
+                "total_area": 0.9179999999999999,
+                "n_plots": 3,
+                "plots": [
+                  {
+                    "plot": "Patch7",
+                    "area": 0.17
+                  },
+                  {
+                    "plot": "Patch8",
+                    "area": 0.16
+                  },
+                  {
+                    "plot": "Patch17",
+                    "area": 0.588
+                  }
+                ]
+              },
+              {
+                "crop": "Cucumber",
+                "total_area": 0.221,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch13",
+                    "area": 0.221
+                  }
+                ]
+              },
+              {
+                "crop": "Eggplant",
+                "total_area": 0.056,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch1",
+                    "area": 0.056
+                  }
+                ]
+              },
+              {
+                "crop": "Long bean",
+                "total_area": 0.048,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch3",
+                    "area": 0.048
+                  }
+                ]
+              },
+              {
+                "crop": "Pumpkin",
+                "total_area": 0.704,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch20",
+                    "area": 0.704
+                  }
+                ]
+              },
+              {
+                "crop": "Spinach",
+                "total_area": 0.048,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.048
+                  }
+                ]
+              },
+              {
+                "crop": "Tomatoes",
+                "total_area": 0.214,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch11",
+                    "area": 0.214
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 13.042,
+            "total_available": 13.042,
+            "idle_area": 0.0,
+            "utilization": 1.0
+          },
+          "validation": {
+            "is_feasible": true,
+            "n_violations": 0,
+            "violations": [],
+            "summary": {
+              "total_checks": 759,
+              "total_passed": 759,
+              "total_failed": 0,
+              "pass_rate": 1.0
+            }
+          }
+        },
+        "gurobi_qubo": {
+          "status": "Time limit reached",
+          "objective_value": 0.06763873668525928,
+          "solve_time": 100.0207257270813,
+          "bqm_energy": 308.8321612641448,
+          "bqm_conversion_time": 0.08057498931884766,
+          "success": false,
+          "sample_id": 1,
+          "n_units": 25,
+          "total_area": 13.042,
+          "n_foods": 27,
+          "n_variables": 1658,
+          "n_quadratic": 26386,
+          "note": "objective_value is reconstructed from BQM solution; comparable to CQM",
+          "solution_summary": {
+            "crops_selected": [
+              "Lamb",
+              "Tofu",
+              "Tomatoes"
+            ],
+            "n_crops": 3,
+            "plot_assignments": [
+              {
+                "crop": "Lamb",
+                "total_area": 0.048,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch4",
+                    "area": 0.048
+                  }
+                ]
+              },
+              {
+                "crop": "Tofu",
+                "total_area": 0.17,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch7",
+                    "area": 0.17
+                  }
+                ]
+              },
+              {
+                "crop": "Tomatoes",
+                "total_area": 0.066,
+                "n_plots": 1,
+                "plots": [
+                  {
+                    "plot": "Patch9",
+                    "area": 0.066
+                  }
+                ]
+              }
+            ],
+            "total_allocated": 0.28400000000000003,
+            "total_available": 13.042,
+            "idle_area": 12.758,
+            "utilization": 0.02177580125747585
+          },
+          "validation": {
+            "is_feasible": true,
+            "n_violations": 0,
+            "violations": [],
+            "summary": {
+              "total_checks": 759,
+              "total_passed": 759,
+              "total_failed": 0,
+              "pass_rate": 1.0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "farm_samples_completed": 2,
+    "patch_samples_completed": 2,
+    "total_solver_runs": 12
+  }
+}

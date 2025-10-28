@@ -1510,13 +1510,11 @@ def _load_full_family_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]
                 'sustainability': 'sustainability'
             }
 
-            # Sample 2 per group
+            # Load ALL foods from Excel (not just 2 per group)
             grp_col = 'food_group'
             name_col = 'Food_Name'
-            sampled = df.groupby(grp_col).apply(
-                lambda x: x.sample(n=min(len(x), 2))
-            ).reset_index(drop=True)
-            foods_list = sampled[col_map['Food_Name']].tolist()
+            # Use all foods, not just a sample
+            foods_list = df[col_map['Food_Name']].tolist()
 
             filt = df[df[name_col].isin(
                 foods_list)][list(col_map.keys())].copy()

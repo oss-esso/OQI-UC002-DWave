@@ -49,11 +49,11 @@ from dimod import cqm_to_bqm
 # Benchmark configurations
 # Format: number of units (farms or patches) to test
 BENCHMARK_CONFIGS = [
-    #10,
-    #15,
+    10,
+    15,
     #20,
-    #25,
-    50,
+    25,
+    #50,
     #100
 ]
 
@@ -91,7 +91,7 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0) -> Tupl
             'type': 'farm',
             'data': farms,
             'total_area': total_area,
-            'n_units': len(farms),
+            'n_units': n_farms,  # Use requested number, not actual len(farms)
             'seed': seed
         }
     
@@ -105,7 +105,7 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0) -> Tupl
             'type': 'patch', 
             'data': patches,
             'total_area': total_area,
-            'n_units': len(patches),
+            'n_units': n_patches,  # Use requested number, not actual len(patches)
             'seed': seed
         }
     
@@ -153,20 +153,23 @@ def create_food_config(land_data: Dict[str, float], scenario_type: str = 'compre
     Returns:
         Tuple of (foods, food_groups, config)
     """
-    # Load food data from scenarios module
+    # Load food data from scenarios module - use full_family for complete food set
     try:
-        food_list, foods, food_groups, _ = load_food_data('simple')
+        food_list, foods, food_groups, _ = load_food_data('full_family')
     except Exception as e:
         print(f"    Warning: Food data loading failed ({e}), using fallback")
-        foods, food_groups = create_fallback_foods()
+        #foods, food_groups = create_fallback_foods()
     
     # Create configuration matching original solver_runner.py formulation
     config = {
         'parameters': {
             'land_availability': land_data,
-            'minimum_planting_area': {food: 0.0 for food in foods},  # Min area per crop
-            # NO max_percentage_per_crop - this was the bug!
-            'food_group_constraints': {},  # Can add min/max crops per food group
+            'minimum_planting_area': {food: 0.0001 for food in foods},  # Min area per crop
+            # Add food group constraints: at least 1 food from each group
+            'food_group_constraints': {
+                group: {'min_foods': 1, 'max_foods': len(food_list)}
+                for group, food_list in food_groups.items()
+            },
             'weights': {
                 'nutritional_value': 0.25,
                 'nutrient_density': 0.2,
@@ -174,27 +177,27 @@ def create_food_config(land_data: Dict[str, float], scenario_type: str = 'compre
                 'affordability': 0.15,
                 'sustainability': 0.15
             },
-            'idle_penalty_lambda': 0.1
+            'idle_penalty_lambda': 0.0
         }
     }
     
     return foods, food_groups, config
 
-def create_fallback_foods():
-    """Create fallback food data if Excel is not available."""
-    foods = {
-        'Wheat': {'nutritional_value': 0.8, 'nutrient_density': 0.7, 'environmental_impact': 0.6, 'affordability': 0.9, 'sustainability': 0.7},
-        'Corn': {'nutritional_value': 0.7, 'nutrient_density': 0.6, 'environmental_impact': 0.5, 'affordability': 0.8, 'sustainability': 0.6},
-        'Rice': {'nutritional_value': 0.6, 'nutrient_density': 0.5, 'environmental_impact': 0.7, 'affordability': 0.7, 'sustainability': 0.8},
-        'Soybeans': {'nutritional_value': 0.9, 'nutrient_density': 0.8, 'environmental_impact': 0.4, 'affordability': 0.6, 'sustainability': 0.9},
-        'Potatoes': {'nutritional_value': 0.5, 'nutrient_density': 0.4, 'environmental_impact': 0.8, 'affordability': 0.9, 'sustainability': 0.6}
-    }
-    food_groups = {
-        'grains': ['Wheat', 'Corn', 'Rice'],
-        'proteins': ['Soybeans'],
-        'vegetables': ['Potatoes']
-    }
-    return foods, food_groups
+#def create_fallback_foods():
+#    """Create fallback food data if Excel is not available."""
+#    foods = {
+#        'Wheat': {'nutritional_value': 0.8, 'nutrient_density': 0.7, 'environmental_impact': 0.6, 'affordability': 0.9, 'sustainability': 0.7},
+#        'Corn': {'nutritional_value': 0.7, 'nutrient_density': 0.6, 'environmental_impact': 0.5, 'affordability': 0.8, 'sustainability': 0.6},
+#        'Rice': {'nutritional_value': 0.6, 'nutrient_density': 0.5, 'environmental_impact': 0.7, 'affordability': 0.7, 'sustainability': 0.8},
+#        'Soybeans': {'nutritional_value': 0.9, 'nutrient_density': 0.8, 'environmental_impact': 0.4, 'affordability': 0.6, 'sustainability': 0.9},
+#        'Potatoes': {'nutritional_value': 0.5, 'nutrient_density': 0.4, 'environmental_impact': 0.8, 'affordability': 0.9, 'sustainability': 0.6}
+#    }
+#    food_groups = {
+#        'grains': ['Wheat', 'Corn', 'Rice'],
+#        'proteins': ['Soybeans'],
+#        'vegetables': ['Potatoes']
+#    }
+#    return foods, food_groups
 
 def check_cached_results(scenario_type: str, solver_name: str, config_id: int, run_id: int = 1) -> Optional[Dict]:
     """
@@ -345,6 +348,14 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                 'n_constraints': len(cqm.constraints)
             }
             
+            # Extract solution summary (variables are in X_variables and Y_variables)
+            if pulp_results['status'] == 'Optimal':
+                solution_dict = {}
+                solution_dict.update(pulp_results.get('X_variables', {}))
+                solution_dict.update(pulp_results.get('Y_variables', {}))
+                solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                gurobi_result['solution_summary'] = solution_summary
+            
             results['solvers']['gurobi'] = gurobi_result
             
             # Save individual result file (config_id = n_units, run_id = 1)
@@ -391,6 +402,18 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                     'n_variables': len(cqm.variables),
                     'n_constraints': len(cqm.constraints)
                 }
+                
+                # Extract solution details from D-Wave CQM result
+                if success:
+                    best_sample = sampleset.first.sample
+                    solution_dict = {}
+                    # Convert CQM sample to solution dict format
+                    for var_name, var_value in best_sample.items():
+                        solution_dict[var_name] = var_value
+                    
+                    # Extract solution summary
+                    solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                    dwave_result['solution_summary'] = solution_summary
                 
                 results['solvers']['dwave_cqm'] = dwave_result
                 
@@ -471,6 +494,17 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                 'n_constraints': len(cqm.constraints)
             }
             
+            # Extract solution summary (variables are in X_variables and Y_variables)
+            if pulp_results['status'] == 'Optimal':
+                solution_dict = {}
+                solution_dict.update(pulp_results.get('X_variables', {}))
+                solution_dict.update(pulp_results.get('Y_variables', {}))
+                solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                gurobi_result['solution_summary'] = solution_summary
+                # Also add validation
+                validation = validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
+                gurobi_result['validation'] = validation
+            
             results['solvers']['gurobi'] = gurobi_result
             
             # Save individual result file (config_id = n_units, run_id = 1)
@@ -516,6 +550,20 @@ def run_patch_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> 
                     'n_variables': len(cqm.variables),
                     'n_constraints': len(cqm.constraints)
                 }
+                
+                # Extract solution details from D-Wave CQM result
+                if success:
+                    best_sample = sampleset_cqm.first.sample
+                    solution_dict = {}
+                    # Convert CQM sample to solution dict format
+                    for var_name, var_value in best_sample.items():
+                        solution_dict[var_name] = var_value
+                    
+                    # Extract solution summary and validation
+                    solution_summary = extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                    dwave_result['solution_summary'] = solution_summary
+                    validation = validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
+                    dwave_result['validation'] = validation
                 
                 results['solvers']['dwave_cqm'] = dwave_result
                 
@@ -875,7 +923,7 @@ Examples:
         if args.token:
             dwave_token = args.token
         else:
-            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            dwave_token = None #os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
         
         if not dwave_token:
             print("Warning: D-Wave enabled but no token found. Set DWAVE_API_TOKEN environment variable or use --token")
