@@ -414,9 +414,10 @@ def create_cqm(farms, foods, food_groups, config):
         total_crop_area = sum(land_availability[plot] * X[(plot, crop)] for plot in farms)
         
         # Minimum area constraint (only if Y_c = 1, i.e., crop is selected)
+        # This ensures the constraint only applies to selected crops
         if crop in min_planting_area and min_planting_area[crop] > 0:
             cqm.add_constraint(
-                total_crop_area >= min_planting_area[crop],
+                total_crop_area >= min_planting_area[crop] * Y[crop],
                 label=f"MinArea_{crop}"
             )
             constraint_metadata['area_bounds_min'][crop] = {
@@ -536,9 +537,10 @@ def solve_with_pulp(farms, foods, food_groups, config):
     for crop in foods:
         total_crop_area = pl.lpSum([land_availability[plot] * X_pulp[(plot, crop)] for plot in farms])
         
-        # Minimum area constraint
+        # Minimum area constraint: only applies if crop is selected (Y_pulp[crop] = 1)
+        # If crop not selected, Y_pulp[crop] = 0 and constraint becomes total_crop_area >= 0
         if crop in min_planting_area and min_planting_area[crop] > 0:
-            model += total_crop_area >= min_planting_area[crop], f"MinArea_{crop}"
+            model += total_crop_area >= min_planting_area[crop] * Y_pulp[crop], f"MinArea_{crop}"
         
         # Maximum area constraint
         if crop in max_planting_area and max_planting_area[crop] < total_land:

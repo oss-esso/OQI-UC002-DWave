@@ -1,13 +1,142 @@
 {
-  "status": "Infeasible",
-  "objective_value": null,
-  "solve_time": 0.05145001411437988,
-  "solver_time": 0.025815963745117188,
-  "success": false,
+  "status": "Optimal",
+  "objective_value": 2.191352682704277,
+  "solve_time": 0.15851283073425293,
+  "solver_time": 0.14677715301513672,
+  "success": true,
   "sample_id": 0,
   "n_units": 10,
-  "total_area": 3.941,
+  "total_area": 5.34,
   "n_foods": 27,
   "n_variables": 297,
-  "n_constraints": 344
+  "n_constraints": 344,
+  "solution_summary": {
+    "crops_selected": [
+      "Pork",
+      "Guava",
+      "Chickpeas",
+      "Potato",
+      "Spinach"
+    ],
+    "n_crops": 5,
+    "plot_assignments": [
+      {
+        "crop": "Pork",
+        "total_area": 0.293,
+        "n_plots": 1,
+        "plots": [
+          {
+            "plot": "Patch4",
+            "area": 0.293
+          }
+        ]
+      },
+      {
+        "crop": "Guava",
+        "total_area": 0.162,
+        "n_plots": 1,
+        "plots": [
+          {
+            "plot": "Patch1",
+            "area": 0.162
+          }
+        ]
+      },
+      {
+        "crop": "Chickpeas",
+        "total_area": 0.179,
+        "n_plots": 1,
+        "plots": [
+          {
+            "plot": "Patch2",
+            "area": 0.179
+          }
+        ]
+      },
+      {
+        "crop": "Potato",
+        "total_area": 0.034,
+        "n_plots": 1,
+        "plots": [
+          {
+            "plot": "Patch3",
+            "area": 0.034
+          }
+        ]
+      },
+      {
+        "crop": "Spinach",
+        "total_area": 4.672000000000001,
+        "n_plots": 6,
+        "plots": [
+          {
+            "plot": "Patch5",
+            "area": 0.318
+          },
+          {
+            "plot": "Patch6",
+            "area": 0.349
+          },
+          {
+            "plot": "Patch7",
+            "area": 0.545
+          },
+          {
+            "plot": "Patch8",
+            "area": 0.79
+          },
+          {
+            "plot": "Patch9",
+            "area": 1.001
+          },
+          {
+            "plot": "Patch10",
+            "area": 1.669
+          }
+        ]
+      }
+    ],
+    "total_allocated": 5.340000000000001,
+    "total_available": 5.34,
+    "idle_area": -8.881784197001252e-16,
+    "utilization": 1.0000000000000002
+  },
+  "validation": {
+    "is_feasible": true,
+    "n_violations": 0,
+    "violations": [],
+    "constraint_checks": {
+      "at_most_one_per_plot": {
+        "passed": 10,
+        "failed": 0,
+        "violations": []
+      },
+      "x_y_linking": {
+        "passed": 270,
+        "failed": 0,
+        "violations": []
+      },
+      "y_activation": {
+        "passed": 27,
+        "failed": 0,
+        "violations": []
+      },
+      "area_bounds_min": {
+        "passed": 27,
+        "failed": 0,
+        "violations": []
+      },
+      "food_group_constraints": {
+        "passed": 5,
+        "failed": 0,
+        "violations": []
+      }
+    },
+    "summary": {
+      "total_checks": 339,
+      "total_passed": 339,
+      "total_failed": 0,
+      "pass_rate": 1.0
+    }
+  }
 }

@@ -49,7 +49,7 @@ from dimod import cqm_to_bqm
 # Benchmark configurations
 # Format: number of units (farms or patches) to test
 BENCHMARK_CONFIGS = [
-    10,
+    #10,
     15,
     #20,
     25,
@@ -164,7 +164,7 @@ def create_food_config(land_data: Dict[str, float], scenario_type: str = 'compre
     config = {
         'parameters': {
             'land_availability': land_data,
-            'minimum_planting_area': {food: 0.0001 for food in foods},  # Min area per crop
+            'minimum_planting_area': {food: 0.0001 for food in foods},  # No minimum area constraint
             # Add food group constraints: at least 1 food from each group
             'food_group_constraints': {
                 group: {'min_foods': 1, 'max_foods': len(food_list)}
