@@ -50,7 +50,7 @@ def clean_solution_for_json(solution):
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    5, 19, 72, 279, 1096, 1535
+    5, 19, 72, 279, 1096
 ]
 
 # Number of runs per configuration for statistical analysis
@@ -271,7 +271,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
         print(f"    Original Objective: {gurobi_result.get('objective_value', 'N/A')}")
         print(f"    Time: {gurobi_time:.3f}s")
         
-        # Save Gurobi QUBO results to cache
+        # Save Gurobi QUBO results to cache (using 'GurobiQUBO' solver name)
         if save_to_cache and cache:
             gurobi_cache_result = {
                 'solve_time': gurobi_time,
@@ -284,10 +284,9 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, dwave_token=None, cache=N
                 'n_vars': n_vars,
                 'n_constraints': n_constraints,
                 'num_bqm_variables': len(bqm.variables),
-                'num_bqm_quadratic': len(bqm.quadratic)
+                'num_bqm_quadratic': len(bqm.quadratic),
+                'solver_note': 'Gurobi QUBO solver (BQM formulation)'
             }
-            cache.save_result('BQUBO', 'GurobiQUBO', n_farms, run_number, gurobi_cache_result)
-        
             cache.save_result('BQUBO', 'GurobiQUBO', n_farms, run_number, gurobi_cache_result)
         
         # DWave solving with BQUBO (CQM→BQM + HybridBQM)
@@ -601,7 +600,7 @@ def main():
         # Check which runs are needed
         runs_needed = cache.get_runs_needed('BQUBO', n_farms, NUM_RUNS)
         
-        # Load existing results from cache for GurobiQUBO (our primary solver)
+        # Load existing results from cache for GurobiQUBO
         existing_gurobi_results = cache.get_all_results('BQUBO', 'GurobiQUBO', n_farms)
         config_results = []
         

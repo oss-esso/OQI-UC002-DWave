@@ -36,7 +36,7 @@ class BenchmarkCache:
     
     # Valid solver types per benchmark
     SOLVER_TYPES = {
-        'BQUBO': ['CQM', 'PuLP', 'DWave'],
+        'BQUBO': ['CQM', 'PuLP', 'DWave', 'GurobiQUBO'],
         'NLD': ['CQM', 'PuLP', 'Pyomo', 'DWave'],
         'NLN': ['CQM', 'PuLP', 'Pyomo', 'DWave'],
         'LQ': ['CQM', 'PuLP', 'Pyomo', 'DWave'],

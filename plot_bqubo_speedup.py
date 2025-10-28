@@ -23,6 +23,7 @@ def load_benchmark_data(benchmark_dir):
     data = {
         'DWave': {},
         'PuLP': {},
+        'GurobiQUBO': {},
         'CQM': {}
     }
     
@@ -42,11 +43,13 @@ def load_benchmark_data(benchmark_dir):
 
 def extract_times(data):
     """Extract solve times for each solver and configuration."""
-    configs = sorted([k for k in data['DWave'].keys()])
+    configs = sorted([k for k in data['DWave'].keys()] + [k for k in data['PuLP'].keys()] + [k for k in data['GurobiQUBO'].keys()])
+    configs = sorted(list(set(configs)))  # Remove duplicates
     
     times = {
         'n_farms': configs,
         'PuLP': [],
+        'GurobiQUBO': [],
         'CQM': [],
         'DWave_QPU': [],
         'DWave_Total': []
@@ -55,23 +58,36 @@ def extract_times(data):
     for config in configs:
         # PuLP times
         if config in data['PuLP']:
-            times['PuLP'].append(data['PuLP'][config]['result']['solve_time'])
+            pulp_time = data['PuLP'][config].get('result', {}).get('solve_time', None)
         else:
-            times['PuLP'].append(None)
+            pulp_time = None
+        times['PuLP'].append(pulp_time)
+        
+        # GurobiQUBO times
+        if config in data['GurobiQUBO']:
+            gurobi_time = data['GurobiQUBO'][config].get('result', {}).get('solve_time', None)
+        else:
+            gurobi_time = None
+        times['GurobiQUBO'].append(gurobi_time)
         
         # CQM times
         if config in data['CQM']:
-            times['CQM'].append(data['CQM'][config]['result']['cqm_time'])
+            cqm_time = data['CQM'][config].get('result', {}).get('cqm_time', None)
         else:
-            times['CQM'].append(None)
+            cqm_time = None
+        times['CQM'].append(cqm_time)
         
-        # D-Wave times
+        # DWave times
         if config in data['DWave']:
-            times['DWave_QPU'].append(data['DWave'][config]['result']['qpu_time'])
-            times['DWave_Total'].append(data['DWave'][config]['result']['hybrid_time'])
+            dwave = data['DWave'][config].get('result', {})
+            qpu_time = dwave.get('qpu_time', None)
+            hybrid_time = dwave.get('hybrid_time', None)
         else:
-            times['DWave_QPU'].append(None)
-            times['DWave_Total'].append(None)
+            qpu_time = None
+            hybrid_time = None
+        
+        times['DWave_QPU'].append(qpu_time)
+        times['DWave_Total'].append(hybrid_time)
     
     return times
 
@@ -80,31 +96,41 @@ def calculate_speedups(times):
     speedups = {
         'n_farms': times['n_farms'],
         'QPU_vs_PuLP': [],
+        'QPU_vs_GurobiQUBO': [],
         'QPU_vs_CQM': [],
         'Total_vs_PuLP': [],
+        'Total_vs_GurobiQUBO': [],
         'Total_vs_CQM': []
     }
     
     for i in range(len(times['n_farms'])):
-        # QPU vs PuLP
+        # QPU speedups
         if times['PuLP'][i] and times['DWave_QPU'][i]:
             speedups['QPU_vs_PuLP'].append(times['PuLP'][i] / times['DWave_QPU'][i])
         else:
             speedups['QPU_vs_PuLP'].append(None)
         
-        # QPU vs CQM
+        if times['GurobiQUBO'][i] and times['DWave_QPU'][i]:
+            speedups['QPU_vs_GurobiQUBO'].append(times['GurobiQUBO'][i] / times['DWave_QPU'][i])
+        else:
+            speedups['QPU_vs_GurobiQUBO'].append(None)
+        
         if times['CQM'][i] and times['DWave_QPU'][i]:
             speedups['QPU_vs_CQM'].append(times['CQM'][i] / times['DWave_QPU'][i])
         else:
             speedups['QPU_vs_CQM'].append(None)
         
-        # Total vs PuLP
+        # Total speedups
         if times['PuLP'][i] and times['DWave_Total'][i]:
             speedups['Total_vs_PuLP'].append(times['PuLP'][i] / times['DWave_Total'][i])
         else:
             speedups['Total_vs_PuLP'].append(None)
         
-        # Total vs CQM
+        if times['GurobiQUBO'][i] and times['DWave_Total'][i]:
+            speedups['Total_vs_GurobiQUBO'].append(times['GurobiQUBO'][i] / times['DWave_Total'][i])
+        else:
+            speedups['Total_vs_GurobiQUBO'].append(None)
+        
         if times['CQM'][i] and times['DWave_Total'][i]:
             speedups['Total_vs_CQM'].append(times['CQM'][i] / times['DWave_Total'][i])
         else:
@@ -123,13 +149,15 @@ def plot_solve_times(times, output_path):
     # Colors for each solver
     colors = {
         'PuLP': '#E63946',      # Red
+        'GurobiQUBO': '#9D4EDD', # Purple
         'CQM': '#F77F00',       # Orange
-        'DWave_QPU': '#06FFA5',  # Cyan
+        'DWave_QPU': '#06FFA5',  # Green
         'DWave_Total': '#118AB2' # Blue
     }
     
     markers = {
         'PuLP': 'o',
+        'GurobiQUBO': 'x',
         'CQM': 's',
         'DWave_QPU': '^',
         'DWave_Total': 'D'
@@ -140,6 +168,8 @@ def plot_solve_times(times, output_path):
     ax = axes[0, 0]
     ax.plot(n_farms, times['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
             markersize=10, color=colors['PuLP'], label='PuLP (Classical)', alpha=0.8)
+    ax.plot(n_farms, times['GurobiQUBO'], marker=markers['GurobiQUBO'], linewidth=2.5, 
+            markersize=10, color=colors['GurobiQUBO'], label='Gurobi QUBO (BQM)', alpha=0.8)
     ax.plot(n_farms, times['CQM'], marker=markers['CQM'], linewidth=2.5, 
             markersize=10, color=colors['CQM'], label='CQM (D-Wave Classical)', alpha=0.8)
     ax.plot(n_farms, times['DWave_QPU'], marker=markers['DWave_QPU'], linewidth=2.5, 
@@ -156,6 +186,8 @@ def plot_solve_times(times, output_path):
     ax = axes[0, 1]
     ax.semilogy(n_farms, times['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
                 markersize=10, color=colors['PuLP'], label='PuLP (Classical)', alpha=0.8)
+    ax.semilogy(n_farms, times['GurobiQUBO'], marker=markers['GurobiQUBO'], linewidth=2.5, 
+                markersize=10, color=colors['GurobiQUBO'], label='Gurobi QUBO (BQM)', alpha=0.8)
     ax.semilogy(n_farms, times['CQM'], marker=markers['CQM'], linewidth=2.5, 
                 markersize=10, color=colors['CQM'], label='CQM (D-Wave Classical)', alpha=0.8)
     ax.semilogy(n_farms, times['DWave_QPU'], marker=markers['DWave_QPU'], linewidth=2.5, 
@@ -172,6 +204,8 @@ def plot_solve_times(times, output_path):
     ax = axes[0, 2]
     ax.loglog(n_farms, times['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
               markersize=10, color=colors['PuLP'], label='PuLP (Classical)', alpha=0.8)
+    ax.loglog(n_farms, times['GurobiQUBO'], marker=markers['GurobiQUBO'], linewidth=2.5, 
+              markersize=10, color=colors['GurobiQUBO'], label='Gurobi QUBO (BQM)', alpha=0.8)
     ax.loglog(n_farms, times['CQM'], marker=markers['CQM'], linewidth=2.5, 
               markersize=10, color=colors['CQM'], label='CQM (D-Wave Classical)', alpha=0.8)
     ax.loglog(n_farms, times['DWave_QPU'], marker=markers['DWave_QPU'], linewidth=2.5, 
@@ -191,10 +225,14 @@ def plot_solve_times(times, output_path):
     ax = axes[1, 0]
     ax.plot(n_farms, speedups['QPU_vs_PuLP'], marker='^', linewidth=2.5, 
             markersize=10, color='#06FFA5', label='QPU vs PuLP', alpha=0.8)
+    ax.plot(n_farms, speedups['QPU_vs_GurobiQUBO'], marker='x', linewidth=2.5, 
+            markersize=10, color='#9D4EDD', label='QPU vs Gurobi QUBO', alpha=0.8)
     ax.plot(n_farms, speedups['QPU_vs_CQM'], marker='^', linewidth=2.5, 
             markersize=10, color='#06D89E', label='QPU vs CQM', alpha=0.8, linestyle='--')
     ax.plot(n_farms, speedups['Total_vs_PuLP'], marker='D', linewidth=2.5, 
             markersize=10, color='#118AB2', label='Total vs PuLP', alpha=0.8)
+    ax.plot(n_farms, speedups['Total_vs_GurobiQUBO'], marker='X', linewidth=2.5, 
+            markersize=10, color='#7209B7', label='Total vs Gurobi QUBO', alpha=0.8)
     ax.plot(n_farms, speedups['Total_vs_CQM'], marker='D', linewidth=2.5, 
             markersize=10, color='#073B4C', label='Total vs CQM', alpha=0.8, linestyle='--')
     ax.axhline(y=1, color='red', linestyle=':', linewidth=2, label='Break-even (1x)')
@@ -208,10 +246,14 @@ def plot_solve_times(times, output_path):
     ax = axes[1, 1]
     ax.semilogy(n_farms, speedups['QPU_vs_PuLP'], marker='^', linewidth=2.5, 
                 markersize=10, color='#06FFA5', label='QPU vs PuLP', alpha=0.8)
+    ax.semilogy(n_farms, speedups['QPU_vs_GurobiQUBO'], marker='x', linewidth=2.5, 
+                markersize=10, color='#9D4EDD', label='QPU vs Gurobi QUBO', alpha=0.8)
     ax.semilogy(n_farms, speedups['QPU_vs_CQM'], marker='^', linewidth=2.5, 
                 markersize=10, color='#06D89E', label='QPU vs CQM', alpha=0.8, linestyle='--')
     ax.semilogy(n_farms, speedups['Total_vs_PuLP'], marker='D', linewidth=2.5, 
                 markersize=10, color='#118AB2', label='Total vs PuLP', alpha=0.8)
+    ax.semilogy(n_farms, speedups['Total_vs_GurobiQUBO'], marker='X', linewidth=2.5, 
+                markersize=10, color='#7209B7', label='Total vs Gurobi QUBO', alpha=0.8)
     ax.semilogy(n_farms, speedups['Total_vs_CQM'], marker='D', linewidth=2.5, 
                 markersize=10, color='#073B4C', label='Total vs CQM', alpha=0.8, linestyle='--')
     ax.axhline(y=1, color='red', linestyle=':', linewidth=2, label='Break-even (1x)')
@@ -225,10 +267,14 @@ def plot_solve_times(times, output_path):
     ax = axes[1, 2]
     ax.loglog(n_farms, speedups['QPU_vs_PuLP'], marker='^', linewidth=2.5, 
               markersize=10, color='#06FFA5', label='QPU vs PuLP', alpha=0.8)
+    ax.loglog(n_farms, speedups['QPU_vs_GurobiQUBO'], marker='x', linewidth=2.5, 
+              markersize=10, color='#9D4EDD', label='QPU vs Gurobi QUBO', alpha=0.8)
     ax.loglog(n_farms, speedups['QPU_vs_CQM'], marker='^', linewidth=2.5, 
               markersize=10, color='#06D89E', label='QPU vs CQM', alpha=0.8, linestyle='--')
     ax.loglog(n_farms, speedups['Total_vs_PuLP'], marker='D', linewidth=2.5, 
               markersize=10, color='#118AB2', label='Total vs PuLP', alpha=0.8)
+    ax.loglog(n_farms, speedups['Total_vs_GurobiQUBO'], marker='X', linewidth=2.5, 
+              markersize=10, color='#7209B7', label='Total vs Gurobi QUBO', alpha=0.8)
     ax.loglog(n_farms, speedups['Total_vs_CQM'], marker='D', linewidth=2.5, 
               markersize=10, color='#073B4C', label='Total vs CQM', alpha=0.8, linestyle='--')
     ax.axhline(y=1, color='red', linestyle=':', linewidth=2, label='Break-even (1x)')
@@ -246,32 +292,33 @@ def plot_solve_times(times, output_path):
 
 def print_summary_table(times):
     """Print a summary table of solve times and speedups."""
-    print("\n" + "="*110)
+    print("\n" + "="*130)
     print("BQUBO BENCHMARK SUMMARY: SOLVE TIMES AND SPEEDUPS")
-    print("="*110)
-    print(f"{'N_Farms':<10} {'PuLP (s)':<12} {'CQM (s)':<12} {'QPU (s)':<12} {'Total (s)':<12} {'QPU vs PuLP':<15} {'Total vs PuLP':<15}")
-    print("-"*110)
+    print("="*130)
+    print(f"{'N_Farms':<10} {'PuLP (s)':<12} {'Gurobi (s)':<12} {'CQM (s)':<12} {'QPU (s)':<12} {'Total (s)':<12} {'QPU/PuLP':<12} {'Total/PuLP':<12}")
+    print("-"*130)
     
     speedups = calculate_speedups(times)
     
     for i, n in enumerate(times['n_farms']):
         pulp_time = f"{times['PuLP'][i]:.4f}" if times['PuLP'][i] else "N/A"
+        gurobi_time = f"{times['GurobiQUBO'][i]:.4f}" if times['GurobiQUBO'][i] else "N/A"
         cqm_time = f"{times['CQM'][i]:.4f}" if times['CQM'][i] else "N/A"
         qpu_time = f"{times['DWave_QPU'][i]:.4f}" if times['DWave_QPU'][i] else "N/A"
         total_time = f"{times['DWave_Total'][i]:.4f}" if times['DWave_Total'][i] else "N/A"
-        
         qpu_speedup = f"{speedups['QPU_vs_PuLP'][i]:.2f}x" if speedups['QPU_vs_PuLP'][i] else "N/A"
         total_speedup = f"{speedups['Total_vs_PuLP'][i]:.2f}x" if speedups['Total_vs_PuLP'][i] else "N/A"
         
-        print(f"{n:<10} {pulp_time:<12} {cqm_time:<12} {qpu_time:<12} {total_time:<12} {qpu_speedup:<15} {total_speedup:<15}")
+        print(f"{n:<10} {pulp_time:<12} {gurobi_time:<12} {cqm_time:<12} {qpu_time:<12} {total_time:<12} {qpu_speedup:<12} {total_speedup:<12}")
     
-    print("="*110)
+    print("="*130)
     print("\nKey Observations:")
     print("- QPU time remains nearly constant regardless of problem size")
-    print("- Classical solvers show varying solve times with problem size")
+    print("- Gurobi QUBO solver struggles with larger BQM problems (time limits)")
+    print("- Classical solvers (PuLP, CQM) show varying solve times with problem size")
     print("- D-Wave Total Time includes QPU time plus overhead (embedding, compilation, etc.)")
     print("- Speedup increases significantly with problem size for QPU approach")
-    print("="*110 + "\n")
+    print("="*130 + "\n")
 
 def main():
     # Load data

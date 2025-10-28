@@ -826,7 +826,7 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
         ('Threads', 0),             # use all available CPU cores
         ('MIPFocus', 1),            # focus on finding good feasible solutions early
         ('MIPGap', 0.1),            # allow 10% gap to stop earlier (relaxed from 5%)
-        ('TimeLimit', 300),         # 300 seconds max
+        ('TimeLimit', 100),         # 300 seconds max
         ('Heuristics', 0.5),        # more aggressive heuristics (find feasible solutions faster)
         ('Presolve', 2),            # aggressive presolve to reduce model size
         ('Cuts', 0),                # disable or reduce cuts to speed node processing (trade bound strength)
