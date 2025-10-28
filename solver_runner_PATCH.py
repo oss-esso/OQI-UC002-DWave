@@ -684,7 +684,7 @@ def solve_with_dwave(cqm, token):
     bqm, invert = cqm_to_bqm(cqm)
     bqm_conversion_time = time.time() - convert_start
     
-    print(f"  ✅ CQM converted to BQM in {bqm_conversion_time:.2f}s")
+    print(f"  CQM converted to BQM in {bqm_conversion_time:.2f}s")
     print(f"  BQM Variables: {len(bqm.variables)}")
     print(f"  BQM Interactions: {len(bqm.quadratic)}")
     
