@@ -502,7 +502,8 @@ def solve_with_pulp(farms, foods, food_groups, config):
     
     model = pl.LpProblem("Food_Optimization_BQM_PATCH", pl.LpMaximize)
     
-    # Objective: Maximize sum_{p,c} (B_c + λ) * s_p * X_{p,c}
+    # Objective: Maximize sum_{p,c} (B_c + λ) * s_p * X_{p,c} / total_land
+    # NOTE: Normalized by total_land to match continuous formulation's per-hectare metric
     objective = 0
     for plot in farms:
         s_p = land_availability[plot]  # Area of plot p
@@ -517,6 +518,9 @@ def solve_with_pulp(farms, foods, food_groups, config):
             )
             # Add (B_c + λ) * s_p * X_{p,c}
             objective += (B_c + idle_penalty) * s_p * X_pulp[(plot, crop)]
+    
+    # Normalize by total land area (to match continuous formulation)
+    objective = objective / total_land
     
     model += objective, "Objective"
     

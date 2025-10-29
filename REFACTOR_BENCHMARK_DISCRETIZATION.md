@@ -47,7 +47,7 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0) -> List
     """
     print(f"\n{'='*80}")
     print(f"GENERATING PAIRED SAMPLES FOR CONFIGS: {config_values}")
-    print(f"{ '='*80}")
+    print(f"{'='*80}")
 
     paired_samples = []
 
@@ -106,7 +106,7 @@ def run_comprehensive_benchmark(config_values: List[int], dwave_token: Optional[
     """
     print(f"\n{'='*80}")
     print(f"COMPREHENSIVE BENCHMARK - CONFIGS: {config_values}")
-    print(f"{ '='*80}")
+    print(f"{'='*80}")
     
     start_time = time.time()
     
@@ -120,7 +120,7 @@ def run_comprehensive_benchmark(config_values: List[int], dwave_token: Optional[
     for farm_sample, patch_sample in paired_samples:
         print(f"\n{'='*80}")
         print(f"PROCESSING SCENARIO FOR {farm_sample['n_units']} UNITS (Sample ID: {farm_sample['sample_id']})")
-        print(f"{ '='*80}")
+        print(f"{'='*80}")
 
         # Run Farm Scenario (Continuous)
         try:
@@ -197,3 +197,132 @@ By implementing the modifications in steps 3.1 and 3.2, `comprehensive_benchmark
 3.  Store the results in the same format as before, allowing existing analysis and plotting scripts to function with minimal changes.
 
 This refactoring significantly improves the quality of the benchmark by ensuring a fair and direct comparison between the continuous and discretized modeling approaches.
+
+---
+
+## 5. Unifying the Discretized Formulation to a Simpler Binary Model
+
+### 5.1. Goal
+
+The current "patch" formulation in `solver_runner_PATCH.py` uses two sets of binary variables (`X_p,c` for assignment and `Y_c` for selection), which adds significant complexity to the model. The formulation in `solver_runner_BQUBO.py` is a pure binary model that is much simpler, using only a single set of variables `Y_p,c` to represent a fixed-size (e.g., 1-acre) plantation.
+
+This step refactors the benchmark to use this simpler, pure-BQUBO formulation for the discretized scenario. This provides a clearer comparison between a complex continuous model and a simple binary model.
+
+### 5.2. Formulation Comparison
+
+- **Old Patch Formulation (`solver_runner_PATCH.py`):**
+  - **Variables:** `X_p,c` (binary, assigns crop `c` to plot `p`) and `Y_c` (binary, selects crop `c`).
+  - **Objective:** `sum(Benefit * Area_p * X_p,c)` - depends on the variable area of each plot.
+  - **Complexity:** High. Requires linking constraints between `X` and `Y` variables, making the model larger and more complex than necessary for a pure BQUBO problem.
+
+- **New Binary Formulation (from `solver_runner_BQUBO.py`):**
+  - **Variables:** `Y_p,c` (binary, represents a single, fixed-size plantation of crop `c` on farm `p`).
+  - **Objective:** `sum(Benefit * Y_p,c)` - each variable has a fixed contribution.
+  - **Complexity:** Low. No linking variables are needed. Constraints directly limit the number of plantations per farm.
+
+### 5.3. Action Plan
+
+To implement this, we will create a new solver runner file for the binary formulation and modify the benchmark to use it for the "patch" scenario.
+
+**Step 5.3.1: Create `solver_runner_BINARY.py`**
+
+1.  Make a copy of `solver_runner_BQUBO.py` and name it `solver_runner_BINARY.py`.
+2.  This new file will contain the pure binary `create_cqm` function.
+
+**Step 5.3.2: Modify `comprehensive_benchmark.py`**
+
+1.  **Import the new solver:** Change the import from `solver_runner_PATCH` to the new binary solver.
+
+    ```python
+    # REMOVE the old import
+    # import solver_runner_PATCH as solver_patch
+
+    # ADD the new import
+    import solver_runner_BINARY as solver_binary
+    ```
+
+2.  **Update `run_patch_scenario` to `run_binary_scenario`:** Rename the function to reflect the new formulation and modify its contents to use the `solver_binary` module.
+
+    ```python
+    # Rename this function
+    def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> Dict:
+        """
+        Run Binary Scenario: A pure BQUBO problem where each variable represents
+        a 1-acre plantation.
+        """
+        print(f"\n  BINARY SCENARIO - Sample {sample_data['sample_id']}")
+        # The land data now represents the MAX NUMBER of 1-acre plantations
+        land_data_continuous = sample_data['data']
+        land_data_binary = {farm: int(round(area)) for farm, area in land_data_continuous.items()}
+        total_plantations = sum(land_data_binary.values())
+
+        print(f"     {sample_data['n_units']} farms, {total_plantations} total 1-acre plantations")
+
+        # Create problem setup
+        foods, food_groups, config = create_food_config(land_data_binary, 'binary')
+
+        # Create CQM using BINARY formulation
+        cqm_start = time.time()
+        # Note: We now call the CQM builder from the new solver module
+        cqm, Y, constraint_metadata = solver_binary.create_cqm(list(land_data_binary.keys()), foods, food_groups, config)
+        cqm_time = time.time() - cqm_start
+
+        results = {
+            'sample_id': sample_data['sample_id'],
+            'scenario_type': 'binary', # Changed from 'patch'
+            'n_units': sample_data['n_units'],
+            'total_area': sample_data['total_area'],
+            'n_foods': len(foods),
+            'n_variables': len(cqm.variables),
+            'n_constraints': len(cqm.constraints),
+            'cqm_time': cqm_time,
+            'solvers': {}
+        }
+
+        # --- Gurobi (PuLP) Solver --- 
+        # This now solves the pure binary problem
+        print(f"     Running Gurobi (Binary MILP)...")
+        try:
+            pulp_start = time.time()
+            # Use the pulp solver from the new binary runner
+            pulp_model, pulp_results = solver_binary.solve_with_pulp(list(land_data_binary.keys()), foods, food_groups, config)
+            pulp_time = time.time() - pulp_start
+            
+            gurobi_result = {
+                'status': pulp_results['status'],
+                'objective_value': pulp_results.get('objective_value'),
+                'solve_time': pulp_time,
+                # ... other result fields
+            }
+            results['solvers']['gurobi'] = gurobi_result
+        except Exception as e:
+            # ... error handling
+
+        # --- BQM Conversion and Solvers (DWave BQM, Gurobi QUBO) ---
+        # The rest of the function proceeds as before, but now operates on a 
+        # much simpler CQM that is already in a BQUBO-friendly format.
+        # ... (bqm conversion, dwave_bqm solver, gurobi_qubo solver)
+
+        return results
+    ```
+
+3.  **Update the main benchmark loop:** The call to `run_patch_scenario` should be changed to `run_binary_scenario`.
+
+    ```python
+    # In run_comprehensive_benchmark loop
+    # ...
+    # Run Binary Scenario (Discretized)
+    try:
+        binary_result = run_binary_scenario(patch_sample, dwave_token)
+        patch_results.append(binary_result)
+    except Exception as e:
+        print(f"  ❌ Binary sample {patch_sample['sample_id']} failed: {e}")
+    ```
+
+### 5.4. Final Outcome
+
+By implementing this change, the benchmark will compare two distinct but related problems:
+1.  **Continuous (`farm_scenario`):** A complex, continuous-variable optimization problem solved with traditional methods (Gurobi LP) and D-Wave's CQM solver.
+2.  **Binary (`binary_scenario`):** A simplified, pure-binary (BQUBO) problem solved with a MILP solver (Gurobi), a native QUBO solver (Gurobi `optimods`), and D-Wave's BQM solver.
+
+This provides a much clearer and more valuable benchmark structure.

@@ -59,7 +59,7 @@ except Exception as e:
     from solver_runner import solve_with_pulp as solve_with_pulp_continuous
 
 # Import patch sampler (for both farms and patches)
-from patch_sampler import generate_farms as generate_patches
+import patch_sampler
 from farm_sampler import generate_farms as generate_farms_continuous
 
 # Grid refinement configurations
@@ -223,14 +223,8 @@ def create_discretized_scenario(n_patches: int, total_land: float) -> Tuple[List
     Returns:
         Tuple of (patches, land_availability, foods, food_groups, config)
     """
-    # Generate patches with the same total land
-    # We need to scale the patches to match the total land
-    patches_dict = generate_patches(n_farms=n_patches, seed=SEED)
-    
-    # Scale patches to match total land
-    current_total = sum(patches_dict.values())
-    scale_factor = total_land / current_total
-    land_availability = {k: v * scale_factor for k, v in patches_dict.items()}
+    # Generate patches using even grid with fixed total land
+    land_availability = patch_sampler.generate_grid(n_farms=n_patches, area=total_land, seed=SEED)
     
     patches = list(land_availability.keys())
     
@@ -274,10 +268,13 @@ def run_grid_refinement_analysis(total_land: float = 100.0):
     """
     Run grid refinement analysis comparing continuous and discretized formulations.
     For each refinement level, we create:
-    1. A continuous scenario with n_farms (using farm_sampler distribution)
-    2. A discretized scenario with n_patches (using patch_sampler distribution)
+    1. A continuous scenario with n_farms using UNEVEN farm distribution (farm_sampler)
+    2. A discretized scenario with n_patches using EVEN grid distribution (patch_sampler.generate_grid)
     
     Both scenarios use the same total land area for fair comparison.
+    The key difference: 
+    - Uneven grid: farms have different sizes based on realistic distribution
+    - Even grid: patches all have equal size (total_land / n_patches)
     
     Args:
         total_land: Total land area to use for all scenarios
@@ -359,7 +356,7 @@ def run_grid_refinement_analysis(total_land: float = 100.0):
         
         # NORMALIZE: The patch formulation doesn't divide by total_area, but continuous does
         # To make them comparable, divide discrete objective by total_area
-        obj_discrete = obj_discrete_raw / total_land
+        obj_discrete = obj_discrete_raw 
         
         # Calculate gap
         if obj_continuous > 0:

@@ -1,0 +1,630 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=1in}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    breaklines=true
+}
+
+	itle{Solver Documentation: Even-grid (Binary) and Uneven-farm (Continuous) Formulations\\
+\large \texttt{solver\_runner\_BINARY.py} and Related Runners}
+\author{Generated from codebase analysis}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document describes two complementary formulations used in the repository for agricultural land allocation:
+\begin{itemize}
+    \item an even-grid binary formulation (plots, binary assignment variables) designed to be compatible with BQM/BQUBO and quantum annealers; and
+    \item an uneven-farm continuous formulation (realistic farm areas, continuous area allocation) identical in structure to the continuous solver in \texttt{solver\_runner.py}.
+\end{itemize}
+The document presents the mathematical models, constraints, solver choices, differences and similarities between the formulations, and integration notes for the codebase.
+\end{abstract}
+
+\section{Overview}
+
+We support two ways to represent the same total land area $A_{\text{total}}$:
+\begin{enumerate}
+    \item \textbf{Even-grid (Binary)}: divide $A_{\text{total}}$ into $|P|$ equal-area plots. Decision variables are binary assignment variables $X_{p,c} \in \{0,1\}$. This formulation is suitable for conversion to BQM/BQUBO and for use with quantum annealers.
+    \item \textbf{Uneven-farm (Continuous)}: represent land as $|F|$ farms with realistic, varying areas $A_f$. Decision variables are continuous area allocations $A_{f,c} \ge 0$. This formulation is solved by classical LP/MIP solvers and is the same as in \texttt{solver\_runner.py}.
+\end{enumerate}
+
+Both methods model the same high-level objectives and constraints (nutritional value, environmental impact, food-group diversity, min/max area per crop), but differ in their decision variable types and discretization.
+
+\section{Notation}
+Sets and indices:
+\begin{itemize}
+    \item $P$ — set of plots (even-grid, binary formulation), index $p$.
+    \item $F$ — set of farms (uneven distribution, continuous formulation), index $f$.
+    \item $C$ — set of crops, index $c$.
+    \item $G$ — set of food groups, index $g$; $C_g \subseteq C$ are crops in group $g$.
+\end{itemize}
+
+Parameters (shared): weights $w_k$, attributes $\phi_{c,k}$, and area bounds $s_c^{\min}, s_c^{\max}$ for each crop. Total area is $A_{\text{total}}$.
+
+\section{Even-grid (Binary) Formulation}
+
+\subsection{Parameters}
+\begin{align}
+    a_p &= A_{\text{total}}/|P| && \text{area of each equal plot } p \in P
+\end{align}
+
+\subsection{Decision variables}
+\begin{align}
+    X_{p,c} &\in \{0,1\} && \forall p \in P, c \in C
+\end{align}
+where $X_{p,c}=1$ iff crop $c$ is assigned to plot $p$.
+
+\subsection{Objective}
+Define a per-crop benefit coefficient
+\[ B_c = \sum_k w_k \phi_{c,k} \]
+The area-weighted objective (normalized by total area) is
+\[ \max \; \frac{1}{A_{\text{total}}} \sum_{p\in P} \sum_{c\in C} a_p \, B_c \, X_{p,c}. \]
+
+\subsection{Constraints}
+\begin{itemize}
+    \item Single crop per plot: $\sum_{c\in C} X_{p,c} \le 1 \; \forall p\in P$.
+    \item Crop area bounds: $\sum_{p\in P} a_p X_{p,c} \in [s_c^{\min}, s_c^{\max}] \; \forall c\in C$.
+    \item Food-group diversity: introduce binary indicators $Y_c \in\{0,1\}$ with
+        \[ Y_c \le \sum_{p\in P} X_{p,c}, \qquad \sum_{c\in C_g} Y_c \in [n_g^{\min}, n_g^{\max}] \; \forall g\in G. \]
+\end{itemize}
+
+This formulation is amenable to conversion to a CQM/BQM and then to a hybrid quantum/classical solve (via D-Wave APIs) or to classical MILP solvers (PuLP/Gurobi).
+
+\section{Uneven-farm (Continuous) Formulation}
+
+\subsection{Parameters}
+Farms have varying areas $A_f > 0$ satisfying $\sum_{f\in F} A_f = A_{\text{total}}$.
+
+\subsection{Decision variables}
+Continuous allocation variables:
+\[ A_{f,c} \ge 0, \qquad A_{f,c} \le A_f, \quad \forall f\in F, c\in C. \]
+
+\subsection{Objective}
+Same per-crop coefficient $B_c$ as above. Objective:
+\[ \max \; \frac{1}{A_{\text{total}}} \sum_{f\in F} \sum_{c\in C} B_c \; A_{f,c}. \]
+
+\subsection{Constraints}
+\begin{itemize}
+    \item Farm capacity: $\sum_{c\in C} A_{f,c} \le A_f \; \forall f\in F$.
+    \item Crop area bounds: $\sum_{f\in F} A_{f,c} \in [s_c^{\min}, s_c^{\max}] \; \forall c\in C$.
+    \item Food-group diversity: use indicator variables $Y_c\in\{0,1\}$ and big-M linking
+        \[ M\, Y_c \ge \sum_{f\in F} A_{f,c}, \qquad \sum_{c\in C_g} Y_c \in [n_g^{\min}, n_g^{\max}]. \]
+    \item Non-negativity: $A_{f,c} \ge 0$.
+\end{itemize}
+
+This formulation is a linear program (or MILP when indicators are required) and matches the continuous model implemented in \texttt{solver\_runner.py}.
+
+\section{Differences and Similarities}
+\begin{itemize}
+    \item Both formulations maximize the same high-level objective expressed via $B_c$ and enforce the same global area and crop constraints; they differ only in the variable types and discretization.
+    \item Binary formulation: combinatorial decisions, suitable for BQM conversion and quantum annealing; objective terms are area-weighted but written as sums over discrete plots.
+    \item Continuous formulation: flexible fractional allocations per farm; typically yields higher relaxation quality and is solved by LP/MIP solvers.
+\end{itemize}
+
+\section{Implementation Notes (code integration)}
+\begin{itemize}
+    \item The repository contains both \texttt{solver\_runner\_BINARY.py} (which supports selecting the land method) and \texttt{solver\_runner.py} (continuous solver implementation). The binary runner will call the continuous solver when \texttt{--land-method uneven\_distribution} is selected, and use the binary/CQM flow for \texttt{even\_grid}.
+    \item PuLP is used for classical solves (CBC or Gurobi if configured). D-Wave hybrid/Leap samplers are only used for the binary formulation.
+    \item Output conventions: binary runs save \texttt{cqm\_binary\_...} and \texttt{pulp\_binary\_...}; continuous runs save \texttt{cqm\_continuous\_...} and \texttt{pulp\_continuous\_...}.
+\end{itemize}
+
+\section{Command-line Examples}
+\begin{lstlisting}
+# Binary formulation (even grid, quantum-capable)
+python solver_runner_BINARY.py --land-method even_grid --n-units 25 --total-land 100.0
+
+# Continuous formulation (uneven farms, classical LP)
+python solver_runner_BINARY.py --land-method uneven_distribution --n-units 15 --total-land 100.0
+\end{lstlisting}
+
+\section{Quick Compilation / Preview}
+To preview the document locally (if you have pdflatex installed):
+\begin{verbatim}
+pdflatex solver_runner_BINARY_documentation.tex
+\end{verbatim}
+
+\section{Conclusion}
+This cleaned documentation clarifies the intended modeling choices: use binary, even-grid discretization when you want a quantum-compatible representation; use continuous, uneven-farm modeling when you want faithful, classical LP solutions. Both views are provided so you can compare solution quality and computational behaviour.
+
+\appendix
+\section{Relevant Files}
+\begin{itemize}
+    \item \texttt{solver\_runner\_BINARY.py} — runner that handles both land methods and dispatches to the appropriate formulation.
+    \item \texttt{solver\_runner.py} — continuous formulation implementation (area variables per farm).
+    \item \texttt{patch\_sampler.py}, \texttt{farm\_sampler.py} — land generation utilities used in the grid-refinement analysis.
+\end{itemize}
+
+\section{Dependencies}
+\begin{lstlisting}
+python packages:
+- pulp
+- tqdm
+- dimod (optional, for CQM/BQM conversion)
+- dwave-system (optional, for D-Wave sampling)
+\end{lstlisting}
+
+\end{document}
+\begin{align}
+    A_f &\in \mathbb{R}^+ \quad \text{Area of farm } f \in F \text{ (variable size)} \\
+    w_k &\in [0,1] \quad \text{Weight for objective component } k \\
+    \phi_{c,k} &\in [0,1] \quad \text{Value of crop } c \text{ for attribute } k \\
+    s_c^{\min} &\in \mathbb{R}^+ \quad \text{Minimum area required for crop } c \\
+    s_c^{\max} &\in \mathbb{R}^+ \quad \text{Maximum area allowed for crop } c
+\end{align}
+
+where $k \in \{\text{nutritional}, \text{nutrient\_density}, \text{environmental}, \text{affordability}, \text{sustainability}\}$.
+
+For food group constraints (applicable to both representations):
+\begin{align}
+    C_g &\subseteq C \quad \text{Crops belonging to group } g \in G \\
+    n_g^{\min} &\in \mathbb{Z}^+ \quad \text{Minimum number of different crops required from group } g \\
+    n_g^{\max} &\in \mathbb{Z}^+ \quad \text{Maximum number of different crops allowed from group } g
+\end{align}
+
+\subsection{Decision Variables}
+
+\subsubsection{For Even Grid Discretization (Binary)}
+Binary assignment variables:
+\begin{equation}
+    X_{p,c} \in \{0, 1\} \quad \forall p \in P, c \in C
+\end{equation}
+where:
+\begin{equation}
+    X_{p,c} = \begin{cases}
+        1 & \text{if crop } c \text{ is assigned to plot } p \\
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation}
+
+\subsubsection{For Uneven Farm Distribution (Continuous)}
+Continuous area variables:
+\begin{equation}
+    A_{f,c} \in [0, A_f] \quad \forall f \in F, c \in C
+\end{equation}
+where $A_{f,c}$ represents the area (in hectares) of crop $c$ grown on farm $f$, subject to the farm capacity constraint:
+\begin{equation}
+    \sum_{c \in C} A_{f,c} \leq A_f \quad \forall f \in F
+\end{equation}
+    \end{cases}
+\end{equation}
+
+\subsection{Objective Function}
+
+\subsubsection{For Even Grid Discretization (Binary)}
+The objective maximizes the total area-weighted value across all plot assignments:
+\begin{equation}
+    \max \quad \frac{1}{A_{\text{total}}} \sum_{p \in P} \sum_{c \in C} a_p \cdot B_c \cdot X_{p,c}
+\end{equation}
+
+\subsubsection{For Uneven Farm Distribution (Continuous)}
+The objective maximizes the total value across all farm areas (identical to solver\_runner.py):
+\begin{equation}
+    \max \quad \frac{1}{A_{\text{total}}} \sum_{f \in F} \sum_{c \in C} B_c \cdot A_{f,c}
+\end{equation}
+
+where the benefit coefficient $B_c$ for each crop is computed as:
+\begin{multline}
+    B_c = w_{\text{nutritional}} \cdot \phi_{c,\text{nutritional}} + w_{\text{nutrient\_density}} \cdot \phi_{c,\text{nutrient\_density}} \\
+    - w_{\text{environmental}} \cdot \phi_{c,\text{environmental}} + w_{\text{affordability}} \cdot \phi_{c,\text{affordability}} \\
+    + w_{\text{sustainability}} \cdot \phi_{c,\text{sustainability}}
+\end{multline>
+
+Note: The environmental impact is subtracted (negative weight) as lower impact is preferred.
+
+\subsection{Constraints}
+
+\subsection{Constraints}
+
+\subsubsection{For Even Grid Discretization (Binary)}
+
+\textbf{Single Crop per Plot:}
+Each plot can be assigned to at most one crop:
+\begin{equation}
+    \sum_{c \in C} X_{p,c} \leq 1 \quad \forall p \in P
+\end{equation}
+
+\textbf{Crop Area Constraints:}
+Total area assigned to each crop:
+\begin{align}
+    \sum_{p \in P} X_{p,c} \times a_p &\geq s_c^{\min} \quad \forall c \in C \\
+    \sum_{p \in P} X_{p,c} \times a_p &\leq s_c^{\max} \quad \forall c \in C
+\end{align}
+
+\subsubsection{For Uneven Farm Distribution (Continuous)}
+
+\textbf{Farm Capacity:}
+Total area used on each farm cannot exceed farm size:
+\begin{equation}
+    \sum_{c \in C} A_{f,c} \leq A_f \quad \forall f \in F
+\end{equation}
+
+\textbf{Crop Area Constraints:}
+Total area assigned to each crop:
+\begin{align}
+    \sum_{f \in F} A_{f,c} &\geq s_c^{\min} \quad \forall c \in C \\
+    \sum_{f \in F} A_{f,c} &\leq s_c^{\max} \quad \forall c \in C
+\end{align>
+
+\textbf{Non-negativity:}
+\begin{equation}
+    A_{f,c} \geq 0 \quad \forall f \in F, c \in C
+\end{equation}
+
+\subsubsection{Crop Area Constraints}
+
+Each crop must be assigned a total area between its minimum and maximum bounds. For both representation methods, the total area assigned to crop $c$ is:
+
+\begin{equation}
+\subsubsection{Food Group Diversity Constraints (Both Formulations)}
+
+To ensure dietary diversity, both formulations use indicator variables:
+\begin{equation}
+    Y_c = \begin{cases}
+        1 & \text{if crop } c \text{ is planted} \\
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation>
+
+\textbf{For Binary Formulation:}
+\begin{equation}
+    Y_c \leq \sum_{p \in P} X_{p,c} \quad \forall c \in C
+\end{equation}
+
+\textbf{For Continuous Formulation:}
+\begin{equation>
+    M \cdot Y_c \geq \sum_{f \in F} A_{f,c} \quad \forall c \in C
+\end{equation}
+where $M$ is a large constant.
+
+\textbf{Food Group Constraints (Both):}
+\begin{align}
+    \sum_{c \in C_g} Y_c &\geq n_g^{\min} \quad \forall g \in G \\
+    \sum_{c \in C_g} Y_c &\leq n_g^{\max} \quad \forall g \in G
+\end{align>
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation}
+
+These are linked to the land unit assignments via:
+
+\begin{equation}
+    Y_c \leq \sum_{u \in U} X_{u,c} \quad \forall c \in C
+\end{equation}
+
+Then, for each food group:
+
+\begin{align}
+    \sum_{c \in C_g} Y_c &\geq n_g^{\min} \quad \forall g \in G \quad \text{(if specified)} \\
+    \sum_{c \in C_g} Y_c &\leq n_g^{\max} \quad \forall g \in G \quad \text{(if specified)}
+\end{align}
+\end{align}
+
+These constraints ensure that a minimum/maximum number of different crop types from each food group are selected.
+
+\section{Implementation Details}
+
+\subsection{CQM Construction Algorithm}
+
+The \texttt{create\_cqm()} function builds the Constrained Quadratic Model:
+
+\begin{algorithm}[H]
+\caption{CQM Construction for Binary Formulation}
+\begin{algorithmic}[1]
+\STATE Initialize empty CQM
+\STATE Extract parameters: $P$, $C$, $G$, weights, constraints
+\STATE Calculate total operations for progress tracking
+\FOR{each plot $p \in P$}
+    \FOR{each crop $c \in C$}
+        \STATE Create binary variable $X_{p,c}$
+    \ENDFOR
+\ENDFOR
+\FOR{each crop $c \in C$}
+    \STATE Create binary indicator variable $Y_c$
+\ENDFOR
+\STATE Initialize objective $= 0$
+\FOR{each plot $p \in P$}
+    \FOR{each crop $c \in C$}
+        \STATE Compute $B_c$ from weighted attributes
+        \STATE Add $B_c \cdot X_{p,c}$ to objective
+    \ENDFOR
+\ENDFOR
+\STATE Normalize objective by $|P| \times |C|$
+\STATE Set CQM objective to $-\text{objective}$ (for minimization)
+\FOR{each plot $p \in P$}
+    \STATE Add constraint: $\sum_{c \in C} X_{p,c} \leq 1$ (single crop per plot)
+\ENDFOR
+\FOR{each crop $c \in C$}
+    \STATE Add constraint: $\sum_{p \in P} X_{p,c} \geq \lceil s_c^{\min} \rceil$ (minimum area)
+    \STATE Add constraint: $\sum_{p \in P} X_{p,c} \leq \lfloor s_c^{\max} \rfloor$ (maximum area)
+    \STATE Add constraint: $Y_c \leq \sum_{p \in P} X_{p,c}$ (crop selection indicator)
+\ENDFOR
+\IF{food group constraints exist}
+    \FOR{each group $g \in G$}
+        \IF{minimum constraint exists}
+            \STATE Add constraint: $\sum_{c \in C_g} Y_c \geq n_g^{\min}$
+        \ENDIF
+        \IF{maximum constraint exists}
+            \STATE Add constraint: $\sum_{c \in C_g} Y_c \leq n_g^{\max}$
+        \ENDIF
+    \ENDFOR
+\ENDIF
+\RETURN CQM, variables, constraint metadata
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{PuLP Solver Implementation}
+
+The \texttt{solve\_with\_pulp()} function creates a classical MILP formulation:
+
+\begin{itemize}
+    \item \textbf{Variable Creation}: Creates binary variables $X_{u,c}$ for each land unit-crop pair and indicator variables $Y_c$ for crop selection
+    \item \textbf{Objective Construction}: Builds the area-weighted objective with normalization
+    \item \textbf{Constraint Addition}: Adds all constraints using PuLP's API:
+    \begin{itemize}
+        \item Single crop per land unit constraints
+        \item Minimum and maximum area constraints per crop
+        \item Crop selection indicator linking
+        \item Food group diversity constraints
+    \end{itemize}
+    \item \textbf{Solver Invocation}: Uses CBC (COIN-OR Branch and Cut) solver
+    \item \textbf{Solution Extraction}: Extracts binary values for all land unit-crop assignments
+\end{itemize}
+
+The normalization factor ensures objective values are comparable across different problem sizes and land distributions.
+
+\subsection{D-Wave Quantum Solver Implementation}
+
+The \texttt{solve\_with\_dwave()} function enables quantum annealing:
+
+\begin{algorithm}[H]
+\caption{D-Wave Quantum Solving via BQM Conversion}
+\begin{algorithmic}[1]
+\STATE Start BQM conversion timer
+\STATE Convert CQM to BQM using \texttt{cqm\_to\_bqm()}
+\STATE Record BQM conversion time
+\STATE Report BQM statistics (variables, interactions)
+\STATE Initialize LeapHybridBQMSampler with API token
+\STATE Submit BQM to D-Wave cloud service
+\STATE Retrieve sampleset with solutions
+\STATE Extract timing information:
+\begin{itemize}
+    \item Hybrid solve time (total wall-clock time)
+    \item QPU access time (actual quantum processor time)
+\end{itemize}
+\STATE Convert timing from microseconds to seconds
+\RETURN sampleset, hybrid\_time, qpu\_time, conversion\_time, invert
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{CQM to BQM Conversion}
+
+The conversion process discretizes any remaining continuous aspects and transforms the constrained problem into an unconstrained binary problem by:
+
+\begin{enumerate}
+    \item Converting all constraints to penalty terms
+    \item Adjusting the objective function to include penalties
+    \item Creating an inversion function to map BQM solutions back to CQM variables
+\end{enumerate}
+
+\section{Key Design Features}
+
+\subsection{Pure Binary Formulation}
+
+Unlike hybrid formulations that mix continuous and binary variables, this solver uses exclusively binary variables:
+
+\begin{itemize}
+    \item \textbf{Advantage 1}: Direct compatibility with quantum annealers (no discretization needed)
+    \item \textbf{Advantage 2}: Clearer interpretation (each variable = crop assignment to a specific land unit)
+    \item \textbf{Advantage 3}: Simpler constraint structure (linear constraints only)
+    \item \textbf{Advantage 4}: Flexible land representation (equal plots or variable farms)
+    \item \textbf{Trade-off}: Less flexibility than continuous formulations; resolution limited by discretization level
+\end{itemize>
+
+\subsection{Normalization Strategy}
+
+The objective is normalized by $|P| \times |C|$ to ensure:
+
+\begin{equation}
+    \text{Objective} = \frac{\sum_{p,c} B_c \cdot X_{p,c}}{|P| \times |C|}
+\end{equation}
+
+This normalization provides:
+\begin{itemize}
+    \item Scale-independent comparison across problem sizes
+    \item Bounded objective values (approximately $[0, \max(B_c)]$)
+    \item Compatibility with continuous formulation metrics
+\end{itemize}
+
+\subsection{Progress Tracking}
+
+The implementation uses \texttt{tqdm} progress bars to track:
+
+\begin{align}
+    \text{Total Operations} = |P| \times |C| + |C| + |P| \times |C| + |P| + 3 \times |C| + 2 \times |G|
+\end{align}
+
+where the terms represent:
+\begin{enumerate}
+    \item Variable creation operations for $X_{p,c}$
+    \item Variable creation operations for $Y_c$
+    \item Objective term additions
+    \item Single crop per plot constraints
+    \item Crop area constraints (min, max, and indicator linking)
+    \item Food group constraints (min and max)
+\end{enumerate}
+
+\section{Comparison with Continuous Formulation}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Aspect} & \textbf{Even Grid (Binary)} & \textbf{Uneven Farms (Continuous)} \\
+\hline
+Variables & $X_{p,c} \in \{0,1\}$ & $A_{f,c} \in [0, A_f]$ \\
+Land Representation & Equal-sized plots & Variable-sized farms \\
+Optimization Type & Discrete binary (MILP) & Continuous linear (LP) \\
+Quantum Compatibility & Native (BQUBO) & Not compatible \\
+Solver & Binary CQM + PuLP + D-Wave & Continuous CQM + PuLP \\
+Formulation & Plot assignment & Area allocation \\
+Constraints & Single crop per plot & Farm capacity limits \\
+\hline
+\end{tabular}
+\caption{Comparison between even grid (binary) and uneven farm (continuous) formulations}
+\end{table}
+
+\section{Usage and Integration}
+
+\subsection{Main Function Flow}
+
+\begin{enumerate}
+    \item Load scenario data (farms, crops, food groups, configuration)
+    \item Generate land data based on selected method (even grid or uneven farms)
+    \item Create appropriate formulation:
+    \begin{itemize}
+        \item Even Grid: Binary CQM with plot assignment variables
+        \item Uneven Farms: Continuous CQM with area allocation variables
+    \end{itemize}
+    \item Solve with PuLP (MILP for binary, LP for continuous)
+    \item Solve with D-Wave (only for binary formulation)
+    \item Save all results and create run manifest
+\end{enumerate}
+
+\subsection{Command Line Interface}
+
+\begin{lstlisting}
+# Binary formulation (even grid)
+python solver_runner_BINARY.py --land-method even_grid --n-units 25 --total-land 100.0
+
+# Continuous formulation (uneven farms) 
+python solver_runner_BINARY.py --land-method uneven_distribution --n-units 15 --total-land 100.0
+\end{lstlisting}
+
+\subsection{Output Files}
+
+The solver generates different files based on the formulation:
+
+\textbf{For Even Grid (Binary):}
+\begin{itemize}
+    \item \texttt{cqm\_binary\_[scenario]\_[timestamp].cqm}: Binary CQM model
+    \item \texttt{pulp\_binary\_[scenario]\_[timestamp].json}: Classical MILP solution
+    \item \texttt{dwave\_bqubo\_[scenario]\_[timestamp].json}: Quantum solution
+    \item \texttt{constraints\_[scenario]\_[timestamp].json}: Constraint metadata
+\end{itemize}
+
+\textbf{For Uneven Farms (Continuous):}
+\begin{itemize}
+    \item \texttt{cqm\_continuous\_[scenario]\_[timestamp].cqm}: Continuous CQM model
+    \item \texttt{pulp\_continuous\_[scenario]\_[timestamp].json}: Classical LP solution
+    \item \texttt{constraints\_[scenario]\_[timestamp].json}: Constraint metadata
+\end{itemize}
+
+\section{Computational Complexity}
+
+\subsection{Problem Size}
+
+\begin{align}
+    \text{Variables} &= |P| \times |C| + |C| \quad \text{($X_{p,c}$ and $Y_c$ variables)} \\
+    \text{Constraints} &= |P| + 3 \times |C| + 2 \times |G| \\
+    \text{Objective Terms} &= |P| \times |C|
+\end{align}
+
+where:
+\begin{itemize}
+    \item $|P|$ constraints for single crop per plot
+    \item $|C|$ constraints for minimum area per crop
+    \item $|C|$ constraints for maximum area per crop
+    \item $|C|$ constraints for crop selection indicators
+    \item $2 \times |G|$ constraints for food group diversity (min and max)
+\end{itemize}
+
+\subsection{Scaling Characteristics}
+
+The binary formulation scales as:
+\begin{itemize}
+    \item \textbf{Variables}: $O(|P| \times |C|)$ - linear in both dimensions
+    \item \textbf{Constraints}: $O(|P| + |C| + |G|)$ - dominated by plot count for large problems
+    \item \textbf{Objective Evaluation}: $O(|P| \times |C|)$ - single pass computation
+\end{itemize}
+
+For quantum solvers, the BQM conversion may add quadratic interaction terms, resulting in:
+\begin{equation}
+    \text{BQM Interactions} \leq \binom{|P| \times |C|}{2} = O((|P| \times |C|)^2)
+\end{equation}
+
+\subsection{Discretization Impact}
+
+The discretization level directly affects problem size. For both representation methods:
+
+\textbf{Even Grid Discretization:}
+\begin{align}
+    \text{Fine grid (many plots):} \quad &|U| \uparrow \quad \rightarrow \quad \text{More variables, better resolution} \\
+    \text{Coarse grid (few plots):} \quad &|U| \downarrow \quad \rightarrow \quad \text{Fewer variables, lower resolution}
+\end{align}
+
+\textbf{Uneven Farm Distribution:}
+\begin{align}
+    \text{Many small farms:} \quad &|U| \uparrow \quad \rightarrow \quad \text{More variables, fine-grained decisions} \\
+    \text{Few large farms:} \quad &|U| \downarrow \quad \rightarrow \quad \text{Fewer variables, coarse decisions}
+\end{align}
+
+\section{Conclusion}
+
+This solver provides a comprehensive framework for comparing discrete binary optimization with continuous linear programming on agricultural land allocation problems. By supporting both formulations within a single implementation, it enables direct empirical comparison between quantum-compatible discrete approaches and classical continuous methods.
+
+\textbf{Key advantages of the dual formulation approach:}
+\begin{itemize}
+    \item \textbf{Direct comparison}: Same agricultural problem solved with different optimization paradigms
+    \item \textbf{Quantum readiness}: Binary formulation native to D-Wave quantum annealers (BQUBO)
+    \item \textbf{Classical optimality}: Continuous formulation leverages mature linear programming solvers
+    \item \textbf{Flexible land representation}: Even grids (theoretical) vs realistic farms (practical)
+    \item \textbf{Benchmarking capability}: Quantifies performance trade-offs between discrete and continuous approaches
+\end{itemize}
+
+\textbf{Research applications:}
+\begin{itemize}
+    \item Evaluating quantum advantage for combinatorial optimization in agriculture
+    \item Understanding discretization trade-offs in land allocation planning
+    \item Comparing solution quality between MILP and quantum annealing approaches
+    \item Assessing scalability of quantum methods vs classical methods
+\end{itemize>
+
+The solver architecture enables systematic study of how land representation choices and optimization paradigms affect agricultural decision-making, providing valuable insights for both quantum computing research and agricultural optimization practice.
+
+\appendix
+
+\section{Code Structure}
+
+\begin{itemize}
+    \item \textbf{create\_cqm()}: Builds the Constrained Quadratic Model
+    \item \textbf{solve\_with\_pulp()}: Classical MILP solver using CBC
+    \item \textbf{solve\_with\_dwave()}: Quantum solver using Leap HybridBQM
+    \item \textbf{main()}: Orchestrates the complete solving pipeline
+\end{itemize}
+
+\section{Dependencies}
+
+\begin{lstlisting}
+dimod                  # D-Wave's modeling library
+dwave.system           # D-Wave quantum samplers
+pulp                   # Classical optimization
+tqdm                   # Progress tracking
+\end{lstlisting}
+
+\end{document}

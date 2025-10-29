@@ -705,6 +705,360 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
 
 def run_comprehensive_benchmark(config_values: List[int], dwave_token: Optional[str] = None) -> Dict:
     """
+    Args:
+        sample_data: Patch sample data  
+        dwave_token: D-Wave API token (optional)
+        
+    Returns:
+        Dictionary with results for all solvers
+    """
+    print(f"\n  🏞️  PATCH SCENARIO - Sample {sample_data['sample_id']}")
+    print(f"     {sample_data['n_units']} patches, {sample_data['total_area']:.1f} ha")
+    
+    # Create problem setup
+    land_data = sample_data['data']
+    foods, food_groups, config = create_food_config(land_data, 'patch')
+    
+    # Create CQM using PATCH formulation (solver_runner_PATCH.py)
+    cqm_start = time.time()
+    cqm, (X, Y), constraint_metadata = solver_patch.create_cqm(land_data, foods, food_groups, config)
+    cqm_time = time.time() - cqm_start
+    
+    results = {
+        'sample_id': sample_data['sample_id'],
+        'scenario_type': 'patch',
+        'n_units': sample_data['n_units'],
+        'total_area': sample_data['total_area'],
+        'n_foods': len(foods),
+        'n_variables': len(cqm.variables),
+        'n_constraints': len(cqm.constraints),
+        'cqm_time': cqm_time,
+        'solvers': {}
+    }
+    
+    # 1. Gurobi Solver
+    print(f"     Running Gurobi...")
+    
+    # Check for cached result first (config_id = n_units, run_id = 1)
+    cached = check_cached_results('patch', 'gurobi', sample_data['n_units'], run_id=1)
+    if cached:
+        print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
+        results['solvers']['gurobi'] = cached
+    else:
+        try:
+            pulp_start = time.time()
+            pulp_model, pulp_results = solver_patch.solve_with_pulp(land_data, foods, food_groups, config)
+            pulp_time = time.time() - pulp_start
+            
+            gurobi_result = {
+                'status': pulp_results['status'],
+                'objective_value': pulp_results.get('objective_value'),
+                'solve_time': pulp_time,
+                'solver_time': pulp_results.get('solve_time', pulp_time),
+                'success': pulp_results['status'] == 'Optimal',
+                'sample_id': sample_data['sample_id'],
+                'n_units': sample_data['n_units'],
+                'total_area': sample_data['total_area'],
+                'n_foods': len(foods),
+                'n_variables': len(cqm.variables),
+                'n_constraints': len(cqm.constraints)
+            }
+            
+            # Extract solution summary (variables are in X_variables and Y_variables)
+            if pulp_results['status'] == 'Optimal':
+                solution_dict = {}
+                solution_dict.update(pulp_results.get('X_variables', {}))
+                solution_dict.update(pulp_results.get('Y_variables', {}))
+                solution_summary = solver_patch.extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                gurobi_result['solution_summary'] = solution_summary
+                # Also add validation
+                validation = solver_patch.validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
+                gurobi_result['validation'] = validation
+            
+            results['solvers']['gurobi'] = gurobi_result
+            
+            # Save individual result file (config_id = n_units, run_id = 1)
+            save_solver_result(gurobi_result, 'patch', 'gurobi', sample_data['n_units'], run_id=1)
+            
+            print(f"       ✓ Gurobi: {pulp_results['status']} in {pulp_time:.3f}s")
+            
+        except Exception as e:
+            print(f"       ❌ Gurobi failed: {e}")
+            results['solvers']['gurobi'] = {'status': 'Error', 'error': str(e), 'success': False}
+    
+    # 2. DWave CQM Solver (if token available)
+    if dwave_token:
+        print(f"     Running DWave CQM...")
+        
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('patch', 'dwave_cqm', sample_data['n_units'], run_id=1)
+        if cached:
+            print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
+            results['solvers']['dwave_cqm'] = cached
+        else:
+            try:
+                # Use D-Wave CQM solver for patch scenario
+                sampleset_cqm, hybrid_time_cqm, qpu_time_cqm = solver_patch.solve_with_dwave_cqm(cqm, dwave_token)
+                
+                success = len(sampleset_cqm) > 0
+                objective_value = None
+                if success:
+                    best = sampleset_cqm.first
+                    objective_value = -best.energy
+                
+                dwave_result = {
+                    'status': 'Optimal' if success else 'No solution',
+                    'objective_value': objective_value,
+                    'solve_time': hybrid_time_cqm if hybrid_time_cqm is not None else 0,
+                    'qpu_time': qpu_time_cqm if qpu_time_cqm is not None else 0,
+                    'hybrid_time': hybrid_time_cqm if hybrid_time_cqm is not None else 0,
+                    'success': success,
+                    'sample_id': sample_data['sample_id'],
+                    'n_units': sample_data['n_units'],
+                    'total_area': sample_data['total_area'],
+                    'n_foods': len(foods),
+                    'n_variables': len(cqm.variables),
+                    'n_constraints': len(cqm.constraints)
+                }
+                
+                # Extract solution details from D-Wave CQM result
+                if success:
+                    best_sample = sampleset_cqm.first.sample
+                    solution_dict = {}
+                    # Convert CQM sample to solution dict format
+                    for var_name, var_value in best_sample.items():
+                        solution_dict[var_name] = var_value
+                    
+                    # Extract solution summary and validation
+                    solution_summary = solver_patch.extract_solution_summary(solution_dict, list(land_data.keys()), foods, land_data)
+                    dwave_result['solution_summary'] = solution_summary
+                    validation = solver_patch.validate_solution_constraints(solution_dict, list(land_data.keys()), foods, food_groups, land_data, config)
+                    dwave_result['validation'] = validation
+                
+                results['solvers']['dwave_cqm'] = dwave_result
+                
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(dwave_result, 'patch', 'dwave_cqm', sample_data['n_units'], run_id=1)
+                
+                print(f"       ✓ DWave CQM: {'Optimal' if success else 'No solution'} in {hybrid_time_cqm:.3f}s")
+                
+            except Exception as e:
+                print(f"       ❌ DWave CQM failed: {e}")
+                results['solvers']['dwave_cqm'] = {'status': 'Error', 'error': str(e), 'success': False}
+    else:
+        print(f"     DWave CQM: SKIPPED (no token)")
+        results['solvers']['dwave_cqm'] = {'status': 'Skipped', 'success': False}
+    
+    # Convert CQM to BQM for BQM-based solvers
+    bqm = None
+    invert = None
+    bqm_conversion_time = None
+    
+    # Always convert to BQM to allow Gurobi QUBO to run
+    print(f"     Converting CQM to BQM...")
+    try:
+        bqm_start = time.time()
+        
+        # Manually set a Lagrange multiplier to enforce constraints.
+        # Testing showed that lambda=10.0 is the optimal value:
+        # - Lambda < 5: Constraint violations occur
+        # - Lambda = 5-10: Perfect balance - no violations, 100% land use
+        # - Lambda > 25: Over-constrained - idle land, lower objectives
+        # 
+        # Lambda=10.0 provides safety margin while avoiding over-penalization.
+        
+        lagrange_multiplier = 10.0
+        print(f"       Using manual Lagrange multiplier: {lagrange_multiplier}")
+        
+        bqm, invert = cqm_to_bqm(cqm, lagrange_multiplier=lagrange_multiplier)
+        bqm_conversion_time = time.time() - bqm_start
+        print(f"       ✓ BQM: {len(bqm.variables)} vars, {len(bqm.quadratic)} interactions ({bqm_conversion_time:.3f}s)")
+    except Exception as e:
+        print(f"       ❌ BQM conversion failed: {e}")
+    
+    # 3. DWave BQM Solver (if BQM available)
+    if bqm is not None and dwave_token:
+        print(f"     Running DWave BQM...")
+        
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('patch', 'dwave_bqm', sample_data['n_units'], run_id=1)
+        if cached:
+            print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
+            results['solvers']['dwave_bqm'] = cached
+        else:
+            try:
+                from dwave.system import LeapHybridBQMSampler
+                sampler = LeapHybridBQMSampler(token=dwave_token)
+                
+                dwave_bqm_start = time.time()
+                sampleset_bqm = sampler.sample(bqm, label="Comprehensive Benchmark - BQM")
+                dwave_bqm_time = time.time() - dwave_bqm_start
+                
+                success = len(sampleset_bqm) > 0
+                bqm_energy = None
+                original_objective = None
+                solution_summary = None
+                validation = None
+                qpu_time_bqm = None
+                
+                if success:
+                    best = sampleset_bqm.first
+                    bqm_energy = best.energy  # This is BQM energy, not original objective
+                    
+                    # Extract solution and calculate original objective
+                    solution = dict(best.sample)
+                    original_objective = solver_patch.calculate_original_objective(
+                        solution,
+                        farms=list(land_data.keys()),
+                        foods=foods,
+                        land_availability=land_data,
+                        weights=config['parameters']['weights'],
+                        idle_penalty=config['parameters'].get('idle_penalty_lambda', 0.1)
+                    )
+                    
+                    # Extract solution summary
+                    solution_summary = solver_patch.extract_solution_summary(solution, list(land_data.keys()), foods, land_data)
+                    
+                    # Validate constraints
+                    validation = solver_patch.validate_solution_constraints(
+                        solution, list(land_data.keys()), foods, food_groups, land_data, config
+                    )
+                    
+                    timing_info = sampleset_bqm.info.get('timing', {})
+                    
+                    # Hybrid solve time (total time including QPU)
+                    hybrid_time_bqm = (timing_info.get('run_time') or 
+                                      sampleset_bqm.info.get('run_time') or
+                                      timing_info.get('charge_time') or
+                                      sampleset_bqm.info.get('charge_time'))
+                    
+                    if hybrid_time_bqm is not None:
+                        hybrid_time_bqm = hybrid_time_bqm / 1e6  # Convert from microseconds to seconds
+                    else:
+                        hybrid_time_bqm = dwave_bqm_time  # Fallback to wall clock time
+                    
+                    # QPU access time
+                    qpu_time_bqm = (timing_info.get('qpu_access_time') or
+                                   sampleset_bqm.info.get('qpu_access_time'))
+                    
+                    if qpu_time_bqm is not None:
+                        qpu_time_bqm = qpu_time_bqm / 1e6  # Convert to seconds
+                
+                dwave_bqm_result = {
+                    'status': 'Optimal' if success else 'No solution',
+                    'objective_value': original_objective,  # Reconstructed CQM objective
+                    'solve_time': hybrid_time_bqm if hybrid_time_bqm is not None else dwave_bqm_time,
+                    'qpu_time': qpu_time_bqm,
+                    'hybrid_time': hybrid_time_bqm if hybrid_time_bqm is not None else dwave_bqm_time,
+                    'bqm_conversion_time': bqm_conversion_time,
+                    'bqm_energy': bqm_energy,
+                    'success': success,
+                    'sample_id': sample_data['sample_id'],
+                    'n_units': sample_data['n_units'],
+                    'total_area': sample_data['total_area'],
+                    'n_foods': len(foods),
+                    'n_variables': len(bqm.variables),
+                    'n_quadratic': len(bqm.quadratic),
+                    'note': 'objective_value is reconstructed from BQM solution; comparable to CQM'
+                }
+                
+                # Add solution summary if available
+                if solution_summary is not None:
+                    dwave_bqm_result['solution_summary'] = solution_summary
+                
+                # Add validation if available
+                if validation is not None:
+                    dwave_bqm_result['validation'] = {
+                        'is_feasible': validation['is_feasible'],
+                        'n_violations': validation['n_violations'],
+                        'violations': validation['violations'],
+                        'summary': validation['summary']
+                    }
+                
+                results['solvers']['dwave_bqm'] = dwave_bqm_result
+                
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(dwave_bqm_result, 'patch', 'dwave_bqm', sample_data['n_units'], run_id=1)
+                
+                print(f"       ✓ DWave BQM: {'Optimal' if success else 'No solution'} in {dwave_bqm_time:.3f}s")
+                
+            except Exception as e:
+                print(f"       ❌ DWave BQM failed: {e}")
+                results['solvers']['dwave_bqm'] = {'status': 'Error', 'error': str(e), 'success': False}
+    else:
+        print(f"     DWave BQM: SKIPPED (no BQM available)")
+        results['solvers']['dwave_bqm'] = {'status': 'Skipped', 'success': False}
+    
+    # 4. Gurobi QUBO Solver (if BQM available)
+    if bqm is not None:
+        print(f"     Running Gurobi QUBO...")
+        
+        # Check for cached result first (config_id = n_units, run_id = 1)
+        cached = check_cached_results('patch', 'gurobi_qubo', sample_data['n_units'], run_id=1)
+        if cached:
+            print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
+            results['solvers']['gurobi_qubo'] = cached
+        else:
+            try:
+                # Pass parameters to calculate original objective and validate
+                gurobi_qubo_result_raw = solver_patch.solve_with_gurobi_qubo(
+                    bqm,
+                    farms=list(land_data.keys()),
+                    foods=foods,
+                    food_groups=food_groups,
+                    land_availability=land_data,
+                    weights=config['parameters']['weights'],
+                    idle_penalty=config['parameters'].get('idle_penalty_lambda', 0.1),
+                    config=config
+                )
+                
+                gurobi_qubo_result = {
+                    'status': gurobi_qubo_result_raw['status'],
+                    'objective_value': gurobi_qubo_result_raw['objective_value'],  # Reconstructed CQM objective
+                    'solve_time': gurobi_qubo_result_raw['solve_time'],
+                    'bqm_energy': gurobi_qubo_result_raw['bqm_energy'],
+                    'bqm_conversion_time': bqm_conversion_time,
+                    'success': gurobi_qubo_result_raw['status'] == 'Optimal',
+                    'sample_id': sample_data['sample_id'],
+                    'n_units': sample_data['n_units'],
+                    'total_area': sample_data['total_area'],
+                    'n_foods': len(foods),
+                    'n_variables': len(bqm.variables),
+                    'n_quadratic': len(bqm.quadratic),
+                    'note': 'objective_value is reconstructed from BQM solution; comparable to CQM'
+                }
+                
+                # Add solution summary if available
+                if 'solution_summary' in gurobi_qubo_result_raw:
+                    gurobi_qubo_result['solution_summary'] = gurobi_qubo_result_raw['solution_summary']
+                
+                # Add validation if available
+                if 'validation' in gurobi_qubo_result_raw:
+                    gurobi_qubo_result['validation'] = {
+                        'is_feasible': gurobi_qubo_result_raw['validation']['is_feasible'],
+                        'n_violations': gurobi_qubo_result_raw['validation']['n_violations'],
+                        'violations': gurobi_qubo_result_raw['validation']['violations'],
+                        'summary': gurobi_qubo_result_raw['validation']['summary']
+                    }
+                
+                results['solvers']['gurobi_qubo'] = gurobi_qubo_result
+                
+                # Save individual result file (config_id = n_units, run_id = 1)
+                save_solver_result(gurobi_qubo_result, 'patch', 'gurobi_qubo', sample_data['n_units'], run_id=1)
+                
+                print(f"       ✓ Gurobi QUBO: {gurobi_qubo_result_raw['status']} in {gurobi_qubo_result_raw['solve_time']:.3f}s")
+                
+            except Exception as e:
+                print(f"       ❌ Gurobi QUBO failed: {e}")
+                results['solvers']['gurobi_qubo'] = {'status': 'Error', 'error': str(e), 'success': False}
+    else:
+        print(f"     Gurobi QUBO: SKIPPED (no BQM available)")
+        results['solvers']['gurobi_qubo'] = {'status': 'Skipped', 'success': False}
+    
+    return results
+
+def run_comprehensive_benchmark(config_values: List[int], dwave_token: Optional[str] = None) -> Dict:
+    """
     Run the comprehensive benchmark for the given configuration values.
     
     Args:
@@ -739,12 +1093,12 @@ def run_comprehensive_benchmark(config_values: List[int], dwave_token: Optional[
         except Exception as e:
             print(f"  ❌ Farm sample {farm_sample['sample_id']} failed: {e}")
 
-        # Run Binary Scenario (Discretized)
+        # Run Patch Scenario (Discretized)
         try:
-            patch_result = run_binary_scenario(patch_sample, dwave_token)
+            patch_result = run_patch_scenario(patch_sample, dwave_token)
             patch_results.append(patch_result)
         except Exception as e:
-            print(f"  ❌ Binary sample {patch_sample['sample_id']} failed: {e}")
+            print(f"  ❌ Patch sample {patch_sample['sample_id']} failed: {e}")
     
     total_time = time.time() - start_time
     
