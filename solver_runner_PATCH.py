@@ -755,7 +755,7 @@ def solve_with_simulated_annealing(bqm):
     return sampleset, solve_time
 
 def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_availability=None, 
-                          weights=None, idle_penalty=None, config=None):
+                          weights=None, idle_penalty=None, config=None, time_limit=100):
     """
     Solve a Binary Quadratic Model (BQM) using Gurobi's native QUBO solver
     from the `gurobi_optimods` package.
@@ -769,6 +769,7 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
         weights: Dictionary of objective weights (optional)
         idle_penalty: Lambda penalty for idle land (optional)
         config: Full configuration dictionary (optional, for validation)
+        time_limit: Gurobi time limit in seconds (default: 100)
         
     Returns:
         dict: Solution containing status, solution dict, BQM energy, solve time,
@@ -813,7 +814,7 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
     # Gurobi parameters for the QUBO solver
     gurobi_params = {
         "Threads": 0,
-        "TimeLimit": 100,
+        "TimeLimit": time_limit,
     }
 
     print(f"  Solving with gurobi_optimods.qubo.solve_qubo (TimeLimit={gurobi_params['TimeLimit']}s)...")
@@ -855,26 +856,26 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
                 solution, farms, foods, food_groups, land_availability, config
             )
             
-            print(f"  ✅ Optimal solution found")
+            print(f"  Optimal solution found")
             print(f"  BQM Energy: {bqm_energy:.6f}")
             print(f"  Original CQM Objective: {original_objective:.6f}")
             print(f"  Active variables: {sum(solution.values())}")
             print(f"  Constraint validation: {validation['n_violations']} violations")
             if validation['n_violations'] > 0:
-                print(f"  ⚠️ CONSTRAINT VIOLATIONS DETECTED:")
+                print(f"  CONSTRAINT VIOLATIONS DETECTED:")
                 for violation in validation['violations'][:5]:  # Show first 5
                     print(f"     - {violation}")
                 if len(validation['violations']) > 5:
                     print(f"     ... and {len(validation['violations']) - 5} more")
             else:
-                print(f"  ✅ All constraints satisfied!")
+                print(f"  All constraints satisfied!")
         else:
-            print(f"  ✅ Optimal solution found")
+            print(f"  Optimal solution found")
             print(f"  BQM Energy: {bqm_energy:.6f}")
             print(f"  Original CQM Objective: {original_objective:.6f}")
             print(f"  Active variables: {sum(solution.values())}")
     else:
-        print(f"  ✅ Optimal solution found")
+        print(f"  Optimal solution found")
         print(f"  BQM Energy: {bqm_energy:.6f}")
         print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
         print(f"  Active variables: {sum(solution.values())}")
@@ -1011,7 +1012,7 @@ def main(scenario='simple', n_patches=None):
     convert_start = time.time()
     bqm, invert = cqm_to_bqm(cqm)
     bqm_conversion_time = time.time() - convert_start
-    print(f"  ✅ CQM converted to BQM in {bqm_conversion_time:.2f}s")
+    print(f"  CQM converted to BQM in {bqm_conversion_time:.2f}s")
     print(f"  BQM Variables: {len(bqm.variables)}")
     print(f"  BQM Interactions: {len(bqm.quadratic)}")
     
@@ -1040,7 +1041,7 @@ def main(scenario='simple', n_patches=None):
     else:
         qpu_access_time = 0.0
     
-    print(f"  ✅ HybridBQM solve complete")
+    print(f"  HybridBQM solve complete")
     print(f"  Total samples: {len(sampleset_hybrid)}")
     print(f"  Hybrid Time: {hybrid_time:.2f}s")
     print(f"  QPU Access Time: {qpu_access_time:.4f}s")
@@ -1060,7 +1061,7 @@ def main(scenario='simple', n_patches=None):
     sampleset_sa = sampler_sa.sample(bqm, num_reads=100, label="Food Optimization - Simulated Annealing")
     sa_time = time.time() - sa_start
     
-    print(f"  ✅ Simulated Annealing complete")
+    print(f"  Simulated Annealing complete")
     print(f"  Total samples: {len(sampleset_sa)}")
     print(f"  Solve time: {sa_time:.2f}s")
     
@@ -1194,7 +1195,7 @@ def main(scenario='simple', n_patches=None):
     print(f"PuLP results: {pulp_path}")
     print(f"DWave results (JSON): {dwave_json_path}")
     print(f"DWave results (pickle): {dwave_pickle_path}")
-    print(f"\n✅ BQUBO approach: CQM→BQM conversion + HybridBQM solver")
+    print(f"\nBQUBO approach: CQM→BQM conversion + HybridBQM solver")
     print(f"   QPU Access Time: {qpu_access_time:.4f}s")
     print(f"   More QPU usage = Better scaling for larger problems!")
     print("\nRun the verifier script with this manifest to check results:")
