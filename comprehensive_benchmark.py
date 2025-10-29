@@ -37,11 +37,8 @@ from farm_sampler import generate_farms as generate_farms_large
 from patch_sampler import generate_farms as generate_patches_small
 from src.scenarios import load_food_data
 
-# Import solvers for FARM scenario (original formulation)
-import solver_runner as solver_farm
-
-# Import solvers for BINARY scenario (pure BQUBO formulation)
-import solver_runner_BINARY as solver_binary
+# Import solvers from unified solver_runner_BINARY (handles both formulations)
+import solver_runner_BINARY as solver_runner
 
 from dimod import cqm_to_bqm
 
@@ -64,13 +61,13 @@ NUM_RUNS = 1
 
 def generate_sample_data(config_values: List[int], seed_offset: int = 0, fixed_total_land: float = 100.0) -> List[Tuple[Dict, Dict]]:
     """
-    Generate paired samples of continuous (farm) and discretized (patch) scenarios.
+    Generate paired samples of continuous (farm) and binary (patch) scenarios.
 
-    This follows the Grid_Refinement.py approach:
+    Uses solver_runner_BINARY.py's land generation approach:
     - Uses a FIXED total land area (default 100 ha) for all scenarios
     - For each config value N:
-      * Generates N farms, scales to fixed_total_land
-      * Generates N patches, scales to fixed_total_land
+      * Farm scenario: N farms with uneven_distribution (realistic farm sizes)
+      * Patch scenario: N patches with even_grid (equal-sized plots)
     - This ensures direct comparability across all refinement levels
 
     Args:
@@ -89,9 +86,9 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0, fixed_t
     paired_samples = []
 
     for i, n_units in enumerate(config_values):
-        print(f"\n--- Generating pair for {n_units} units (scaled to {fixed_total_land:.2f} ha) ---")
+        print(f"\n--- Generating pair for {n_units} units (total {fixed_total_land:.2f} ha) ---")
         
-        # 1. Generate the continuous farm sample and scale to fixed land
+        # 1. Generate FARM scenario (uneven_distribution) - Continuous formulation
         seed = 42 + seed_offset + i * 100
         farms_unscaled = generate_farms_large(n_farms=n_units, seed=seed)
         farms_total = sum(farms_unscaled.values())
@@ -101,15 +98,21 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0, fixed_t
         farm_sample = {
             'sample_id': i,
             'type': 'farm',
+            'land_method': 'uneven_distribution',
             'data': farms_scaled,
             'total_area': sum(farms_scaled.values()),
             'n_units': n_units,
             'seed': seed
         }
-        print(f"  ✓ Continuous: {farm_sample['n_units']} farms, scaled from {farms_total:.2f} to {sum(farms_scaled.values()):.2f} ha")
+        
+        # Calculate farm statistics
+        areas = list(farms_scaled.values())
+        print(f"  ✓ Farm (continuous): {farm_sample['n_units']} farms")
+        print(f"     Area: min={min(areas):.2f} ha, max={max(areas):.2f} ha, avg={sum(areas)/len(areas):.2f} ha")
+        print(f"     Total: {sum(farms_scaled.values()):.2f} ha")
 
-        # 2. Generate the discretized patch sample and scale to fixed land
-        patch_seed = seed + 50  # Use a different seed for patch structure
+        # 2. Generate PATCH scenario (even_grid) - Binary formulation
+        patch_seed = seed + 50
         patches_unscaled = generate_patches_small(n_farms=n_units, seed=patch_seed)
         patches_total = sum(patches_unscaled.values())
         patch_scale_factor = fixed_total_land / patches_total if patches_total > 0 else 0
@@ -118,12 +121,18 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0, fixed_t
         patch_sample = {
             'sample_id': i,
             'type': 'patch',
+            'land_method': 'even_grid',
             'data': patches_scaled,
             'total_area': sum(patches_scaled.values()),
             'n_units': n_units,
             'seed': patch_seed
         }
-        print(f"  ✓ Discretized: {patch_sample['n_units']} patches, scaled from {patches_total:.2f} to {sum(patches_scaled.values()):.2f} ha")
+        
+        # Calculate patch statistics
+        patch_area = fixed_total_land / n_units
+        print(f"  ✓ Patch (binary): {patch_sample['n_units']} plots")
+        print(f"     Area per plot: {patch_area:.3f} ha (equal grid)")
+        print(f"     Total: {sum(patches_scaled.values()):.2f} ha")
 
         paired_samples.append((farm_sample, patch_sample))
 
@@ -275,30 +284,39 @@ def save_solver_result(result: Dict, scenario_type: str, solver_name: str, confi
 
 def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> Dict:
     """
-    Run Farm Scenario: DWaveCQM and PuLP/Gurobi solvers.
+    Run Farm Scenario: Continuous formulation (uneven_distribution) with mixed-integer variables.
+    
+    Uses solver_runner_BINARY.py's create_cqm_farm() and solve_with_pulp_farm().
+    
+    Solvers:
+    - Gurobi (PuLP): MINLP solver for continuous areas with binary selection
+    - D-Wave CQM: Quantum-classical hybrid for constrained quadratic models
     
     Args:
-        sample_data: Farm sample data
+        sample_data: Farm sample data with uneven_distribution land method
         dwave_token: D-Wave API token (optional)
         
     Returns:
         Dictionary with results for both solvers
     """
-    print(f"\n  FARM SCENARIO - Sample {sample_data['sample_id']}")
+    print(f"\n  🌾 FARM SCENARIO (Continuous) - Sample {sample_data['sample_id']}")
     print(f"     {sample_data['n_units']} farms, {sample_data['total_area']:.1f} ha")
+    print(f"     Method: {sample_data['land_method']}")
     
     # Create problem setup
     land_data = sample_data['data']
+    farms_list = list(land_data.keys())
     foods, food_groups, config = create_food_config(land_data, 'farm')
     
-    # Create CQM using FARM formulation (original solver_runner.py)
+    # Create CQM using FARM formulation (continuous + binary)
     cqm_start = time.time()
-    cqm, A, Y, constraint_metadata = solver_farm.create_cqm(land_data, foods, food_groups, config)
+    cqm, A, Y, constraint_metadata = solver_runner.create_cqm_farm(farms_list, foods, food_groups, config)
     cqm_time = time.time() - cqm_start
     
     results = {
         'sample_id': sample_data['sample_id'],
         'scenario_type': 'farm',
+        'land_method': sample_data['land_method'],
         'n_units': sample_data['n_units'],
         'total_area': sample_data['total_area'],
         'n_foods': len(foods),
@@ -308,8 +326,8 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
         'solvers': {}
     }
     
-    # 1. Gurobi Solver
-    print(f"     Running Gurobi...")
+    # 1. Gurobi Solver (MINLP with continuous and binary variables)
+    print(f"     Running Gurobi (MINLP)...")
     
     # Check for cached result first (config_id = n_units, run_id = 1)
     cached = check_cached_results('farm', 'gurobi', sample_data['n_units'], run_id=1)
@@ -319,7 +337,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     else:
         try:
             pulp_start = time.time()
-            pulp_model, pulp_results = solver_farm.solve_with_pulp(land_data, foods, food_groups, config)
+            pulp_model, pulp_results = solver_runner.solve_with_pulp_farm(farms_list, foods, food_groups, config)
             pulp_time = time.time() - pulp_start
             
             gurobi_result = {
@@ -363,48 +381,44 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                # Use D-Wave solver for farm scenario (original formulation)
-                sampleset, solve_time = solver_farm.solve_with_dwave(cqm, dwave_token)
-                hybrid_time = solve_time
-                qpu_time = 0  # Farm solver doesn't separate QPU time
+                dwave_start = time.time()
+                sampleset, solve_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
+                dwave_total_time = time.time() - dwave_start
                 
-                success = len(sampleset) > 0
-                objective_value = None
-                if success:
+                # Extract best solution
+                if len(sampleset) > 0:
                     best = sampleset.first
-                    # For farm scenario, we can calculate objective from CQM sample
-                    objective_value = -best.energy  # Assuming energy is negative of objective
-                
-                dwave_result = {
-                    'status': 'Optimal' if success else 'No solution',
-                    'objective_value': objective_value,
-                    'solve_time': hybrid_time if hybrid_time is not None else 0,
-                    'qpu_time': qpu_time if qpu_time is not None else 0,
-                    'hybrid_time': hybrid_time if hybrid_time is not None else 0,
-                    'success': success,
-                    'sample_id': sample_data['sample_id'],
-                    'n_units': sample_data['n_units'],
-                    'total_area': sample_data['total_area'],
-                    'n_foods': len(foods),
-                    'n_variables': len(cqm.variables),
-                    'n_constraints': len(cqm.constraints)
-                }
-                
-                # Extract solution details from D-Wave CQM result
-                # Note: FARM solver doesn't have extract_solution_summary function
-                # if success:
-                #     best_sample = sampleset.first.sample
-                #     solution_dict = {}
-                #     # Convert CQM sample to solution dict format
-                #     for var_name, var_value in best_sample.items():
-                #         solution_dict[var_name] = var_value
+                    is_feasible = best.is_feasible
+                    
+                    dwave_result = {
+                        'status': 'Optimal' if is_feasible else 'Infeasible',
+                        'objective_value': -best.energy if is_feasible else None,
+                        'solve_time': dwave_total_time,
+                        'charge_time': solve_time,
+                        'is_feasible': is_feasible,
+                        'num_samples': len(sampleset),
+                        'success': is_feasible,
+                        'sample_id': sample_data['sample_id'],
+                        'n_units': sample_data['n_units'],
+                        'total_area': sample_data['total_area'],
+                        'n_foods': len(foods),
+                        'n_variables': len(cqm.variables),
+                        'n_constraints': len(cqm.constraints)
+                    }
+                    
+                    print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {dwave_total_time:.3f}s")
+                else:
+                    dwave_result = {
+                        'status': 'No Solutions',
+                        'success': False,
+                        'solve_time': dwave_total_time
+                    }
+                    print(f"       ❌ DWave CQM: No solutions returned")
                 
                 results['solvers']['dwave_cqm'] = dwave_result
                 
                 # Save individual result file (config_id = n_units, run_id = 1)
                 save_solver_result(dwave_result, 'farm', 'dwave_cqm', sample_data['n_units'], run_id=1)
-                
-                print(f"       ✓ DWave CQM: {'Optimal' if success else 'No solution'} in {hybrid_time:.3f}s")
                 
             except Exception as e:
                 print(f"       ❌ DWave CQM failed: {e}")
@@ -417,41 +431,43 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
 
 def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> Dict:
     """
-    Run Binary Scenario: A pure BQUBO problem where each variable represents
-    a 1-acre plantation (simplified binary formulation).
+    Run Patch Scenario: Binary formulation (even_grid) with pure binary variables.
+    
+    Uses solver_runner_BINARY.py's create_cqm_plots() and solve_with_pulp_plots().
+    
+    Solvers:
+    - Gurobi (PuLP): BIP solver for binary plot assignments
+    - D-Wave CQM: Quantum-classical hybrid for constrained quadratic models
+    - Gurobi QUBO: Native QUBO solver after CQM→BQM conversion
+    - D-Wave BQM: Quantum annealer with higher QPU utilization
     
     Args:
-        sample_data: Binary sample data (patches scaled to represent max plantations)
+        sample_data: Patch sample data with even_grid land method
         dwave_token: D-Wave API token (optional)
         
     Returns:
         Dictionary with results for all solvers
     """
-    print(f"\n  🌾 BINARY SCENARIO - Sample {sample_data['sample_id']}")
+    print(f"\n  📊 PATCH SCENARIO (Binary) - Sample {sample_data['sample_id']}")
     print(f"     {sample_data['n_units']} plots, {sample_data['total_area']:.1f} ha")
+    print(f"     Method: {sample_data['land_method']}")
     
     # Create problem setup
-    # Convert continuous land areas to max number of 1-acre plantations
-    land_data_continuous = sample_data['data']
-    land_data_binary = {plot: int(round(area)) for plot, area in land_data_continuous.items()}
-    total_plantations = sum(land_data_binary.values())
+    land_data = sample_data['data']
+    plots_list = list(land_data.keys())
+    foods, food_groups, config = create_food_config(land_data, 'patch')
     
-    print(f"     Max plantations: {total_plantations} (1 acre each)")
-    
-    foods, food_groups, config = create_food_config(land_data_binary, 'binary')
-    
-    # Create CQM using BINARY formulation (solver_runner_BINARY.py)
+    # Create CQM using BINARY formulation (pure binary)
     cqm_start = time.time()
-    farms_list = list(land_data_binary.keys())
-    cqm, Y, constraint_metadata = solver_binary.create_cqm(farms_list, foods, food_groups, config)
+    cqm, Y, constraint_metadata = solver_runner.create_cqm_plots(plots_list, foods, food_groups, config)
     cqm_time = time.time() - cqm_start
     
     results = {
         'sample_id': sample_data['sample_id'],
-        'scenario_type': 'binary',
+        'scenario_type': 'patch',
+        'land_method': sample_data['land_method'],
         'n_units': sample_data['n_units'],
         'total_area': sample_data['total_area'],
-        'max_plantations': total_plantations,
         'n_foods': len(foods),
         'n_variables': len(cqm.variables),
         'n_constraints': len(cqm.constraints),
@@ -459,8 +475,8 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
         'solvers': {}
     }
     
-    # 1. Gurobi Solver (Binary MILP)
-    print(f"     Running Gurobi (Binary MILP)...")
+    # 1. Gurobi Solver (BIP with only binary variables)
+    print(f"     Running Gurobi (BIP)...")
     
     # Check for cached result first
     cached = check_cached_results('patch', 'gurobi', sample_data['n_units'], run_id=1)
@@ -470,7 +486,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
     else:
         try:
             pulp_start = time.time()
-            pulp_model, pulp_results = solver_binary.solve_with_pulp(farms_list, foods, food_groups, config)
+            pulp_model, pulp_results = solver_runner.solve_with_pulp_plots(plots_list, foods, food_groups, config)
             pulp_time = time.time() - pulp_start
             
             gurobi_result = {
@@ -482,7 +498,6 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 'sample_id': sample_data['sample_id'],
                 'n_units': sample_data['n_units'],
                 'total_area': sample_data['total_area'],
-                'max_plantations': total_plantations,
                 'n_foods': len(foods),
                 'n_variables': len(cqm.variables),
                 'n_constraints': len(cqm.constraints)
@@ -513,36 +528,42 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                # Use D-Wave with binary CQM
-                sampleset, hybrid_time, qpu_time, bqm_conversion_time, invert = solver_binary.solve_with_dwave(cqm, dwave_token)
+                dwave_start = time.time()
+                sampleset, solve_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
+                dwave_total_time = time.time() - dwave_start
                 
-                success = len(sampleset) > 0
-                objective_value = None
-                if success:
-                    best_sample = sampleset.first
-                    objective_value = -best_sample.energy  # Negate because CQM minimizes
-                
-                dwave_result = {
-                    'status': 'Optimal' if success else 'No solution',
-                    'objective_value': objective_value,
-                    'solve_time': hybrid_time if hybrid_time is not None else 0,
-                    'qpu_time': qpu_time if qpu_time is not None else 0,
-                    'hybrid_time': hybrid_time if hybrid_time is not None else 0,
-                    'bqm_conversion_time': bqm_conversion_time,
-                    'success': success,
-                    'sample_id': sample_data['sample_id'],
-                    'n_units': sample_data['n_units'],
-                    'total_area': sample_data['total_area'],
-                    'max_plantations': total_plantations,
-                    'n_foods': len(foods),
-                    'n_variables': len(cqm.variables),
-                    'n_constraints': len(cqm.constraints)
-                }
+                # Extract best solution
+                if len(sampleset) > 0:
+                    best = sampleset.first
+                    is_feasible = best.is_feasible
+                    
+                    dwave_result = {
+                        'status': 'Optimal' if is_feasible else 'Infeasible',
+                        'objective_value': -best.energy if is_feasible else None,
+                        'solve_time': dwave_total_time,
+                        'charge_time': solve_time,
+                        'is_feasible': is_feasible,
+                        'num_samples': len(sampleset),
+                        'success': is_feasible,
+                        'sample_id': sample_data['sample_id'],
+                        'n_units': sample_data['n_units'],
+                        'total_area': sample_data['total_area'],
+                        'n_foods': len(foods),
+                        'n_variables': len(cqm.variables),
+                        'n_constraints': len(cqm.constraints)
+                    }
+                    
+                    print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {dwave_total_time:.3f}s")
+                else:
+                    dwave_result = {
+                        'status': 'No Solutions',
+                        'success': False,
+                        'solve_time': dwave_total_time
+                    }
+                    print(f"       ❌ DWave CQM: No solutions returned")
                 
                 results['solvers']['dwave_cqm'] = dwave_result
                 save_solver_result(dwave_result, 'patch', 'dwave_cqm', sample_data['n_units'], run_id=1)
-                
-                print(f"       ✓ DWave CQM: {'Optimal' if success else 'No solution'} in {hybrid_time:.3f}s")
                 
             except Exception as e:
                 print(f"       ❌ DWave CQM failed: {e}")
@@ -560,7 +581,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
     try:
         bqm_start = time.time()
         lagrange_multiplier = 10.0
-        print(f"       Using manual Lagrange multiplier: {lagrange_multiplier}")
+        print(f"       Using Lagrange multiplier: {lagrange_multiplier}")
         
         bqm, invert = cqm_to_bqm(cqm, lagrange_multiplier=lagrange_multiplier)
         bqm_conversion_time = time.time() - bqm_start
@@ -584,7 +605,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 
                 print(f"       Submitting to DWave Leap HybridBQM solver...")
                 bqm_start = time.time()
-                sampleset_bqm = bqm_sampler.sample(bqm, label="Binary Optimization - BQM")
+                sampleset_bqm = bqm_sampler.sample(bqm, label="Patch Optimization - BQM")
                 bqm_solve_time = time.time() - bqm_start
                 
                 # Extract timing
@@ -611,7 +632,6 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     'sample_id': sample_data['sample_id'],
                     'n_units': sample_data['n_units'],
                     'total_area': sample_data['total_area'],
-                    'max_plantations': total_plantations,
                     'n_foods': len(foods),
                     'n_variables': len(bqm.variables),
                     'bqm_interactions': len(bqm.quadratic)
@@ -646,11 +666,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 # Convert BQM to QUBO format
                 Q_dict = bqm.to_numpy_matrix()
                 
-                print(f"\n{'='*80}")
-                print(f"SOLVING QUBO WITH GUROBI OPTIMODS (NATIVE QUBO SOLVER)")
-                print(f"{'='*80}")
-                print(f"  BQM Variables: {len(bqm.variables)}")
-                print(f"  QUBO non-zero terms: {len(bqm.linear) + len(bqm.quadratic)}")
+                print(f"       BQM Variables: {len(bqm.variables)}, QUBO terms: {len(bqm.linear) + len(bqm.quadratic)}")
                 
                 qubo_start = time.time()
                 result_qubo = solve_qubo(Q_dict, TimeLimit=100)
@@ -668,10 +684,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 cqm_sample = invert(solution)
                 cqm_objective = -bqm_energy
                 
-                print(f"  Optimal solution found")
-                print(f"  BQM Energy: {bqm_energy:.6f}")
-                print(f"  Original CQM Objective: {cqm_objective:.6f}")
-                print(f"  Solve time: {qubo_time:.3f} seconds")
+                print(f"       ✓ Gurobi QUBO: Optimal in {qubo_time:.3f}s (obj: {cqm_objective:.6f})")
                 
                 gurobi_qubo_result = {
                     'status': 'Optimal',
@@ -683,7 +696,6 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     'sample_id': sample_data['sample_id'],
                     'n_units': sample_data['n_units'],
                     'total_area': sample_data['total_area'],
-                    'max_plantations': total_plantations,
                     'n_foods': len(foods),
                     'n_variables': len(bqm.variables),
                     'bqm_interactions': len(bqm.quadratic)
@@ -691,8 +703,6 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 
                 results['solvers']['gurobi_qubo'] = gurobi_qubo_result
                 save_solver_result(gurobi_qubo_result, 'patch', 'gurobi_qubo', sample_data['n_units'], run_id=1)
-                
-                print(f"       ✓ Gurobi QUBO: Optimal in {qubo_time:.3f}s")
                 
             except Exception as e:
                 print(f"       ❌ Gurobi QUBO failed: {e}")
