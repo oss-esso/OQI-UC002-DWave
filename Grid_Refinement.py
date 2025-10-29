@@ -58,20 +58,20 @@ except Exception as e:
     from solver_runner_PATCH import solve_with_pulp as solve_with_pulp_patch
     from solver_runner import solve_with_pulp as solve_with_pulp_continuous
 
-# Import patch sampler
+# Import patch sampler (for both farms and patches)
 from patch_sampler import generate_farms as generate_patches
+from farm_sampler import generate_farms as generate_farms_continuous
 
 # Grid refinement configurations
 # These represent different levels of discretization
+# We'll test each with both continuous (farms) and discretized (patches) formulations
 GRID_REFINEMENTS = [
-    5,      # Very coarse (5 patches)
-    10,     # Coarse (10 patches)
-    25,     # Medium (25 patches)
-    50,     # Fine (50 patches)
-    100,    # Very fine (100 patches)
-    200,    # Extra fine (200 patches)
-    1000,
-    10000
+    5,      # Very coarse
+    10,     # Coarse
+    25,     # Medium
+    50,     # Fine
+    100,    # Very fine
+    200,    # Extra fine
 ]
 
 # Seed for reproducibility
@@ -162,24 +162,27 @@ def load_foods_from_excel(n_foods_per_group: int = None) -> Tuple[Dict[str, Dict
     return foods, food_groups
 
 
-def create_continuous_scenario(total_land: float, n_farms: int = 10) -> Tuple[List[str], Dict[str, float], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+def create_continuous_scenario(n_farms: int, total_land: float = None) -> Tuple[List[str], Dict[str, float], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
     """
     Create a continuous scenario (original format with continuous area variables).
-    This represents the "true" optimal solution without discretization.
+    Uses farm_sampler to generate farms with realistic size distribution.
     
     Args:
-        total_land: Total land to distribute across farms
         n_farms: Number of farms (continuous areas)
+        total_land: Total land to distribute (if None, use natural total from farm_sampler)
         
     Returns:
         Tuple of (farms, land_availability, foods, food_groups, config)
     """
-    # Generate farm areas (continuous values)
-    np.random.seed(SEED)
-    farm_areas = np.random.dirichlet(np.ones(n_farms)) * total_land
+    # Generate farms with realistic size distribution
+    land_availability = generate_farms_continuous(n_farms=n_farms, seed=SEED)
+    farms = list(land_availability.keys())
     
-    farms = [f"Farm_{i}" for i in range(n_farms)]
-    land_availability = {farm: float(area) for farm, area in zip(farms, farm_areas)}
+    # Scale to match total_land if specified
+    if total_land is not None:
+        current_total = sum(land_availability.values())
+        scale_factor = total_land / current_total
+        land_availability = {k: v * scale_factor for k, v in land_availability.items()}
     
     # Load foods (use a subset for manageable problem size)
     foods, food_groups = load_foods_from_excel(n_foods_per_group=2)
@@ -270,6 +273,11 @@ def create_discretized_scenario(n_patches: int, total_land: float) -> Tuple[List
 def run_grid_refinement_analysis(total_land: float = 100.0):
     """
     Run grid refinement analysis comparing continuous and discretized formulations.
+    For each refinement level, we create:
+    1. A continuous scenario with n_farms (using farm_sampler distribution)
+    2. A discretized scenario with n_patches (using patch_sampler distribution)
+    
+    Both scenarios use the same total land area for fair comparison.
     
     Args:
         total_land: Total land area to use for all scenarios
@@ -279,64 +287,61 @@ def run_grid_refinement_analysis(total_land: float = 100.0):
     print("="*80)
     print(f"Total Land: {total_land} hectares")
     print(f"Grid Refinements: {GRID_REFINEMENTS}")
+    print(f"\nFor each refinement level N:")
+    print(f"  - Continuous: N farms with continuous area variables (farm_sampler)")
+    print(f"  - Discretized: N patches with binary assignment (patch_sampler)")
     print("="*80)
     
     results = []
     
-    # Step 1: Solve continuous scenario (reference/ground truth)
-    print("\n" + "="*80)
-    print("STEP 1: Solving CONTINUOUS scenario (ground truth)")
-    print("="*80)
-    
-    farms, land_avail_cont, foods, food_groups, config_cont = create_continuous_scenario(
-        total_land=total_land, n_farms=10
-    )
-    
-    print(f"  Farms: {len(farms)}")
-    print(f"  Foods: {len(foods)}")
-    print(f"  Food Groups: {len(food_groups)}")
-    print(f"  Total Land: {sum(land_avail_cont.values()):.2f} ha")
-    print(f"  Formulation: Continuous (A_{{f,c}} ∈ [0, land_f])")
-    
-    print("\n  Solving with PuLP (continuous)...")
-    start = time.time()
-    model_cont, results_cont = solve_with_pulp_continuous(farms, foods, food_groups, config_cont)
-    time_cont = time.time() - start
-    
-    obj_continuous = results_cont.get('objective_value', 0)
-    status_cont = results_cont.get('status', 'Unknown')
-    
-    print(f"    Status: {status_cont}")
-    print(f"    Objective: {obj_continuous:.6f}")
-    print(f"    Time: {time_cont:.3f}s")
-    
-    if status_cont != 'Optimal':
-        print(f"\n⚠️  WARNING: Continuous solution is not optimal!")
-        return
-    
-    # Store continuous result
-    results.append({
-        'refinement': 'Continuous',
-        'n_patches': len(farms),
-        'objective': obj_continuous,
-        'time': time_cont,
-        'gap_percent': 0.0,  # Reference solution
-        'status': status_cont
-    })
-    
-    # Step 2: Solve discretized scenarios with different grid refinements
-    print("\n" + "="*80)
-    print("STEP 2: Solving DISCRETIZED scenarios (varying grid refinements)")
-    print("="*80)
-    
-    for n_patches in GRID_REFINEMENTS:
+    # Test each refinement level
+    for n in GRID_REFINEMENTS:
+        print(f"\n{'='*80}")
+        print(f"REFINEMENT LEVEL: {n} units")
+        print(f"{'='*80}")
+        
+        # Step 1: Solve continuous scenario (n farms)
         print(f"\n{'-'*80}")
-        print(f"Grid Refinement: {n_patches} patches")
+        print(f"CONTINUOUS: {n} farms")
         print(f"{'-'*80}")
         
-        # Create discretized scenario
+        farms, land_avail_cont, foods, food_groups, config_cont = create_continuous_scenario(
+            n_farms=n, total_land=total_land
+        )
+        
+        print(f"  Farms: {len(farms)}")
+        print(f"  Foods: {len(foods)}")
+        print(f"  Food Groups: {len(food_groups)}")
+        print(f"  Total Land: {sum(land_avail_cont.values()):.2f} ha")
+        print(f"  Formulation: Continuous (A_{{f,c}} ∈ [0, land_f])")
+        
+        print(f"\n  Solving with PuLP (continuous)...")
+        start = time.time()
+        model_cont, results_cont = solve_with_pulp_continuous(farms, foods, food_groups, config_cont)
+        time_cont = time.time() - start
+        
+        obj_continuous = results_cont.get('objective_value', None)
+        status_cont = results_cont.get('status', 'Unknown')
+        
+        print(f"    Status: {status_cont}")
+        if obj_continuous is not None:
+            print(f"    Objective: {obj_continuous:.6f}")
+        else:
+            print(f"    Objective: N/A (infeasible)")
+        print(f"    Time: {time_cont:.3f}s")
+        
+        # Skip discretized if continuous is not optimal
+        if status_cont != 'Optimal' or obj_continuous is None:
+            print(f"\n  ⚠️  Skipping discretized version (continuous not optimal)")
+            continue
+        
+        # Step 2: Solve discretized scenario (n patches)
+        print(f"\n{'-'*80}")
+        print(f"DISCRETIZED: {n} patches")
+        print(f"{'-'*80}")
+        
         patches, land_avail_disc, foods_disc, food_groups_disc, config_disc = create_discretized_scenario(
-            n_patches=n_patches, total_land=total_land
+            n_patches=n, total_land=total_land
         )
         
         print(f"  Patches: {len(patches)}")
@@ -344,7 +349,6 @@ def run_grid_refinement_analysis(total_land: float = 100.0):
         print(f"  Total Land: {sum(land_avail_disc.values()):.2f} ha")
         print(f"  Formulation: Discretized (X_{{p,c}} ∈ {{0,1}})")
         
-        # Solve with PuLP (discretized/MILP)
         print(f"\n  Solving with PuLP (MILP)...")
         start = time.time()
         model_disc, results_disc = solve_with_pulp_patch(patches, foods_disc, food_groups_disc, config_disc)
@@ -367,67 +371,110 @@ def run_grid_refinement_analysis(total_land: float = 100.0):
         print(f"    Objective (raw): {obj_discrete_raw:.6f}")
         print(f"    Objective (normalized): {obj_discrete:.6f}")
         print(f"    Time: {time_disc:.3f}s")
-        print(f"    Gap from continuous: {gap_percent:.2f}%")
         
-        # Store result
+        # Step 3: Compare
+        print(f"\n{'-'*80}")
+        print(f"COMPARISON")
+        print(f"{'-'*80}")
+        print(f"  Continuous Objective:  {obj_continuous:.6f}")
+        print(f"  Discretized Objective: {obj_discrete:.6f}")
+        print(f"  Gap: {gap_percent:.2f}%")
+        print(f"  Time Ratio (Discrete/Continuous): {time_disc/time_cont:.2f}x")
+        
+        if status_cont != 'Optimal' or status_disc != 'Optimal':
+            print(f"  ⚠️  Warning: One or both solutions not optimal!")
+        
+        # Store results
         results.append({
-            'refinement': f'{n_patches} patches',
-            'n_patches': n_patches,
-            'objective': obj_discrete,
-            'time': time_disc,
+            'n_units': n,
+            'continuous_obj': obj_continuous,
+            'continuous_time': time_cont,
+            'continuous_status': status_cont,
+            'discretized_obj': obj_discrete,
+            'discretized_time': time_disc,
+            'discretized_status': status_disc,
             'gap_percent': gap_percent,
-            'status': status_disc
+            'time_ratio': time_disc / time_cont if time_cont > 0 else 0
         })
     
-    # Step 3: Print summary
+    # Step 4: Print summary
     print("\n" + "="*80)
     print("RESULTS SUMMARY")
     print("="*80)
     
-    print(f"\n{'Refinement':<20} {'Patches':<10} {'Objective':<15} {'Time (s)':<10} {'Gap (%)':<10} {'Status':<10}")
-    print("-" * 85)
+    print(f"\n{'N':<8} {'Continuous':<15} {'Discretized':<15} {'Gap (%)':<10} {'Time Cont':<12} {'Time Disc':<12} {'Ratio':<8}")
+    print("-" * 90)
     
     for r in results:
-        print(f"{r['refinement']:<20} {r['n_patches']:<10} {r['objective']:<15.6f} {r['time']:<10.3f} {r['gap_percent']:<10.2f} {r['status']:<10}")
+        print(f"{r['n_units']:<8} {r['continuous_obj']:<15.6f} {r['discretized_obj']:<15.6f} "
+              f"{r['gap_percent']:<10.2f} {r['continuous_time']:<12.3f} {r['discretized_time']:<12.3f} "
+              f"{r['time_ratio']:<8.2f}")
     
     print("\n" + "="*80)
     print("ANALYSIS")
     print("="*80)
     
-    print(f"\n  Reference (Continuous): {obj_continuous:.6f}")
-    
-    if len(results) > 1:
-        best_discrete = max(results[1:], key=lambda x: x['objective'])
-        print(f"  Best Discrete: {best_discrete['objective']:.6f} ({best_discrete['refinement']})")
-        print(f"  Best Gap: {best_discrete['gap_percent']:.2f}%")
-        
+    if len(results) > 0:
         # Convergence analysis
-        print(f"\n  Convergence Analysis:")
-        print(f"  {'Patches':<10} {'Objective':<15} {'Gap (%)':<10}")
-        print("  " + "-" * 35)
-        for r in results[1:]:
-            print(f"  {r['n_patches']:<10} {r['objective']:<15.6f} {r['gap_percent']:<10.2f}")
+        print(f"\n  Convergence of Discretized to Continuous:")
+        print(f"  {'N':<10} {'Gap (%)':<10} {'Trend':<20}")
+        print("  " + "-" * 40)
+        for r in results:
+            trend = ""
+            if abs(r['gap_percent']) < 0.1:
+                trend = "✓ Excellent"
+            elif abs(r['gap_percent']) < 1.0:
+                trend = "✓ Good"
+            elif abs(r['gap_percent']) < 5.0:
+                trend = "⚠ Moderate"
+            else:
+                trend = "✗ Poor"
+            print(f"  {r['n_units']:<10} {r['gap_percent']:<10.2f} {trend:<20}")
         
-        # Check convergence behavior
-        print(f"\n  Interpretation:")
-        if abs(best_discrete['gap_percent']) < 0.1:
-            print(f"  ✓ Excellent convergence: gap < 0.1%")
-            print(f"  ✓ Discretization at {best_discrete['n_patches']} patches closely approximates continuous solution")
-        elif abs(best_discrete['gap_percent']) < 1.0:
-            print(f"  ✓ Good convergence: gap < 1%")
-            print(f"  ✓ Discretization provides reasonable approximation")
-        elif abs(best_discrete['gap_percent']) < 5.0:
-            print(f"  ⚠ Moderate convergence: gap < 5%")
-            print(f"  ⚠ Some quality loss due to discretization")
+        # Time complexity analysis
+        print(f"\n  Computational Time Analysis:")
+        print(f"  {'N':<10} {'Continuous (s)':<15} {'Discretized (s)':<15} {'Ratio':<10}")
+        print("  " + "-" * 50)
+        for r in results:
+            print(f"  {r['n_units']:<10} {r['continuous_time']:<15.3f} {r['discretized_time']:<15.3f} {r['time_ratio']:<10.2f}")
+        
+        # Best and worst gaps
+        best_result = min(results, key=lambda x: abs(x['gap_percent']))
+        worst_result = max(results, key=lambda x: abs(x['gap_percent']))
+        
+        print(f"\n  Best Approximation: N={best_result['n_units']} with {best_result['gap_percent']:.2f}% gap")
+        print(f"  Worst Approximation: N={worst_result['n_units']} with {worst_result['gap_percent']:.2f}% gap")
+        
+        # Overall interpretation
+        print(f"\n  Overall Interpretation:")
+        avg_gap = sum(abs(r['gap_percent']) for r in results) / len(results)
+        print(f"  - Average absolute gap: {avg_gap:.2f}%")
+        
+        if avg_gap < 0.5:
+            print(f"  ✓ Discretized formulation provides excellent approximation across all scales")
+        elif avg_gap < 2.0:
+            print(f"  ✓ Discretized formulation provides good approximation across most scales")
+        elif avg_gap < 5.0:
+            print(f"  ⚠ Discretized formulation shows moderate approximation quality")
         else:
-            print(f"  ✗ Poor convergence: gap ≥ 5%")
-            print(f"  ✗ Significant quality loss due to discretization")
+            print(f"  ✗ Discretized formulation shows significant approximation error")
+        
+        # Check if gap improves with refinement
+        if len(results) >= 3:
+            gaps = [abs(r['gap_percent']) for r in results]
+            if gaps[-1] < gaps[0]:
+                print(f"  ✓ Gap improves with finer discretization ({gaps[0]:.2f}% → {gaps[-1]:.2f}%)")
+            else:
+                print(f"  ⚠ Gap does not consistently improve with refinement")
         
         # Note about negative gaps
-        if best_discrete['gap_percent'] < 0:
-            print(f"\n  Note: Negative gap means discrete > continuous")
-            print(f"        This may indicate slight numerical differences or")
-            print(f"        different constraint handling between formulations")
+        negative_gaps = [r for r in results if r['gap_percent'] < 0]
+        if negative_gaps:
+            print(f"\n  Note: {len(negative_gaps)} cases show negative gaps (discrete > continuous)")
+            print(f"        This may indicate:")
+            print(f"        - Numerical precision differences between solvers")
+            print(f"        - Different constraint handling (discrete more permissive)")
+            print(f"        - Solver convergence tolerances")
     
     print("\n" + "="*80)
     
