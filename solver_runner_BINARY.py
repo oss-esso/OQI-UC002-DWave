@@ -28,19 +28,310 @@ from dimod import ConstrainedQuadraticModel, Binary, Real, cqm_to_bqm
 from dwave.system import LeapHybridCQMSampler, LeapHybridBQMSampler
 import pulp as pl
 from tqdm import tqdm
+import math
 
-def create_cqm(farms, foods, food_groups, config):
+def calculate_model_complexity(formulation_type, n_farms, n_foods, n_food_groups=0, 
+                               n_crops_with_min_area=0, n_crops_with_max_area=0,
+                               has_food_group_constraints=False):
+    """
+    Calculate the number of variables, constraints, and coefficients for a given formulation.
+    
+    This function provides metrics for comparison with benchmark papers in optimization literature.
+    
+    Args:
+        formulation_type: 'continuous' or 'binary'
+        n_farms: Number of farms/plots
+        n_foods: Number of crops/foods
+        n_food_groups: Number of food groups
+        n_crops_with_min_area: Number of crops with minimum area constraints
+        n_crops_with_max_area: Number of crops with maximum area constraints
+        has_food_group_constraints: Whether food group constraints are active
+    
+    Returns:
+        Dictionary with complexity metrics:
+        - n_variables: Total number of decision variables
+        - n_binary_vars: Number of binary variables
+        - n_continuous_vars: Number of continuous variables
+        - n_constraints: Total number of constraints
+        - n_linear_coefficients: Number of non-zero linear coefficients
+        - n_quadratic_coefficients: Number of non-zero quadratic coefficients (bilinear terms)
+        - problem_class: Classification (LP, MILP, MINLP, BIP, etc.)
+    """
+    complexity = {}
+    
+    if formulation_type == 'continuous':
+        # Continuous formulation with area (A) and selection (Y) variables
+        n_area_vars = n_farms * n_foods  # A_{f,c}
+        n_selection_vars = n_farms * n_foods  # Y_{f,c}
+        
+        complexity['n_variables'] = n_area_vars + n_selection_vars
+        complexity['n_continuous_vars'] = n_area_vars
+        complexity['n_binary_vars'] = n_selection_vars
+        
+        # Constraints:
+        # 1. Land availability: n_farms constraints
+        n_land_constraints = n_farms
+        
+        # 2. Minimum area linking: n_farms * n_foods constraints (A >= A_min * Y)
+        n_min_linking = n_farms * n_foods
+        
+        # 3. Maximum area linking: n_farms * n_foods constraints (A <= L_f * Y)
+        n_max_linking = n_farms * n_foods
+        
+        # 4. Food group constraints: 2 * n_farms * n_food_groups (min and max)
+        n_food_group = 2 * n_farms * n_food_groups if has_food_group_constraints else 0
+        
+        complexity['n_constraints'] = (n_land_constraints + n_min_linking + 
+                                      n_max_linking + n_food_group)
+        
+        # Linear coefficients in objective: n_farms * n_foods (for A variables)
+        # Linear coefficients in constraints:
+        # - Land: n_farms * n_foods (sum of A per farm)
+        # - Min linking: n_farms * n_foods (A terms) + n_farms * n_foods (Y terms)
+        # - Max linking: n_farms * n_foods (A terms) + n_farms * n_foods (Y terms)
+        # - Food group: varies, approximately 2 * n_farms * (avg foods per group)
+        avg_foods_per_group = n_foods / max(n_food_groups, 1) if n_food_groups > 0 else 0
+        complexity['n_linear_coefficients'] = (
+            n_farms * n_foods +  # Objective
+            n_farms * n_foods +  # Land constraints
+            2 * n_farms * n_foods +  # Min linking (A and Y)
+            2 * n_farms * n_foods +  # Max linking (A and Y)
+            2 * n_farms * int(avg_foods_per_group) * n_food_groups  # Food group
+        )
+        
+        # Quadratic coefficients: bilinear terms A * Y in linking constraints
+        # Each linking constraint has one bilinear term
+        complexity['n_quadratic_coefficients'] = 2 * n_farms * n_foods
+        
+        complexity['problem_class'] = 'MINLP (Mixed-Integer Nonlinear Program with bilinear terms)'
+        
+    elif formulation_type == 'binary':
+        # Binary formulation with only selection variables Y
+        n_selection_vars = n_farms * n_foods  # Y_{p,c}
+        
+        complexity['n_variables'] = n_selection_vars
+        complexity['n_continuous_vars'] = 0
+        complexity['n_binary_vars'] = n_selection_vars
+        
+        # Constraints:
+        # 1. Plot assignment: n_farms constraints (each plot assigned to at most one crop)
+        n_plot_constraints = n_farms
+        
+        # 2. Minimum plots per crop: n_crops_with_min_area constraints
+        n_min_plots = n_crops_with_min_area
+        
+        # 3. Maximum plots per crop: n_crops_with_max_area constraints
+        n_max_plots = n_crops_with_max_area
+        
+        # 4. Food group constraints: 2 * n_farms * n_food_groups (min and max)
+        n_food_group = 2 * n_farms * n_food_groups if has_food_group_constraints else 0
+        
+        complexity['n_constraints'] = (n_plot_constraints + n_min_plots + 
+                                      n_max_plots + n_food_group)
+        
+        # Linear coefficients in objective: n_farms * n_foods (all Y variables)
+        # Linear coefficients in constraints:
+        # - Plot assignment: n_farms * n_foods (sum of Y per plot)
+        # - Min plots: n_farms per constraint * n_crops_with_min
+        # - Max plots: n_farms per constraint * n_crops_with_max
+        # - Food group: 2 * n_farms * (avg foods per group) * n_food_groups
+        avg_foods_per_group = n_foods / max(n_food_groups, 1) if n_food_groups > 0 else 0
+        complexity['n_linear_coefficients'] = (
+            n_farms * n_foods +  # Objective
+            n_farms * n_foods +  # Plot assignment
+            n_farms * n_crops_with_min_area +  # Min plots per crop
+            n_farms * n_crops_with_max_area +  # Max plots per crop
+            2 * n_farms * int(avg_foods_per_group) * n_food_groups  # Food group
+        )
+        
+        # No quadratic terms in binary formulation
+        complexity['n_quadratic_coefficients'] = 0
+        
+        complexity['problem_class'] = 'BIP (Binary Integer Program - pure 0-1 optimization)'
+    
+    else:
+        raise ValueError(f"Unknown formulation_type: {formulation_type}")
+    
+    return complexity
+
+
+def print_model_complexity_comparison(continuous_complexity, binary_complexity):
+    """
+    Print a formatted comparison table of model complexities.
+    
+    Args:
+        continuous_complexity: Dictionary from calculate_model_complexity for continuous
+        binary_complexity: Dictionary from calculate_model_complexity for binary
+    """
+    print("\n" + "="*80)
+    print("MODEL COMPLEXITY COMPARISON")
+    print("="*80)
+    
+    print(f"\n{'Metric':<40} {'Continuous':<20} {'Binary':<20}")
+    print("-"*80)
+    
+    print(f"{'Problem Class':<40} {continuous_complexity['problem_class']:<20} {binary_complexity['problem_class']:<20}")
+    print(f"{'Total Variables':<40} {continuous_complexity['n_variables']:<20} {binary_complexity['n_variables']:<20}")
+    print(f"{'  - Continuous Variables':<40} {continuous_complexity['n_continuous_vars']:<20} {binary_complexity['n_continuous_vars']:<20}")
+    print(f"{'  - Binary Variables':<40} {continuous_complexity['n_binary_vars']:<20} {binary_complexity['n_binary_vars']:<20}")
+    print(f"{'Total Constraints':<40} {continuous_complexity['n_constraints']:<20} {binary_complexity['n_constraints']:<20}")
+    print(f"{'Linear Coefficients':<40} {continuous_complexity['n_linear_coefficients']:<20} {binary_complexity['n_linear_coefficients']:<20}")
+    print(f"{'Quadratic Coefficients (bilinear)':<40} {continuous_complexity['n_quadratic_coefficients']:<20} {binary_complexity['n_quadratic_coefficients']:<20}")
+    
+    print("\n" + "="*80)
+    print("COMPLEXITY REDUCTION ANALYSIS")
+    print("="*80)
+    
+    var_reduction = (1 - binary_complexity['n_variables'] / continuous_complexity['n_variables']) * 100
+    const_reduction = (1 - binary_complexity['n_constraints'] / continuous_complexity['n_constraints']) * 100
+    coeff_reduction = (1 - binary_complexity['n_linear_coefficients'] / continuous_complexity['n_linear_coefficients']) * 100
+    
+    print(f"{'Variable Reduction':<40} {var_reduction:>6.2f}%")
+    print(f"{'Constraint Reduction':<40} {const_reduction:>6.2f}%")
+    print(f"{'Linear Coefficient Reduction':<40} {coeff_reduction:>6.2f}%")
+    print(f"{'Quadratic Terms Eliminated':<40} {'YES (100%)' if binary_complexity['n_quadratic_coefficients'] == 0 else 'NO'}")
+    
+    print("\n" + "="*80)
+
+
+def create_cqm_farm(farms, foods, food_groups, config):
+    """
+    Creates a CQM for the food optimization problem.
+    Returns CQM, variables, and constraint metadata.
+    """
+    cqm = ConstrainedQuadraticModel()
+
+    # Extract parameters
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+
+    # Define variables
+    A = {}
+    Y = {}
+
+    for farm in tqdm(farms, desc="Creating variables"):
+        for food in foods:
+            A[(farm, food)] = Real(
+                f"A_{farm}_{food}", lower_bound=0, upper_bound=land_availability[farm])
+            Y[(farm, food)] = Binary(f"Y_{farm}_{food}")
+
+    # Objective function
+    total_area = sum(land_availability[farm] for farm in farms)
+
+    objective = sum(
+        weights.get('nutritional_value', 0) * foods[food].get('nutritional_value', 0) * A[(farm, food)] +
+        weights.get('nutrient_density', 0) * foods[food].get('nutrient_density', 0) * A[(farm, food)] -
+        weights.get('environmental_impact', 0) * foods[food].get('environmental_impact', 0) * A[(farm, food)] +
+        weights.get('affordability', 0) * foods[food].get('affordability', 0) * A[(farm, food)] +
+        weights.get('sustainability', 0) *
+        foods[food].get('sustainability', 0) * A[(farm, food)]
+        for farm in tqdm(farms) for food in foods
+    )
+
+    cqm.set_objective(-objective)
+
+    # Constraint metadata
+    constraint_metadata = {
+        'land_availability': {},
+        'min_area_if_selected': {},
+        'max_area_if_selected': {},
+        'food_group_min': {},
+        'food_group_max': {}
+    }
+
+    # Land availability constraints
+    for farm in tqdm(farms, desc="Adding land availability constraints"):
+        cqm.add_constraint(
+            sum(A[(farm, food)]
+                for food in foods) - land_availability[farm] <= 0,
+            label=f"Land_Availability_{farm}"
+        )
+        constraint_metadata['land_availability'][farm] = {
+            'type': 'land_availability',
+            'farm': farm,
+            'max_land': land_availability[farm]
+        }
+
+    # Linking constraints
+    for farm in tqdm(farms, desc="Adding linking constraints"):
+        for food in foods:
+            A_min = min_planting_area.get(food, 0)
+
+            cqm.add_constraint(
+                A[(farm, food)] - A_min * Y[(farm, food)] >= 0,
+                label=f"Min_Area_If_Selected_{farm}_{food}"
+            )
+            constraint_metadata['min_area_if_selected'][(farm, food)] = {
+                'type': 'min_area_if_selected',
+                'farm': farm,
+                'food': food,
+                'min_area': A_min
+            }
+
+            cqm.add_constraint(
+                A[(farm, food)] - land_availability[farm] * Y[(farm, food)] <= 0,
+                label=f"Max_Area_If_Selected_{farm}_{food}"
+            )
+            constraint_metadata['max_area_if_selected'][(farm, food)] = {
+                'type': 'max_area_if_selected',
+                'farm': farm,
+                'food': food,
+                'max_land': land_availability[farm]
+            }
+
+    # Food group constraints
+    if food_group_constraints:
+        for group, constraints in tqdm(food_group_constraints.items(), desc="Adding food group constraints"):
+            foods_in_group = food_groups.get(group, [])
+            if foods_in_group:
+                for farm in farms:
+                    if 'min_foods' in constraints:
+                        cqm.add_constraint(
+                            sum(Y[(farm, food)] for food in foods_in_group) -
+                            constraints['min_foods'] >= 0,
+                            label=f"Food_Group_Min_{group}_{farm}"
+                        )
+                        constraint_metadata['food_group_min'][(group, farm)] = {
+                            'type': 'food_group_min',
+                            'group': group,
+                            'farm': farm,
+                            'min_foods': constraints['min_foods'],
+                            'foods_in_group': foods_in_group
+                        }
+
+                    if 'max_foods' in constraints:
+                        cqm.add_constraint(
+                            sum(Y[(farm, food)] for food in foods_in_group) -
+                            constraints['max_foods'] <= 0,
+                            label=f"Food_Group_Max_{group}_{farm}"
+                        )
+                        constraint_metadata['food_group_max'][(group, farm)] = {
+                            'type': 'food_group_max',
+                            'group': group,
+                            'farm': farm,
+                            'max_foods': constraints['max_foods'],
+                            'foods_in_group': foods_in_group
+                        }
+
+    return cqm, A, Y, constraint_metadata
+
+
+def create_cqm_plots(farms, foods, food_groups, config):
     """
     Creates a CQM for the BINARY food optimization problem.
     
-    This function supports two land representation methods:
+    This function supports land representation method:
     1. Even Grid: land_availability[farm] represents area per patch (all equal)
-    2. Uneven Distribution: land_availability[farm] represents number of 1-acre plots
     
-    For binary formulation, each variable represents a 1-acre plantation.
+    For crops with minimum/maximum planting areas, the constraints are converted:
+    - min_plots_for_crop_c = ceil(min_planting_area[c] / plot_area)
+    - max_plots_for_crop_c = floor(max_planting_area[c] / plot_area)
     
     Args:
-        farms: List of farm/patch names
+        farms: List of patch names
         foods: Dictionary of food data
         food_groups: Dictionary of food group mappings  
         config: Configuration including land_availability and generation method
@@ -55,17 +346,27 @@ def create_cqm(farms, foods, food_groups, config):
     land_availability = params['land_availability']
     weights = params['weights']
     min_planting_area = params.get('minimum_planting_area', {})
+    max_planting_area = params.get('maximum_planting_area', {})
     food_group_constraints = params.get('food_group_constraints', {})
     
     n_farms = len(farms)
     n_foods = len(foods)
     n_food_groups = len(food_groups) if food_group_constraints else 0
     
+    # Calculate plot area (assuming even grid, all plots have same area)
+    plot_area = list(land_availability.values())[0] if farms else 1.0
+    
+    # Count crops with min/max constraints for progress bar
+    n_crops_with_min = len([c for c in foods if c in min_planting_area and min_planting_area[c] > 0])
+    n_crops_with_max = len([c for c in foods if c in max_planting_area])
+    
     # Calculate total operations for progress bar
     total_ops = (
         n_farms * n_foods +       # Binary variables only (Y)
         n_farms * n_foods +       # Objective terms
         n_farms +                 # Land availability constraints
+        n_crops_with_min +        # Minimum plot constraints per crop
+        n_crops_with_max +        # Maximum plot constraints per crop
         n_farms * n_food_groups * 2  # Food group constraints (min and max)
     )
     
@@ -107,6 +408,8 @@ def create_cqm(farms, foods, food_groups, config):
     # Constraint metadata
     constraint_metadata = {
         'plantation_limit': {},
+        'min_plots_per_crop': {},
+        'max_plots_per_crop': {},
         'food_group_min': {},
         'food_group_max': {}
     }
@@ -118,7 +421,7 @@ def create_cqm(farms, foods, food_groups, config):
     for farm in farms:
         # Each unit can have exactly one crop assigned (or remain idle)
         cqm.add_constraint(
-            sum(Y[(farm, food)] for food in foods) <= 1,
+            sum(Y[(farm, food)] for food in foods) - 1 <= 0,
             label=f"Max_Assignment_{farm}"
         )
         constraint_metadata['plantation_limit'][farm] = {
@@ -127,6 +430,46 @@ def create_cqm(farms, foods, food_groups, config):
             'area_ha': land_availability[farm]
         }
         pbar.update(1)
+    
+    # Minimum plots per crop constraints
+    # If a crop requires minimum area, convert to minimum number of plots
+    pbar.set_description("Adding minimum plot constraints")
+    import math
+    for food in foods:
+        if food in min_planting_area and min_planting_area[food] > 0:
+            min_plots = math.ceil(min_planting_area[food] / plot_area)
+            # If crop is planted anywhere, it must be planted on at least min_plots
+            cqm.add_constraint(
+                sum(Y[(farm, food)] for farm in farms) >= min_plots,
+                label=f"Min_Plots_{food}"
+            )
+            constraint_metadata['min_plots_per_crop'][food] = {
+                'type': 'min_plots_per_crop',
+                'food': food,
+                'min_area_ha': min_planting_area[food],
+                'plot_area_ha': plot_area,
+                'min_plots': min_plots
+            }
+            pbar.update(1)
+    
+    # Maximum plots per crop constraints
+    # If a crop has maximum area, convert to maximum number of plots
+    pbar.set_description("Adding maximum plot constraints")
+    for food in foods:
+        if food in max_planting_area:
+            max_plots = math.floor(max_planting_area[food] / plot_area)
+            cqm.add_constraint(
+                sum(Y[(farm, food)] for farm in farms) <= max_plots,
+                label=f"Max_Plots_{food}"
+            )
+            constraint_metadata['max_plots_per_crop'][food] = {
+                'type': 'max_plots_per_crop',
+                'food': food,
+                'max_area_ha': max_planting_area[food],
+                'plot_area_ha': plot_area,
+                'max_plots': max_plots
+            }
+            pbar.update(1)
     
     # Food group constraints
     pbar.set_description("Adding food group constraints")
@@ -168,13 +511,119 @@ def create_cqm(farms, foods, food_groups, config):
     
     return cqm, Y, constraint_metadata
 
-def solve_with_pulp(farms, foods, food_groups, config):
+
+def solve_with_pulp_farm(farms, foods, food_groups, config):
+    """Solve with PuLP and return model and results."""
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+
+    A_pulp = pl.LpVariable.dicts(
+        "Area", [(f, c) for f in farms for c in foods], lowBound=0)
+    Y_pulp = pl.LpVariable.dicts(
+        "Choose", [(f, c) for f in farms for c in foods], cat='Binary')
+
+    total_area = sum(land_availability[f] for f in farms)
+
+    goal = (
+        weights.get('nutritional_value', 0) * pl.lpSum([(foods[c].get('nutritional_value', 0) * A_pulp[(f, c)]) for f in farms for c in foods]) / total_area +
+        weights.get('nutrient_density', 0) * pl.lpSum([(foods[c].get('nutrient_density', 0) * A_pulp[(f, c)]) for f in farms for c in foods]) / total_area -
+        weights.get('environmental_impact', 0) * pl.lpSum([(foods[c].get('environmental_impact', 0) * A_pulp[(f, c)]) for f in farms for c in foods]) / total_area +
+        weights.get('affordability', 0) * pl.lpSum([(foods[c].get('affordability', 0) * A_pulp[(f, c)]) for f in farms for c in foods]) / total_area +
+        weights.get('sustainability', 0) * pl.lpSum([(foods[c].get(
+            'sustainability', 0) * A_pulp[(f, c)]) for f in farms for c in foods]) / total_area
+    )
+
+    model = pl.LpProblem("Food_Optimization", pl.LpMaximize)
+
+    for f in farms:
+        model += pl.lpSum([A_pulp[(f, c)] for c in foods]
+                          ) <= land_availability[f], f"Max_Area_{f}"
+
+    for f in farms:
+        for c in foods:
+            A_min = min_planting_area.get(c, 0)
+            model += A_pulp[(f, c)] >= A_min * \
+                Y_pulp[(f, c)], f"MinArea_{f}_{c}"
+            model += A_pulp[(f, c)] <= land_availability[f] * \
+                Y_pulp[(f, c)], f"MaxArea_{f}_{c}"
+
+    if food_group_constraints:
+        for g, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(g, [])
+            if foods_in_group:
+                for f in farms:
+                    if 'min_foods' in constraints:
+                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]
+                                          ) >= constraints['min_foods'], f"MinFoodGroup_{f}_{g}"
+                    if 'max_foods' in constraints:
+                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]
+                                          ) <= constraints['max_foods'], f"MaxFoodGroup_{f}_{g}"
+
+    model += goal, "Objective"
+
+    start_time = time.time()
+    # Use Gurobi with GPU acceleration and aggressive parallelization
+    # GPU-specific parameters (requires Gurobi 9.0+ and CUDA-compatible GPU):
+    #   - Method=2: Use barrier method (GPU-accelerated)
+    #   - Crossover=0: Disable crossover to keep computation on GPU
+    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
+    #   - Threads=0: Use all available CPU threads for parallel processing
+    #   - MIPFocus=1: Focus on finding good solutions quickly
+    #   - Presolve=2: Aggressive presolve
+    gurobi_options = [
+        ('Method', 2),           # Barrier method (GPU-accelerated)
+        ('Crossover', 0),        # Disable crossover to keep computation on GPU
+        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
+        ('Threads', 0),          # Use all available CPU threads for parallelization
+        ('MIPFocus', 1),         # Focus on finding good solutions quickly
+        ('Presolve', 2),         # Aggressive presolve
+    ]
+    
+    try:
+        # Try using GUROBI API directly for better GPU support
+        print("  Using Gurobi API with GPU acceleration and parallelization...")
+        solver = pl.GUROBI(msg=0, timeLimit=100)
+        # Set parameters directly on the solver
+        for param, value in gurobi_options:
+            solver.optionsDict[param] = value
+        model.solve(solver)
+    except Exception as e:
+        # Fallback to GUROBI_CMD if direct API is not available
+        print(f"  Gurobi API failed ({str(e)[:50]}...), using GUROBI_CMD...")
+        # GUROBI_CMD expects options as a list of "key=value" strings
+        options_list = [f'{k}={v}' for k, v in gurobi_options]
+        model.solve(pl.GUROBI_CMD(msg=0, options=options_list))
+    solve_time = time.time() - start_time
+
+    # Extract results
+    results = {
+        'status': pl.LpStatus[model.status],
+        'objective_value': pl.value(model.objective),
+        'solve_time': solve_time,
+        'areas': {},
+        'selections': {}
+    }
+
+    for f in farms:
+        for c in foods:
+            key = f"{f}_{c}"
+            results['areas'][key] = A_pulp[(f, c)].value(
+            ) if A_pulp[(f, c)].value() is not None else 0.0
+            results['selections'][key] = Y_pulp[(f, c)].value(
+            ) if Y_pulp[(f, c)].value() is not None else 0.0
+
+    return model, results
+
+
+def solve_with_pulp_plots(farms, foods, food_groups, config):
     """
     Solve with PuLP using BINARY formulation.
     
-    Supports both land generation methods:
+    Supports land generation methods:
     - even_grid: land_availability represents area per plot
-    - uneven_distribution: land_availability represents area per farm
     """
     params = config['parameters']
     land_availability = params['land_availability']
@@ -226,7 +675,19 @@ def solve_with_pulp(farms, foods, food_groups, config):
     model += goal, "Objective"
     
     start_time = time.time()
-    model.solve(pl.PULP_CBC_CMD(msg=0))
+    gurobi_options = [
+        ('Method', 2),           # Barrier method (GPU-accelerated)
+        ('Crossover', 0),        # Disable crossover to keep computation on GPU
+        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
+        ('Threads', 0),          # Use all available CPU threads for parallelization
+        ('MIPFocus', 1),         # Focus on finding good solutions quickly
+        ('Presolve', 2),         # Aggressive presolve
+    ]
+    solver = pl.GUROBI(msg=0, timeLimit=300)
+        # Set parameters directly on the solver
+    for param, value in gurobi_options:
+        solver.optionsDict[param] = value
+    model.solve(solver)
     solve_time = time.time() - start_time
     
     # Extract results
@@ -244,7 +705,21 @@ def solve_with_pulp(farms, foods, food_groups, config):
     
     return model, results
 
-def solve_with_dwave(cqm, token):
+
+def solve_with_dwave_cqm(cqm, token):
+    """Solve with DWave and return sampleset."""
+    sampler = LeapHybridCQMSampler(token=token)
+
+    print("Submitting to DWave Leap hybrid solver...")
+    
+    sampleset = sampler.sample_cqm(
+        cqm, label="Food Optimization - Professional Run")
+    solve_time = sampleset.info.get('charge_time', 0) / 1e6  # Convert to seconds
+
+    return sampleset, solve_time
+
+
+def solve_with_dwave_bqm(cqm, token):
     """
     Solve with DWave using HybridBQM solver after converting CQM to BQM.
     This enables QPU usage and better scaling for quadratic problems.
@@ -300,6 +775,157 @@ def solve_with_dwave(cqm, token):
         print(f"  QPU Access Time: {qpu_time:.4f}s")
     
     return sampleset, hybrid_time, qpu_time, bqm_conversion_time, invert
+
+
+def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_availability=None, 
+                          weights=None, idle_penalty=None, config=None, time_limit=100):
+    """
+    Solve a Binary Quadratic Model (BQM) using Gurobi's native QUBO solver
+    from the `gurobi_optimods` package.
+    
+    Args:
+        bqm: dimod.BinaryQuadraticModel object
+        farms: List of farm/plot names (optional, for objective calculation)
+        foods: Dictionary of food data (optional, for objective calculation)
+        food_groups: Dictionary of food groups (optional, for validation)
+        land_availability: Dictionary mapping plot to area (optional)
+        weights: Dictionary of objective weights (optional)
+        idle_penalty: Lambda penalty for idle land (optional)
+        config: Full configuration dictionary (optional, for validation)
+        time_limit: Gurobi time limit in seconds (default: 100)
+        
+    Returns:
+        dict: Solution containing status, solution dict, BQM energy, solve time,
+              original objective, and constraint validation (if config provided)
+    """
+    try:
+        from gurobi_optimods.qubo import solve_qubo
+        import gurobipy as gp
+    except ImportError:
+        raise ImportError(
+            "gurobipy and gurobi-optimods are required. "
+            "Install with: pip install gurobipy gurobi-optimods"
+        )
+
+    print("\n" + "=" * 80)
+    print("SOLVING QUBO WITH GUROBI OPTIMODS (NATIVE QUBO SOLVER)")
+    print("=" * 80)
+
+    # Convert BQM to a QUBO dictionary compatible with gurobi_optimods
+    Q, offset = bqm.to_qubo()
+    
+    print(f"  BQM Variables: {len(bqm.variables)}")
+    print(f"  QUBO non-zero terms: {len(Q)}")
+
+    # Convert QUBO dictionary to matrix format expected by gurobi_optimods
+    import numpy as np
+    variables = list(bqm.variables)
+    n_vars = len(variables)
+    var_to_idx = {var: i for i, var in enumerate(variables)}
+    
+    # Create coefficient matrix
+    Q_matrix = np.zeros((n_vars, n_vars))
+    for (var1, var2), coeff in Q.items():
+        i, j = var_to_idx[var1], var_to_idx[var2]
+        if i == j:
+            Q_matrix[i, j] = coeff
+        else:
+            # For off-diagonal terms, split the coefficient
+            Q_matrix[i, j] = coeff / 2
+            Q_matrix[j, i] = coeff / 2
+
+    # Gurobi parameters for the QUBO solver
+    gurobi_params = {
+        "Threads": 0,
+        "TimeLimit": time_limit,
+    }
+
+    print(f"  Solving with gurobi_optimods.qubo.solve_qubo (TimeLimit={gurobi_params['TimeLimit']}s)...")
+    start_time = time.time()
+    
+    # Call the native QUBO solver
+    result_optimod = solve_qubo(Q_matrix, solver_params=gurobi_params)
+    
+    solve_time = time.time() - start_time
+
+    # Process results
+    solution_array = result_optimod.solution
+    bqm_energy = result_optimod.objective_value + offset
+    
+    # Convert solution array back to dictionary format using BQM variable order
+    variables = list(bqm.variables)
+    solution = {var: int(solution_array[i]) for i, var in enumerate(variables)}
+    
+    # Determine status based on whether we got a valid solution
+    if solution_array is not None and len(solution_array) > 0:
+        status = "Optimal"
+    else:
+        status = "No solution found"
+    
+    # Calculate original CQM objective if parameters provided
+    original_objective = None
+    solution_summary = None
+    validation = None
+    
+    if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
+        original_objective = calculate_original_objective(
+            solution, farms, foods, land_availability, weights, idle_penalty
+        )
+        solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
+        
+        # Validate constraints if full config provided
+        if config is not None and food_groups is not None:
+            validation = validate_solution_constraints(
+                solution, farms, foods, food_groups, land_availability, config
+            )
+            
+            print(f"  Optimal solution found")
+            print(f"  BQM Energy: {bqm_energy:.6f}")
+            print(f"  Original CQM Objective: {original_objective:.6f}")
+            print(f"  Active variables: {sum(solution.values())}")
+            print(f"  Constraint validation: {validation['n_violations']} violations")
+            if validation['n_violations'] > 0:
+                print(f"  CONSTRAINT VIOLATIONS DETECTED:")
+                for violation in validation['violations'][:5]:  # Show first 5
+                    print(f"     - {violation}")
+                if len(validation['violations']) > 5:
+                    print(f"     ... and {len(validation['violations']) - 5} more")
+            else:
+                print(f"  All constraints satisfied!")
+        else:
+            print(f"  Optimal solution found")
+            print(f"  BQM Energy: {bqm_energy:.6f}")
+            print(f"  Original CQM Objective: {original_objective:.6f}")
+            print(f"  Active variables: {sum(solution.values())}")
+    else:
+        print(f"  Optimal solution found")
+        print(f"  BQM Energy: {bqm_energy:.6f}")
+        print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
+        print(f"  Active variables: {sum(solution.values())}")
+    
+    print(f"  Solve time: {solve_time:.3f} seconds")
+    
+    result = {
+        'status': status,
+        'solution': solution,
+        'objective_value': original_objective,  # Original CQM objective (if calculated)
+        'bqm_energy': bqm_energy,
+        'solve_time': solve_time,
+        'gurobi_status': getattr(result_optimod, 'status', 'N/A'),
+        'variables_count': len(bqm.variables),
+        'linear_terms': len(bqm.linear),
+        'quadratic_terms': len(bqm.quadratic),
+        'note': 'objective_value is reconstructed CQM objective; bqm_energy includes penalties'
+    }
+    
+    # Add optional fields if calculated
+    if solution_summary is not None:
+        result['solution_summary'] = solution_summary
+    if validation is not None:
+        result['validation'] = validation
+    
+    return result
+
 
 def main(scenario='simple', land_method='even_grid', n_units=None, total_land=100.0):
     """
@@ -387,9 +1013,21 @@ def main(scenario='simple', land_method='even_grid', n_units=None, total_land=10
         print(f"\nCreating CQM with BINARY formulation (even grid)...")
         print(f"  Land method: {land_method}")
         print(f"  Total plots: {len(farms)}")
-        cqm, Y, constraint_metadata = create_cqm(farms, foods, food_groups, config)
+        cqm, Y, constraint_metadata = create_cqm_plots(farms, foods, food_groups, config)
         print(f"  Variables: {len(cqm.variables)} (all binary)")
         print(f"  Constraints: {len(cqm.constraints)}")
+        
+        # Calculate complexity metrics
+        n_crops_with_min = len([c for c in foods if c in config['parameters'].get('minimum_planting_area', {}) 
+                                and config['parameters']['minimum_planting_area'][c] > 0])
+        n_crops_with_max = len([c for c in foods if c in config['parameters'].get('maximum_planting_area', {})])
+        n_food_groups = len(food_groups) if config['parameters'].get('food_group_constraints') else 0
+        has_fg_constraints = config['parameters'].get('food_group_constraints') is not None
+        
+        binary_complexity = calculate_model_complexity(
+            'binary', len(farms), len(foods), n_food_groups,
+            n_crops_with_min, n_crops_with_max, has_fg_constraints
+        )
         
         # Save CQM for binary formulation
         cqm_path = f'CQM_Models/cqm_binary_{scenario}_{timestamp}.cqm'
@@ -407,15 +1045,35 @@ def main(scenario='simple', land_method='even_grid', n_units=None, total_land=10
         # Import continuous solver functions
         from solver_runner import create_cqm as create_cqm_continuous
         
-        cqm, Y, constraint_metadata = create_cqm_continuous(farms, foods, food_groups, config)
-        print(f"  Variables: {len(cqm.variables)} (continuous)")
+        cqm, A, Y, constraint_metadata = create_cqm_continuous(farms, foods, food_groups, config)
+        print(f"  Variables: {len(cqm.variables)} (continuous + binary)")
         print(f"  Constraints: {len(cqm.constraints)}")
+        
+        # Calculate complexity metrics
+        n_food_groups = len(food_groups) if config['parameters'].get('food_group_constraints') else 0
+        has_fg_constraints = config['parameters'].get('food_group_constraints') is not None
+        
+        continuous_complexity = calculate_model_complexity(
+            'continuous', len(farms), len(foods), n_food_groups,
+            0, 0, has_fg_constraints
+        )
         
         # Save CQM for continuous formulation
         cqm_path = f'CQM_Models/cqm_continuous_{scenario}_{timestamp}.cqm'
         print(f"\nSaving Continuous CQM to {cqm_path}...")
         with open(cqm_path, 'wb') as f:
             shutil.copyfileobj(cqm.to_file(), f)
+    
+    # Print complexity comparison if both are available (for documentation purposes)
+    if land_method == 'even_grid':
+        # Calculate continuous complexity for comparison
+        n_food_groups = len(food_groups) if config['parameters'].get('food_group_constraints') else 0
+        has_fg_constraints = config['parameters'].get('food_group_constraints') is not None
+        continuous_complexity = calculate_model_complexity(
+            'continuous', len(farms), len(foods), n_food_groups,
+            0, 0, has_fg_constraints
+        )
+        print_model_complexity_comparison(continuous_complexity, binary_complexity)
     
     # Save constraint metadata
     constraints_path = f'Constraints/constraints_{scenario}_{timestamp}.json'
@@ -440,12 +1098,18 @@ def main(scenario='simple', land_method='even_grid', n_units=None, total_land=10
         'food_groups': food_groups,
         'config': config,
         'constraint_metadata': {
-            'plantation_limit': {str(k): v for k, v in constraint_metadata['plantation_limit'].items()},
-            'food_group_min': {str(k): v for k, v in constraint_metadata['food_group_min'].items()},
-            'food_group_max': {str(k): v for k, v in constraint_metadata['food_group_max'].items()}
+            'plantation_limit': {str(k): v for k, v in constraint_metadata.get('plantation_limit', {}).items()},
+            'min_plots_per_crop': {str(k): v for k, v in constraint_metadata.get('min_plots_per_crop', {}).items()},
+            'max_plots_per_crop': {str(k): v for k, v in constraint_metadata.get('max_plots_per_crop', {}).items()},
+            'land_availability': {str(k): v for k, v in constraint_metadata.get('land_availability', {}).items()},
+            'min_area_if_selected': {str(k): v for k, v in constraint_metadata.get('min_area_if_selected', {}).items()},
+            'max_area_if_selected': {str(k): v for k, v in constraint_metadata.get('max_area_if_selected', {}).items()},
+            'food_group_min': {str(k): v for k, v in constraint_metadata.get('food_group_min', {}).items()},
+            'food_group_max': {str(k): v for k, v in constraint_metadata.get('food_group_max', {}).items()}
         },
         'formulation': 'binary' if land_method == 'even_grid' else 'continuous',
-        'variable_type': 'X_{p,c} ∈ {0,1}' if land_method == 'even_grid' else 'A_{f,c} ∈ [0, farm_area]'
+        'variable_type': 'X_{p,c} ∈ {0,1}' if land_method == 'even_grid' else 'A_{f,c} ∈ [0, farm_area]',
+        'model_complexity': binary_complexity if land_method == 'even_grid' else continuous_complexity
     }
     
     with open(constraints_path, 'w') as f:
@@ -456,7 +1120,7 @@ def main(scenario='simple', land_method='even_grid', n_units=None, total_land=10
     if land_method == 'even_grid':
         print("SOLVING WITH PULP (BINARY FORMULATION)")
         print("=" * 80)
-        pulp_model, pulp_results = solve_with_pulp(farms, foods, food_groups, config)
+        pulp_model, pulp_results = solve_with_pulp_plots(farms, foods, food_groups, config)
         formulation_type = "binary"
     else:
         print("SOLVING WITH PULP (CONTINUOUS FORMULATION)")  
@@ -483,7 +1147,7 @@ def main(scenario='simple', land_method='even_grid', n_units=None, total_land=10
         print("SOLVING WITH DWAVE (BQUBO: CQM→BQM + HybridBQM)")
         print("=" * 80)
         token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
-        sampleset, dwave_solve_time, qpu_access_time, bqm_conversion_time, invert = solve_with_dwave(cqm, token)
+        sampleset, dwave_solve_time, qpu_access_time, bqm_conversion_time, invert = solve_with_dwave_bqm(cqm, token)
         
         # BQM samplesets don't have feasibility - all samples are valid (constraints are penalties)
         print(f"  Total samples: {len(sampleset)}")
