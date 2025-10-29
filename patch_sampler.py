@@ -80,6 +80,37 @@ def generate_farms(n_farms: int, seed: int = 42) -> Dict[str, float]:
     
     return L
 
+
+def generate_grid(n_farms: int, area: float,  seed: int = 42) -> Dict[str, float]:
+    """
+    Generate patch land availability (patches are 1/10 the size of farms).
+    
+    Args:
+        n_farms: Number of patches to generate
+        seed: Random seed for reproducibility
+        area: Total land area to distribute among patches
+    Returns:
+        Dictionary mapping patch names to land availability (hectares)
+    """
+    np.random.seed(seed)
+
+    # Generate even grid of patches
+    L = {}
+    area_per_patch = area / n_farms
+    for i in range(1, n_farms + 1):
+        L[f'Patch{i}'] = round(area_per_patch, 3)  # 3 decimals for smaller patch sizes
+    
+    return L
+
+
+
+
+
+
+
+
+
+
 # ------------------------------------------------------------
 # MAIN: Display example usage
 # ------------------------------------------------------------

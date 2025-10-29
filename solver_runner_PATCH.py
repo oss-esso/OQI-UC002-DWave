@@ -757,13 +757,8 @@ def solve_with_simulated_annealing(bqm):
 def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_availability=None, 
                           weights=None, idle_penalty=None, config=None):
     """
-    Solve a Binary Quadratic Model (BQM) using Gurobi's QUBO capabilities.
-    
-    Converts the BQM to a Gurobi model by iterating over linear and quadratic terms,
-    then solves it using Gurobi's optimization engine with GPU acceleration.
-    
-    If farms/foods/config parameters are provided, also calculates the original CQM objective
-    and validates constraints.
+    Solve a Binary Quadratic Model (BQM) using Gurobi's native QUBO solver
+    from the `gurobi_optimods` package.
     
     Args:
         bqm: dimod.BinaryQuadraticModel object
@@ -780,240 +775,109 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
               original objective, and constraint validation (if config provided)
     """
     try:
+        from gurobi_optimods.qubo import solve_qubo
         import gurobipy as gp
-        from gurobipy import GRB
     except ImportError:
-        raise ImportError("gurobipy is required for Gurobi QUBO solving. Install with: pip install gurobipy")
-    
+        raise ImportError(
+            "gurobipy and gurobi-optimods are required. "
+            "Install with: pip install gurobipy gurobi-optimods"
+        )
+
     print("\n" + "=" * 80)
-    print("SOLVING QUBO WITH GUROBI (BQM → GUROBI MODEL)")
+    print("SOLVING QUBO WITH GUROBI OPTIMODS (NATIVE QUBO SOLVER)")
     print("=" * 80)
+
+    # Convert BQM to a QUBO dictionary compatible with gurobi_optimods
+    Q, offset = bqm.to_qubo()
     
-    # Create Gurobi model
-    model = gp.Model("QUBO_BQM")
-    
-    # Get variables from BQM
+    print(f"  BQM Variables: {len(bqm.variables)}")
+    print(f"  QUBO non-zero terms: {len(Q)}")
+
+    # Convert QUBO dictionary to matrix format expected by gurobi_optimods
+    import numpy as np
     variables = list(bqm.variables)
-    print(f"  BQM Variables: {len(variables)}")
-    print(f"  BQM Linear terms: {len(bqm.linear)}")
-    print(f"  BQM Quadratic terms: {len(bqm.quadratic)}")
+    n_vars = len(variables)
+    var_to_idx = {var: i for i, var in enumerate(variables)}
     
-    # Create binary variables in Gurobi
-    gurobi_vars = {}
-    for var in variables:
-        gurobi_vars[var] = model.addVar(vtype=GRB.BINARY, name=f"x_{var}")
-    
-    # Set up objective function: minimize BQM energy
-    # BQM energy = sum(linear) + sum(quadratic) + offset
-    objective = gp.QuadExpr()
-    
-    # Add linear terms
-    for var, coeff in bqm.linear.items():
-        objective += coeff * gurobi_vars[var]
-    
-    # Add quadratic terms
-    for (var1, var2), coeff in bqm.quadratic.items():
-        objective += coeff * gurobi_vars[var1] * gurobi_vars[var2]
-    
-    # Add constant offset
-    objective += bqm.offset
-    
-    # Set objective (BQM energy minimization)
-    model.setObjective(objective, GRB.MINIMIZE)
-    
-    # Configure Gurobi for GPU acceleration and performance
-    # Same parameters as in solve_with_pulp for consistency
-    # Note: TimeLimit is set to 300 seconds
-    gurobi_options = [
-        ('Threads', 0),             # use all available CPU cores
-        ('MIPFocus', 1),            # focus on finding good feasible solutions early
-        ('MIPGap', 0.1),            # allow 10% gap to stop earlier (relaxed from 5%)
-        ('TimeLimit', 100),         # 300 seconds max
-        ('Heuristics', 0.5),        # more aggressive heuristics (find feasible solutions faster)
-        ('Presolve', 2),            # aggressive presolve to reduce model size
-        ('Cuts', 0),                # disable or reduce cuts to speed node processing (trade bound strength)
-        # Note: SolutionLimit removed - we want Gurobi to find the best solution within time/gap limits
-    ]
-    
-    # Set parameters
-    for param, value in gurobi_options:
-        model.setParam(param, value)
-    
-    # Add callback to enforce time limit more strictly
-    def time_limit_callback(model, where):
-        """Callback to enforce strict time limit."""
-        if where == GRB.Callback.MIP:
-            runtime = model.cbGet(GRB.Callback.RUNTIME)
-            if runtime > 300:  # 300 seconds timeout (matches TimeLimit parameter)
-                print(f"  ⏰ Enforcing time limit at {runtime:.1f}s")
-                model.terminate()
-    
-    print("  Solving QUBO with Gurobi (GPU-accelerated)...")
+    # Create coefficient matrix
+    Q_matrix = np.zeros((n_vars, n_vars))
+    for (var1, var2), coeff in Q.items():
+        i, j = var_to_idx[var1], var_to_idx[var2]
+        if i == j:
+            Q_matrix[i, j] = coeff
+        else:
+            # For off-diagonal terms, split the coefficient
+            Q_matrix[i, j] = coeff / 2
+            Q_matrix[j, i] = coeff / 2
+
+    # Gurobi parameters for the QUBO solver
+    gurobi_params = {
+        "Threads": 0,
+        "TimeLimit": 100,
+    }
+
+    print(f"  Solving with gurobi_optimods.qubo.solve_qubo (TimeLimit={gurobi_params['TimeLimit']}s)...")
     start_time = time.time()
-    model.optimize(time_limit_callback)
-    solve_time = time.time() - start_time
     
-    # Extract results
-    if model.status == GRB.OPTIMAL:
+    # Call the native QUBO solver
+    result_optimod = solve_qubo(Q_matrix, solver_params=gurobi_params)
+    
+    solve_time = time.time() - start_time
+
+    # Process results
+    solution_array = result_optimod.solution
+    bqm_energy = result_optimod.objective_value + offset
+    
+    # Convert solution array back to dictionary format using BQM variable order
+    variables = list(bqm.variables)
+    solution = {var: int(solution_array[i]) for i, var in enumerate(variables)}
+    
+    # Determine status based on whether we got a valid solution
+    if solution_array is not None and len(solution_array) > 0:
         status = "Optimal"
-        # Extract solution
-        solution = {}
-        for var_name, gurobi_var in gurobi_vars.items():
-            solution[var_name] = int(round(gurobi_var.X))
+    else:
+        status = "No solution found"
+    
+    # Calculate original CQM objective if parameters provided
+    original_objective = None
+    solution_summary = None
+    validation = None
+    
+    if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
+        original_objective = calculate_original_objective(
+            solution, farms, foods, land_availability, weights, idle_penalty
+        )
+        solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
         
-        # Get BQM energy (this is NOT the original CQM objective!)
-        bqm_energy = model.ObjVal
-        
-        # Calculate original CQM objective if parameters provided
-        original_objective = None
-        solution_summary = None
-        validation = None
-        
-        if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
-            original_objective = calculate_original_objective(
-                solution, farms, foods, land_availability, weights, idle_penalty
+        # Validate constraints if full config provided
+        if config is not None and food_groups is not None:
+            validation = validate_solution_constraints(
+                solution, farms, foods, food_groups, land_availability, config
             )
-            solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
             
-            # Validate constraints if full config provided
-            if config is not None and food_groups is not None:
-                validation = validate_solution_constraints(
-                    solution, farms, foods, food_groups, land_availability, config
-                )
-                
-                print(f"  ✅ Optimal solution found")
-                print(f"  BQM Energy: {bqm_energy:.6f}")
-                print(f"  Original CQM Objective: {original_objective:.6f}")
-                print(f"  Active variables: {sum(solution.values())}")
-                print(f"  Constraint validation: {validation['n_violations']} violations")
-                if validation['n_violations'] > 0:
-                    print(f"  ⚠️ CONSTRAINT VIOLATIONS DETECTED:")
-                    for violation in validation['violations'][:5]:  # Show first 5
-                        print(f"     - {violation}")
-                    if len(validation['violations']) > 5:
-                        print(f"     ... and {len(validation['violations']) - 5} more")
-                else:
-                    print(f"  ✅ All constraints satisfied!")
+            print(f"  ✅ Optimal solution found")
+            print(f"  BQM Energy: {bqm_energy:.6f}")
+            print(f"  Original CQM Objective: {original_objective:.6f}")
+            print(f"  Active variables: {sum(solution.values())}")
+            print(f"  Constraint validation: {validation['n_violations']} violations")
+            if validation['n_violations'] > 0:
+                print(f"  ⚠️ CONSTRAINT VIOLATIONS DETECTED:")
+                for violation in validation['violations'][:5]:  # Show first 5
+                    print(f"     - {violation}")
+                if len(validation['violations']) > 5:
+                    print(f"     ... and {len(validation['violations']) - 5} more")
             else:
-                print(f"  ✅ Optimal solution found")
-                print(f"  BQM Energy: {bqm_energy:.6f}")
-                print(f"  Original CQM Objective: {original_objective:.6f}")
-                print(f"  Active variables: {sum(solution.values())}")
+                print(f"  ✅ All constraints satisfied!")
         else:
             print(f"  ✅ Optimal solution found")
             print(f"  BQM Energy: {bqm_energy:.6f}")
-            print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
+            print(f"  Original CQM Objective: {original_objective:.6f}")
             print(f"  Active variables: {sum(solution.values())}")
-        
-    elif model.status == GRB.TIME_LIMIT or model.status == GRB.INTERRUPTED:
-        status = "Time limit reached"
-        # Extract best solution found if available
-        solution = {}
-        try:
-            for var_name, gurobi_var in gurobi_vars.items():
-                solution[var_name] = int(round(gurobi_var.X))
-            bqm_energy = model.ObjVal
-        except:
-            # No solution available
-            bqm_energy = float('inf')
-        
-        # Calculate original CQM objective if parameters provided
-        original_objective = None
-        solution_summary = None
-        validation = None
-        
-        if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
-            if bqm_energy != float('inf'):
-                original_objective = calculate_original_objective(
-                    solution, farms, foods, land_availability, weights, idle_penalty
-                )
-                solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
-                
-                # Validate constraints if full config provided
-                if config is not None and food_groups is not None:
-                    validation = validate_solution_constraints(
-                        solution, farms, foods, food_groups, land_availability, config
-                    )
-                    
-                    print(f"  ⚠️ Time limit reached, best solution found:")
-                    print(f"  BQM Energy: {bqm_energy:.6f}")
-                    print(f"  Original CQM Objective: {original_objective:.6f}")
-                    print(f"  Constraint validation: {validation['n_violations']} violations")
-                    if validation['n_violations'] > 0:
-                        print(f"  ⚠️ CONSTRAINT VIOLATIONS DETECTED:")
-                        for violation in validation['violations'][:5]:
-                            print(f"     - {violation}")
-                else:
-                    print(f"  ⚠️ Time limit reached, best solution found:")
-                    print(f"  BQM Energy: {bqm_energy:.6f}")
-                    print(f"  Original CQM Objective: {original_objective:.6f}")
-            else:
-                print(f"  ⚠️ Time limit reached, no solution available")
-        else:
-            print(f"  ⚠️ Time limit reached, best solution found:")
-            print(f"  BQM Energy: {bqm_energy:.6f}")
-            print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
-        
-    elif model.status == GRB.INFEASIBLE:
-        status = "Infeasible"
-        solution = {}
-        bqm_energy = float('inf')
-        original_objective = None
-        solution_summary = None
-        validation = None
-        print(f"  ❌ Problem is infeasible")
-    
-    elif model.status == 10:  # GRB.SOLUTION_LIMIT
-        status = "Solution limit reached"
-        # Extract best solution found
-        solution = {}
-        try:
-            for var_name, gurobi_var in gurobi_vars.items():
-                solution[var_name] = int(round(gurobi_var.X))
-            bqm_energy = model.ObjVal
-        except:
-            bqm_energy = float('inf')
-        
-        # Calculate original CQM objective if parameters provided
-        original_objective = None
-        solution_summary = None
-        validation = None
-        
-        if all(x is not None for x in [farms, foods, land_availability, weights, idle_penalty]):
-            if bqm_energy != float('inf'):
-                original_objective = calculate_original_objective(
-                    solution, farms, foods, land_availability, weights, idle_penalty
-                )
-                solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
-                
-                # Validate constraints if full config provided
-                if config is not None and food_groups is not None:
-                    validation = validate_solution_constraints(
-                        solution, farms, foods, food_groups, land_availability, config
-                    )
-                    
-                    print(f"  ⚠️ Solution limit reached (first solution found):")
-                    print(f"  BQM Energy: {bqm_energy:.6f}")
-                    print(f"  Original CQM Objective: {original_objective:.6f}")
-                    print(f"  Constraint validation: {validation['n_violations']} violations")
-                else:
-                    print(f"  ⚠️ Solution limit reached (first solution found):")
-                    print(f"  BQM Energy: {bqm_energy:.6f}")
-                    print(f"  Original CQM Objective: {original_objective:.6f}")
-            else:
-                print(f"  ⚠️ Solution limit reached, no valid solution available")
-        else:
-            print(f"  ⚠️ Solution limit reached (first solution found):")
-            print(f"  BQM Energy: {bqm_energy:.6f}")
-        
     else:
-        status = f"Gurobi status {model.status}"
-        solution = {}
-        bqm_energy = float('inf')
-        original_objective = None
-        solution_summary = None
-        validation = None
-        print(f"  ❌ Gurobi status: {model.status}")
+        print(f"  ✅ Optimal solution found")
+        print(f"  BQM Energy: {bqm_energy:.6f}")
+        print(f"  NOTE: BQM energy includes penalty terms and is not comparable to CQM objective")
+        print(f"  Active variables: {sum(solution.values())}")
     
     print(f"  Solve time: {solve_time:.3f} seconds")
     
@@ -1023,8 +887,8 @@ def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_a
         'objective_value': original_objective,  # Original CQM objective (if calculated)
         'bqm_energy': bqm_energy,
         'solve_time': solve_time,
-        'gurobi_status': model.status,
-        'variables_count': len(variables),
+        'gurobi_status': getattr(result_optimod, 'status', 'N/A'),
+        'variables_count': len(bqm.variables),
         'linear_terms': len(bqm.linear),
         'quadratic_terms': len(bqm.quadratic),
         'note': 'objective_value is reconstructed CQM objective; bqm_energy includes penalties'

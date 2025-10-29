@@ -132,13 +132,13 @@ def generate_sample_data(config_values: List[int], seed_offset: int = 0) -> Tupl
                 patches_list.append(result)
                 print(f"    ✓ Patch sample {result['sample_id']}: {result['n_units']} patches, {result['total_area']:.1f} ha")
             except Exception as e:
-                print(f"    ❌ Patch sample failed: {e}")
+                print(f"    Patch sample failed: {e}")
     
     # Sort by sample_id for consistency
     farms_list.sort(key=lambda x: x['sample_id'])
     patches_list.sort(key=lambda x: x['sample_id'])
     
-    print(f"\n  ✅ Generated {len(farms_list)} farm samples and {len(patches_list)} patch samples")
+    print(f"\n  Generated {len(farms_list)} farm samples and {len(patches_list)} patch samples")
     return farms_list, patches_list
 
 def create_food_config(land_data: Dict[str, float], scenario_type: str = 'comprehensive') -> Tuple[Dict, Dict, Dict]:
