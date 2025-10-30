@@ -48,8 +48,8 @@ BENCHMARK_CONFIGS = [
     10,
     #15,
     #20,
-    25,
-    50,
+    #25,
+    #50,
     #100
 ]
 
@@ -358,6 +358,9 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
             if pulp_results['status'] == 'Optimal':
                 gurobi_result['solution_areas'] = pulp_results.get('areas', {})
                 gurobi_result['solution_selections'] = pulp_results.get('selections', {})
+                # Calculate total covered area (sum of all areas across farms and foods)
+                total_covered_area = sum(gurobi_result['solution_areas'].values())
+                gurobi_result['total_covered_area'] = total_covered_area
             
             results['solvers']['gurobi'] = gurobi_result
             
@@ -389,6 +392,10 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                 if len(sampleset) > 0:
                     best = sampleset.first
                     is_feasible = best.is_feasible
+                    cqm_sample = dict(best.sample)
+                    
+                    # Calculate total covered area (sum of all areas in solution for farm scenario)
+                    total_covered_area = sum(v for v in cqm_sample.values() if isinstance(v, (int, float)) and v > 0)
                     
                     dwave_result = {
                         'status': 'Optimal' if is_feasible else 'Infeasible',
@@ -403,7 +410,9 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                         'total_area': sample_data['total_area'],
                         'n_foods': len(foods),
                         'n_variables': len(cqm.variables),
-                        'n_constraints': len(cqm.constraints)
+                        'n_constraints': len(cqm.constraints),
+                        'total_covered_area': total_covered_area,
+                        'solution_areas': cqm_sample
                     }
                     
                     print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {dwave_total_time:.3f}s")
@@ -506,6 +515,10 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
             # Extract solution data (binary plantations)
             if pulp_results['status'] == 'Optimal':
                 gurobi_result['solution_plantations'] = pulp_results.get('plantations', {})
+                # Calculate total covered area (number of plots selected * area per plot)
+                num_plots_selected = sum(1 for v in gurobi_result['solution_plantations'].values() if v > 0.5)
+                total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
+                gurobi_result['total_covered_area'] = total_covered_area
             
             results['solvers']['gurobi'] = gurobi_result
             
@@ -536,6 +549,11 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 if len(sampleset) > 0:
                     best = sampleset.first
                     is_feasible = best.is_feasible
+                    cqm_sample = dict(best.sample)
+                    
+                    # Calculate total covered area (number of plots selected * area per plot)
+                    num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
+                    total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                     
                     dwave_result = {
                         'status': 'Optimal' if is_feasible else 'Infeasible',
@@ -550,7 +568,9 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                         'total_area': sample_data['total_area'],
                         'n_foods': len(foods),
                         'n_variables': len(cqm.variables),
-                        'n_constraints': len(cqm.constraints)
+                        'n_constraints': len(cqm.constraints),
+                        'total_covered_area': total_covered_area,
+                        'solution_plantations': cqm_sample
                     }
                     
                     print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {dwave_total_time:.3f}s")
@@ -620,6 +640,10 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 cqm_sample = invert(best_sample_bqm.sample)
                 cqm_objective = -bqm_energy
                 
+                # Calculate total covered area (number of plots selected * area per plot)
+                num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
+                total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
+                
                 dwave_bqm_result = {
                     'status': 'Optimal',
                     'objective_value': cqm_objective,
@@ -634,7 +658,8 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     'total_area': sample_data['total_area'],
                     'n_foods': len(foods),
                     'n_variables': len(bqm.variables),
-                    'bqm_interactions': len(bqm.quadratic)
+                    'bqm_interactions': len(bqm.quadratic),
+                    'total_covered_area': total_covered_area
                 }
                 
                 results['solvers']['dwave_bqm'] = dwave_bqm_result
@@ -659,46 +684,54 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
             results['solvers']['gurobi_qubo'] = cached
         else:
             try:
-                from gurobi_optimods.qubo import solve_qubo
-                import gurobipy as gp
-                import numpy as np
-                
-                # Convert BQM to QUBO format
-                Q_dict = bqm.to_numpy_matrix()
-                
-                print(f"       BQM Variables: {len(bqm.variables)}, QUBO terms: {len(bqm.linear) + len(bqm.quadratic)}")
-                
+                # Use the solve_with_gurobi_qubo function from solver_runner_BINARY
                 qubo_start = time.time()
-                result_qubo = solve_qubo(Q_dict, TimeLimit=100)
+                qubo_result = solver_runner.solve_with_gurobi_qubo(
+                    bqm, 
+                    farms=plots_list, 
+                    foods=foods, 
+                    food_groups=food_groups,
+                    land_availability=land_data,
+                    weights=config['parameters']['weights'],
+                    idle_penalty=config['parameters'].get('idle_penalty_lambda', 0.0),
+                    config=config,
+                    time_limit=100  # 100 second time limit
+                )
                 qubo_time = time.time() - qubo_start
                 
-                # Extract solution
-                solution_array = result_qubo.solution
-                bqm_vars = list(bqm.variables)
-                solution = {var: int(solution_array[i]) for i, var in enumerate(bqm_vars)}
+                # Extract solution from result - solver returns 'solution' dict
+                bqm_solution = qubo_result.get('solution', {})
+                # Convert BQM solution back to CQM variable names for plantations
+                cqm_sample = {}
+                for var_name, value in bqm_solution.items():
+                    # BQM variables are the original Y variables from CQM
+                    cqm_sample[var_name] = value
                 
-                # Calculate BQM energy
-                bqm_energy = bqm.energy(solution)
+                cqm_objective = qubo_result.get('objective_value')
                 
-                # Invert to CQM
-                cqm_sample = invert(solution)
-                cqm_objective = -bqm_energy
+                # Calculate total covered area (number of plots selected * area per plot)
+                num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
+                total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                 
-                print(f"       ✓ Gurobi QUBO: Optimal in {qubo_time:.3f}s (obj: {cqm_objective:.6f})")
+                # Format objective value for printing
+                obj_str = f"{cqm_objective:.6f}" if cqm_objective is not None else "N/A"
+                print(f"       ✓ Gurobi QUBO: {qubo_result['status']} in {qubo_time:.3f}s (obj: {obj_str})")
                 
                 gurobi_qubo_result = {
-                    'status': 'Optimal',
+                    'status': qubo_result['status'],
                     'objective_value': cqm_objective,
-                    'bqm_energy': bqm_energy,
+                    'bqm_energy': qubo_result.get('bqm_energy'),
                     'solve_time': qubo_time,
                     'bqm_conversion_time': bqm_conversion_time,
-                    'success': True,
+                    'success': qubo_result['status'] == 'Optimal',
                     'sample_id': sample_data['sample_id'],
                     'n_units': sample_data['n_units'],
                     'total_area': sample_data['total_area'],
                     'n_foods': len(foods),
                     'n_variables': len(bqm.variables),
-                    'bqm_interactions': len(bqm.quadratic)
+                    'bqm_interactions': qubo_result.get('bqm_interactions', 0),
+                    'total_covered_area': total_covered_area,
+                    'solution_plantations': cqm_sample
                 }
                 
                 results['solvers']['gurobi_qubo'] = gurobi_qubo_result
@@ -706,6 +739,8 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 
             except Exception as e:
                 print(f"       ❌ Gurobi QUBO failed: {e}")
+                import traceback
+                traceback.print_exc()
                 results['solvers']['gurobi_qubo'] = {'status': 'Error', 'error': str(e), 'success': False}
     else:
         print(f"     Gurobi QUBO: SKIPPED (no BQM)")
