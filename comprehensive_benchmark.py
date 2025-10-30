@@ -384,10 +384,9 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                dwave_start = time.time()
-                sampleset, solve_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
-                dwave_total_time = time.time() - dwave_start
-                
+
+                sampleset, solve_time, qpu_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
+
                 # Extract best solution
                 if len(sampleset) > 0:
                     best = sampleset.first
@@ -399,9 +398,9 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                     
                     dwave_result = {
                         'status': 'Optimal' if is_feasible else 'Infeasible',
-                        'objective_value': -best.energy if is_feasible else None,
-                        'solve_time': dwave_total_time,
-                        'charge_time': solve_time,
+                        'objective_value': -best.energy / total_covered_area if is_feasible else None,
+                        'qpu_time': qpu_time,
+                        'solve_time': solve_time,
                         'is_feasible': is_feasible,
                         'num_samples': len(sampleset),
                         'success': is_feasible,
@@ -415,12 +414,12 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                         'solution_areas': cqm_sample
                     }
                     
-                    print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {dwave_total_time:.3f}s")
+                    print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {solve_time:.3f}s")
                 else:
                     dwave_result = {
                         'status': 'No Solutions',
                         'success': False,
-                        'solve_time': dwave_total_time
+                        'solve_time': solve_time
                     }
                     print(f"       ❌ DWave CQM: No solutions returned")
                 
@@ -541,9 +540,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
             results['solvers']['dwave_cqm'] = cached
         else:
             try:
-                dwave_start = time.time()
-                sampleset, solve_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
-                dwave_total_time = time.time() - dwave_start
+                sampleset, hybrid_time, qpu_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
                 
                 # Extract best solution
                 if len(sampleset) > 0:
@@ -555,11 +552,19 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
                     total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                     
+                    # Normalize objective by total area to match PuLP formulation
+                    normalized_objective = -best.energy / sample_data['total_area'] if is_feasible else None
+                    
+                    # Validate constraints
+                    validation_result = solver_runner.validate_solution_constraints(
+                        cqm_sample, plots_list, foods, food_groups, land_data, config
+                    )
+                    
                     dwave_result = {
-                        'status': 'Optimal' if is_feasible else 'Infeasible',
-                        'objective_value': -best.energy if is_feasible else None,
-                        'solve_time': dwave_total_time,
-                        'charge_time': solve_time,
+                        'status': 'Feasible' if is_feasible else 'Infeasible',
+                        'objective_value': normalized_objective,
+                        'hybrid_time': hybrid_time,
+                        'qpu_time': qpu_time,
                         'is_feasible': is_feasible,
                         'num_samples': len(sampleset),
                         'success': is_feasible,
@@ -570,15 +575,20 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                         'n_variables': len(cqm.variables),
                         'n_constraints': len(cqm.constraints),
                         'total_covered_area': total_covered_area,
-                        'solution_plantations': cqm_sample
+                        'solution_plantations': cqm_sample,
+                        'validation': validation_result
                     }
                     
-                    print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {dwave_total_time:.3f}s")
+                    # Print result with validation info
+                    if validation_result['n_violations'] > 0:
+                        print(f"       ⚠️  DWave CQM: {validation_result['n_violations']} constraint violations in {hybrid_time:.3f}s")
+                    else:
+                        print(f"       ✅ DWave CQM: Feasible in {hybrid_time:.3f}s (obj: {normalized_objective:.6f})")
                 else:
                     dwave_result = {
                         'status': 'No Solutions',
                         'success': False,
-                        'solve_time': dwave_total_time
+                        'solve_time': hybrid_time if hybrid_time else 0
                     }
                     print(f"       ❌ DWave CQM: No solutions returned")
                 
@@ -600,7 +610,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
     print(f"     Converting CQM to BQM...")
     try:
         bqm_start = time.time()
-        lagrange_multiplier = 10.0
+        lagrange_multiplier = 100000.0  # Very large multiplier to strongly enforce constraints
         print(f"       Using Lagrange multiplier: {lagrange_multiplier}")
         
         bqm, invert = cqm_to_bqm(cqm, lagrange_multiplier=lagrange_multiplier)
@@ -619,53 +629,72 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
             results['solvers']['dwave_bqm'] = cached
         else:
             try:
-                from dwave.system import LeapHybridBQMSampler
-                
-                bqm_sampler = LeapHybridBQMSampler(token=dwave_token)
-                
                 print(f"       Submitting to DWave Leap HybridBQM solver...")
-                bqm_start = time.time()
-                sampleset_bqm = bqm_sampler.sample(bqm, label="Patch Optimization - BQM")
-                bqm_solve_time = time.time() - bqm_start
                 
-                # Extract timing
-                timing_info = sampleset_bqm.info.get('timing', {})
-                hybrid_time_bqm = (timing_info.get('run_time') or timing_info.get('qpu_access_time', 0)) / 1_000_000.0
-                qpu_time_bqm = timing_info.get('qpu_access_time', 0) / 1_000_000.0
+                sampleset_bqm, hybrid_time, qpu_time, bqm_conv_time, invert_fn = solver_runner.solve_with_dwave_bqm(
+                    cqm,  # Pass CQM, function converts internally
+                    dwave_token
+                )
                 
-                best_sample_bqm = sampleset_bqm.first
-                bqm_energy = best_sample_bqm.energy
-                
-                # Invert BQM solution back to CQM
-                cqm_sample = invert(best_sample_bqm.sample)
-                cqm_objective = -bqm_energy
-                
-                # Calculate total covered area (number of plots selected * area per plot)
-                num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
-                total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
-                
-                dwave_bqm_result = {
-                    'status': 'Optimal',
-                    'objective_value': cqm_objective,
-                    'bqm_energy': bqm_energy,
-                    'solve_time': bqm_solve_time,
-                    'hybrid_time': hybrid_time_bqm,
-                    'qpu_time': qpu_time_bqm,
-                    'bqm_conversion_time': bqm_conversion_time,
-                    'success': True,
-                    'sample_id': sample_data['sample_id'],
-                    'n_units': sample_data['n_units'],
-                    'total_area': sample_data['total_area'],
-                    'n_foods': len(foods),
-                    'n_variables': len(bqm.variables),
-                    'bqm_interactions': len(bqm.quadratic),
-                    'total_covered_area': total_covered_area
-                }
-                
-                results['solvers']['dwave_bqm'] = dwave_bqm_result
-                save_solver_result(dwave_bqm_result, 'patch', 'dwave_bqm', sample_data['n_units'], run_id=1)
-                
-                print(f"       ✓ DWave BQM: Optimal in {bqm_solve_time:.3f}s (QPU: {qpu_time_bqm:.3f}s)")
+                # Extract best solution
+                if len(sampleset_bqm) > 0:
+                    best_sample = sampleset_bqm.first
+                    bqm_energy = best_sample.energy
+                    
+                    # Invert BQM solution back to CQM
+                    cqm_sample_raw = invert_fn(best_sample.sample)
+                    
+                    # Convert string values to integers (DWave returns strings)
+                    cqm_sample = {k: int(v) if isinstance(v, str) else v for k, v in cqm_sample_raw.items()}
+                    
+                    # Calculate total covered area (number of plots selected * area per plot)
+                    num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
+                    total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
+                    
+                    # Normalize objective by total area to match PuLP formulation (POSITIVE sign)
+                    normalized_objective = -bqm_energy / sample_data['total_area']
+                    
+                    # Validate constraints
+                    validation_result = solver_runner.validate_solution_constraints(
+                        cqm_sample, plots_list, foods, food_groups, land_data, config
+                    )
+                    
+                    dwave_bqm_result = {
+                        'status': 'Optimal',
+                        'objective_value': normalized_objective,
+                        'bqm_energy': bqm_energy,
+                        'solve_time': hybrid_time,
+                        'hybrid_time': hybrid_time,
+                        'qpu_time': qpu_time,
+                        'bqm_conversion_time': bqm_conv_time,
+                        'success': True,
+                        'sample_id': sample_data['sample_id'],
+                        'n_units': sample_data['n_units'],
+                        'total_area': sample_data['total_area'],
+                        'n_foods': len(foods),
+                        'n_variables': len(bqm.variables),
+                        'bqm_interactions': len(bqm.quadratic),
+                        'total_covered_area': total_covered_area,
+                        'solution_plantations': cqm_sample,
+                        'validation': validation_result
+                    }
+                    
+                    results['solvers']['dwave_bqm'] = dwave_bqm_result
+                    save_solver_result(dwave_bqm_result, 'patch', 'dwave_bqm', sample_data['n_units'], run_id=1)
+                    
+                    # Print result with validation info
+                    if validation_result['n_violations'] > 0:
+                        print(f"       ⚠️  DWave BQM: {validation_result['n_violations']} constraint violations in {hybrid_time:.3f}s (QPU: {qpu_time:.3f}s)")
+                    else:
+                        print(f"       ✅ DWave BQM: Optimal in {hybrid_time:.3f}s (QPU: {qpu_time:.3f}s, obj: {normalized_objective:.6f})")
+                else:
+                    dwave_bqm_result = {
+                        'status': 'No Solutions',
+                        'success': False,
+                        'solve_time': hybrid_time if hybrid_time else 0
+                    }
+                    print(f"       ❌ DWave BQM: No solutions returned")
+                    results['solvers']['dwave_bqm'] = dwave_bqm_result
                 
             except Exception as e:
                 print(f"       ❌ DWave BQM failed: {e}")
@@ -883,7 +912,7 @@ Examples:
         if args.token:
             dwave_token = args.token
         else:
-            dwave_token = None #os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-7b81782896495d7c6a061bda257a9d9b03b082cd')
         
         if not dwave_token:
             print("Warning: D-Wave enabled but no token found. Set DWAVE_API_TOKEN environment variable or use --token")

@@ -471,37 +471,41 @@ def create_cqm_plots(farms, foods, food_groups, config):
             }
             pbar.update(1)
     
-    # Food group constraints
+    # Food group constraints - GLOBAL across all plots
+    # Fixed: Was incorrectly applying per-plot, which created infeasible problems
+    # Now applies globally: "across all plots, we need at least min_foods from each group"
     pbar.set_description("Adding food group constraints")
     if food_group_constraints:
         for group, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                # Constraints apply across ALL farms, not per farm
-                # Count how many different foods from this group are selected across all plots
+                # Global minimum: across ALL plots, at least min_foods from this group
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
                         sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['min_foods'] >= 0,
-                        label=f"Food_Group_Min_{group}"
+                        label=f"Food_Group_Min_{group}_Global"
                     )
                     constraint_metadata['food_group_min'][group] = {
-                        'type': 'food_group_min',
+                        'type': 'food_group_min_global',
                         'group': group,
                         'min_foods': constraints['min_foods'],
-                        'foods_in_group': foods_in_group
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
                     }
                     pbar.update(1)
                 
+                # Global maximum: across ALL plots, at most max_foods from this group
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
                         sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['max_foods'] <= 0,
-                        label=f"Food_Group_Max_{group}"
+                        label=f"Food_Group_Max_{group}_Global"
                     )
                     constraint_metadata['food_group_max'][group] = {
-                        'type': 'food_group_max',
+                        'type': 'food_group_max_global',
                         'group': group,
                         'max_foods': constraints['max_foods'],
-                        'foods_in_group': foods_in_group
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
                     }
                     pbar.update(1)
     
@@ -665,14 +669,11 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                # Constraints apply across ALL farms, not per farm
-                # Count how many different foods from this group are selected across all plots
-                if 'min_foods' in constraints:
-                    # At least min_foods different foods from this group must be selected somewhere
-                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_{g}"
-                if 'max_foods' in constraints:
-                    # At most max_foods different foods from this group across all plots
-                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_{g}"
+                for f in farms:
+                    if 'min_foods' in constraints:
+                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_{f}_{g}"
+                    if 'max_foods' in constraints:
+                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_{f}_{g}"
     
     model += goal, "Objective"
     
@@ -708,6 +709,178 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
     return model, results
 
 
+def validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config):
+    """
+    Validate if a solution satisfies all original CQM constraints.
+    Handles both variable formats:
+    - Patch format: Y_{farm}_{food} (binary variables only)
+    - Farm format: X_{plot}_{crop} and Y_{crop} (continuous + binary)
+    
+    Args:
+        solution: Dictionary with variable assignments
+        farms: List of farm/plot names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food groups
+        land_availability: Dictionary mapping plot to area
+        config: Configuration dictionary with parameters
+        
+    Returns:
+        dict: Validation results with violations and constraint checks
+    """
+    params = config['parameters']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    total_land = sum(land_availability.values())
+    
+    # Detect variable format
+    has_x_vars = any(k.startswith('X_') for k in solution.keys())
+    has_separate_y = any(k.startswith('Y_') and k.count('_') == 1 for k in solution.keys())
+    
+    # Patch format: only Y_{farm}_{food} variables
+    # Farm format: X_{plot}_{crop} and Y_{crop} variables
+    is_patch_format = not has_x_vars
+    
+    violations = []
+    constraint_checks = {
+        'at_most_one_per_plot': {'passed': 0, 'failed': 0, 'violations': []},
+        'x_y_linking': {'passed': 0, 'failed': 0, 'violations': []},
+        'y_activation': {'passed': 0, 'failed': 0, 'violations': []},
+        'area_bounds_min': {'passed': 0, 'failed': 0, 'violations': []},
+        'food_group_constraints': {'passed': 0, 'failed': 0, 'violations': []}
+    }
+    
+    # 1. Check: At most one crop per plot
+    for plot in farms:
+        if is_patch_format:
+            # Patch format: Y_{farm}_{food}
+            assigned = sum(solution.get(f"Y_{plot}_{crop}", 0) for crop in foods)
+        else:
+            # Farm format: X_{plot}_{crop}
+            assigned = sum(solution.get(f"X_{plot}_{crop}", 0) for crop in foods)
+            
+        if assigned > 1.01:  # Allow small numerical tolerance
+            violation = f"Plot {plot}: {assigned:.3f} crops assigned (should be ≤ 1)"
+            violations.append(violation)
+            constraint_checks['at_most_one_per_plot']['violations'].append(violation)
+            constraint_checks['at_most_one_per_plot']['failed'] += 1
+        else:
+            constraint_checks['at_most_one_per_plot']['passed'] += 1
+    
+    # 2. Check: X-Y Linking (only for farm format)
+    if not is_patch_format:
+        for plot in farms:
+            for crop in foods:
+                x_pc = solution.get(f"X_{plot}_{crop}", 0)
+                y_c = solution.get(f"Y_{crop}", 0)
+                if x_pc > y_c + 0.01:  # Allow small tolerance
+                    violation = f"X_{plot}_{crop}={x_pc:.3f} > Y_{crop}={y_c:.3f}"
+                    violations.append(violation)
+                    constraint_checks['x_y_linking']['violations'].append(violation)
+                    constraint_checks['x_y_linking']['failed'] += 1
+                else:
+                    constraint_checks['x_y_linking']['passed'] += 1
+    
+        # 3. Check: Y Activation (Y_c <= sum_p X_{p,c}) - only for farm format
+        for crop in foods:
+            y_c = solution.get(f"Y_{crop}", 0)
+            sum_x = sum(solution.get(f"X_{plot}_{crop}", 0) for plot in farms)
+            if y_c > sum_x + 0.01:  # Allow small tolerance
+                violation = f"Y_{crop}={y_c:.3f} > sum(X_{{p,{crop}}})={sum_x:.3f}"
+                violations.append(violation)
+                constraint_checks['y_activation']['violations'].append(violation)
+                constraint_checks['y_activation']['failed'] += 1
+            else:
+                constraint_checks['y_activation']['passed'] += 1
+    
+    # 4. Check: Area bounds (minimum and maximum per crop)
+    for crop in foods:
+        if is_patch_format:
+            # Patch format: Y_{farm}_{food}
+            crop_area = sum(
+                solution.get(f"Y_{plot}_{crop}", 0) * land_availability[plot]
+                for plot in farms
+            )
+        else:
+            # Farm format: X_{plot}_{crop}
+            crop_area = sum(
+                solution.get(f"X_{plot}_{crop}", 0) * land_availability[plot]
+                for plot in farms
+            )
+        
+        # Check minimum area
+        if crop in min_planting_area:
+            min_area = min_planting_area[crop]
+            
+            if is_patch_format:
+                # Check if any plot has this crop
+                y_c = sum(solution.get(f"Y_{plot}_{crop}", 0) for plot in farms)
+            else:
+                y_c = solution.get(f"Y_{crop}", 0)
+                
+            if y_c > 0.5 and crop_area < min_area - 0.001:  # If crop selected, check min
+                violation = f"Crop {crop}: area={crop_area:.4f} < min={min_area:.4f}"
+                violations.append(violation)
+                constraint_checks['area_bounds_min']['violations'].append(violation)
+                constraint_checks['area_bounds_min']['failed'] += 1
+            else:
+                constraint_checks['area_bounds_min']['passed'] += 1
+    
+    # NOTE: No maximum area constraints - matches original solver_runner.py
+    
+    # 5. Check: Food group constraints
+    if food_group_constraints:
+        for group_name, group_data in food_group_constraints.items():
+            if group_name in food_groups:
+                crops_in_group = food_groups[group_name]
+                
+                if is_patch_format:
+                    # Count how many plots have each crop
+                    n_selected = sum(
+                        1 for crop in crops_in_group 
+                        if sum(solution.get(f"Y_{plot}_{crop}", 0) for plot in farms) > 0.5
+                    )
+                else:
+                    n_selected = sum(
+                        1 for crop in crops_in_group 
+                        if solution.get(f"Y_{crop}", 0) > 0.5
+                    )
+                
+                min_crops = group_data.get('min', 0)
+                max_crops = group_data.get('max', len(crops_in_group))
+                
+                if n_selected < min_crops:
+                    violation = f"Group {group_name}: {n_selected} crops < min={min_crops}"
+                    violations.append(violation)
+                    constraint_checks['food_group_constraints']['violations'].append(violation)
+                    constraint_checks['food_group_constraints']['failed'] += 1
+                elif n_selected > max_crops:
+                    violation = f"Group {group_name}: {n_selected} crops > max={max_crops}"
+                    violations.append(violation)
+                    constraint_checks['food_group_constraints']['violations'].append(violation)
+                    constraint_checks['food_group_constraints']['failed'] += 1
+                else:
+                    constraint_checks['food_group_constraints']['passed'] += 1
+    
+    # Calculate summary statistics
+    total_checks = sum(check['passed'] + check['failed'] for check in constraint_checks.values())
+    total_passed = sum(check['passed'] for check in constraint_checks.values())
+    total_failed = sum(check['failed'] for check in constraint_checks.values())
+    
+    return {
+        'is_feasible': len(violations) == 0,
+        'n_violations': len(violations),
+        'violations': violations,
+        'constraint_checks': constraint_checks,
+        'summary': {
+            'total_checks': total_checks,
+            'total_passed': total_passed,
+            'total_failed': total_failed,
+            'pass_rate': total_passed / total_checks if total_checks > 0 else 0
+        }
+    }
+
+
 def solve_with_dwave_cqm(cqm, token):
     """Solve with DWave and return sampleset."""
     sampler = LeapHybridCQMSampler(token=token)
@@ -716,9 +889,28 @@ def solve_with_dwave_cqm(cqm, token):
     
     sampleset = sampler.sample_cqm(
         cqm, label="Food Optimization - Professional Run")
-    solve_time = sampleset.info.get('charge_time', 0) / 1e6  # Convert to seconds
+    
 
-    return sampleset, solve_time
+    # Extract timing from sampleset.info
+    timing_info = sampleset.info.get('timing', {})
+    
+    # Hybrid solve time (total time including QPU)
+    hybrid_time = (timing_info.get('run_time') or 
+                  sampleset.info.get('run_time') or
+                  timing_info.get('charge_time') or
+                  sampleset.info.get('charge_time'))
+    
+    if hybrid_time is not None:
+        hybrid_time = hybrid_time / 1e6  # Convert from microseconds to seconds
+    
+    # QPU access time
+    qpu_time = (timing_info.get('qpu_access_time') or
+               sampleset.info.get('qpu_access_time'))
+    
+    if qpu_time is not None:
+        qpu_time = qpu_time / 1e6  # Convert from microseconds to seconds
+
+    return sampleset, hybrid_time, qpu_time
 
 
 def solve_with_dwave_bqm(cqm, token):
@@ -777,153 +969,6 @@ def solve_with_dwave_bqm(cqm, token):
         print(f"  QPU Access Time: {qpu_time:.4f}s")
     
     return sampleset, hybrid_time, qpu_time, bqm_conversion_time, invert
-
-
-def calculate_original_objective(solution, farms, foods, land_availability, weights, idle_penalty):
-    """
-    Calculate the original CQM objective from a solution.
-    
-    This reconstructs the objective for the binary formulation.
-    
-    Args:
-        solution: Dictionary with variable assignments
-        farms: List of farm/plot names
-        foods: Dictionary of food data with nutritional values
-        land_availability: Dictionary mapping plot to area
-        weights: Dictionary of objective weights
-        idle_penalty: Lambda penalty for idle land
-        
-    Returns:
-        float: The original objective value (to be maximized)
-    """
-    objective = 0.0
-    total_land = sum(land_availability.values())
-    
-    for plot in farms:
-        s_p = land_availability[plot]  # Area of plot p
-        for crop in foods:
-            # Get variable value from solution (using plot_crop naming)
-            var_name = f"{plot}_{crop}"
-            x_pc = solution.get(var_name, 0)
-            
-            if x_pc > 0:  # Only count if assigned
-                # Calculate benefit per unit area
-                B_c = (
-                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
-                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
-                )
-                # Add benefit * area to objective
-                objective += B_c * s_p * x_pc
-    
-    # Normalize by total land area
-    return objective / total_land if total_land > 0 else 0.0
-
-
-def extract_solution_summary(solution, farms, foods, land_availability):
-    """
-    Extract a summary of the solution showing crop selections and plot assignments.
-    
-    Args:
-        solution: Dictionary with variable assignments
-        farms: List of farm/plot names
-        foods: Dictionary of food data
-        land_availability: Dictionary mapping plot to area
-        
-    Returns:
-        dict: Summary with crops selected, areas, and plot assignments
-    """
-    crops_selected = set()
-    plot_assignments = []
-    total_allocated = 0.0
-    
-    for plot in farms:
-        for crop in foods:
-            var_name = f"{plot}_{crop}"
-            if solution.get(var_name, 0) > 0:
-                crops_selected.add(crop)
-                plot_assignments.append({
-                    'plot': plot,
-                    'crop': crop,
-                    'area': land_availability[plot]
-                })
-                total_allocated += land_availability[plot]
-    
-    total_available = sum(land_availability.values())
-    idle_area = total_available - total_allocated
-    
-    return {
-        'crops_selected': list(crops_selected),
-        'n_crops': len(crops_selected),
-        'plot_assignments': plot_assignments,
-        'total_allocated': total_allocated,
-        'total_available': total_available,
-        'idle_area': idle_area,
-        'utilization': total_allocated / total_available if total_available > 0 else 0
-    }
-
-
-def validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config):
-    """
-    Validate if a solution satisfies all original CQM constraints.
-    
-    Args:
-        solution: Dictionary with variable assignments
-        farms: List of farm/plot names
-        foods: Dictionary of food data
-        food_groups: Dictionary of food groups
-        land_availability: Dictionary mapping plot to area
-        config: Configuration dictionary with parameters
-        
-    Returns:
-        dict: Validation results with violations and constraint checks
-    """
-    params = config['parameters']
-    food_group_constraints = params.get('food_group_constraints', {})
-    
-    violations = []
-    
-    # Check plot assignment constraints (each plot assigned to at most one crop)
-    for plot in farms:
-        assigned_count = sum(1 for crop in foods if solution.get(f"{plot}_{crop}", 0) > 0)
-        if assigned_count > 1:
-            violations.append(f"Plot {plot} assigned to {assigned_count} crops (should be ≤1)")
-    
-    # Check food group constraints if specified
-    if food_group_constraints:
-        for group_name, constraints in food_group_constraints.items():
-            foods_in_group = food_groups.get(group_name, [])
-            if not foods_in_group:
-                continue
-            
-            # Count how many foods from this group are selected across all plots
-            selected_from_group = set()
-            for plot in farms:
-                for crop in foods_in_group:
-                    if solution.get(f"{plot}_{crop}", 0) > 0:
-                        selected_from_group.add(crop)
-            
-            n_selected = len(selected_from_group)
-            
-            if 'min_foods' in constraints and n_selected < constraints['min_foods']:
-                violations.append(
-                    f"Food group '{group_name}': {n_selected} foods selected, "
-                    f"minimum required: {constraints['min_foods']}"
-                )
-            
-            if 'max_foods' in constraints and n_selected > constraints['max_foods']:
-                violations.append(
-                    f"Food group '{group_name}': {n_selected} foods selected, "
-                    f"maximum allowed: {constraints['max_foods']}"
-                )
-    
-    return {
-        'n_violations': len(violations),
-        'violations': violations,
-        'is_feasible': len(violations) == 0
-    }
 
 
 def solve_with_gurobi_qubo(bqm, farms=None, foods=None, food_groups=None, land_availability=None, 

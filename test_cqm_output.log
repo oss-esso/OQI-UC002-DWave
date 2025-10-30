@@ -1,0 +1,99 @@
+================================================================================
+TARGETED TEST: Patch DWave CQM Constraint Validation
+================================================================================
+
+1. Generating patch data...
+   N plots: 10
+   Total land: 100.0 ha
+   Seed: 42
+   ✓ Generated 10 plots
+   Area per plot: 10.0000 ha
+   Total area: 100.0000 ha
+
+2. Loading food data...
+Generated 125 farms with farm_sampler
+Total land: 621.58 ha
+Loading food data from: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/Inputs/Combined_Food_Data.xlsx
+   ✓ Loaded 27 foods
+   ✓ Loaded 5 food groups
+
+3. Creating configuration...
+   ✓ Configuration created
+
+4. Building CQM (binary formulation)...
+Building CQM (Binary formulation):   0%|                                    | 0/677 [00:00<?, ?op/s]Creating binary variables:   0%|                                            | 0/677 [00:00<?, ?op/s]Building objective:  40%|███████████████▏                      | 270/677 [00:00<00:00, 42134.99op/s]Adding land unit constraints:  80%|██████████████████████▎     | 540/677 [00:00<00:00, 30338.55op/s]Adding minimum plot constraints:  81%|████████████████████▎    | 550/677 [00:00<00:00, 13122.71op/s]Adding maximum plot constraints:  85%|█████████████████████▎   | 577/677 [00:00<00:00, 11059.99op/s]Adding food group constraints:  85%|███████████████████████    | 577/677 [00:00<00:00, 11025.93op/s]CQM complete: 100%|█████████████████████████████████████████████| 677/677 [00:00<00:00, 8821.97op/s]CQM complete: 100%|█████████████████████████████████████████████| 677/677 [00:00<00:00, 8798.27op/s]
+   ✓ CQM built successfully
+   Variables: 270 (all binary)
+   Constraints: 137
+
+5. Inspecting CQM constraints in detail...
+
+   Constraint breakdown:
+   - plot_assignment: 10 constraints
+   - min_plots: 27 constraints
+   - food_group: 100 constraints
+
+   Detailed inspection of plot assignment constraints:
+
+   Constraint 1: Max_Assignment_Patch1
+     Type: Sense.Le
+     RHS: 0.0
+     Number of variables: 27
+     Variables involved:
+       Y_Patch1_Beef: coefficient=1.0
+       Y_Patch1_Chicken: coefficient=1.0
+       Y_Patch1_Egg: coefficient=1.0
+       Y_Patch1_Lamb: coefficient=1.0
+       Y_Patch1_Pork: coefficient=1.0
+       ... and 22 more variables
+
+   Constraint 2: Max_Assignment_Patch2
+     Type: Sense.Le
+     RHS: 0.0
+     Number of variables: 27
+     Variables involved:
+       Y_Patch2_Beef: coefficient=1.0
+       Y_Patch2_Chicken: coefficient=1.0
+       Y_Patch2_Egg: coefficient=1.0
+       Y_Patch2_Lamb: coefficient=1.0
+       Y_Patch2_Pork: coefficient=1.0
+       ... and 22 more variables
+
+   Constraint 3: Max_Assignment_Patch3
+     Type: Sense.Le
+     RHS: 0.0
+     Number of variables: 27
+     Variables involved:
+       Y_Patch3_Beef: coefficient=1.0
+       Y_Patch3_Chicken: coefficient=1.0
+       Y_Patch3_Egg: coefficient=1.0
+       Y_Patch3_Lamb: coefficient=1.0
+       Y_Patch3_Pork: coefficient=1.0
+       ... and 22 more variables
+
+6. Saving CQM to file...
+   ✓ Saved to: test_patch_cqm_10plots.cqm
+
+7. Solving with DWave LeapHybridCQMSampler...
+   Submitting to DWave Leap...
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/test_patch_cqm_constraints.py", line 341, in <module>
+    main()
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/test_patch_cqm_constraints.py", line 156, in main
+    timing_info = sampleset.info.get('timing', {})
+                  ^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dimod/sampleset.py", line 1107, in info
+    self.resolve()
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dimod/sampleset.py", line 1490, in resolve
+    samples = self._result_hook(self._future)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/computation.py", line 853, in <lambda>
+    sampleset = dimod.SampleSet.from_future(self, lambda f: f.wait_sampleset())
+                                                            ^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/computation.py", line 788, in wait_sampleset
+    self._load_result()
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/computation.py", line 929, in _load_result
+    raise self._exception
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/client/base.py", line 1493, in _handle_problem_status
+    raise SolverFailureError(errmsg)
+dwave.cloud.exceptions.SolverFailureError: Problem not accepted because user has insufficient remaining solver access time in project 45FS
