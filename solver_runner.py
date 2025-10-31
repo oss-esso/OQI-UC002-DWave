@@ -115,39 +115,40 @@ def create_cqm(farms, foods, food_groups, config):
                 'max_land': land_availability[farm]
             }
 
-    # Food group constraints
+    # Food group constraints - GLOBAL across all farms
     if food_group_constraints:
         for group, constraints in tqdm(food_group_constraints.items(), desc="Adding food group constraints"):
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                for farm in farms:
-                    if 'min_foods' in constraints:
-                        cqm.add_constraint(
-                            sum(Y[(farm, food)] for food in foods_in_group) -
-                            constraints['min_foods'] >= 0,
-                            label=f"Food_Group_Min_{group}_{farm}"
-                        )
-                        constraint_metadata['food_group_min'][(group, farm)] = {
-                            'type': 'food_group_min',
-                            'group': group,
-                            'farm': farm,
-                            'min_foods': constraints['min_foods'],
-                            'foods_in_group': foods_in_group
-                        }
+                # Global minimum: across ALL farms, at least min_foods from this group
+                if 'min_foods' in constraints:
+                    cqm.add_constraint(
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        constraints['min_foods'] >= 0,
+                        label=f"Food_Group_Min_{group}_Global"
+                    )
+                    constraint_metadata['food_group_min'][group] = {
+                        'type': 'food_group_min_global',
+                        'group': group,
+                        'min_foods': constraints['min_foods'],
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
+                    }
 
-                    if 'max_foods' in constraints:
-                        cqm.add_constraint(
-                            sum(Y[(farm, food)] for food in foods_in_group) -
-                            constraints['max_foods'] <= 0,
-                            label=f"Food_Group_Max_{group}_{farm}"
-                        )
-                        constraint_metadata['food_group_max'][(group, farm)] = {
-                            'type': 'food_group_max',
-                            'group': group,
-                            'farm': farm,
-                            'max_foods': constraints['max_foods'],
-                            'foods_in_group': foods_in_group
-                        }
+                # Global maximum: across ALL farms, at most max_foods from this group
+                if 'max_foods' in constraints:
+                    cqm.add_constraint(
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        constraints['max_foods'] <= 0,
+                        label=f"Food_Group_Max_{group}_Global"
+                    )
+                    constraint_metadata['food_group_max'][group] = {
+                        'type': 'food_group_max_global',
+                        'group': group,
+                        'max_foods': constraints['max_foods'],
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
+                    }
 
     return cqm, A, Y, constraint_metadata
 
@@ -194,13 +195,13 @@ def solve_with_pulp(farms, foods, food_groups, config):
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                for f in farms:
-                    if 'min_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]
-                                          ) >= constraints['min_foods'], f"MinFoodGroup_{f}_{g}"
-                    if 'max_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]
-                                          ) <= constraints['max_foods'], f"MaxFoodGroup_{f}_{g}"
+                # Global constraints: across ALL farms
+                if 'min_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
+                                      ) >= constraints['min_foods'], f"MinFoodGroup_Global_{g}"
+                if 'max_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
+                                      ) <= constraints['max_foods'], f"MaxFoodGroup_Global_{g}"
 
     model += goal, "Objective"
 

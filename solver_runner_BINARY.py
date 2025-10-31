@@ -30,6 +30,100 @@ import pulp as pl
 from tqdm import tqdm
 import math
 
+def calculate_original_objective(solution, farms, foods, land_availability, weights, idle_penalty):
+    """
+    Calculate the original CQM objective from a solution (binary formulation).
+    
+    This reconstructs the objective for the binary (plots) formulation:
+    sum_{p,c} B_c * s_p * Y_{p,c}
+    
+    Args:
+        solution: Dictionary with variable assignments (Y_{plot}_{crop})
+        farms: List of farm/plot names
+        foods: Dictionary of food data with nutritional values
+        land_availability: Dictionary mapping plot to area
+        weights: Dictionary of objective weights
+        idle_penalty: Lambda penalty for idle land (not used in binary formulation)
+        
+    Returns:
+        float: The original objective value (to be maximized)
+    """
+    objective = 0.0
+    total_land = sum(land_availability.values())
+    
+    for plot in farms:
+        s_p = land_availability[plot]  # Area of plot p
+        for crop in foods:
+            # Get Y_{p,c} value from solution
+            var_name = f"Y_{plot}_{crop}"
+            y_pc = solution.get(var_name, 0)
+            
+            if y_pc > 0:  # Only count if assigned
+                # Calculate B_c: weighted benefit per unit area
+                B_c = (
+                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                )
+                # Add B_c * s_p * Y_{p,c} to objective (normalized)
+                objective += B_c * s_p * y_pc / total_land
+    
+    return objective
+
+def extract_solution_summary(solution, farms, foods, land_availability):
+    """
+    Extract a summary of the solution showing crop selections and plot assignments (binary formulation).
+    
+    Args:
+        solution: Dictionary with variable assignments (Y_{plot}_{crop})
+        farms: List of farm/plot names
+        foods: Dictionary of food data
+        land_availability: Dictionary mapping plot to area
+        
+    Returns:
+        dict: Summary with crops selected, areas, and plot assignments
+    """
+    crops_selected = set()
+    plot_assignments = []
+    total_allocated = 0.0
+    
+    for crop in foods:
+        # Calculate total area allocated to this crop
+        total_area = 0.0
+        assigned_plots = []
+        
+        for plot in farms:
+            y_var = f"Y_{plot}_{crop}"
+            if solution.get(y_var, 0) > 0:
+                area = land_availability[plot]
+                total_area += area
+                assigned_plots.append({'plot': plot, 'area': area})
+        
+        if total_area > 0:  # Only include if actually allocated
+            crops_selected.add(crop)
+            plot_assignments.append({
+                'crop': crop,
+                'total_area': total_area,
+                'n_plots': len(assigned_plots),
+                'plots': assigned_plots
+            })
+            total_allocated += total_area
+    
+    total_available = sum(land_availability.values())
+    idle_area = total_available - total_allocated
+    
+    return {
+        'crops_selected': list(crops_selected),
+        'n_crops': len(crops_selected),
+        'plot_assignments': plot_assignments,
+        'total_allocated': total_allocated,
+        'total_available': total_available,
+        'idle_area': idle_area,
+        'utilization': total_allocated / total_available if total_available > 0 else 0
+    }
+
 def calculate_model_complexity(formulation_type, n_farms, n_foods, n_food_groups=0, 
                                n_crops_with_min_area=0, n_crops_with_max_area=0,
                                has_food_group_constraints=False):
@@ -282,39 +376,40 @@ def create_cqm_farm(farms, foods, food_groups, config):
                 'max_land': land_availability[farm]
             }
 
-    # Food group constraints
+    # Food group constraints - GLOBAL across all farms
     if food_group_constraints:
         for group, constraints in tqdm(food_group_constraints.items(), desc="Adding food group constraints"):
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                for farm in farms:
-                    if 'min_foods' in constraints:
-                        cqm.add_constraint(
-                            sum(Y[(farm, food)] for food in foods_in_group) -
-                            constraints['min_foods'] >= 0,
-                            label=f"Food_Group_Min_{group}_{farm}"
-                        )
-                        constraint_metadata['food_group_min'][(group, farm)] = {
-                            'type': 'food_group_min',
-                            'group': group,
-                            'farm': farm,
-                            'min_foods': constraints['min_foods'],
-                            'foods_in_group': foods_in_group
-                        }
+                # Global minimum: across ALL farms, at least min_foods from this group
+                if 'min_foods' in constraints:
+                    cqm.add_constraint(
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        constraints['min_foods'] >= 0,
+                        label=f"Food_Group_Min_{group}_Global"
+                    )
+                    constraint_metadata['food_group_min'][group] = {
+                        'type': 'food_group_min_global',
+                        'group': group,
+                        'min_foods': constraints['min_foods'],
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
+                    }
 
-                    if 'max_foods' in constraints:
-                        cqm.add_constraint(
-                            sum(Y[(farm, food)] for food in foods_in_group) -
-                            constraints['max_foods'] <= 0,
-                            label=f"Food_Group_Max_{group}_{farm}"
-                        )
-                        constraint_metadata['food_group_max'][(group, farm)] = {
-                            'type': 'food_group_max',
-                            'group': group,
-                            'farm': farm,
-                            'max_foods': constraints['max_foods'],
-                            'foods_in_group': foods_in_group
-                        }
+                # Global maximum: across ALL farms, at most max_foods from this group
+                if 'max_foods' in constraints:
+                    cqm.add_constraint(
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        constraints['max_foods'] <= 0,
+                        label=f"Food_Group_Max_{group}_Global"
+                    )
+                    constraint_metadata['food_group_max'][group] = {
+                        'type': 'food_group_max_global',
+                        'group': group,
+                        'max_foods': constraints['max_foods'],
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
+                    }
 
     return cqm, A, Y, constraint_metadata
 
@@ -557,13 +652,13 @@ def solve_with_pulp_farm(farms, foods, food_groups, config):
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                for f in farms:
-                    if 'min_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]
-                                          ) >= constraints['min_foods'], f"MinFoodGroup_{f}_{g}"
-                    if 'max_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]
-                                          ) <= constraints['max_foods'], f"MaxFoodGroup_{f}_{g}"
+                # Global constraints: across ALL farms
+                if 'min_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
+                                      ) >= constraints['min_foods'], f"MinFoodGroup_Global_{g}"
+                if 'max_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
+                                      ) <= constraints['max_foods'], f"MaxFoodGroup_Global_{g}"
 
     model += goal, "Objective"
 
@@ -664,16 +759,16 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
         # Each unit can have exactly one crop assigned (or remain idle)
         model += pl.lpSum([Y_pulp[(f, c)] for c in foods]) <= 1, f"Max_Assignment_{f}"
     
-    # Food group constraints
+    # Food group constraints - GLOBAL across all plots
     if food_group_constraints:
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                for f in farms:
-                    if 'min_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_{f}_{g}"
-                    if 'max_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_{f}_{g}"
+                # Global constraints: across ALL plots
+                if 'min_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_Global_{g}"
+                if 'max_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_Global_{g}"
     
     model += goal, "Objective"
     

@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from patch_sampler import generate_farms
 from src.scenarios import load_food_data
-import solver_runner_PATCH as solver_patch
+import solver_runner_BINARY as solver_binary
 from dimod import cqm_to_bqm
 import time
 
@@ -47,7 +47,7 @@ config = {
 
 # Create CQM
 print("Creating CQM...")
-cqm, (X, Y), constraint_metadata = solver_patch.create_cqm(patches, foods, food_groups, config)
+cqm, Y, constraint_metadata = solver_binary.create_cqm_plots(patches, foods, food_groups, config)
 
 # Test different Lagrange multipliers
 multipliers = [1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 150.0]
@@ -66,14 +66,14 @@ for lagrange in multipliers:
         bqm, invert = cqm_to_bqm(cqm, lagrange_multiplier=lagrange)
         
         # Solve with Gurobi QUBO (shorter time limit for testing)
-        result = solver_patch.solve_with_gurobi_qubo(
+        result = solver_binary.solve_with_gurobi_qubo(
             bqm,
             farms=list(patches.keys()),
             foods=foods,
             food_groups=food_groups,
             land_availability=patches,
             weights=config['parameters']['weights'],
-            idle_penalty=config['parameters'].get('idle_penalty_lambda', 0.1),
+            idle_penalty=config['parameters'].get('idle_penalty_lambda', 0.0),
             config=config,
             time_limit=30  # 30 seconds for quick test
         )
