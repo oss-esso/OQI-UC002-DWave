@@ -1,273 +1,454 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[margin=1in]{geometry}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{amsthm}
-\usepackage{algorithm}
-\usepackage{algorithmic}
-\usepackage{algpseudocode}
-\usepackage{hyperref}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
 \usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{booktabs}
-\usepackage{listings}
-\usepackage{xcolor}
 \usepackage{enumitem}
 
-% Lightweight code listing style
-\lstset{
-    basicstyle=\ttfamily\small,
-    backgroundcolor=\color{gray!10},
-    breaklines=true
-}
+\geometry{margin=1in}
 
-\title{Record of Trials and Final Strategy:\ Combined Analysis of Constraint Handling, Nonlinear Approaches, and the Binary Strategy}
-\author{Quantum Optimization Research\\EPFL OQI-UC002-DWave Project}
-\date{October 26, 2025}
+\title{\textbf{Comparative Analysis and Final Strategy: Solvers for Food Optimization}}
+\author{Edo}
+\date{\today}
 
 \begin{document}
+
 \maketitle
 
 \begin{abstract}
-This document collates the experimental trials and analyses performed during the project: (1) constraint handling investigations, (2) comparisons of linear and nonlinear objective strategies and solver pathways, and (3) the final chosen strategy (binary / BQUBO-style formulation) that is now adopted in the codebase. The text synthesises material from three working documents and presents a single narrative that can be imported into `current_structure.tex`.
+This combined technical report synthesizes two working documents: (1) \emph{comparison\_nl.tex}, a comprehensive comparison of multiple solver implementations (linear MILP, non-linear with piecewise approximation, non-linear with Dinkelbach, linear-quadratic, and BQUBO approaches), and (2) \emph{binary\_runner.tex}, which documents the final adopted Binary/BQUBO formulation strategy. The first part analyzes mathematical formulations, algorithmic approaches, computational complexity, and trade-offs between modeling accuracy and efficiency. The second part details the binary formulation in depth, showing how it maintains tractability for both classical MILP solvers and hybrid quantum-classical samplers. Together, this narrative provides both methodological context and the chosen implementation strategy.
 \end{abstract}
 
-\section{High-level summary of trials}
+\section{Introduction}
 
-We explored three broad avenues to encode and solve the agricultural crop allocation problem:
+The food optimization problem allocates agricultural land across multiple farms to grow various crops, maximizing a weighted combination of nutritional value, sustainability, affordability, and other attributes while satisfying land availability and crop diversity constraints. This report analyzes multiple approaches to formulating and solving this problem. Part 1 compares five distinct solver implementations with different mathematical properties and computational characteristics. Part 2 concludes with the binary (BQUBO) strategy, which is now our primary implementation due to its strong balance between tractability and quantum-solver compatibility.
 
-\begin{enumerate}
-    \item Explicit constraint encoding in a PATCH (plot-assignment) formulation that uses assignment variables $X_{p,c}$ and requires penalties for at-most-one and linking constraints.
-    \item Several objective and solver approaches including linear MILP, non-linear formulations with piecewise approximation and Dinkelbach-style fractional programming, and hybrid conversions to Constrained Quadratic Models (CQM) for D-Wave/quantum-enabled samplers.
-    \item A binary-grid BQUBO-style formulation (the current strategy) that models land as unit allocations $Y_{f,c}$ and reduces the need for many hard penalty terms by adopting variable semantics aligned with the constraints.
-\end{enumerate}
+\subsection{Problem Context}
 
-The rest of this document records the motivation, the mathematical form of the key constraints and objectives, comparative observations, and ends with the "Binary Runner" documentation describing the current implementation.
+Given:
+\begin{itemize}
+    \item $\mathcal{F}$: Set of farms with land availability $L_f$ for $f \in \mathcal{F}$
+    \item $\mathcal{C}$: Set of crops with attributes
+    \item $\mathcal{G}$: Set of food groups with diversity requirements
+    \item $w_k$: Weights for objectives
+\end{itemize}
 
-\section{Constraint handling: why PATCH needed explicit penalties}
+Decision variables (general):
+\begin{itemize}
+    \item $A_{fc} \in [0, L_f]$: Continuous area allocated to crop $c$ on farm $f$
+    \item $Y_{fc} \in \{0,1\}$: Binary indicator for crop $c$ on farm $f$
+\end{itemize}
 
-This section summarises the key findings from our constraint-handling analysis. The PATCH formulation uses plot-level assignment variables:
-
-\begin{equation}
-X_{p,c} = \begin{cases}
-1 & \text{if plot } p \text{ is assigned to crop } c \\
-0 & \text{otherwise.}
-\end{cases}
-\end{equation}
-
-Objective (example):
-\begin{equation}
-\max \sum_{p \in \mathcal{F}} \sum_{c \in \mathcal{C}} (B_c + \lambda) \; s_p \; X_{p,c}
-\end{equation}
-
-Critical constraints for PATCH include the at-most-one-crop-per-plot constraint:
-\begin{equation}\label{eq:patch_one_crop}
-\sum_{c \in \mathcal{C}} X_{p,c} \le 1 \quad \forall p \in \mathcal{F}
-\end{equation}
-
-and linking/activation constraints between plot-level assignments and crop-activation indicators $Y_c$:
+Core constraints:
 \begin{align}
-X_{p,c} &\le Y_c \quad \forall p,c,\\
-Y_c &\le \sum_{p} X_{p,c} \quad \forall c.
+\sum_{c \in \mathcal{C}} A_{fc} &\leq L_f \quad \forall f, \\
+A_{fc} &\geq A_{\min,c} \cdot Y_{fc} \quad \forall f,c, \\
+A_{fc} &\leq L_f \cdot Y_{fc} \quad \forall f,c, \\
+\sum_{c \in \mathcal{G}_g} Y_{fc} &\geq N_{\min,g} \quad \forall f,g
 \end{align}
 
-When converting to a Binary Quadratic Model (BQM) these inequality and linking constraints cannot be enforced implicitly by variable semantics and must be introduced as penalty terms. For example, an at-most-one penalty for each plot can be written as a quadratic penalty:
+\section{Part 1: Comparative Analysis of Solver Approaches}
 
-\begin{equation}\label{eq:patch_penalty}
-P_{\text{patch}} = M \sum_{p \in \mathcal{F}} \left(\sum_{c \in \mathcal{C}} X_{p,c} - 1\right)^2_+
+\subsection{Solver 1: Linear Objective (\texttt{solver\_runner.py})}
+
+Uses a linear objective function, yielding a Mixed-Integer Linear Program (MILP).
+
+\subsubsection{Mathematical Formulation}
+
+\begin{equation}
+\max \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} \left(\sum_{k} w_k \cdot \text{attr}_{k,c}\right) \cdot A_{fc}
 \end{equation}
 
-where $M$ is a large multiplier. Our empirical results and counting show that the PATCH approach increases the number of quadratic terms substantially (reported in other notes as roughly an order-of-magnitude increase in interaction count and density), which makes the resulting BQM much harder for sampler hardware and hybrid solvers.
-
-Key takeaway: if variable semantics do not already "bake in" the mutual-exclusion or capacity constraints, explicit penalty encoding is necessary and costly.
-
-\section{Comparison of objective functions and solver approaches}
-
-We experimented with multiple solver implementations and objective structures. The main families were:
-
+\textbf{Advantages:}
 \begin{itemize}
-    \item Linear MILP formulations solved with classical solvers (PuLP/CBC, Gurobi when available).
-    \item Non-linear formulations: concave/convex objectives approximated via piecewise linearisation, and fractional objectives solved with Dinkelbach-like approaches.
-    \item Conversions to Constrained Quadratic Models (CQM) and BQMs for hybrid quantum-classical samplers (D-Wave LeapHybridCQMSampler, BQM samplers).
+    \item Simplest formulation with fewest variables ($2n$)
+    \item Exact optimal solutions guaranteed
+    \item Fast solve times with mature MILP solvers (CBC, Gurobi)
+    \item No approximation errors
 \end{itemize}
 
-Representative model elements used across experiments:
+\textbf{Limitations:}
 \begin{itemize}
-    \item Continuous area variables $A_{f,c} \in [0,L_f]$ and binaries $Y_{f,c}\in\{0,1\}$ for mixed models.
-    \item Binary plot-assignment variables $Y_{p,c}$ for even-grid / binary formulations.
+    \item Linear returns assumption is unrealistic
+    \item Cannot model diminishing returns or interaction effects
 \end{itemize}
 
-Common constraints (used in many trials):
+\subsection{Solver 2: Non-Linear with Piecewise Approximation (\texttt{solver\_runner\_NLN.py})}
+
+Models diminishing returns using a concave power function approximated piecewise.
+
+\subsubsection{Mathematical Formulation}
+
+Objective with diminishing returns:
+\begin{equation}
+\max \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} \left(\sum_{k} w_k \cdot \text{attr}_{k,c}\right) \cdot f(A_{fc})
+\end{equation}
+
+where $f(A) = A^\alpha$ with $\alpha = 0.548$ for diminishing returns.
+
+\textbf{Piecewise Approximation:}
+For each farm-crop pair, define breakpoints $0 = b_0 < b_1 < \cdots < b_K = L_f$ and introduce:
+\begin{itemize}
+    \item Convex combination weights $\lambda_{fc,i} \in [0,1]$ with $\sum_i \lambda_{fc,i} = 1$
+    \item SOS2 constraints (at most two consecutive $\lambda$ variables can be nonzero)
+    \item Approximated function value $\tilde{f}_{fc} = \sum_i \lambda_{fc,i} \cdot f(b_i)$
+\end{itemize}
+
+Modified objective:
+\begin{equation}
+\max \sum_{f,c} \left(\sum_k w_k \cdot \text{attr}_{k,c}\right) \cdot \tilde{f}_{fc}
+\end{equation}
+
+\textbf{Variable Count:} $(K+4)|\mathcal{F}||\mathcal{C}| \approx 14n$ for $K=10$.
+
+\textbf{Advantages:}
+\begin{itemize}
+    \item Models realistic diminishing returns
+    \item Economically justified
+    \item Approximation accuracy controllable via $K$
+    \item Can be solved exactly with MINLP solvers (Pyomo)
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}
+    \item $7\times$ more variables than linear
+    \item $2-4\times$ slower solve times
+    \item Approximation error (though small with $K \geq 10$)
+\end{itemize}
+
+\subsection{Solver 3: Fractional Non-Linear (\texttt{solver\_runner\_NLD.py})}
+
+Models efficiency/benefit-per-unit-area using Dinkelbach's fractional programming algorithm.
+
+\subsubsection{Mathematical Formulation}
+
+Fractional objective:
+\begin{equation}
+\max \frac{\sum_{f,c} w_k \cdot \text{benefit}_{k,c} \cdot A_{fc}}{\sum_{f,c} A_{fc} + \epsilon}
+\end{equation}
+
+\textbf{Dinkelbach's Algorithm:}
+Iteratively solve parametric MILPs with decreasing parameter $\lambda$. Converges superlinearly to the optimal fractional solution in typically 5-15 iterations.
+
+\textbf{Advantages:}
+\begin{itemize}
+    \item No additional variables ($2n$ per iteration)
+    \item Exact solution for fractional objective
+    \item Fast convergence (superlinear)
+    \item Well-studied convergence guarantees
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}
+    \item Requires multiple MILP solves ($T \times$ single-solve time where $T \approx 8$)
+    \item Total time can be longer than linear solver
+    \item Limited to fractional objectives
+\end{itemize}
+
+\subsection{Solver 4: Linear-Quadratic with Synergy (\texttt{solver\_runner\_LQ.py})}
+
+Combines linear returns with quadratic synergy effects between crops in the same food group.
+
+\subsubsection{Mathematical Formulation}
+
+\begin{equation}
+\max \underbrace{\sum_{f,c} v_c \cdot A_{fc}}_{\text{Linear}} + \underbrace{w_s \sum_f \sum_{\substack{c_1,c_2 \in \mathcal{G}_g \\ c_1 < c_2}} s_{c_1,c_2} \cdot Y_{fc_1} \cdot Y_{fc_2}}_{\text{Quadratic synergy}}
+\end{equation}
+
+For MILP (PuLP), the quadratic term is linearized using McCormick constraints:
 \begin{align}
-\sum_{c \in \mathcal{C}} A_{f,c} &\le L_f \quad \forall f, \\
-A_{f,c} &\ge A_{\min,c} \cdot Y_{f,c} \quad \forall f,c,\\
-A_{f,c} &\le L_f \cdot Y_{f,c} \quad \forall f,c,\\
-\sum_{c \in C_g} Y_{f,c} &\ge N_{\min,g} \quad \forall f,g.
+Z_{fc_1c_2} &\leq Y_{fc_1}, \quad Z_{fc_1c_2} \leq Y_{fc_2}, \\
+Z_{fc_1c_2} &\geq Y_{fc_1} + Y_{fc_2} - 1
 \end{align}
 
-Short summary of solver-specific lessons learned:
+This linearization is exact for binary variables.
+
+\textbf{Variable Count:} $2n + |\mathcal{F}| \cdot |\mathcal{S}| \approx 2.3n$ for typical synergy pair counts.
+
+\textbf{Advantages:}
 \begin{itemize}
-    \item MILP solvers performed very well on small-to-medium instances, particularly when the model remained linear and used tight big-M values for linking constraints.
-    \item Non-linear objectives improved modeling fidelity but introduced solver complexity. We used piecewise linear approximations and Dinkelbach approaches (where appropriate) to keep problems tractable. These required additional auxiliary variables and constraints which again increased model size.
-    \item Converting constrained models to CQM/BQM forces trade-offs: either keep constraints explicitly as penalties (increasing quadratic density) or redesign variables to make constraints implicit (preferred). This observation motivated the shift toward the binary-grid formulation described next.
+    \item Models crop interaction/synergy
+    \item Exact solutions
+    \item $75\%$ fewer variables than NLN
+    \item Comparable speed to linear
+    \item Native quadratic support in CQM and MIQP solvers
 \end{itemize}
 
-\section{Final strategy: Binary formulation (current) -- documentation from \texttt{solver\_runner\_BINARY.py}}
+\textbf{Limitations:}
+\begin{itemize}
+    \item Cannot model diminishing returns
+    \item Requires synergy matrix definition
+    \item Slightly more complex than pure linear
+\end{itemize}
 
-The binary formulation is our present strategy because it aligns variable semantics with the capacity and diversity constraints and reduces expensive penalty terms. Below we reproduce the mathematical documentation that accompanies the implementation.
+\subsection{Solver 5: BQUBO Binary Formulation (\texttt{solver\_runner\_BQUBO.py})}
+
+Uses only binary variables representing fixed-size (1-acre) plot allocations, offering simplicity and direct quantum solver compatibility.
+
+\subsubsection{Mathematical Formulation}
+
+Decision variables (binary only):
+\begin{itemize}
+    \item $Y_{fc} \in \{0,1\}$: Binary allocation of a fixed plot to farm $f$, crop $c$
+\end{itemize}
+
+Objective:
+\begin{equation}
+\max \sum_{f,c} v_c \cdot Y_{fc}
+\end{equation}
+
+Constraints (simplified):
+\begin{align}
+\sum_{c} Y_{fc} &\leq \lfloor L_f \rfloor, \\
+\sum_{c \in \mathcal{G}_g} Y_{fc} &\geq N_{\min,g}
+\end{align}
+
+\textbf{Variable Count:} $n$ variables (fewest of all formulations).
+
+\textbf{Advantages:}
+\begin{itemize}
+    \item Fewest variables ($50\%$ of linear)
+    \item Fastest classical solve times (PuLP/CBC)
+    \item Native format for D-Wave quantum annealers (BQM)
+    \item Direct CQM-to-BQM conversion for quantum solvers
+    \item Conceptually simple (binary select/deselect)
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}
+    \item Fixed-size allocation ($1$ acre per plot) limits modeling flexibility
+    \item Cannot model variable or fractional allocations
+    \item Discretization error for land constraints ($\lfloor L_f \rfloor$ vs $L_f$)
+    \item Lower modeling realism than continuous formulations
+\end{itemize}
+
+\section{Comparative Summary}
+
+\subsection{Variable Count}
+
+\begin{table}[h]
+\centering
+\caption{Variable count for problem size $n = |\mathcal{F}||\mathcal{C}|$ (with $K=10$, $|\mathcal{S}| \approx 0.15n$)}
+\begin{tabular}{lc}
+\toprule
+\textbf{Solver} & \textbf{Variables} \\
+\midrule
+BQUBO & $n$ \\
+Linear, NLD, LQ (CQM) & $2n$ \\
+LQ (PuLP) & $2.3n$ \\
+NLN & $14n$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solve Time Estimates}
+
+For representative $n = 150$ problem (5 farms, 30 crops):
+
+\begin{table}[h]
+\centering
+\caption{Typical solve times}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Solver} & \textbf{Variables} & \textbf{Time (approx)} \\
+\midrule
+BQUBO & 150 & 0.10s \\
+Linear & 300 & 0.15s \\
+LQ & 350/300 & 0.18s \\
+NLD & 300 & 1.2s (8 iterations) \\
+NLN (PuLP) & 2,100 & 0.45s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Part 2: Final Strategy—Binary (BQUBO) Formulation}
+
+The binary formulation is our chosen strategy because it aligns variable semantics with the problem's capacity constraints and achieves strong balance between tractability, speed, and quantum-solver compatibility. This section provides detailed documentation of the binary/BQUBO implementation.
 
 \subsection{Overview}
 
-We model the problem in two ways depending on application:
+The binary formulation models the problem in two complementary ways depending on application:
+
 \begin{enumerate}
-    \item Binary Formulation (Even Grid): when land is discretised into equal-sized plots.
-    \item Continuous Formulation (Uneven Distribution): when farms have varying sizes and areas are treated as continuous variables.
+    \item \textbf{Binary Formulation (Even Grid):} Land is discretized into equal-sized plots; each plot is assigned to at most one crop.
+    \item \textbf{Continuous Formulation (Uneven Distribution):} Farms have varying sizes; areas are treated as continuous variables.
 \end{enumerate}
 
-The implementation solves the optimisation problem using PuLP/Gurobi for classical runs and converts to BQM for D-Wave hybrid sampling when required.
+Both formulations can be solved using classical solvers (PuLP with Gurobi/CBC) or converted to BQM for D-Wave hybrid quantum-classical samplers.
 
-\subsection{Decision variables}
+\subsection{Decision Variables}
 
-Continuous formulation (uneven distribution):
+\subsubsection{Continuous Formulation}
+
 \begin{itemize}
-    \item $A_{f,c} \in \mathbb{R}^+$: Continuous area allocated to crop $c$ on farm $f$.
-    \item $Y_{f,c} \in \{0,1\}$: Binary selection indicating crop $c$ is planted on farm $f$.
+    \item $A_{f,c} \in \mathbb{R}^+$: Continuous area (hectares) allocated to crop $c$ on farm $f$
+    \item $Y_{f,c} \in \{0,1\}$: Binary selection indicator (crop $c$ is planted on farm $f$)
 \end{itemize}
 
-Binary formulation (even grid):
+\subsubsection{Binary Formulation}
+
 \begin{itemize}
-    \item $Y_{p,c} \in \{0,1\}$: Binary assignment variable where $Y_{p,c}=1$ if plot $p$ is assigned to crop $c$.
+    \item $Y_{p,c} \in \{0,1\}$: Binary assignment variable ($Y_{p,c}=1$ if plot $p$ is assigned to crop $c$)
 \end{itemize}
 
-\subsection{Parameters and sets}
+Note: In the binary formulation, there are no continuous area variables. Each plot has fixed area $a_p$, and assignment is discrete.
+
+\subsection{Parameters and Sets}
+
 \begin{itemize}
-    \item $F$: set of farms (or plots in the binary formulation).
-    \item $C$: set of crops, with food-group partitions $C_g\subseteq C$.
-    \item $L_f$: available land on farm $f$.
-    \item $a_p$: fixed area of plot $p$ in the binary grid.
-    \item $N_{\min,g}, N_{\max,g}$: group-level diversity min/max.
+    \item $F$: Set of farms (continuous) or plots (binary)
+    \item $C$: Set of crops, with food-group partitions $C_g \subseteq C$
+    \item $L_f$: Available land on farm $f$ (hectares)
+    \item $a_p$: Fixed area of plot $p$ in binary grid (hectares)
+    \item $A_{\min,c}$: Minimum planting area for crop $c$ if selected
+    \item $N_{\min,g}, N_{\max,g}$: Group-level crop diversity min/max
+    \item $v_c$: Composite value/benefit score for crop $c$ (weighted combination of nutritional value, sustainability, affordability, etc.)
 \end{itemize}
 
-\subsection{Objective functions}
+\subsection{Objective Functions}
 
-Continuous formulation objective (normalized):
+\subsubsection{Continuous Formulation}
+
 \begin{equation}
 Z = \frac{1}{\sum_{f} L_f} \sum_{f \in F} \sum_{c \in C} v_c \cdot A_{f,c}
 \end{equation}
 
-Binary formulation objective (plots):
+Normalized to account for varying farm sizes.
+
+\subsubsection{Binary Formulation}
+
 \begin{equation}
 Z = \frac{1}{\sum_{p} a_p} \sum_{p \in F} \sum_{c \in C} a_p \cdot v_c \cdot Y_{p,c}
 \end{equation}
 
-where the composite crop value $v_c$ is a weighted sum of attributes (nutrition, diversity, environmental impact, affordability, sustainability, etc.).
+Each selected plot-crop assignment contributes its plot area times crop value.
 
 \subsection{Constraints}
 
-Continuous formulation constraints (representative):
+\subsubsection{Continuous Formulation}
+
 \begin{align}
-\sum_{c \in C} A_{f,c} &\le L_f \quad \forall f, \\
-A_{f,c} &\ge A_{\min,c} \cdot Y_{f,c} \quad \forall f,c, \\
-A_{f,c} &\le L_f \cdot Y_{f,c} \quad \forall f,c, \\
-\sum_{c \in C_g} Y_{f,c} &\ge N_{\min,g} \quad \forall f,g.
+\sum_{c \in C} A_{f,c} &\leq L_f \quad \forall f, \\
+A_{f,c} &\geq A_{\min,c} \cdot Y_{f,c} \quad \forall f,c, \\
+A_{f,c} &\leq L_f \cdot Y_{f,c} \quad \forall f,c, \\
+\sum_{c \in C_g} Y_{f,c} &\geq N_{\min,g} \quad \forall f,g
 \end{align}
 
-Binary formulation constraints (representative):
+\subsubsection{Binary Formulation}
+
+\begin{align}
+\sum_{c \in C} Y_{p,c} &\leq 1 \quad \forall p \quad \text{(each plot receives at most one crop)}, \\
+\sum_{c \in C_g} Y_{p,c} &\geq N_{\min,g} \quad \forall p \quad \text{(diversity constraints)}
+\end{align}
+
+The at-most-one constraint is often implicit if variables are constructed as mutually exclusive; otherwise enforced as a linear constraint.
+
+\subsection{Solution Methods}
+
+\subsubsection{Classical (PuLP)}
+
 \begin{itemize}
-    \item Each plot receives at most one crop (implicit if variables are mutually exclusive by construction, otherwise enforced by a linear constraint):
-    \begin{equation}
-    \sum_{c \in C} Y_{p,c} \le 1 \quad \forall p.
-    \end{equation}
-    \item Group diversity and capacity constraints can be written in terms of plot counts or aggregated areas when needed.
+    \item Gurobi when available (fastest)
+    \item CBC (open-source COIN-OR branch-and-cut)
+    \item Direct MILP/ILP solving
 \end{itemize}
 
-\subsection{Implementation and solver notes}
+\subsubsection{Hybrid Quantum-Classical (D-Wave)}
+
 \begin{itemize}
-    \item PuLP with Gurobi is used for classical MILP solves when available; PuLP with CBC for open-source runs.
-    \item For hybrid / quantum workflows we convert a suited model to CQM/BQM; however, by using the binary-grid variables we minimise the number and strength of penalty terms required.
-    \item The binary strategy reduces the quadratic density compared to naive PATCH penalties and thus leads to more tractable BQMs for hybrid samplers.
+    \item Convert CQM to BQM using \texttt{cqm\_to\_bqm}
+    \item Solve with \texttt{LeapHybridBQMSampler}
+    \item Constraints embedded as penalty terms
+    \item Leverages QPU for scaling to large problems
 \end{itemize}
 
-\section{Integration: where to place these parts in `current_structure.tex`}
+\subsection{Computational Complexity}
 
-Below are specific recommendations for how to integrate each major part of this combined document into the project's `current_structure.tex`. The suggestions assume `current_structure.tex` contains a standard report structure (Title/Abstract, Introduction, Methods, Experiments/Results, Discussion, Conclusions, Appendices). If your `current_structure.tex` has different section names, adapt the placements accordingly.
+\subsubsection{Complexity Measures}
 
-1) Abstract and high-level summary (this file's Abstract and "High-level summary of trials"):
 \begin{itemize}
-    \item Place under the top-level Abstract or Executive Summary section in `current_structure.tex` so readers immediately see the trial scope and final strategy.
-    \item Suggested insertion point: right after the main \verb|\begin{abstract}| block or as a short subsection \texttt{\subsection*{Trial summary}} below the abstract.
-    \item Paste the text from this file's Abstract and the first section "High-level summary of trials".
+    \item \textbf{Continuous:} NP-hard mixed-integer nonlinear program
+    \item \textbf{Binary:} NP-hard binary integer program
+    \item \textbf{Variables:}
+    \begin{itemize}
+        \item Continuous: $2 \times |F| \times |C|$
+        \item Binary: $|F| \times |C|$
+    \end{itemize}
+    \item \textbf{Constraints:}
+    \begin{itemize}
+        \item Continuous: $|F| + 2|F||C| + 2|F||G|$
+        \item Binary: $|F| + 2|F||G|$
+    \end{itemize}
 \end{itemize}
 
-2) Constraint handling (section "Constraint handling: why PATCH needed explicit penalties"):
-\begin{itemize}
-    \item Place in the Methods / Modelling section of `current_structure.tex` where you describe modelling choices and constraint encodings.
-    \item Suggested label: \texttt{\subsection{Constraint handling and PATCH penalties}}.
-    \item Include equations \eqref{eq:patch_one_crop} and \eqref{eq:patch_penalty} verbatim so the penalty discussion is preserved.
-\end{itemize}
+\subsubsection{Comparative Solver Performance}
 
-3) Solver and objective comparison (section "Comparison of objective functions and solver approaches"):
-\begin{itemize}
-    \item Place under Experiments, Methods, or a dedicated "Comparative Approaches" section. This is the place for methodological variants and solver trade-offs.
-    \item Suggested label: \texttt{\subsection{Solver and objective comparisons}}.
-    \item Keep the bulleted lessons learned and the representative model elements; they are useful when explaining why experiments were chosen.
-\end{itemize}
+\begin{table}[h]
+\centering
+\caption{Solver comparison (classical algorithms)}
+\begin{tabular}{ll}
+\toprule
+\textbf{Solver} & \textbf{Algorithm / Strengths} \\
+\midrule
+PuLP + Gurobi & Branch-and-bound with cuts; proven optimality; fast \\
+PuLP + CBC & Open-source branch-and-cut; good for MILP \\
+D-Wave CQM & Quantum-classical hybrid; mixed-integer support \\
+D-Wave BQM & Binary-only; maximum QPU utilization \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-4) Final strategy and `solver_runner_BINARY` documentation (section "Final strategy: Binary formulation (current)"):
-\begin{itemize}
-    \item Place this as the central Methods/Implementation description for the approach you now use. It can also serve as a top-level subsection called "Final strategy (Binary / BQUBO)".
-    \item Suggested label: \texttt{\subsection{Final strategy: Binary (BQUBO) formulation}}.
-    \item Include the Decision variables, Parameters and sets, Objective functions, Constraints, and Implementation notes from this file.
-\end{itemize}
+\subsection{Conclusion}
 
-5) Appendix material and future work (benchmarks, detailed derivations, code snippets):
-\begin{itemize}
-    \item Put the longer derivations, LaTeX listings, and the full reproduction of `solver_runner_BINARY` into an Appendix so the main narrative stays concise.
-    \item Suggested label: \texttt{\appendix\section{Detailed model specifications and code documentation}}.
-    \item Reference the appendix from the Methods and Final strategy sections when readers need implementation details.
-\end{itemize}
+The binary (BQUBO) formulation is an excellent operational choice because it:
 
-6) Exact LaTeX snippets you can paste into `current_structure.tex`:
-\begin{itemize}
-    \item To add a pointer to this combined file (import whole file):
-    \begin{lstlisting}
-% Include combined trials document
-\input{Latex/combined_trials.tex}
-    \end{lstlisting}
-    \item To import only a short summary paragraph, copy the paragraph and paste it inside an existing subsection; no special LaTeX commands are needed.
-\end{itemize}
-
-7) Suggested structure (quick map):
 \begin{enumerate}
-    \item Title / Abstract (include this file's Abstract + high-level summary)
-    \item Introduction (project context)
-    \item Methods / Modelling
-        \begin{itemize}
-            \item Constraint handling (PATCH)
-            \item Final strategy (Binary / BQUBO)
-        \end{itemize}
-    \item Experiments / Comparative approaches (solver/objective comparison)
-    \item Results (benchmarks; add later)
-    \item Discussion / Conclusions
-    \item Appendices (detailed model spec, `solver_runner_BINARY` material)
+    \item \textbf{Minimizes overhead:} Fewest variables among all approaches; reduces solver burden.
+    \item \textbf{Maintains tractability:} Both classical (PuLP/Gurobi/CBC) and quantum-hybrid (D-Wave) methods perform well.
+    \item \textbf{Aligns with quantum hardware:} Native BQM format for D-Wave quantum annealers.
+    \item \textbf{Simple and fast:} Classical solve times are among the fastest; conceptually straightforward.
 \end{enumerate}
 
-\section{Conclusions and next steps}
-
-We combined empirical evidence and modelling analysis to reach the following conclusions:
+Trade-offs:
 \begin{itemize}
-    \item Patch/assignment formulations with many linking constraints are expressive but expensive when converted to BQM via penalties.
-    \item Non-linear objectives can improve fidelity but increase model complexity; piecewise linearisation and fractional-programming tricks mitigate but add auxiliary variables.
-    \item The binary-grid (BQUBO-like) formulation is our best operational compromise for hybrid workflows: it reduces penalty overhead and keeps problem structure amenable to both classical MILP and hybrid quantum samplers.
+    \item Loses modeling flexibility of continuous allocation (fixed 1-acre plots).
+    \item Discretization error in land constraints.
+    \item Lower realism for problems requiring variable plot sizes.
 \end{itemize}
 
-Planned next steps (small, low-risk improvements):
+For most practical agricultural optimization problems where plot-based allocation is natural (e.g., crop rotation at field scale), the binary formulation provides an excellent balance of tractability, speed, and quantum compatibility.
+
+\section{Integration into \texttt{current\_structure.tex}}
+
+To incorporate this combined material into your main project document (\texttt{current\_structure.tex}), use one of the following approaches:
+
+\subsubsection{Option 1: Import Entire File}
+
+In \texttt{current\_structure.tex}, add at the appropriate section:
+\begin{verbatim}
+\input{Latex/combined_trials.tex}
+\end{verbatim}
+
+\subsubsection{Option 2: Selective Copy-Paste}
+
+Copy individual sections from this file:
 \begin{itemize}
-    \item Add a concise table to `current_structure.tex` that references this file and summarises the trials (done by including this combined file in the repository).
-    \item Run a small benchmark comparing PATCH-with-penalties versus BQUBO on representative instances and include plots in a follow-up document.
+    \item Abstract and Introduction → Project overview/context
+    \item Part 1 (Comparative Analysis) → Methods / Experimental approaches
+    \item Part 2 (Final Strategy) → Methods / Final implementation
+    \item Comparative Summary → Results / Trade-off discussion
 \end{itemize}
 
-\vspace{1em}
-\noindent--- End of combined document ---
+\subsubsection{Suggested Placement}
+
+\begin{enumerate}
+    \item \textbf{Abstract / Executive Summary:} Include abstract of this document
+    \item \textbf{Introduction / Literature:} Problem context from Section~1
+    \item \textbf{Methods:} Comparative solver analysis (Part~1) and final binary strategy (Part~2)
+    \item \textbf{Appendix (optional):} Detailed solver specifications and command-line usage
+\end{enumerate}
 
 \end{document}
