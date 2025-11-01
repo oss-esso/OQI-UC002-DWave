@@ -476,12 +476,12 @@ def plot_solution_composition_pie_charts(all_compositions: Dict[str, Dict], outp
             other_percentage = sum(item[1] for item in sorted_items[8:])
             
             for crop, percentage in top_items:
-                labels.append(f'{crop}\n({percentage:.1f}%)')
+                labels.append(f'{crop}\n({percentage:.1f}\%)')
                 sizes.append(percentage)
                 colors.append(crop_colors.get(crop, ColorPalette.SEMANTIC['neutral']))
             
             if other_percentage > 0.5:  # Only show "Other" if significant
-                labels.append(f'Other\n({other_percentage:.1f}%)')
+                labels.append(f'Other\n({other_percentage:.1f}\%)')
                 sizes.append(other_percentage)
                 colors.append(ColorPalette.SEMANTIC['neutral'])
             
@@ -560,12 +560,12 @@ def plot_individual_solver_pie_charts(data: Dict[int, Dict], solver_key: str, ou
         other_percentage = sum(item[1] for item in sorted_items[6:])
         
         for crop, percentage in top_items:
-            labels.append(f'{crop}\n({percentage:.1f}%)')
+            labels.append(f'{crop}\n({percentage:.1f}\%)')
             sizes.append(percentage)
             colors.append(crop_colors.get(crop, ColorPalette.SEMANTIC['neutral']))
         
         if other_percentage > 1.0:
-            labels.append(f'Other\n({other_percentage:.1f}%)')
+            labels.append(f'Other\n({other_percentage:.1f}\%)')
             sizes.append(other_percentage)
             colors.append(ColorPalette.SEMANTIC['neutral'])
         
@@ -656,9 +656,23 @@ def plot_constraint_satisfaction_pie(all_metrics: Dict[str, Dict], output_path: 
         metrics = all_metrics[solver]
         config = SOLVER_CONFIGS[solver]
         
-        # Calculate average pass rate and violation rate
-        avg_pass_rate = np.mean(metrics['pass_rate']) * 100
+        # Calculate average pass rate and violation rate with validation
+        pass_rates = [pr for pr in metrics['pass_rate'] if pr >= 0 and pr <= 1]
+        
+        if not pass_rates:
+            # Skip this solver if no valid data
+            axes[idx].text(0.5, 0.5, 'No valid\nconstraint data', 
+                          ha='center', va='center', fontsize=12)
+            axes[idx].set_title(f'{config["display_name"]}\nAverage Constraint Satisfaction', 
+                               fontsize=12, pad=20)
+            continue
+        
+        avg_pass_rate = np.mean(pass_rates) * 100
         avg_violation_rate = 100 - avg_pass_rate
+        
+        # Ensure non-negative values
+        avg_pass_rate = max(0, min(100, avg_pass_rate))
+        avg_violation_rate = max(0, min(100, avg_violation_rate))
         
         # Prepare data for pie chart
         sizes = [avg_pass_rate, avg_violation_rate]
@@ -698,9 +712,23 @@ def plot_land_utilization_pie(all_metrics: Dict[str, Dict], output_path: Path):
         metrics = all_metrics[solver]
         config = SOLVER_CONFIGS[solver]
         
-        # Calculate average utilization
-        avg_utilization = np.mean(metrics['utilization']) * 100
+        # Calculate average utilization with validation
+        utilization_values = [u for u in metrics['utilization'] if u >= 0 and u <= 1]
+        
+        if not utilization_values:
+            # Skip this solver if no valid utilization data
+            axes[idx].text(0.5, 0.5, 'No valid\nutilization data', 
+                          ha='center', va='center', fontsize=12)
+            axes[idx].set_title(f'{config["display_name"]}\nLand Utilization', 
+                               fontsize=12, pad=20)
+            continue
+        
+        avg_utilization = np.mean(utilization_values) * 100
         idle_percentage = 100 - avg_utilization
+        
+        # Ensure non-negative values
+        avg_utilization = max(0, min(100, avg_utilization))
+        idle_percentage = max(0, min(100, idle_percentage))
         
         # Prepare data for pie chart
         sizes = [avg_utilization, idle_percentage]
@@ -744,11 +772,13 @@ def plot_performance_comparison(all_metrics: Dict[str, Dict], output_path: Path)
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
-        ax.plot(metrics['n_units'], metrics['solve_time'], 
+        # Multiply problem size by 27 (number of foods)
+        problem_size = [n * 27 for n in metrics['n_units']]
+        ax.plot(problem_size, metrics['solve_time'], 
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Solve Time (s)}$')
     ax.set_title(r'$\textbf{Solve Time Scaling}$')
     ax.legend(fontsize=9)
@@ -762,30 +792,38 @@ def plot_performance_comparison(all_metrics: Dict[str, Dict], output_path: Path)
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
-        ax.plot(metrics['n_units'], metrics['objective_value'],
+        # Multiply problem size by 27 (number of foods)
+        problem_size = [n * 27 for n in metrics['n_units']]
+        ax.plot(problem_size, metrics['objective_value'],
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Objective Value}$')
     ax.set_title(r'$\textbf{Solution Quality}$')
     ax.legend(fontsize=9)
+    ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
-    # Plot 3: Problem Size Scaling
+    # Plot 3: Time to Solution Quality
     ax = axes[1, 0]
     for solver in solvers:
         metrics = all_metrics[solver]
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
-        ax.plot(metrics['n_units'], metrics['n_variables'],
+        # Calculate time to solution quality: solve_time / objective_value
+        # Lower is better (less time per unit of objective)
+        problem_size = [n * 27 for n in metrics['n_units']]
+        time_to_quality = [t / max(obj, 1e-6) for t, obj in 
+                          zip(metrics['solve_time'], metrics['objective_value'])]
+        ax.plot(problem_size, time_to_quality,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
-    ax.set_ylabel(r'$\text{Number of Variables}$')
-    ax.set_title(r'$\textbf{Problem Complexity}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
+    ax.set_ylabel(r'$\text{Time per Objective Unit (s)}$')
+    ax.set_title(r'$\textbf{Time to Solution Quality}$')
     ax.legend(fontsize=9)
     ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
@@ -797,12 +835,13 @@ def plot_performance_comparison(all_metrics: Dict[str, Dict], output_path: Path)
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
+        problem_size = [n * 27 for n in metrics['n_units']]
         time_per_var = [t/v * 1000 for t, v in zip(metrics['solve_time'], metrics['n_variables'])]
-        ax.plot(metrics['n_units'], time_per_var,
+        ax.plot(problem_size, time_per_var,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Time per Variable (ms)}$')
     ax.set_title(r'$\textbf{Solving Efficiency}$')
     ax.legend(fontsize=9)
@@ -828,17 +867,19 @@ def plot_solution_quality_comparison(all_metrics: Dict[str, Dict], output_path: 
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
+        problem_size = [n * 27 for n in metrics['n_units']]
         utilization_pct = [u * 100 for u in metrics['utilization']]
-        ax.plot(metrics['n_units'], utilization_pct,
+        ax.plot(problem_size, utilization_pct,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
     ax.axhline(y=100, color=ColorPalette.SEMANTIC['neutral'], linestyle='--', alpha=0.7)
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Land Utilization (\%)}$')
     ax.set_title(r'$\textbf{Resource Utilization}$')
     ax.legend(fontsize=9)
-    ax.set_ylim(0, 110)
+    ax.set_ylim(0, 310)
+    #ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
     # Plot 2: Crop Diversity
@@ -848,14 +889,16 @@ def plot_solution_quality_comparison(all_metrics: Dict[str, Dict], output_path: 
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
-        ax.plot(metrics['n_units'], metrics['n_crops'],
+        problem_size = [n * 27 for n in metrics['n_units']]
+        ax.plot(problem_size, metrics['n_crops'],
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Number of Crops}$')
     ax.set_title(r'$\textbf{Crop Diversity}$')
     ax.legend(fontsize=9)
+    ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
     # Plot 3: Constraint Satisfaction (if available)
@@ -868,17 +911,19 @@ def plot_solution_quality_comparison(all_metrics: Dict[str, Dict], output_path: 
             color = ColorPalette.get_solver_color(solver)
             marker_style = ColorPalette.get_marker_style(solver)
             
+            problem_size = [n * 27 for n in metrics['n_units']]
             pass_rates = [p * 100 for p in metrics['pass_rate']]
-            ax.plot(metrics['n_units'], pass_rates,
+            ax.plot(problem_size, pass_rates,
                     color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                     **marker_style)
         
         ax.axhline(y=100, color=ColorPalette.SEMANTIC['success'], linestyle='--', alpha=0.7)
-        ax.set_xlabel(r'$\text{Problem Size}$')
+        ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
         ax.set_ylabel(r'$\text{Constraint Pass Rate (\%)}$')
         ax.set_title(r'$\textbf{Constraint Satisfaction}$')
         ax.legend(fontsize=9)
         ax.set_ylim(0, 110)
+        #ax.set_yscale('log')
     else:
         ax.text(0.5, 0.5, r'$\text{No Validation Data}$', 
                 ha='center', va='center', transform=ax.transAxes, fontsize=12)
@@ -893,15 +938,17 @@ def plot_solution_quality_comparison(all_metrics: Dict[str, Dict], output_path: 
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
+        problem_size = [n * 27 for n in metrics['n_units']]
         obj_per_unit = [obj/n for obj, n in zip(metrics['objective_value'], metrics['n_units'])]
-        ax.plot(metrics['n_units'], obj_per_unit,
+        ax.plot(problem_size, obj_per_unit,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Objective per Unit}$')
     ax.set_title(r'$\textbf{Solution Efficiency}$')
     ax.legend(fontsize=9)
+    ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
@@ -1061,38 +1108,60 @@ def plot_constraint_analysis(all_metrics: Dict[str, Dict], output_path: Path):
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
+        problem_size = [n * 27 for n in metrics['n_units']]
         pass_rates = [p * 100 for p in metrics['pass_rate']]
-        ax.plot(metrics['n_units'], pass_rates,
+        ax.plot(problem_size, pass_rates,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
     ax.axhline(y=100, color=ColorPalette.SEMANTIC['success'], linestyle='--', 
                label='Perfect', alpha=0.7)
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Constraint Pass Rate (\%)}$')
     ax.set_title(r'$\textbf{Pass Rate Comparison}$')
     ax.legend()
     ax.set_ylim(0, 110)
+    #ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
-    # Plot 2: Violation Analysis
+    # Plot 2: Violation Analysis with color-coded points by feasibility
     ax = axes[1]
+    
+    # Create legend handles manually
+    from matplotlib.patches import Patch
+    legend_elements = []
+    
     for solver in validation_solvers:
         metrics = all_metrics[solver]
-        color = ColorPalette.get_solver_color(solver)
+        solver_color = ColorPalette.get_solver_color(solver)
+        problem_size = [n * 27 for n in metrics['n_units']]
         
-        # Color points by feasibility
-        for i, (x, y, feasible) in enumerate(zip(metrics['n_units'], 
-                                                metrics['n_violations'],
-                                                metrics['is_feasible'])):
-            point_color = ColorPalette.SEMANTIC['success'] if feasible else ColorPalette.SEMANTIC['error']
-            ax.scatter(x, y, color=point_color, s=60, alpha=0.8,
-                      label=SOLVER_CONFIGS[solver]['display_name'] if i == 0 else "")
+        # Plot each point with color based on feasibility
+        for x, y, feasible in zip(problem_size, metrics['n_violations'], metrics['is_feasible']):
+            if feasible:
+                ax.scatter(x, y, color=ColorPalette.SEMANTIC['success'], 
+                          s=100, alpha=0.8, edgecolors=solver_color, linewidths=2,
+                          marker='o')
+            else:
+                ax.scatter(x, y, color=ColorPalette.SEMANTIC['error'], 
+                          s=100, alpha=0.8, edgecolors=solver_color, linewidths=2,
+                          marker='o')
+        
+        # Add solver to legend
+        legend_elements.append(Patch(facecolor=solver_color, 
+                                     label=SOLVER_CONFIGS[solver]['display_name']))
     
-    ax.set_xlabel(r'$\text{Problem Size}$')
+    # Add feasibility indicators to legend
+    legend_elements.append(Patch(facecolor=ColorPalette.SEMANTIC['success'], 
+                                 label='Feasible'))
+    legend_elements.append(Patch(facecolor=ColorPalette.SEMANTIC['error'], 
+                                 label='Infeasible'))
+    
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
     ax.set_ylabel(r'$\text{Number of Violations}$')
     ax.set_title(r'$\textbf{Constraint Violations}$')
-    ax.legend()
+    ax.legend(handles=legend_elements, fontsize=9)
+    ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
