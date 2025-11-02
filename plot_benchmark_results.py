@@ -526,7 +526,7 @@ def plot_solution_composition_pie_charts(all_compositions: Dict[str, Dict], outp
                 )
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Solution composition pie charts saved to {output_path}")
 
@@ -648,7 +648,7 @@ def plot_individual_solver_pie_charts(data: Dict[int, Dict], solver_key: str, ou
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Individual solver pie charts saved to {output_path}")
 
@@ -710,7 +710,7 @@ def plot_constraint_satisfaction_pie(all_metrics: Dict[str, Dict], output_path: 
                            fontsize=12, pad=20)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Constraint satisfaction pie charts saved to {output_path}")
 
@@ -766,7 +766,7 @@ def plot_land_utilization_pie(all_metrics: Dict[str, Dict], output_path: Path):
                            fontsize=12, pad=20)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Land utilization pie charts saved to {output_path}")
 
@@ -865,7 +865,7 @@ def plot_performance_comparison(all_metrics: Dict[str, Dict], output_path: Path)
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Performance comparison saved to {output_path}")
 
@@ -968,7 +968,7 @@ def plot_solution_quality_comparison(all_metrics: Dict[str, Dict], output_path: 
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Solution quality comparison saved to {output_path}")
 
@@ -1101,7 +1101,7 @@ def plot_detailed_solution_analysis(data: Dict[int, Dict], metrics: Dict,
              bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.3))
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Detailed analysis saved to {output_path}")
 
@@ -1181,7 +1181,7 @@ def plot_constraint_analysis(all_metrics: Dict[str, Dict], output_path: Path):
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Constraint analysis saved to {output_path}")
 
@@ -1285,7 +1285,7 @@ def plot_solution_composition_histograms(all_compositions: Dict[str, Dict], outp
                 )
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Solution composition histograms saved to {output_path}")
 
@@ -1463,7 +1463,7 @@ def generate_summary_report(all_metrics: Dict[str, Dict], output_path: Path):
                 table[(i+1, j)].set_facecolor('#f0f0f0')
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=3000, bbox_inches='tight')
     plt.close()
     print(f"✓ Summary report saved to {output_path}")
 
