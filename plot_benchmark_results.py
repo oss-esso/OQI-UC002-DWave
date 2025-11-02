@@ -389,25 +389,41 @@ def extract_metrics(data: Dict[int, Dict], solver_key: str) -> Dict[str, List]:
 def extract_solution_composition(data: Dict[int, Dict], solver_key: str) -> Dict[int, Dict[str, float]]:
     """Extract solution composition for pie charts."""
     composition = {}
-    
+
     for n_units, config_data in data.items():
-        if 'solution_summary' not in config_data:
-            continue
-            
-        plot_assignments = config_data['solution_summary']['plot_assignments']
         crop_areas = {}
-        
-        for assignment in plot_assignments:
-            crop = assignment['crop']
-            area = assignment.get('area', assignment.get('total_area', 0))
-            crop_areas[crop] = crop_areas.get(crop, 0) + area
-        
+        if 'solution_summary' in config_data:
+            plot_assignments = config_data['solution_summary']['plot_assignments']
+            for assignment in plot_assignments:
+                crop = assignment['crop']
+                area = assignment.get('area', assignment.get('total_area', 0))
+                crop_areas[crop] = crop_areas.get(crop, 0) + area
+        elif 'solution' in config_data and 'land_allocations' in config_data['solution']:
+            # Fallback for Farm_PuLP (old format)
+            land_allocations = config_data['solution']['land_allocations']
+            for allocation in land_allocations:
+                crop = allocation['crop']
+                area = allocation['area']
+                crop_areas[crop] = crop_areas.get(crop, 0) + area
+        elif 'solution_areas' in config_data:
+            # Farm_PuLP format: solution_areas has "Farm#_FoodName": area
+            solution_areas = config_data['solution_areas']
+            for farm_food, area in solution_areas.items():
+                # Extract food name from "Farm#_FoodName"
+                if '_' in farm_food:
+                    parts = farm_food.split('_', 1)
+                    if len(parts) == 2:
+                        crop = parts[1]
+                        # Include all non-zero allocations
+                        if area > 0:
+                            crop_areas[crop] = crop_areas.get(crop, 0) + area
+
         # Calculate percentages
         total_area = sum(crop_areas.values())
         if total_area > 0:
             crop_percentages = {crop: (area / total_area) * 100 for crop, area in crop_areas.items()}
             composition[n_units] = crop_percentages
-    
+
     return composition
 
 # =============================================================================
@@ -433,7 +449,7 @@ def plot_solution_composition_pie_charts(all_compositions: Dict[str, Dict], outp
     
     fig, axes = plt.subplots(len(display_sizes), len(solvers), 
                             figsize=(4 * len(solvers), 4 * len(display_sizes)))
-    fig.suptitle(r'\textbf{Solution Composition Analysis}', fontsize=16, y=0.95)
+    fig.suptitle(r'\textbf{Solution Composition Analysis}', fontsize=16, y=0.98)
     
     # Ensure axes is 2D array for consistent indexing
     if len(display_sizes) == 1:
@@ -1161,13 +1177,117 @@ def plot_constraint_analysis(all_metrics: Dict[str, Dict], output_path: Path):
     ax.set_ylabel(r'$\text{Number of Violations}$')
     ax.set_title(r'$\textbf{Constraint Violations}$')
     ax.legend(handles=legend_elements, fontsize=9)
-    ax.set_yscale('log')
+    #ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"✓ Constraint analysis saved to {output_path}")
+
+def plot_solution_composition_histograms(all_compositions: Dict[str, Dict], output_path: Path):
+    """Create histograms showing solution composition across solvers (same layout as pie charts but with crops on x-axis)."""
+    solvers = list(all_compositions.keys())
+    
+    # Find common problem sizes across solvers
+    common_sizes = set()
+    for solver_compositions in all_compositions.values():
+        common_sizes.update(solver_compositions.keys())
+    common_sizes = sorted(common_sizes)
+    
+    if not common_sizes:
+        print("⚠ No common problem sizes with solution data for histograms")
+        return
+    
+    # Limit to 4 most representative sizes for clarity
+    display_sizes = common_sizes[:4] if len(common_sizes) > 4 else common_sizes
+    
+    fig, axes = plt.subplots(len(display_sizes), len(solvers), 
+                            figsize=(4 * len(solvers), 4 * len(display_sizes)))
+    fig.suptitle(r'\textbf{Solution Composition Analysis (Log Scale)}', fontsize=16, y=0.98)
+    
+    # Ensure axes is 2D array for consistent indexing
+    if len(display_sizes) == 1:
+        axes = axes.reshape(1, -1)
+    if len(solvers) == 1:
+        axes = axes.reshape(-1, 1)
+    
+    # Create unified color mapping for crops across all plots
+    all_crops = set()
+    for solver_compositions in all_compositions.values():
+        for composition in solver_compositions.values():
+            all_crops.update(composition.keys())
+    all_crops = sorted(list(all_crops))
+    
+    crop_colors = {crop: ColorPalette.QUALITATIVE[i % len(ColorPalette.QUALITATIVE)] 
+                  for i, crop in enumerate(all_crops)}
+    
+    for col_idx, solver in enumerate(solvers):
+        compositions = all_compositions[solver]
+        config = SOLVER_CONFIGS[solver]
+        
+        for row_idx, problem_size in enumerate(display_sizes):
+            if problem_size not in compositions:
+                axes[row_idx, col_idx].text(0.5, 0.5, 'No Data', 
+                                          ha='center', va='center', 
+                                          transform=axes[row_idx, col_idx].transAxes)
+                axes[row_idx, col_idx].set_title(f'{problem_size} {config["unit_label"]}')
+                continue
+            
+            composition = compositions[problem_size]
+            
+            # Prepare data for histogram
+            crops = []
+            percentages = []
+            colors = []
+            
+            # Sort by percentage (descending) and take top 8, group rest as "Other"
+            sorted_items = sorted(composition.items(), key=lambda x: x[1], reverse=True)
+            top_items = sorted_items[:8]
+            other_percentage = sum(item[1] for item in sorted_items[8:])
+            
+            for crop, percentage in top_items:
+                crops.append(crop)
+                percentages.append(percentage)
+                colors.append(crop_colors.get(crop, ColorPalette.SEMANTIC['neutral']))
+            
+            if other_percentage > 0.5:  # Only show "Other" if significant
+                crops.append('Other')
+                percentages.append(other_percentage)
+                colors.append(ColorPalette.SEMANTIC['neutral'])
+            
+            # Create histogram with log scale
+            x_pos = np.arange(len(crops))
+            bars = axes[row_idx, col_idx].bar(x_pos, percentages, color=colors, 
+                                             edgecolor='black', linewidth=1.0)
+            
+            # Set log scale on y-axis
+            axes[row_idx, col_idx].set_yscale('log')
+            
+            # Set labels and title
+            axes[row_idx, col_idx].set_xticks(x_pos)
+            axes[row_idx, col_idx].set_xticklabels(crops, rotation=45, ha='right', fontsize=8)
+            axes[row_idx, col_idx].set_ylabel(r'$\text{Area (\%)}$', fontsize=9)
+            
+            # Add grid for better readability
+            axes[row_idx, col_idx].grid(True, alpha=0.3, which='both', axis='y')
+            
+            # Set title for first row only
+            if row_idx == 0:
+                axes[row_idx, col_idx].set_title(
+                    f'{config["display_name"]}\n{problem_size} {config["unit_label"]}',
+                    fontsize=10, pad=20
+                )
+            else:
+                axes[row_idx, col_idx].set_title(
+                    f'{problem_size} {config["unit_label"]}',
+                    fontsize=10, pad=20
+                )
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Solution composition histograms saved to {output_path}")
 
 # =============================================================================
 # MAIN EXECUTION
@@ -1237,6 +1357,12 @@ def main():
     plot_solution_quality_comparison(all_metrics, output_dir / "solution_quality_comparison.pdf")
     plot_constraint_analysis(all_metrics, output_dir / "constraint_analysis.pdf")
     
+    # Generate histogram visualizations
+    print("\n📊 Generating histogram visualizations...")
+    
+    if any(all_compositions.values()):
+        plot_solution_composition_histograms(all_compositions, output_dir / "solution_composition_histograms.pdf")
+    
     # Generate pie chart visualizations
     print("\n🥧 Generating pie chart visualizations...")
     
@@ -1267,16 +1393,17 @@ def main():
     
     print(f"\n✅ All plots saved to: {output_dir}")
     print("\nGenerated files:")
-    print("  - performance_comparison.pdf       : Cross-solver performance")
-    print("  - solution_quality_comparison.pdf  : Solution quality metrics")
-    print("  - constraint_analysis.pdf          : Constraint satisfaction")
-    print("  - solution_composition_pies.pdf    : Crop distribution across solvers")
-    print("  - land_utilization_pies.pdf        : Land utilization efficiency")
-    print("  - constraint_satisfaction_pies.pdf : Constraint satisfaction rates")
+    print("  - performance_comparison.pdf        : Cross-solver performance")
+    print("  - solution_quality_comparison.pdf   : Solution quality metrics")
+    print("  - constraint_analysis.pdf           : Constraint satisfaction")
+    print("  - solution_composition_histograms.pdf : Crop distribution (log scale)")
+    print("  - solution_composition_pies.pdf     : Crop distribution pie charts")
+    print("  - land_utilization_pies.pdf         : Land utilization efficiency")
+    print("  - constraint_satisfaction_pies.pdf  : Constraint satisfaction rates")
     if args.individual:
-        print("  - *_detailed_analysis.pdf        : Individual solver details")
-        print("  - *_pie_analysis.pdf             : Individual solver composition")
-    print("  - benchmark_summary.pdf            : Comprehensive summary")
+        print("  - *_detailed_analysis.pdf         : Individual solver details")
+        print("  - *_pie_analysis.pdf              : Individual solver composition")
+    print("  - benchmark_summary.pdf             : Comprehensive summary")
     
     print("\n" + "="*70)
     print("VISUALIZATION COMPLETE!")

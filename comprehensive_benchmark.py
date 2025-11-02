@@ -46,9 +46,9 @@ from dimod import cqm_to_bqm
 # Format: number of units (farms or patches) to test
 BENCHMARK_CONFIGS = [
     10,
-    #15,
+    15,
     #20,
-    #25,
+    25,
     #50,
     #100
 ]
