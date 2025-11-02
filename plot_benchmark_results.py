@@ -844,25 +844,44 @@ def plot_performance_comparison(all_metrics: Dict[str, Dict], output_path: Path)
     ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
     
-    # Plot 4: Efficiency Comparison
+    # Plot 4: Objective/Constraint Violation Quality
     ax = axes[1, 1]
-    for solver in solvers:
+    validation_solvers = [s for s in solvers if SOLVER_CONFIGS[s]['has_validation']]
+    
+    for solver in validation_solvers:
         metrics = all_metrics[solver]
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
         
         problem_size = [n * 27 for n in metrics['n_units']]
-        time_per_var = [t/v * 1000 for t, v in zip(metrics['solve_time'], metrics['n_variables'])]
-        ax.plot(problem_size, time_per_var,
+        # Calculate quality metric: obj * (1 - violations/constraints)
+        # Higher values are better (good objective with low violation rate)
+        # Lower values are worse (poor objective or high violation rate)
+        
+        # Check if n_constraints is available for this solver
+        if 'n_constraints' in metrics:
+            quality_metric = [obj * (1 - violations / max(constraints, 1)) 
+                             for obj, violations, constraints in 
+                             zip(metrics['objective_value'], metrics['n_violations'], metrics['n_constraints'])]
+        else:
+            # Fallback: just use objective value if constraints not available
+            quality_metric = metrics['objective_value']
+        
+        ax.plot(problem_size, quality_metric,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
-    ax.set_ylabel(r'$\text{Time per Variable (ms)}$')
-    ax.set_title(r'$\textbf{Solving Efficiency}$')
-    ax.legend(fontsize=9)
-    ax.set_yscale('log')
-    ax.grid(True, alpha=0.3)
+    if validation_solvers:
+        ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
+        ax.set_ylabel(r'$\text{Objective} \times (1 - \text{Violations}/\text{Constraints})$')
+        ax.set_title(r'$\textbf{Objective/Violation Quality}$')
+        ax.legend(fontsize=9)
+        ax.set_yscale('log')
+        ax.grid(True, alpha=0.3)
+    else:
+        ax.text(0.5, 0.5, r'$\text{No Validation Data}$', 
+                ha='center', va='center', transform=ax.transAxes, fontsize=12)
+        ax.set_title(r'$\textbf{Objective/Violation Quality}$')
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=3000, bbox_inches='tight')
