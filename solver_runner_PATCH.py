@@ -35,8 +35,10 @@ def calculate_original_objective(solution, farms, foods, land_availability, weig
     
     This reconstructs the objective: sum_{p,c} (B_c + λ) * s_p * X_{p,c}
     
+    Works for both PATCH formulation (X variables) and BQUBO formulation (Y variables).
+    
     Args:
-        solution: Dictionary with variable assignments (X_{plot}_{crop}, Y_{crop})
+        solution: Dictionary with variable assignments (X_{plot}_{crop} or Y_{farm}_{crop})
         farms: List of farm/plot names
         foods: Dictionary of food data with nutritional values
         land_availability: Dictionary mapping plot to area
@@ -48,24 +50,57 @@ def calculate_original_objective(solution, farms, foods, land_availability, weig
     """
     objective = 0.0
     
-    for plot in farms:
-        s_p = land_availability[plot]  # Area of plot p
-        for crop in foods:
-            # Get X_{p,c} value from solution
-            var_name = f"X_{plot}_{crop}"
-            x_pc = solution.get(var_name, 0)
-            
-            if x_pc > 0:  # Only count if assigned
-                # Calculate B_c: weighted benefit per unit area
-                B_c = (
-                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
-                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
-                )
-                # Add (B_c + λ) * s_p * X_{p,c} to objective
-                objective += (B_c + idle_penalty) * s_p * x_pc
+    # Detect which formulation we're using
+    # BQUBO uses Y variables, PATCH uses X variables
+    is_bqubo = any(var.startswith("Y_") for var in solution.keys())
+    
+    if is_bqubo:
+        # BQUBO formulation: Y_{farm}_{crop} = 1 if planted (1 acre), 0 otherwise
+        # Objective without normalization: sum (B_c * Y_{farm}_{crop})
+        # Each Y represents a 1-acre plantation
+        for plot in farms:
+            for crop in foods:
+                # Get Y_{p,c} value from solution
+                var_name = f"Y_{plot}_{crop}"
+                y_pc = solution.get(var_name, 0)
+                
+                if y_pc > 0:  # Only count if planted
+                    # Calculate B_c: weighted benefit per acre
+                    B_c = (
+                        weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                        weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                        weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                        weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                        weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                    )
+                    # Each Y_{p,c} = 1 represents 1 acre of crop c on plot p
+                    # Contribution is B_c * 1 acre * y_pc
+                    objective += B_c * y_pc
+        
+        # Normalize by total possible plantations
+        total_possible_plantations = len(farms) * len(foods)
+        if total_possible_plantations > 0:
+            objective = objective / total_possible_plantations
+    else:
+        # PATCH formulation: X_{plot}_{crop} is continuous [0,1] fraction
+        for plot in farms:
+            s_p = land_availability[plot]  # Area of plot p
+            for crop in foods:
+                # Get X_{p,c} value from solution
+                var_name = f"X_{plot}_{crop}"
+                x_pc = solution.get(var_name, 0)
+                
+                if x_pc > 0:  # Only count if assigned
+                    # Calculate B_c: weighted benefit per unit area
+                    B_c = (
+                        weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                        weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                        weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                        weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                        weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                    )
+                    # Add (B_c + λ) * s_p * X_{p,c} to objective
+                    objective += (B_c + idle_penalty) * s_p * x_pc
     
     return objective
 
