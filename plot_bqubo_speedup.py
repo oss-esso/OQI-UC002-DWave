@@ -106,7 +106,7 @@ def load_benchmark_data(benchmark_dir):
     }
     
     # Configuration files to load (using run_1 for consistency)
-    configs = [5, 19, 72, 279, 1096]
+    configs = [5, 19, 72, 279]
     
     for solver in data.keys():
         solver_dir = bqubo_dir / solver
