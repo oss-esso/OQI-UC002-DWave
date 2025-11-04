@@ -6,15 +6,92 @@ in linear, log-y, and log-log scales.
 
 import json
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 import numpy as np
 from pathlib import Path
-import seaborn as sns
 
-# Set style for beautiful plots
-sns.set_style("whitegrid")
-sns.set_context("paper", font_scale=1.3)
-plt.rcParams['figure.figsize'] = (15, 12)
-plt.rcParams['font.family'] = 'sans-serif'
+# =============================================================================
+# PROFESSIONAL STYLE CONFIGURATION
+# =============================================================================
+
+def configure_professional_style():
+    """Configure professional matplotlib style with LaTeX integration."""
+    
+    rcParams.update({
+        # Font configuration
+        'font.family': 'serif',
+        'font.serif': ['Computer Modern Roman', 'Times New Roman', 'serif'],
+        'font.size': 11,
+        'mathtext.fontset': 'cm',
+        'mathtext.rm': 'serif',
+        
+        # Text rendering with LaTeX
+        'text.usetex': False,
+        'text.latex.preamble': r'''
+            \usepackage{amsmath}
+            \usepackage{amsfonts}
+            \usepackage{amssymb}
+            \usepackage{bm}
+            \usepackage{xcolor}
+        ''',
+        
+        # Figure layout
+        'figure.figsize': (8, 6),
+        'figure.dpi': 300,
+        'figure.constrained_layout.use': True,
+        
+        # Axes configuration
+        'axes.linewidth': 1.2,
+        'axes.grid': True,
+        'axes.grid.which': 'major',
+        'axes.grid.axis': 'both',
+        'axes.labelpad': 8,
+        'axes.titlepad': 12,
+        'axes.labelsize': 12,
+        'axes.titlesize': 14,
+        
+        # Tick configuration
+        'xtick.direction': 'out',
+        'ytick.direction': 'out',
+        'xtick.labelsize': 10,
+        'ytick.labelsize': 10,
+        'xtick.major.size': 5,
+        'ytick.major.size': 5,
+        'xtick.major.width': 1.2,
+        'ytick.major.width': 1.2,
+        'xtick.minor.size': 3,
+        'ytick.minor.size': 3,
+        
+        # Grid configuration
+        'grid.linewidth': 0.8,
+        'grid.alpha': 0.3,
+        'grid.linestyle': '--',
+        
+        # Legend configuration
+        'legend.fontsize': 10,
+        'legend.frameon': True,
+        'legend.framealpha': 0.9,
+        'legend.edgecolor': 'black',
+        'legend.fancybox': False,
+        'legend.shadow': False,
+        
+        # Lines configuration
+        'lines.linewidth': 2.0,
+        'lines.markersize': 6,
+        'lines.markeredgewidth': 1.2,
+        
+        # Savefig configuration
+        'savefig.dpi': 300,
+        'savefig.bbox': 'tight',
+        'savefig.pad_inches': 0.1,
+        'savefig.transparent': False,
+        
+        # Errorbar configuration
+        'errorbar.capsize': 3,
+    })
+
+# Apply professional style
+configure_professional_style()
 
 def load_benchmark_data(benchmark_dir):
     """Load all NLN benchmark data from the Benchmarks directory."""
@@ -112,11 +189,116 @@ def calculate_speedups(times):
     
     return speedups
 
-def plot_solve_times(times, output_path):
+def extract_times_and_objectives(data):
+    """Extract solve times AND objective values for each solver and configuration."""
+    configs = sorted([k for k in data['DWave'].keys()])
+    
+    times = {
+        'n_farms': configs,
+        'PuLP': [],
+        'Pyomo': [],
+        'CQM': [],
+        'DWave_QPU': [],
+        'DWave_Hybrid': []
+    }
+    
+    objectives = {
+        'n_farms': configs,
+        'PuLP': [],
+        'Pyomo': [],
+        'CQM': [],
+        'DWave': []
+    }
+    
+    for config in configs:
+        # PuLP times and objectives
+        if config in data['PuLP']:
+            times['PuLP'].append(data['PuLP'][config]['result']['solve_time'])
+            objectives['PuLP'].append(data['PuLP'][config]['result'].get('objective_value', None))
+        else:
+            times['PuLP'].append(None)
+            objectives['PuLP'].append(None)
+        
+        # Pyomo times and objectives
+        if config in data['Pyomo']:
+            times['Pyomo'].append(data['Pyomo'][config]['result']['solve_time'])
+            objectives['Pyomo'].append(data['Pyomo'][config]['result'].get('objective_value', None))
+        else:
+            times['Pyomo'].append(None)
+            objectives['Pyomo'].append(None)
+        
+    
+        
+        # D-Wave times and objectives
+        if config in data['DWave']:
+            times['DWave_QPU'].append(data['DWave'][config]['result']['qpu_time'])
+            times['DWave_Hybrid'].append(data['DWave'][config]['result']['hybrid_time'])
+            objectives['DWave'].append(data['DWave'][config]['result'].get('objective_value', None))
+        else:
+            times['DWave_QPU'].append(None)
+            times['DWave_Hybrid'].append(None)
+            objectives['DWave'].append(None)
+    
+    return times, objectives
+
+def calculate_objective_gaps(objectives):
+    """Calculate objective value gaps (percentage deviation from best)."""
+    configs = objectives['n_farms']
+    gaps = {
+        'n_farms': configs,
+        'PuLP_gap': [],
+        'Pyomo_gap': [],
+        'CQM_gap': [],
+        'DWave_gap': []
+    }
+    
+    for i in range(len(configs)):
+        # Find best (maximum) objective for this config
+        values = []
+        if objectives['PuLP'][i] is not None:
+            values.append(objectives['PuLP'][i])
+        if objectives['Pyomo'][i] is not None:
+            values.append(objectives['Pyomo'][i])
+        if objectives['DWave'][i] is not None:
+            values.append(objectives['DWave'][i])
+        
+        if not values:
+            gaps['PuLP_gap'].append(None)
+            gaps['Pyomo_gap'].append(None)
+            gaps['CQM_gap'].append(None)
+            gaps['DWave_gap'].append(None)
+            continue
+        
+        best_obj = max(values)  # Assuming maximization
+        
+        # Calculate gaps as percentage
+        if objectives['PuLP'][i] is not None:
+            gap = ((best_obj - objectives['PuLP'][i]) / best_obj) * 100 if best_obj != 0 else 0
+            gaps['PuLP_gap'].append(gap)
+        else:
+            gaps['PuLP_gap'].append(None)
+        
+        if objectives['Pyomo'][i] is not None:
+            gap = ((best_obj - objectives['Pyomo'][i]) / best_obj) * 100 if best_obj != 0 else 0
+            gaps['Pyomo_gap'].append(gap)
+        else:
+            gaps['Pyomo_gap'].append(None)
+        
+        
+        if objectives['DWave'][i] is not None:
+            gap = ((best_obj - objectives['DWave'][i]) / best_obj) * 100 if best_obj != 0 else 0
+            gaps['DWave_gap'].append(gap)
+        else:
+            gaps['DWave_gap'].append(None)
+    
+    return gaps
+
+
+def plot_solve_times(times, objectives, gaps, output_path):
     """Create three plots: linear, log-y, and log-log scales."""
     fig, axes = plt.subplots(2, 3, figsize=(20, 12))
     fig.suptitle('NLN Benchmark: Solve Time Comparison (D-Wave vs Classical Solvers)', 
-                 fontsize=18, fontweight='bold', y=0.995)
+                 fontsize=18, y=0.995)
     
     n_farms = times['n_farms']
     
@@ -139,104 +321,103 @@ def plot_solve_times(times, output_path):
     # Linear scale
     ax = axes[0, 0]
     ax.plot(n_farms, times['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
-            markersize=10, color=colors['PuLP'], label='PuLP (Classical)', alpha=0.8)
+            markersize=10, color=colors['PuLP'], label='Gurobi MILP', alpha=0.8)
     ax.plot(n_farms, times['Pyomo'], marker=markers['Pyomo'], linewidth=2.5, 
-            markersize=10, color=colors['Pyomo'], label='Pyomo (Classical)', alpha=0.8)
+            markersize=10, color=colors['Pyomo'], label='Ipopt MINLP', alpha=0.8)
     ax.plot(n_farms, times['DWave_QPU'], marker=markers['DWave_QPU'], linewidth=2.5, 
             markersize=10, color=colors['DWave_QPU'], label='D-Wave QPU', alpha=0.8)
     ax.plot(n_farms, times['DWave_Hybrid'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
             markersize=10, color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
     ax.set_xlabel('Number of Farms', fontsize=12, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds)', fontsize=12, fontweight='bold')
-    ax.set_title('Linear Scale', fontsize=14, fontweight='bold')
+    ax.set_title('Linear Scale', fontsize=14)
     ax.legend(loc='upper left', fontsize=10)
     ax.grid(True, alpha=0.3)
     
     # Log-y scale
     ax = axes[0, 1]
     ax.semilogy(n_farms, times['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
-                markersize=10, color=colors['PuLP'], label='PuLP (Classical)', alpha=0.8)
+                markersize=10, color=colors['PuLP'], label='Gurobi MILP', alpha=0.8)
     ax.semilogy(n_farms, times['Pyomo'], marker=markers['Pyomo'], linewidth=2.5, 
-                markersize=10, color=colors['Pyomo'], label='Pyomo (Classical)', alpha=0.8)
+                markersize=10, color=colors['Pyomo'], label='Ipopt MINLP', alpha=0.8)
     ax.semilogy(n_farms, times['DWave_QPU'], marker=markers['DWave_QPU'], linewidth=2.5, 
                 markersize=10, color=colors['DWave_QPU'], label='D-Wave QPU', alpha=0.8)
     ax.semilogy(n_farms, times['DWave_Hybrid'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
                 markersize=10, color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
     ax.set_xlabel('Number of Farms', fontsize=12, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds, log scale)', fontsize=12, fontweight='bold')
-    ax.set_title('Log-Y Scale', fontsize=14, fontweight='bold')
+    ax.set_title('Log-Y Scale', fontsize=14)
     ax.legend(loc='upper left', fontsize=10)
     ax.grid(True, alpha=0.3, which='both')
     
     # Log-log scale
     ax = axes[0, 2]
     ax.loglog(n_farms, times['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
-              markersize=10, color=colors['PuLP'], label='PuLP (Classical)', alpha=0.8)
+              markersize=10, color=colors['PuLP'], label='Gurobi MILP', alpha=0.8)
     ax.loglog(n_farms, times['Pyomo'], marker=markers['Pyomo'], linewidth=2.5, 
-              markersize=10, color=colors['Pyomo'], label='Pyomo (Classical)', alpha=0.8)
+              markersize=10, color=colors['Pyomo'], label='Ipopt MINLP', alpha=0.8)
     ax.loglog(n_farms, times['DWave_QPU'], marker=markers['DWave_QPU'], linewidth=2.5, 
               markersize=10, color=colors['DWave_QPU'], label='D-Wave QPU', alpha=0.8)
     ax.loglog(n_farms, times['DWave_Hybrid'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
               markersize=10, color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
     ax.set_xlabel('Number of Farms (log scale)', fontsize=12, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds, log scale)', fontsize=12, fontweight='bold')
-    ax.set_title('Log-Log Scale', fontsize=14, fontweight='bold')
+    ax.set_title('Log-Log Scale', fontsize=14)
     ax.legend(loc='upper left', fontsize=10)
     ax.grid(True, alpha=0.3, which='both')
     
     # Row 2: Speedup Factors
     speedups = calculate_speedups(times)
-    
-    # Linear scale speedup
+    # Objective Values
     ax = axes[1, 0]
-    ax.plot(n_farms, speedups['QPU_vs_PuLP'], marker='^', linewidth=2.5, 
-            markersize=10, color='#06FFA5', label='QPU vs PuLP', alpha=0.8)
-    ax.plot(n_farms, speedups['QPU_vs_Pyomo'], marker='^', linewidth=2.5, 
-            markersize=10, color='#06D89E', label='QPU vs Pyomo', alpha=0.8, linestyle='--')
-    ax.plot(n_farms, speedups['Hybrid_vs_PuLP'], marker='D', linewidth=2.5, 
-            markersize=10, color='#118AB2', label='Hybrid vs PuLP', alpha=0.8)
-    ax.plot(n_farms, speedups['Hybrid_vs_Pyomo'], marker='D', linewidth=2.5, 
-            markersize=10, color='#073B4C', label='Hybrid vs Pyomo', alpha=0.8, linestyle='--')
-    ax.axhline(y=1, color='red', linestyle=':', linewidth=2, label='Break-even (1x)')
-    ax.set_xlabel('Number of Farms', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Speedup Factor', fontsize=12, fontweight='bold')
-    ax.set_title('Speedup: Linear Scale', fontsize=14, fontweight='bold')
+    ax.plot(n_farms, objectives['PuLP'], marker=markers['PuLP'], linewidth=2.5, 
+            markersize=10, color=colors['PuLP'], label='Gurobi MILP', alpha=0.8)
+    ax.plot(n_farms, objectives['Pyomo'], marker=markers['Pyomo'], linewidth=2.5, 
+            markersize=10, color=colors['Pyomo'], label='Ipopt MINLP', alpha=0.8)
+    ax.plot(n_farms, objectives['DWave'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
+            markersize=10, color=colors['DWave_Hybrid'], label='D-Wave', alpha=0.8)
+    ax.set_xlabel('Number of Farms', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Objective Value', fontsize=11, fontweight='bold')
+    ax.set_title('Objective Values (Higher = Better)', fontsize=13)
     ax.legend(loc='upper left', fontsize=9)
     ax.grid(True, alpha=0.3)
     
-    # Log-y scale speedup
+    # Objective Gaps (%)
     ax = axes[1, 1]
-    ax.semilogy(n_farms, speedups['QPU_vs_PuLP'], marker='^', linewidth=2.5, 
-                markersize=10, color='#06FFA5', label='QPU vs PuLP', alpha=0.8)
-    ax.semilogy(n_farms, speedups['QPU_vs_Pyomo'], marker='^', linewidth=2.5, 
-                markersize=10, color='#06D89E', label='QPU vs Pyomo', alpha=0.8, linestyle='--')
-    ax.semilogy(n_farms, speedups['Hybrid_vs_PuLP'], marker='D', linewidth=2.5, 
-                markersize=10, color='#118AB2', label='Hybrid vs PuLP', alpha=0.8)
-    ax.semilogy(n_farms, speedups['Hybrid_vs_Pyomo'], marker='D', linewidth=2.5, 
-                markersize=10, color='#073B4C', label='Hybrid vs Pyomo', alpha=0.8, linestyle='--')
-    ax.axhline(y=1, color='red', linestyle=':', linewidth=2, label='Break-even (1x)')
-    ax.set_xlabel('Number of Farms', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Speedup Factor (log scale)', fontsize=12, fontweight='bold')
-    ax.set_title('Speedup: Log-Y Scale', fontsize=14, fontweight='bold')
+    ax.plot(n_farms, gaps['PuLP_gap'], marker=markers['PuLP'], linewidth=2.5, 
+            markersize=10, color=colors['PuLP'], label='Gurobi MILP', alpha=0.8)
+    ax.plot(n_farms, gaps['Pyomo_gap'], marker=markers['Pyomo'], linewidth=2.5, 
+            markersize=10, color=colors['Pyomo'], label='Ipopt MINLP', alpha=0.8)
+    ax.plot(n_farms, gaps['DWave_gap'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
+            markersize=10, color=colors['DWave_Hybrid'], label='D-Wave', alpha=0.8)
+    ax.axhline(y=0, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Optimal (0\% gap)')
+    ax.set_xlabel('Number of Farms', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Objective Gap (\%)', fontsize=11, fontweight='bold')
+    ax.set_title('Solution Quality Gap (\% from Best)', fontsize=13)
     ax.legend(loc='upper left', fontsize=9)
-    ax.grid(True, alpha=0.3, which='both')
+    ax.grid(True, alpha=0.3)
     
-    # Log-log scale speedup
+    # Objective Gaps (Bar Chart)
     ax = axes[1, 2]
-    ax.loglog(n_farms, speedups['QPU_vs_PuLP'], marker='^', linewidth=2.5, 
-              markersize=10, color='#06FFA5', label='QPU vs PuLP', alpha=0.8)
-    ax.loglog(n_farms, speedups['QPU_vs_Pyomo'], marker='^', linewidth=2.5, 
-              markersize=10, color='#06D89E', label='QPU vs Pyomo', alpha=0.8, linestyle='--')
-    ax.loglog(n_farms, speedups['Hybrid_vs_PuLP'], marker='D', linewidth=2.5, 
-              markersize=10, color='#118AB2', label='Hybrid vs PuLP', alpha=0.8)
-    ax.loglog(n_farms, speedups['Hybrid_vs_Pyomo'], marker='D', linewidth=2.5, 
-              markersize=10, color='#073B4C', label='Hybrid vs Pyomo', alpha=0.8, linestyle='--')
-    ax.axhline(y=1, color='red', linestyle=':', linewidth=2, label='Break-even (1x)')
-    ax.set_xlabel('Number of Farms (log scale)', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Speedup Factor (log scale)', fontsize=12, fontweight='bold')
-    ax.set_title('Speedup: Log-Log Scale', fontsize=14, fontweight='bold')
+    x = np.arange(len(n_farms))
+    width = 0.25
+    
+    # Filter out None values for bar chart
+    pulp_gaps_filtered = [g if g is not None else 0 for g in gaps['PuLP_gap']]
+    pyomo_gaps_filtered = [g if g is not None else 0 for g in gaps['Pyomo_gap']]
+    dwave_gaps_filtered = [g if g is not None else 0 for g in gaps['DWave_gap']]
+    
+    ax.bar(x - width, pulp_gaps_filtered, width, label='Gurobi MILP', color=colors['PuLP'], alpha=0.8)
+    ax.bar(x, pyomo_gaps_filtered, width, label='Ipopt MINLP', color=colors['Pyomo'], alpha=0.8)
+    ax.bar(x + width, dwave_gaps_filtered, width, label='D-Wave', color=colors['DWave_Hybrid'], alpha=0.8)
+    ax.set_xlabel('Number of Farms', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Objective Gap (\%)', fontsize=11, fontweight='bold')
+    ax.set_title('Quality Gap Comparison', fontsize=13)
+    ax.set_xticks(x)
+    ax.set_xticklabels(n_farms)
     ax.legend(loc='upper left', fontsize=9)
-    ax.grid(True, alpha=0.3, which='both')
+    ax.grid(True, alpha=0.3, axis='y')
+    
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -279,7 +460,8 @@ def main():
     data = load_benchmark_data(benchmark_dir)
     
     # Extract times
-    times = extract_times(data)
+    times, objectives  = extract_times_and_objectives(data)
+    gaps = calculate_objective_gaps(objectives)
     
     # Print summary
     print_summary_table(times)
@@ -287,7 +469,7 @@ def main():
     # Create plots
     output_path = Path(__file__).parent / "Plots" / "nln_speedup_comparison.png"
     output_path.parent.mkdir(exist_ok=True)
-    plot_solve_times(times, output_path)
+    plot_solve_times(times, objectives, gaps, output_path)
     
     # Also create individual high-resolution plots for each scale
     fig_linear = plt.figure(figsize=(12, 8))
