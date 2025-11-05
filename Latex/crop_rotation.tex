@@ -1,0 +1,224 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{cleveref}
+
+\title{Detailed Formulations: Three-Period Crop Allocation with Rotation (Continuous \& Binary)\\
+\normalsize Normalized by Total Area; Food-Group Constraints Per Period; Rotation Synergy as Reward}
+\author{Edo}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document presents two mathematical formulations for a three-period crop allocation / rotation problem: (1) a continuous-area formulation and (2) a binary (plot-level) formulation. All objectives are normalized by the \emph{total area} \(A_{\text{tot}}\). Food-group minimum and maximum constraints are enforced \emph{per period}. A quadratic rotation/synergy term is included and we show how to convert a previously-used positive quadratic penalty into a \emph{negative-coefficient} reward (so rotation synergies are encouraged in the optimization). The binary formulation includes a QUBO mapping for use with quadratic-binary solvers (quantum annealers or classical QUBO solvers).
+\end{abstract}
+
+\section{Notation and choices}
+\begin{description}[leftmargin=2.5cm]
+  \item[$\mathcal F$] set of farms (or plot-owners) or set of plots when using plot-level variables; index \(f\) (or \(p\) for plot index in binary formulation).
+  \item[$\mathcal C$] set of crops; index \(c,c'\).
+  \item[$t$] period index, here \(t\in\{1,2,3\}\).
+  \item[$L_f$] total area of farm \(f\). If using uniform plot-area model, each plot \(p\) has area \(a_p\).
+  \item[$A_{\text{tot}}$] total area across the planning domain:
+    \[
+      A_{\text{tot}} \;=\; \sum_{f\in\mathcal F} L_f \;=\; \sum_{p\in\mathcal F} a_p.
+    \]
+  \item[$B_c$] composite value-density (value per unit area) of crop \(c\) (as in your original definition: a weighted combo of nutrition, environmental indices, affordability, sustainability, etc.). Optionally time-dependent \(B_{c,t}\).
+  \item[$A_{f,c,t}\ge0$] continuous decision: area of farm \(f\) planted with crop \(c\) in period \(t\).
+  \item[$Y_{f,c,t}\in\{0,1\}$] binary indicator in the continuous formulation that crop \(c\) is \emph{selected} on farm \(f\) in period \(t\) (used with min/max area logicals).
+  \item[$Y_{p,c,t}\in\{0,1\}$] plot-level binary assignment (binary formulation): plot \(p\) planted with crop \(c\) in period \(t\).
+  \item[$R_{c,c'}$] rotation (transition) synergy matrix: numerical effect (benefit if positive, penalty if negative) from planting \(c'\) in period \(t\) \emph{after} crop \(c\) in period \(t-1\) on the same land unit. In general \(R\) can be asymmetric.
+  \item[$\gamma$] weight scalar controlling importance of rotation/synergy relative to primary values \(B_c\).
+  \item[$a_p$] area of plot \(p\) (equal or variable). For equal-area grid, \(a_p=a\) constant.
+\end{description}
+
+\section{Design choices required by the user}
+Per your request:
+\begin{itemize}
+  \item All objectives are normalized by total area \(A_{\text{tot}}\).
+  \item Food-group minimum / maximum constraints are enforced \emph{per period} (i.e., for each \(t\)).
+  \item You previously used a quadratic synergy with a positive coefficient as a penalty; below we show how to instead include the synergy as a \emph{reward} (i.e., negative coefficient in the corresponding minimization formulation or positive addition in a maximization objective).
+\end{itemize}
+
+\section{Continuous formulation (three periods, normalized by total area)}
+
+\subsection{Objective}
+We maximize the area-normalized sum of crop values across the three periods plus rotation-synergy rewards for consecutive periods:
+\begin{equation}\label{eq:cont_obj}
+\boxed{\displaystyle
+\max\; Z \;=\; \frac{1}{A_{\text{tot}}}\Bigg[
+\sum_{t=1}^3 \sum_{f\in\mathcal F}\sum_{c\in\mathcal C} B_{c}\,A_{f,c,t}
+\;+\; \gamma \sum_{t=2}^3 \sum_{f\in\mathcal F}\sum_{c\in\mathcal C}\sum_{c'\in\mathcal C}
+R_{c,c'}\;A_{f,c,t-1}\;A_{f,c',t}
+\Bigg]
+}
+\end{equation}
+
+\paragraph{Interpretation:}
+\begin{itemize}
+  \item The first double-sum is the area-weighted value of crops across all periods.
+  \item The second term rewards (if \(R_{c,c'}>0\)) or penalizes (if \(R_{c,c'}<0\)) planting \(c'\) immediately after \(c\) on the \emph{same farm area} between consecutive periods \(t-1\) and \(t\). The scalar \(\gamma\) controls the relative importance of rotation synergy.
+  \item Note: If the rotation effect is local to plots, replace sum over farms \(f\) with sum over plots \(p\) in the binary model.
+\end{itemize}
+
+\subsection{Constraints (time-indexed)}
+
+\begin{description}
+  \item[Land availability (per-farm, per-period):] for each \(f\) and each period \(t\),
+  \begin{equation}\label{eq:land_avail}
+    \sum_{c\in\mathcal C} A_{f,c,t} \;\le\; L_f.
+  \end{equation}
+
+  \item[Minimum area if selected (logical linking):] for each \(f,c,t\),
+  \begin{equation}\label{eq:min_area_if_selected}
+    A_{f,c,t} \;\ge\; A_{min,c}\;Y_{f,c,t},\qquad Y_{f,c,t}\in\{0,1\}.
+  \end{equation}
+
+  \item[Maximum area if not selected:]
+  \begin{equation}\label{eq:max_area_if_selected}
+    A_{f,c,t} \;\le\; L_f\;Y_{f,c,t}.
+  \end{equation}
+
+  \item[Food-group minimum (per period):] for each food-group \(\mathcal G\) and each period \(t\),
+  \begin{equation}\label{eq:food_group_min_per_period}
+    \sum_{f\in\mathcal F}\sum_{c\in\mathcal G} Y_{f,c,t} \;\ge\; N_{min,g,t}.
+  \end{equation}
+
+  \item[Food-group maximum (per period):] for each \(\mathcal G\) and each period \(t\),
+  \begin{equation}\label{eq:food_group_max_per_period}
+    \sum_{f\in\mathcal F}\sum_{c\in\mathcal G} Y_{f,c,t} \;\le\; N_{max,g,t}.
+  \end{equation}
+\end{description}
+
+\paragraph{Notes on continuous formulation:}
+\begin{itemize}
+  \item The rotation term in \eqref{eq:cont_obj} is \emph{quadratic} in the continuous area variables \(A_{f,c,t}\). This generally produces a nonconvex problem (unless \(R\) and \(\gamma\) happen to yield a concave quadratic overall); expect to use nonlinear global solvers or to reformulate as discrete (binary) if global optimality is required.
+  \item If you prefer fraction variables \(x_{f,c,t}=A_{f,c,t}/A_{\text{tot}}\), rewrite all areas consistent with the normalization; the structure remains the same.
+\end{itemize}
+
+\section{Binary (plot-level) formulation (three periods, normalized by total area)}
+
+This formulation is most natural for discrete plot assignment and for QUBO mapping.
+
+\subsection{Variables \& normalization}
+\[
+Y_{p,c,t} \in\{0,1\}\quad\text{for each plot } p\in\mathcal F,\; c\in\mathcal C,\; t=1,2,3,
+\]
+with plot \(p\) area \(a_p\). Total area remains \(A_{\text{tot}}=\sum_p a_p\).
+
+\subsection{Objective (maximize)}
+We include the per-period crop values and rotation synergy across consecutive periods on the same plot:
+\begin{equation}\label{eq:binary_obj}
+\boxed{\displaystyle
+\max\; Z \;=\; \frac{1}{A_{\text{tot}}}\Bigg[
+\sum_{t=1}^3 \sum_{p\in\mathcal F}\sum_{c\in\mathcal C} a_p\,B_c\,Y_{p,c,t}
+\;+\; \gamma
+\sum_{t=2}^3 \sum_{p\in\mathcal F}\sum_{c\in\mathcal C}\sum_{c'\in\mathcal C}
+a_p\,R_{c,c'}\,Y_{p,c,t-1}\,Y_{p,c',t}
+\Bigg]
+}
+\end{equation}
+
+\paragraph{Interpretation:}
+\begin{itemize}
+  \item The rotation product \(Y_{p,c,t-1}Y_{p,c',t}\) activates if plot \(p\) has crop \(c\) in \(t-1\) and \(c'\) in \(t\).
+  \item If you \emph{previously} used the quadratic synergy with a \emph{positive penalty} (so it increased cost when synergy occurred), you can \emph{encourage} synergy by flipping the sign (use \(+\gamma R_{c,c'}\) with \(R_{c,c'}>0\)) in the maximization above. In a minimization/QUBO form (see below) this corresponds to a negative quadratic coefficient (i.e., a reward).
+\end{itemize}
+
+\subsection{Binary constraints (per period)}
+\begin{description}
+  \item[Plot single-assignment (per period):] each plot can host at most one crop per period:
+  \begin{equation}\label{eq:plot_assignment}
+    \sum_{c\in\mathcal C} Y_{p,c,t} \;\le\; 1 \quad \forall p,\;t.
+  \end{equation}
+  (Equality if you require no idle plots.)
+
+  \item[Min plots per crop (per period or horizon):] You earlier converted minimum area to minimum plots; here we enforce either per-period or horizon-aggregated minima. Per-period (example):
+  \[
+    \sum_{p\in\mathcal F} a_p\,Y_{p,c,t} \;\ge\; A_{min,c}^{(t)}\quad\forall c,\;t.
+  \]
+  For equal-area plots \(a\) and integer counts:
+  \[
+    \sum_{p\in\mathcal F} Y_{p,c,t} \;\ge\; \left\lceil \frac{A_{min,c}^{(t)}}{a}\right\rceil.
+  \]
+
+  \item[Max plots per crop (per period):] analogous:
+  \[
+    \sum_{p\in\mathcal F} a_p\,Y_{p,c,t} \;\le\; A_{max,c}^{(t)}.
+  \]
+
+  \item[Food-group min/max (per period):] for each food group \(\mathcal G\) and period \(t\),
+  \begin{align}
+    \sum_{p\in\mathcal F} \sum_{c\in\mathcal G} Y_{p,c,t} &\;\ge\; N_{min,g,t}, \label{eq:fg_min_per_t}\\
+    \sum_{p\in\mathcal F} \sum_{c\in\mathcal G} Y_{p,c,t} &\;\le\; N_{max,g,t}. \label{eq:fg_max_per_t}
+  \end{align}
+\end{description}
+
+\section{QUBO mapping for the binary model (minimization-ready)}
+
+Quantum annealers and many QUBO solvers adopt a minimization perspective. Convert the maximization \(Z\) to a minimization by taking \(H=-Z\), and add quadratic penalty terms to enforce constraints.
+
+\subsection{Base QUBO (unconstrained quadratic plus penalties)}
+Let vector \(z\) stack all binary variables \(Y_{p,c,t}\). Define
+
+\begin{equation}\label{eq:qubo_H}
+\boxed{\displaystyle
+\begin{aligned}
+H(z) \;=\; & -\frac{1}{A_{\text{tot}}}\Bigg[
+\sum_{t=1}^3 \sum_{p}\sum_{c} a_p\,B_c\,z_{p,c,t}
+\;+\; \gamma \sum_{t=2}^3\sum_{p}\sum_{c,c'} a_p\,R_{c,c'}\,z_{p,c,t-1}\,z_{p,c',t}
+\Bigg] \\
+&\;+\; A_{\text{assign}}\sum_{t=1}^3\sum_{p}\Big(\sum_{c} z_{p,c,t}-1\Big)^2 \\
+&\;+\; \sum_{c,t} A_{min}^{(c,t)}\;P_{\text{min\_plots}}(z;c,t)
+\;+\; \sum_{g,t} A_{fg}^{(g,t)}\;P_{\text{fg\_bounds}}(z;g,t),
+\end{aligned}
+}
+\end{equation}
+
+where:
+\begin{itemize}
+  \item \(A_{\text{assign}}>0\) is a large penalty weight enforcing the (at-most-)one-assignment per plot per period (set it large enough that infeasible solutions are disfavored).
+  \item \(P_{\text{min\_plots}}(z;c,t)\) are convex quadratic (or linear + slack) penalty terms that penalize violating minimum-plot counts for crop \(c\) in period \(t\). Practical implementations often encode these as quadratic penalties on the shortfall or use additional slack binaries/integers and penalties.
+  \item \(P_{\text{fg\_bounds}}(z;g,t)\) similarly penalize violation of food-group min/max per period.
+\end{itemize}
+
+\paragraph{Negative-coefficient synergy (reward) in QUBO}
+Note the rotation quadratic term appears with a negative sign in \(H\) because we are minimizing: we use \(-\gamma a_p R_{c,c'} z_{p,c,t-1} z_{p,c',t}\). Thus:
+\begin{itemize}
+  \item If \(R_{c,c'}>0\) and \(\gamma>0\), then the quadratic coefficient in \(H\) is \(-(\gamma a_p R_{c,c'})/A_{\text{tot}}<0\). A negative quadratic coefficient in a minimization QUBO is a \emph{reward} for activating both variables; the solver will favor those joint assignments (i.e., it is \emph{encouraging} that rotation pair).
+  \item If in prior work you used a \emph{positive} quadratic penalty for synergy (i.e., raising cost when a pair occurs), simply flip the sign here to encourage the synergy instead. This is the sign flip you requested.
+\end{itemize}
+
+\subsection{Remarks about penalties and numerical conditioning}
+\begin{itemize}
+  \item Penalty magnitudes (e.g. \(A_{\text{assign}}\)) must be chosen carefully. A conservative rule is to choose a penalty larger than the maximum possible improvement in the objective from any single constraint violation. Too-large penalties can cause numerical conditioning issues for some solvers or blow up QUBO coefficients relative to the solver's internal scale; calibrate on small instances.
+  \item Where possible, encode hard constraints exactly (e.g., using one-hot equality rather than soft penalties) if your solver can enforce them; otherwise use quadratic penalties as above.
+\end{itemize}
+
+\section{Discussion: sign conventions and modelling choices}
+
+\begin{enumerate}
+  \item \textbf{Rotation as reward vs penalty:} In this write-up we adopt the convention that \emph{positive} entries \(R_{c,c'}\) represent beneficial rotation effects (e.g. nitrogen-supplying legume followed by cereal) and \(\gamma>0\) scales the importance. In the \emph{maximization} objective \eqref{eq:binary_obj} we \emph{add} the rotation term. In the QUBO (minimization) we therefore have a \emph{negative} quadratic coefficient for those beneficial pairs (so the solver will prefer them). If instead you want to \emph{discourage} some adjacency, put negative \(R_{c,c'}\) or set \(\gamma<0\).
+  \item \textbf{Asymmetric rotation:} Allowing \(R\) to be asymmetric captures real agronomic asymmetries (e.g. \(R_{\text{wheat,soy}}\) different from \(R_{\text{soy,wheat}}\)). These are straightforward to encode because \(Y_{p,c,t-1} Y_{p,c',t}\) is ordered.
+  \item \textbf{Per-period food-group constraints:} you explicitly requested these per period; this ensures each year meets dietary / system composition needs independently.
+  \item \textbf{Continuous vs binary tradeoffs:} Continuous area variables give modeling flexibility but produce nonconvex quadratics when rotation is included. Binary/plot encodings are natural for QUBO / quantum annealing and for combinatorial decision-making (exact plot assignments).
+\end{enumerate}
+
+\section{Practical suggestions}
+\begin{itemize}
+  \item \textbf{Calibration of \(R\):} If empirical rotation gains are unknown, score pairs \((c\to c')\) on a normalized scale (e.g. \(-1\ldots+1\)) and set \(R\) accordingly. Then tune \(\gamma\) to scale these against \(B_c\).
+  \item \textbf{Start small:} test a small instance (few plots, 3 crops, 3 periods) to calibrate penalty \(A_{\text{assign}}\) and to confirm sign behavior for rotation rewards.
+  \item \textbf{QUBO numeric scaling:} if you plan to run on a quantum annealer, scale QUBO coefficients into the machine's allowed range and consider embedding overhead (each binary variable may map to multiple physical qubits).
+\end{itemize}
+
+\section{Concluding remarks}
+This script presents the continuous and binary 3-period rotation models normalized by total area with per-period food-group constraints, and shows explicitly how your quadratic synergy (previously used as a positive penalty) can be converted into a \emph{reward} (negative quadratic coefficient in the minimization / added positive rotation term in the maximization). If you want, I can:
+
+
+\end{document}
