@@ -341,7 +341,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
     fig.suptitle('BQUBO Benchmark: Solve Time Comparison (D-Wave vs Classical Solvers)', 
                  fontsize=18, y=0.995)
     
-    n_farms = times['n_farms']
+    n_farms = 27 * np.array(times['n_farms'])
     
     # Colors for each solver
     colors = {
@@ -369,7 +369,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
             markersize=10, color=colors['DWave_QPU'], label='D-Wave QPU', alpha=0.8)
     ax.plot(n_farms, times['DWave_Hybrid'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
             markersize=10, color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
-    ax.set_xlabel('Number of Farms', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Problem Size', fontsize=12, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds)', fontsize=12, fontweight='bold')
     ax.set_title('Linear Scale', fontsize=14)
     ax.legend(loc='upper left', fontsize=10)
@@ -385,7 +385,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
                 markersize=10, color=colors['DWave_QPU'], label='D-Wave QPU', alpha=0.8)
     ax.semilogy(n_farms, times['DWave_Hybrid'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
                 markersize=10, color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
-    ax.set_xlabel('Number of Farms', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Problem Size', fontsize=12, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds, log scale)', fontsize=12, fontweight='bold')
     ax.set_title('Log-Y Scale', fontsize=14)
     ax.legend(loc='upper left', fontsize=10)
@@ -401,7 +401,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
               markersize=10, color=colors['DWave_QPU'], label='D-Wave QPU', alpha=0.8)
     ax.loglog(n_farms, times['DWave_Hybrid'], marker=markers['DWave_Hybrid'], linewidth=2.5, 
               markersize=10, color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
-    ax.set_xlabel('Number of Farms (log scale)', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Problem Size (log scale)', fontsize=12, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds, log scale)', fontsize=12, fontweight='bold')
     ax.set_title('Log-Log Scale', fontsize=14)
     ax.legend(loc='upper left', fontsize=10)
@@ -417,7 +417,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
             markersize=10, color=colors['DWave_Hybrid'], label='D-Wave', alpha=0.8)
     ax.plot(n_farms, objectives['GurobiQUBO'], marker=markers['GurobiQUBO'], linewidth=2.5, 
             markersize=10, color=colors['GurobiQUBO'], label='Gurobi QUBO', alpha=0.8)
-    ax.set_xlabel('Number of Farms', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Problem Size', fontsize=11, fontweight='bold')
     ax.set_ylabel('Objective Value', fontsize=11, fontweight='bold')
     ax.set_title('Objective Values (Higher = Better)', fontsize=13)
     ax.legend(loc='upper left', fontsize=9)
@@ -432,7 +432,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
     ax.plot(n_farms, gaps['GurobiQUBO_gap'], marker=markers['GurobiQUBO'], linewidth=2.5, 
             markersize=10, color=colors['GurobiQUBO'], label='Gurobi QUBO', alpha=0.8)
     ax.axhline(y=0, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Optimal (0\% gap)')
-    ax.set_xlabel('Number of Farms', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Problem Size', fontsize=11, fontweight='bold')
     ax.set_ylabel('Objective Gap (\%)', fontsize=11, fontweight='bold')
     ax.set_title('Solution Quality Gap (\% from Best)', fontsize=13)
     ax.legend(loc='upper left', fontsize=9)
@@ -445,7 +445,7 @@ def plot_solve_times(times, objectives, gaps, output_path):
     ax.bar(x - width, gaps['PuLP_gap'], width, label='Gurobi MILP', color=colors['PuLP'], alpha=0.8)
     ax.bar(x + width, gaps['DWave_gap'], width, label='D-Wave', color=colors['DWave_Hybrid'], alpha=0.8)
     ax.bar(x + 3*width, gaps['GurobiQUBO_gap'], width, label='Gurobi QUBO', color=colors['GurobiQUBO'], alpha=0.8)
-    ax.set_xlabel('Number of Farms', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Problem Size', fontsize=11, fontweight='bold')
     ax.set_ylabel('Objective Gap (\%)', fontsize=11, fontweight='bold')
     ax.set_title('Quality Gap Comparison', fontsize=13)
     ax.set_xticks(x)
@@ -524,7 +524,7 @@ def main():
     ax.plot(n_farms, times['DWave_Hybrid'], 'D-', linewidth=3, markersize=12, 
             color=colors['DWave_Hybrid'], label='D-Wave Hybrid', alpha=0.8)
     
-    ax.set_xlabel('Number of Farms', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Problem Size', fontsize=14, fontweight='bold')
     ax.set_ylabel('Solve Time (seconds)', fontsize=14, fontweight='bold')
     ax.set_title('BQUBO Benchmark: Solve Time Comparison (Linear Scale)', 
                  fontsize=16)

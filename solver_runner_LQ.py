@@ -331,20 +331,38 @@ def solve_with_pulp(farms, foods, food_groups, config):
     model.solve(solver)
     solve_time = time.time() - start_time
     
-    # Extract results
-    results = {
-        'status': pl.LpStatus[model.status],
-        'objective_value': pl.value(model.objective),
-        'solve_time': solve_time,
-        'areas': {},
-        'selections': {}
-    }
+    # Extract results and calculate total area
+    total_area = 0.0
+    areas = {}
+    selections = {}
     
     for f in farms:
         for c in foods:
             key = f"{f}_{c}"
-            results['areas'][key] = A_pulp[(f, c)].value() if A_pulp[(f, c)].value() is not None else 0.0
-            results['selections'][key] = Y_pulp[(f, c)].value() if Y_pulp[(f, c)].value() is not None else 0.0
+            area_val = A_pulp[(f, c)].value() if A_pulp[(f, c)].value() is not None else 0.0
+            select_val = Y_pulp[(f, c)].value() if Y_pulp[(f, c)].value() is not None else 0.0
+            
+            areas[key] = area_val
+            selections[key] = select_val
+            total_area += area_val
+    
+    # Calculate normalized objective (objective per unit area)
+    obj_value = pl.value(model.objective)
+    normalized_objective = obj_value / total_area if total_area > 1e-6 else 0.0
+    
+    results = {
+        'status': pl.LpStatus[model.status],
+        'objective_value': obj_value,
+        'normalized_objective': normalized_objective,
+        'total_area': total_area,
+        'solve_time': solve_time,
+        'areas': areas,
+        'selections': selections
+    }
+    
+    print(f"  Total area allocated: {total_area:.2f}")
+    print(f"  Raw objective: {obj_value:.4f}")
+    print(f"  Normalized objective: {normalized_objective:.6f}")
     
     return model, results
 
@@ -521,24 +539,42 @@ def solve_with_pyomo(farms, foods, food_groups, config):
         results = solver.solve(model, tee=False)
         solve_time = time.time() - start_time
         
-        # Extract results
+        # Extract results and calculate total area
         status = str(results.solver.status)
         termination = str(results.solver.termination_condition)
         
-        output = {
-            'status': f"{status} ({termination})",
-            'solver': solver_name,
-            'objective_value': pyo.value(model.obj) if pyo.value(model.obj) is not None else None,
-            'solve_time': solve_time,
-            'areas': {},
-            'selections': {}
-        }
+        total_area = 0.0
+        areas = {}
+        selections = {}
         
         for f in farms:
             for c in foods:
                 key = f"{f}_{c}"
-                output['areas'][key] = pyo.value(model.A[f, c]) if model.A[f, c].value is not None else 0.0
-                output['selections'][key] = pyo.value(model.Y[f, c]) if model.Y[f, c].value is not None else 0.0
+                area_val = pyo.value(model.A[f, c]) if model.A[f, c].value is not None else 0.0
+                select_val = pyo.value(model.Y[f, c]) if model.Y[f, c].value is not None else 0.0
+                
+                areas[key] = area_val
+                selections[key] = select_val
+                total_area += area_val
+        
+        # Calculate normalized objective (objective per unit area)
+        obj_value = pyo.value(model.obj) if pyo.value(model.obj) is not None else None
+        normalized_objective = obj_value / total_area if (obj_value is not None and total_area > 1e-6) else 0.0
+        
+        output = {
+            'status': f"{status} ({termination})",
+            'solver': solver_name,
+            'objective_value': obj_value,
+            'normalized_objective': normalized_objective,
+            'total_area': total_area,
+            'solve_time': solve_time,
+            'areas': areas,
+            'selections': selections
+        }
+        
+        print(f"  Total area allocated: {total_area:.2f}")
+        print(f"  Raw objective: {obj_value:.4f}" if obj_value else "  Raw objective: None")
+        print(f"  Normalized objective: {normalized_objective:.6f}")
         
         return model, output
         

@@ -283,6 +283,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                 'solve_time': pulp_time,
                 'status': pulp_results['status'],
                 'objective_value': pulp_results.get('objective_value'),
+                'normalized_objective': pulp_results.get('normalized_objective'),
+                'total_area': pulp_results.get('total_area'),
                 'solution': clean_solution_for_json(pulp_results.get('solution', {})),
                 'n_foods': n_foods,
                 'problem_size': problem_size,
@@ -315,6 +317,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                 'solve_time': pyomo_time,
                 'status': pyomo_results.get('status', 'Error'),
                 'objective_value': pyomo_objective,
+                'normalized_objective': pyomo_results.get('normalized_objective'),
+                'total_area': pyomo_results.get('total_area'),
                 'solution': clean_solution_for_json(pyomo_results.get('solution', {})),
                 'error': pyomo_results.get('error'),
                 'n_foods': n_foods,
@@ -334,6 +338,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         hybrid_time = None
         dwave_feasible = False
         dwave_objective = None
+        dwave_total_area = None
+        dwave_normalized_objective = None
 
         if not token:
             print(f"    SKIPPED: DWAVE_API_TOKEN not found.")
@@ -348,6 +354,16 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                     best = feasible_sampleset.first
                     dwave_objective = -best.energy
                     
+                    # Calculate total area from the solution
+                    dwave_total_area = 0.0
+                    for var_name, var_value in best.sample.items():
+                        # Area variables are named like "Area_farm_crop"
+                        if var_name.startswith('Area_') and var_value > 1e-6:
+                            dwave_total_area += var_value
+                    
+                    # Calculate normalized objective
+                    dwave_normalized_objective = dwave_objective / dwave_total_area if dwave_total_area > 1e-6 else 0.0
+                    
                     # Extract timing info correctly - DWave returns times in seconds already
                     qpu_time = sampleset.info.get('qpu_access_time', 0)  / 1e6
                     hybrid_time = sampleset.info.get('charge_time', 0)   / 1e6
@@ -355,6 +371,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
 
                     print(f"    Status: {len(feasible_sampleset)} feasible solutions")
                     print(f"    Objective: {dwave_objective:.6f}")
+                    print(f"    Total Area: {dwave_total_area:.2f}")
+                    print(f"    Normalized Objective: {dwave_normalized_objective:.6f}")
                     print(f"    Total Time: {dwave_time:.3f}s")
                     if hybrid_time and hybrid_time > 0:
                         print(f"    Charge Time: {hybrid_time:.3f}s")
@@ -376,6 +394,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                 'hybrid_time': hybrid_time,
                 'feasible': dwave_feasible,
                 'objective_value': dwave_objective,
+                'normalized_objective': dwave_normalized_objective,
+                'total_area': dwave_total_area,
             }
             cache.save_result('LQ', 'DWave', n_farms, run_number, dwave_cache_result)
         
@@ -401,15 +421,21 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
             'pulp_time': pulp_time,
             'pulp_status': pulp_results['status'],
             'pulp_objective': pulp_results.get('objective_value'),
+            'pulp_normalized_objective': pulp_results.get('normalized_objective'),
+            'pulp_total_area': pulp_results.get('total_area'),
             'pyomo_time': pyomo_time,
             'pyomo_status': pyomo_results.get('status', 'Error'),
             'pyomo_objective': pyomo_objective,
+            'pyomo_normalized_objective': pyomo_results.get('normalized_objective'),
+            'pyomo_total_area': pyomo_results.get('total_area'),
             'pulp_diff_percent': pulp_error,
             'dwave_time': dwave_time,
             'qpu_time': qpu_time,
             'hybrid_time': hybrid_time,
-            'dwave_feasible': dwave_feasible,
             'dwave_objective': dwave_objective,
+            'dwave_normalized_objective': dwave_normalized_objective,
+            'dwave_total_area': dwave_total_area,
+            'dwave_feasible': dwave_feasible,
         }
         
         return result
