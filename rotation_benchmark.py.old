@@ -1,0 +1,397 @@
+#!/usr/bin/env python3
+"""
+3-Period Crop Rotation Benchmark Script
+
+This script benchmarks the 3-period crop rotation optimization problem
+with different numbers of plots, testing multiple solvers:
+
+ROTATION Scenario (3-period binary):
+- Gurobi (PuLP): BIP solver for 3-period binary plot assignments  
+- D-Wave CQM: Quantum-classical hybrid for constrained quadratic models
+- Gurobi QUBO: Native QUBO solver after CQM→BQM conversion
+- D-Wave BQM: Quantum annealer with higher QPU utilization
+
+Total solver configurations tested: 4
+
+The implementation follows the binary formulation from crop_rotation.tex:
+- Time periods: t ∈ {1, 2, 3}
+- Variables: Y_{p,c,t} for plot p, crop c, period t
+- Objective: Linear crop values + quadratic rotation synergy
+- Constraints: Per-period plot assignments and food group constraints
+"""
+
+import os
+import sys
+import json
+import time
+import argparse
+from datetime import datetime
+from typing import Dict, List, Tuple, Optional
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(__file__))
+
+# Import patch generator (plots/patches for rotation model)
+from patch_sampler import generate_farms as generate_patches
+from src.scenarios import load_food_data
+
+# Import rotation solver
+import solver_runner_ROTATION as solver_runner
+
+from dimod import cqm_to_bqm
+
+# Benchmark configurations - number of plots to test
+BENCHMARK_CONFIGS = [5, 10, 15]
+
+# Number of runs per configuration
+NUM_RUNS = 1
+
+
+def check_cached_results(solver_name: str, config_id: int, run_id: int = 1) -> Optional[Dict]:
+    """
+    Check if a cached result exists for the given configuration.
+    
+    Args:
+        solver_name: Name of solver (gurobi, dwave_cqm, gurobi_qubo, dwave_bqm)
+        config_id: Configuration ID (number of units)
+        run_id: Run number for this configuration
+        
+    Returns:
+        Cached result dictionary if found, None otherwise
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Map solver names to subdirectory names
+    solver_dir_map = {
+        'gurobi': 'Rotation_PuLP',
+        'dwave_cqm': 'Rotation_DWave',
+        'gurobi_qubo': 'Rotation_GurobiQUBO',
+        'dwave_bqm': 'Rotation_DWaveBQM'
+    }
+    
+    if solver_name not in solver_dir_map:
+        return None
+    
+    solver_dir = solver_dir_map[solver_name]
+    result_dir = os.path.join(script_dir, "Benchmarks", "ROTATION", solver_dir)
+    
+    # Check if result file exists
+    filename = f"config_{config_id}_run_{run_id}.json"
+    filepath = os.path.join(result_dir, filename)
+    
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"  Warning: Failed to load cached result {filepath}: {e}")
+            return None
+    
+    return None
+
+
+def save_solver_result(result: Dict, solver_name: str, config_id: int, run_id: int = 1):
+    """
+    Save individual solver result to appropriate subdirectory.
+    
+    Args:
+        result: Solver result dictionary
+        solver_name: Name of solver (gurobi, dwave_cqm, gurobi_qubo, dwave_bqm)
+        config_id: Configuration ID (number of units)
+        run_id: Run number for this configuration
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Map solver names to subdirectory names
+    solver_dir_map = {
+        'gurobi': 'Rotation_PuLP',
+        'dwave_cqm': 'Rotation_DWave',
+        'gurobi_qubo': 'Rotation_GurobiQUBO',
+        'dwave_bqm': 'Rotation_DWaveBQM'
+    }
+    
+    if solver_name not in solver_dir_map:
+        print(f"  Warning: Unknown solver name {solver_name}, skipping save")
+        return
+    
+    solver_dir = solver_dir_map[solver_name]
+    output_dir = os.path.join(script_dir, "Benchmarks", "ROTATION", solver_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Create filename matching other benchmark format
+    filename = f"config_{config_id}_run_{run_id}.json"
+    filepath = os.path.join(output_dir, filename)
+    
+    # Save result
+    with open(filepath, 'w') as f:
+        json.dump(result, f, indent=2, default=str)
+
+
+
+def generate_rotation_scenario(n_plots: int, seed: int = 42, fixed_total_land: float = 100.0) -> Dict:
+    """
+    Generate a scenario for 3-period crop rotation.
+    
+    Args:
+        n_plots: Number of plots to generate
+        seed: Random seed for reproducibility
+        fixed_total_land: Total land area in hectares
+        
+    Returns:
+        Dictionary with scenario data
+    """
+    patches_unscaled = generate_patches(n_farms=n_plots, seed=seed)
+    patches_total = sum(patches_unscaled.values())
+    scale_factor = fixed_total_land / patches_total if patches_total > 0 else 0
+    patches_scaled = {k: v * scale_factor for k, v in patches_unscaled.items()}
+    
+    return {
+        'n_plots': n_plots,
+        'total_area': fixed_total_land,
+        'land_availability': patches_scaled,
+        'plot_area': fixed_total_land / n_plots,
+        'seed': seed
+    }
+
+
+def create_rotation_config(land_data: Dict[str, float]) -> Tuple[Dict, Dict, Dict]:
+    """
+    Create food and configuration data for rotation model.
+    
+    Args:
+        land_data: Dictionary of land availability per plot
+        
+    Returns:
+        Tuple of (foods, food_groups, config)
+    """
+    # Load food data
+    try:
+        food_list, foods, food_groups, _ = load_food_data('full_family')
+    except Exception as e:
+        print(f"    Warning: Food data loading failed ({e})")
+        raise
+    
+    # Create configuration
+    config = {
+        'parameters': {
+            'land_availability': land_data,
+            'minimum_planting_area': {food: 0.0001 for food in foods},
+            'food_group_constraints': {
+                group: {'min_foods': 1, 'max_foods': len(food_list)}
+                for group, food_list in food_groups.items()
+            },
+            'weights': {
+                'nutritional_value': 0.25,
+                'nutrient_density': 0.2,
+                'environmental_impact': 0.25,
+                'affordability': 0.15,
+                'sustainability': 0.15
+            },
+            'idle_penalty_lambda': 0.0
+        }
+    }
+    
+    return foods, food_groups, config
+
+
+def run_rotation_scenario(scenario_data: Dict, dwave_token: Optional[str] = None, gamma: float = 0.1) -> Dict:
+    """
+    Run 3-period crop rotation optimization for a given scenario.
+    
+    Args:
+        scenario_data: Scenario data with land availability
+        dwave_token: D-Wave API token (optional)
+        gamma: Rotation synergy weight coefficient
+        
+    Returns:
+        Dictionary with results
+    """
+    print(f"\n  🔄 ROTATION SCENARIO (3-period)")
+    print(f"     {scenario_data['n_plots']} plots, {scenario_data['total_area']:.1f} ha")
+    print(f"     Plot area: {scenario_data['plot_area']:.2f} ha each")
+    print(f"     Rotation synergy weight (gamma): {gamma}")
+    
+    # Create problem setup
+    land_data = scenario_data['land_availability']
+    plots_list = list(land_data.keys())
+    foods, food_groups, config = create_rotation_config(land_data)
+    
+    # Create 3-period rotation CQM
+    print(f"     Creating 3-period rotation CQM...")
+    cqm_start = time.time()
+    cqm, Y, constraint_metadata = solver_runner.create_cqm_rotation_3period(
+        plots_list, foods, food_groups, config, gamma=gamma
+    )
+    cqm_time = time.time() - cqm_start
+    
+    results = {
+        'scenario_type': 'rotation_3period',
+        'n_plots': scenario_data['n_plots'],
+        'total_area': scenario_data['total_area'],
+        'n_foods': len(foods),
+        'n_periods': 3,
+        'n_variables': len(cqm.variables),
+        'n_constraints': len(cqm.constraints),
+        'gamma': gamma,
+        'cqm_time': cqm_time,
+        'solvers': {}
+    }
+    
+    print(f"       Variables: {results['n_variables']}")
+    print(f"       Constraints: {results['n_constraints']}")
+    print(f"       CQM build time: {cqm_time:.3f}s")
+    
+    # D-Wave CQM Solver
+    if dwave_token:
+        print(f"     Running DWave CQM...")
+        try:
+            sampleset, hybrid_time, qpu_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
+            
+            if len(sampleset) > 0:
+                best = sampleset.first
+                is_feasible = best.is_feasible
+                cqm_sample = dict(best.sample)
+                
+                # Calculate rotation objective
+                obj_components = solver_runner.calculate_rotation_objective(
+                    cqm_sample, plots_list, foods, land_data, 
+                    config['parameters']['weights'], gamma=gamma
+                )
+                
+                # Extract solution summary
+                solution_summary = solver_runner.extract_rotation_solution_summary(
+                    cqm_sample, plots_list, foods, land_data
+                )
+                
+                dwave_result = {
+                    'status': 'Feasible' if is_feasible else 'Infeasible',
+                    'success': is_feasible,
+                    'objective_value': obj_components['total'],
+                    'linear_value': obj_components['linear_value'],
+                    'rotation_synergy': obj_components['rotation_synergy'],
+                    'energy': best.energy,
+                    'hybrid_solve_time': hybrid_time,
+                    'qpu_access_time': qpu_time,
+                    'num_occurrences': best.num_occurrences,
+                    'solution_summary': solution_summary,
+                    'n_variables': results['n_variables'],
+                    'n_constraints': results['n_constraints']
+                }
+                
+                results['solvers']['dwave_cqm'] = dwave_result
+                
+                print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'}")
+                print(f"         Objective: {obj_components['total']:.6f}")
+                print(f"           - Linear value: {obj_components['linear_value']:.6f}")
+                print(f"           - Rotation synergy: {obj_components['rotation_synergy']:.6f}")
+                print(f"         Hybrid time: {hybrid_time:.3f}s, QPU time: {qpu_time:.6f}s")
+                
+            else:
+                print(f"       ❌ DWave CQM: No solution returned")
+                results['solvers']['dwave_cqm'] = {'status': 'No Solution', 'success': False}
+                
+        except Exception as e:
+            print(f"       ❌ DWave CQM failed: {e}")
+            results['solvers']['dwave_cqm'] = {'status': 'Error', 'error': str(e), 'success': False}
+    else:
+        print(f"     Skipping DWave CQM (no token provided)")
+    
+    return results
+
+
+def run_rotation_benchmark(config_values: List[int], dwave_token: Optional[str] = None, 
+                          gamma: float = 0.1, fixed_total_land: float = 100.0) -> Dict:
+    """
+    Run rotation benchmarks for multiple configurations.
+    
+    Args:
+        config_values: List of plot counts to test
+        dwave_token: D-Wave API token
+        gamma: Rotation synergy weight
+        fixed_total_land: Total land area in hectares
+        
+    Returns:
+        Dictionary with all results
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    print(f"\n{'='*80}")
+    print(f"3-PERIOD CROP ROTATION BENCHMARK")
+    print(f"{'='*80}")
+    print(f"Timestamp: {timestamp}")
+    print(f"Configurations: {config_values}")
+    print(f"Rotation weight (gamma): {gamma}")
+    print(f"Total land: {fixed_total_land} ha")
+    print(f"D-Wave: {'Yes' if dwave_token else 'No'}")
+    print(f"{'='*80}")
+    
+    all_results = []
+    
+    for i, n_plots in enumerate(config_values):
+        print(f"\n[{i+1}/{len(config_values)}] Configuration: {n_plots} plots")
+        
+        # Generate scenario
+        scenario = generate_rotation_scenario(n_plots=n_plots, seed=42 + i, fixed_total_land=fixed_total_land)
+        
+        # Run scenario
+        result = run_rotation_scenario(scenario, dwave_token=dwave_token, gamma=gamma)
+        result['config_id'] = n_plots
+        all_results.append(result)
+    
+    # Aggregate results
+    benchmark_results = {
+        'metadata': {
+            'timestamp': timestamp,
+            'benchmark_type': 'rotation_3period',
+            'configs': config_values,
+            'gamma': gamma,
+            'fixed_total_land': fixed_total_land,
+            'n_runs_per_config': NUM_RUNS
+        },
+        'results': all_results
+    }
+    
+    # Save results
+    output_file = f"benchmark_rotation_3period_{timestamp}.json"
+    with open(output_file, 'w') as f:
+        json.dump(benchmark_results, f, indent=2, default=str)
+    
+    print(f"\n{'='*80}")
+    print(f"BENCHMARK COMPLETE")
+    print(f"Results saved to: {output_file}")
+    print(f"{'='*80}\n")
+    
+    return benchmark_results
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description='3-Period Crop Rotation Benchmark')
+    parser.add_argument('--configs', nargs='+', type=int, default=BENCHMARK_CONFIGS,
+                       help='List of plot counts to test')
+    parser.add_argument('--dwave-token', type=str, default=None,
+                       help='D-Wave API token')
+    parser.add_argument('--gamma', type=float, default=0.1,
+                       help='Rotation synergy weight coefficient')
+    parser.add_argument('--total-land', type=float, default=100.0,
+                       help='Total land area in hectares')
+    
+    args = parser.parse_args()
+    
+    # Get D-Wave token from environment if not provided
+    dwave_token = args.dwave_token or os.getenv('DWAVE_API_TOKEN')
+    
+    if not dwave_token:
+        print("Warning: No D-Wave API token provided. Skipping D-Wave solvers.")
+    
+    # Run benchmark
+    run_rotation_benchmark(
+        config_values=args.configs,
+        dwave_token=dwave_token,
+        gamma=args.gamma,
+        fixed_total_land=args.total_land
+    )
+
+
+if __name__ == "__main__":
+    main()

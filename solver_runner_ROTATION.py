@@ -275,7 +275,6 @@ def calculate_model_complexity(formulation_type, n_farms, n_foods, n_food_groups
     
     return complexity
 
-
 def print_model_complexity_comparison(continuous_complexity, binary_complexity):
     """
     Print a formatted comparison table of model complexities.
@@ -314,7 +313,6 @@ def print_model_complexity_comparison(continuous_complexity, binary_complexity):
     
     print("\n" + "="*80)
 
-
 def create_cqm_farm(farms, foods, food_groups, config):
     """
     Creates a CQM for the food optimization problem.
@@ -352,7 +350,7 @@ def create_cqm_farm(farms, foods, food_groups, config):
         for farm in tqdm(farms) for food in foods
     )
 
-    cqm.set_objective(-objective)
+    cqm.set_objective(-objective / total_area)  # Maximize normalized objective
 
     # Constraint metadata
     constraint_metadata = {
@@ -439,6 +437,232 @@ def create_cqm_farm(farms, foods, food_groups, config):
                     }
 
     return cqm, A, Y, constraint_metadata
+
+
+def create_cqm_farm_rotation_3period(farms, foods, food_groups, config, gamma=None):
+    """
+    Creates a CQM for the 3-period crop rotation optimization problem (FARM/CONTINUOUS formulation).
+    
+    Implements the continuous formulation with rotation across 3 time periods:
+    - Time periods: t ∈ {1, 2, 3}
+    - Variables: A_{f,c,t} ∈ [0, land_f] (continuous area), Y_{f,c,t} ∈ {0,1} (binary indicator)
+    - Objective: Maximize area-normalized sum of:
+      * Linear crop values across all periods
+      * Quadratic rotation synergy between consecutive periods (t-1 to t)
+    - Constraints (per period):
+      * Total area per farm ≤ land_availability[f]
+      * Linking: A_{f,c,t} >= min_area * Y_{f,c,t} and A_{f,c,t} <= land_f * Y_{f,c,t}
+      * Food group min/max constraints per period
+    
+    Args:
+        farms: List of farm names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food group mappings
+        config: Configuration including land_availability and parameters
+        gamma: Rotation synergy weight (default: ROTATION_GAMMA global)
+    
+    Returns:
+        Tuple of (CQM, (A_vars, Y_vars), constraint_metadata)
+    """
+    # Load rotation matrix
+    rotation_matrix = load_rotation_matrix()
+    if rotation_matrix is None:
+        raise FileNotFoundError("Rotation matrix not found. Run rotation_matrix.py first.")
+    
+    if gamma is None:
+        gamma = ROTATION_GAMMA
+    
+    cqm = ConstrainedQuadraticModel()
+    
+    # Extract parameters
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    n_farms = len(farms)
+    n_crops = len(foods)
+    n_periods = 3
+    n_food_groups = len(food_groups) if food_group_constraints else 0
+    
+    total_land_area = sum(land_availability.values())
+    crop_list = list(foods.keys())
+    
+    # Count operations for progress bar
+    total_ops = (
+        n_farms * n_crops * n_periods * 2 +     # Variables (A and Y)
+        n_farms * n_crops * n_periods +         # Linear objective terms
+        n_farms * n_crops * n_crops * 2 +       # Quadratic rotation terms (periods 2 and 3)
+        n_farms * n_periods +                   # Land availability constraints
+        n_farms * n_crops * n_periods * 2 +     # Linking constraints
+        n_food_groups * 2 * n_periods           # Food group constraints
+    )
+    
+    pbar = tqdm(total=total_ops, desc="Building 3-period rotation CQM (farm formulation)", unit="op", ncols=100)
+    
+    # Define time-indexed variables A_{f,c,t} and Y_{f,c,t}
+    A = {}
+    Y = {}
+    
+    pbar.set_description("Creating time-indexed variables")
+    for farm in farms:
+        for crop in foods:
+            for t in range(1, n_periods + 1):
+                A[(farm, crop, t)] = Real(
+                    f"A_{farm}_{crop}_t{t}", 
+                    lower_bound=0, 
+                    upper_bound=land_availability[farm]
+                )
+                Y[(farm, crop, t)] = Binary(f"Y_{farm}_{crop}_t{t}")
+                pbar.update(2)
+    
+    # Build objective function
+    pbar.set_description("Building objective - linear terms")
+    objective = 0
+    
+    # Part 1: Linear crop value terms across all periods
+    for t in range(1, n_periods + 1):
+        for farm in farms:
+            for crop in foods:
+                # Calculate B_c: weighted benefit per unit area
+                B_c = (
+                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                )
+                # Add normalized term: (B_c * A_{f,c,t}) / A_tot
+                objective += B_c * A[(farm, crop, t)]
+                pbar.update(1)
+    
+    # Part 2: Quadratic rotation synergy terms between consecutive periods
+    # NOTE: For CQM, we use binary Y variables for rotation synergy (not continuous A variables)
+    # This represents synergy based on crop selection rather than exact area allocation
+    pbar.set_description("Building objective - rotation synergy terms")
+    for t in range(2, n_periods + 1):  # t = 2, 3 (comparing to t-1)
+        for farm in farms:
+            for crop_prev in crop_list:
+                for crop_curr in crop_list:
+                    # Get rotation synergy R_{c,c'} from matrix
+                    try:
+                        R_cc = rotation_matrix.loc[crop_prev, crop_curr]
+                    except KeyError:
+                        R_cc = 0.0
+                    
+                    # Add quadratic term: gamma * R_{c,c'} * Y_{f,c,t-1} * Y_{f,c',t}
+                    # Scaled by farm land availability to approximate area impact
+                    if R_cc != 0:
+                        farm_area = land_availability[farm]
+                        objective += (gamma * R_cc * farm_area * Y[(farm, crop_prev, t-1)] * Y[(farm, crop_curr, t)]) / total_land_area
+                pbar.update(1)
+    
+    # Set objective (CQM minimizes, so negate for maximization)
+    cqm.set_objective(-objective/total_land_area)
+    
+    # Constraint metadata
+    constraint_metadata = {
+        'land_availability_per_period': {},
+        'min_area_if_selected_per_period': {},
+        'max_area_if_selected_per_period': {},
+        'food_group_min_per_period': {},
+        'food_group_max_per_period': {}
+    }
+    
+    # Constraint 1: Land availability per farm per period
+    pbar.set_description("Adding land availability constraints (per period)")
+    for t in range(1, n_periods + 1):
+        for farm in farms:
+            cqm.add_constraint(
+                sum(A[(farm, crop, t)] for crop in foods) - land_availability[farm] <= 0,
+                label=f"Land_Availability_{farm}_t{t}"
+            )
+            constraint_metadata['land_availability_per_period'][f"{farm}_t{t}"] = {
+                'type': 'land_availability',
+                'farm': farm,
+                'period': t,
+                'max_land': land_availability[farm]
+            }
+            pbar.update(1)
+    
+    # Constraint 2: Linking constraints (min and max area if selected)
+    pbar.set_description("Adding linking constraints (per period)")
+    for t in range(1, n_periods + 1):
+        for farm in farms:
+            for crop in foods:
+                A_min = min_planting_area.get(crop, 0)
+                
+                # Min area if selected: A_{f,c,t} >= A_min * Y_{f,c,t}
+                cqm.add_constraint(
+                    A[(farm, crop, t)] - A_min * Y[(farm, crop, t)] >= 0,
+                    label=f"Min_Area_If_Selected_{farm}_{crop}_t{t}"
+                )
+                constraint_metadata['min_area_if_selected_per_period'][f"{farm}_{crop}_t{t}"] = {
+                    'type': 'min_area_if_selected',
+                    'farm': farm,
+                    'crop': crop,
+                    'period': t,
+                    'min_area': A_min
+                }
+                
+                # Max area if selected: A_{f,c,t} <= land_f * Y_{f,c,t}
+                cqm.add_constraint(
+                    A[(farm, crop, t)] - land_availability[farm] * Y[(farm, crop, t)] <= 0,
+                    label=f"Max_Area_If_Selected_{farm}_{crop}_t{t}"
+                )
+                constraint_metadata['max_area_if_selected_per_period'][f"{farm}_{crop}_t{t}"] = {
+                    'type': 'max_area_if_selected',
+                    'farm': farm,
+                    'crop': crop,
+                    'period': t,
+                    'max_land': land_availability[farm]
+                }
+                pbar.update(2)
+    
+    # Constraint 3: Food group constraints per period
+    pbar.set_description("Adding food group constraints (per period)")
+    if food_group_constraints:
+        for t in range(1, n_periods + 1):
+            for group, constraints in food_group_constraints.items():
+                foods_in_group = food_groups.get(group, [])
+                if foods_in_group:
+                    # Minimum foods from group in this period (global across all farms)
+                    if 'min_foods' in constraints:
+                        cqm.add_constraint(
+                            sum(Y[(farm, crop, t)] for farm in farms for crop in foods_in_group) - constraints['min_foods'] >= 0,
+                            label=f"Food_Group_Min_{group}_t{t}"
+                        )
+                        constraint_metadata['food_group_min_per_period'][f"{group}_t{t}"] = {
+                            'type': 'food_group_min_global',
+                            'group': group,
+                            'period': t,
+                            'min_foods': constraints['min_foods'],
+                            'foods_in_group': foods_in_group,
+                            'scope': 'global'
+                        }
+                        pbar.update(1)
+                    
+                    # Maximum foods from group in this period (global across all farms)
+                    if 'max_foods' in constraints:
+                        cqm.add_constraint(
+                            sum(Y[(farm, crop, t)] for farm in farms for crop in foods_in_group) - constraints['max_foods'] <= 0,
+                            label=f"Food_Group_Max_{group}_t{t}"
+                        )
+                        constraint_metadata['food_group_max_per_period'][f"{group}_t{t}"] = {
+                            'type': 'food_group_max_global',
+                            'group': group,
+                            'period': t,
+                            'max_foods': constraints['max_foods'],
+                            'foods_in_group': foods_in_group,
+                            'scope': 'global'
+                        }
+                        pbar.update(1)
+    
+    pbar.set_description("3-period rotation CQM (farm) complete")
+    pbar.close()
+    
+    return cqm, (A, Y), constraint_metadata
 
 
 def create_cqm_plots(farms, foods, food_groups, config):
@@ -637,9 +861,9 @@ def create_cqm_plots(farms, foods, food_groups, config):
     return cqm, Y, constraint_metadata
 
 
-def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
+def create_cqm_plots_rotation_3period(farms, foods, food_groups, config, gamma=None):
     """
-    Creates a CQM for the 3-period crop rotation optimization problem.
+    Creates a CQM for the 3-period crop rotation optimization problem (PLOTS/BINARY formulation).
     
     Implements the binary formulation from crop_rotation.tex:
     - Time periods: t ∈ {1, 2, 3}
@@ -735,7 +959,7 @@ def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
                     weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
                 )
                 # Add normalized term: (a_p * B_c * Y_{p,c,t}) / A_tot
-                objective += (plot_area_val * B_c * Y[(plot, crop, t)]) / total_land_area
+                objective += plot_area_val * B_c * Y[(plot, crop, t)]
                 pbar.update(1)
     
     # Part 2: Quadratic rotation synergy terms between consecutive periods
@@ -777,7 +1001,7 @@ def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
     for t in range(1, n_periods + 1):
         for plot in farms:
             cqm.add_constraint(
-                sum(Y[(plot, crop, t)] for crop in foods) <= 1,
+                sum(Y[(plot, crop, t)] for crop in foods) - 1 <= 0,
                 label=f"Plot_Assignment_{plot}_t{t}"
             )
             constraint_metadata['plot_assignment_per_period'][f"{plot}_t{t}"] = {
@@ -795,7 +1019,7 @@ def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
             if crop in min_planting_area and min_planting_area[crop] > 0:
                 min_plots = math.ceil(min_planting_area[crop] / plot_area)
                 cqm.add_constraint(
-                    sum(Y[(plot, crop, t)] for plot in farms) >= min_plots,
+                    sum(Y[(plot, crop, t)] for plot in farms) - min_plots >= 0,
                     label=f"Min_Plots_{crop}_t{t}"
                 )
                 constraint_metadata['min_plots_per_crop_per_period'][f"{crop}_t{t}"] = {
@@ -815,7 +1039,7 @@ def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
             if crop in max_planting_area:
                 max_plots = math.floor(max_planting_area[crop] / plot_area)
                 cqm.add_constraint(
-                    sum(Y[(plot, crop, t)] for plot in farms) <= max_plots,
+                    sum(Y[(plot, crop, t)] for plot in farms) - max_plots <= 0,
                     label=f"Max_Plots_{crop}_t{t}"
                 )
                 constraint_metadata['max_plots_per_crop_per_period'][f"{crop}_t{t}"] = {
@@ -838,8 +1062,7 @@ def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
                     # Minimum foods from group in this period
                     if 'min_foods' in constraints:
                         cqm.add_constraint(
-                            sum(Y[(plot, crop, t)] for plot in farms for crop in foods_in_group) >= 
-                            constraints['min_foods'],
+                            sum(Y[(plot, crop, t)] for plot in farms for crop in foods_in_group) - constraints['min_foods'] >= 0,
                             label=f"Food_Group_Min_{group}_t{t}"
                         )
                         constraint_metadata['food_group_min_per_period'][f"{group}_t{t}"] = {
@@ -854,8 +1077,7 @@ def create_cqm_rotation_3period(farms, foods, food_groups, config, gamma=None):
                     # Maximum foods from group in this period
                     if 'max_foods' in constraints:
                         cqm.add_constraint(
-                            sum(Y[(plot, crop, t)] for plot in farms for crop in foods_in_group) <= 
-                            constraints['max_foods'],
+                            sum(Y[(plot, crop, t)] for plot in farms for crop in foods_in_group) - constraints['max_foods'] <= 0,
                             label=f"Food_Group_Max_{group}_t{t}"
                         )
                         constraint_metadata['food_group_max_per_period'][f"{group}_t{t}"] = {
@@ -1118,6 +1340,215 @@ def solve_with_pulp_farm(farms, foods, food_groups, config):
     return model, results
 
 
+def solve_with_pulp_farm_rotation(farms, foods, food_groups, config, gamma=None):
+    """
+    Solve 3-period rotation problem with PuLP using FARM formulation (continuous areas).
+    
+    Uses McCormick relaxation to linearize the quadratic rotation synergy terms.
+    For each Y_{f,c,t-1} * Y_{f,c',t} product, creates auxiliary binary variable Z_{f,c,c',t}.
+    
+    Implements time-indexed variables: A_{f,c,t} and Y_{f,c,t} for farm f, crop c, period t ∈ {1,2,3}
+    
+    Args:
+        farms: List of farm names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food group mappings
+        config: Configuration including land_availability and parameters
+        gamma: Rotation synergy weight (default: ROTATION_GAMMA)
+    
+    Returns:
+        Tuple of (model, results)
+    """
+    print("  NOTE: PuLP using McCormick relaxation to linearize rotation synergy")
+    print("        Quadratic terms Y_{t-1} * Y_t converted to auxiliary variables Z")
+    
+    if gamma is None:
+        gamma = ROTATION_GAMMA
+    
+    # Load rotation matrix
+    rotation_matrix = load_rotation_matrix()
+    if rotation_matrix is None:
+        print("  WARNING: Rotation matrix not found. Proceeding with linear objective only.")
+        rotation_matrix = None
+    
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    n_periods = 3
+    total_land_area = sum(land_availability.values())
+    crop_list = list(foods.keys())
+    
+    # Create time-indexed continuous and binary variables
+    A_pulp = {}
+    Y_pulp = {}
+    
+    for farm in farms:
+        for crop in foods:
+            for t in range(1, n_periods + 1):
+                var_name_a = f"A_{farm}_{crop}_t{t}"
+                var_name_y = f"Y_{farm}_{crop}_t{t}"
+                A_pulp[var_name_a] = pl.LpVariable(var_name_a, lowBound=0, upBound=land_availability[farm])
+                Y_pulp[var_name_y] = pl.LpVariable(var_name_y, cat='Binary')
+    
+    # Create auxiliary binary variables Z for linearizing rotation synergy
+    # Z_{f,c_prev,c_curr,t} represents Y_{f,c_prev,t-1} * Y_{f,c_curr,t}
+    Z_pulp = {}
+    rotation_pairs = []
+    
+    if rotation_matrix is not None:
+        for t in range(2, n_periods + 1):  # t = 2, 3
+            for farm in farms:
+                for crop_prev in crop_list:
+                    for crop_curr in crop_list:
+                        try:
+                            R_cc = rotation_matrix.loc[crop_prev, crop_curr]
+                            if abs(R_cc) > 1e-6:  # Only create Z if rotation benefit exists
+                                var_name_z = f"Z_{farm}_{crop_prev}_{crop_curr}_t{t}"
+                                Z_pulp[var_name_z] = pl.LpVariable(var_name_z, cat='Binary')
+                                rotation_pairs.append((farm, crop_prev, crop_curr, t, R_cc))
+                        except KeyError:
+                            continue  # Crop not in rotation matrix
+    
+    print(f"  Created {len(rotation_pairs)} rotation synergy pairs to linearize")
+    
+    # Build objective function
+    goal = 0
+    
+    # Part 1: Linear crop value terms
+    for t in range(1, n_periods + 1):
+        for farm in farms:
+            for crop in foods:
+                var_name_a = f"A_{farm}_{crop}_t{t}"
+                B_c = (
+                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                )
+                goal += B_c * A_pulp[var_name_a]
+    
+    # Part 2: Linearized quadratic rotation synergy
+    # Use Z variables instead of Y_{t-1} * Y_t products
+    if rotation_pairs:
+        synergy_terms = []
+        for farm, crop_prev, crop_curr, t, R_cc in rotation_pairs:
+            var_name_z = f"Z_{farm}_{crop_prev}_{crop_curr}_t{t}"
+            # Synergy contribution: gamma * R_{c,c'} * Z (Z approximates Y_{t-1} * Y_t)
+            synergy_terms.append(gamma * R_cc * Z_pulp[var_name_z])
+        goal += pl.lpSum(synergy_terms)
+    
+    # Normalize by total land area
+    goal = goal / total_land_area
+    
+    model = pl.LpProblem("Rotation_3Period_Farm_Linearized", pl.LpMaximize)
+    model += goal, "Objective"
+    
+    # McCormick relaxation constraints for Z_{f,c_prev,c_curr,t} = Y_{f,c_prev,t-1} * Y_{f,c_curr,t}
+    # Constraints: Z <= Y_{t-1}, Z <= Y_t, Z >= Y_{t-1} + Y_t - 1
+    if rotation_pairs:
+        for farm, crop_prev, crop_curr, t, R_cc in rotation_pairs:
+            var_name_z = f"Z_{farm}_{crop_prev}_{crop_curr}_t{t}"
+            var_name_y_prev = f"Y_{farm}_{crop_prev}_t{t-1}"
+            var_name_y_curr = f"Y_{farm}_{crop_curr}_t{t}"
+            
+            model += Z_pulp[var_name_z] <= Y_pulp[var_name_y_prev], \
+                    f"Z_upper1_{farm}_{crop_prev}_{crop_curr}_t{t}"
+            model += Z_pulp[var_name_z] <= Y_pulp[var_name_y_curr], \
+                    f"Z_upper2_{farm}_{crop_prev}_{crop_curr}_t{t}"
+            model += Z_pulp[var_name_z] >= Y_pulp[var_name_y_prev] + Y_pulp[var_name_y_curr] - 1, \
+                    f"Z_lower_{farm}_{crop_prev}_{crop_curr}_t{t}"
+    
+    # Constraint 1: Land availability per farm per period
+    for t in range(1, n_periods + 1):
+        for farm in farms:
+            area_vars = [A_pulp[f"A_{farm}_{crop}_t{t}"] for crop in foods]
+            model += pl.lpSum(area_vars) <= land_availability[farm], f"Land_{farm}_Period_{t}"
+    
+    # Constraint 2: Linking constraints (min and max area if selected)
+    for t in range(1, n_periods + 1):
+        for farm in farms:
+            for crop in foods:
+                var_name_a = f"A_{farm}_{crop}_t{t}"
+                var_name_y = f"Y_{farm}_{crop}_t{t}"
+                A_min = min_planting_area.get(crop, 0)
+                
+                # Min area if selected
+                model += A_pulp[var_name_a] >= A_min * Y_pulp[var_name_y], \
+                        f"MinArea_{farm}_{crop}_Period_{t}"
+                
+                # Max area if selected
+                model += A_pulp[var_name_a] <= land_availability[farm] * Y_pulp[var_name_y], \
+                        f"MaxArea_{farm}_{crop}_Period_{t}"
+    
+    # Constraint 3: Food group constraints per period (if specified)
+    if food_group_constraints:
+        for t in range(1, n_periods + 1):
+            for group, constraints in food_group_constraints.items():
+                foods_in_group = food_groups.get(group, [])
+                if foods_in_group:
+                    group_vars = [Y_pulp[f"Y_{farm}_{crop}_t{t}"] 
+                                  for farm in farms for crop in foods_in_group]
+                    if 'min_foods' in constraints:
+                        model += pl.lpSum(group_vars) >= constraints['min_foods'], \
+                                f"FoodGroup_{group}_Period_{t}_Min"
+                    if 'max_foods' in constraints:
+                        model += pl.lpSum(group_vars) <= constraints['max_foods'], \
+                                f"FoodGroup_{group}_Period_{t}_Max"
+    
+    # Solve with Gurobi
+    print("  Solving 3-period farm rotation with PuLP/Gurobi (linearized)...")
+    start_time = time.time()
+    gurobi_options = [
+        ('Method', 2),           # Barrier method
+        ('Crossover', 0),        # Disable crossover
+        ('BarHomogeneous', 1),   # Homogeneous barrier
+        ('Threads', 0),          # Use all threads
+        ('MIPFocus', 1),         # Focus on solutions
+        ('Presolve', 2),         # Aggressive presolve
+    ]
+    
+    try:
+        solver = pl.GUROBI(msg=1, timeLimit=300)
+        for param, value in gurobi_options:
+            solver.optionsDict[param] = value
+        model.solve(solver)
+    except Exception as e:
+        print(f"  Gurobi failed, trying default solver: {e}")
+        model.solve()
+    
+    solve_time = time.time() - start_time
+    
+    # Extract results
+    results = {
+        'status': pl.LpStatus[model.status],
+        'objective_value': pl.value(model.objective),
+        'solve_time': solve_time,
+        'areas': {},
+        'selections': {},
+        'rotation_pairs': {}  # Store Z values for analysis
+    }
+    
+    # Extract solution values
+    for var_name, var in A_pulp.items():
+        results['areas'][var_name] = var.value() if var.value() is not None else 0.0
+    
+    for var_name, var in Y_pulp.items():
+        results['selections'][var_name] = var.value() if var.value() is not None else 0.0
+    
+    for var_name, var in Z_pulp.items():
+        results['rotation_pairs'][var_name] = var.value() if var.value() is not None else 0.0
+    
+    print(f"  PuLP/Gurobi: {results['status']} in {solve_time:.3f}s")
+    if results['objective_value'] is not None:
+        print(f"  Objective (with linearized rotation): {results['objective_value']:.6f}")
+    
+    return model, results
+
+
 def solve_with_pulp_plots(farms, foods, food_groups, config):
     """
     Solve with PuLP using BINARY formulation.
@@ -1205,6 +1636,461 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
     
     return model, results
 
+
+def solve_with_pulp_plots_rotation(farms, foods, food_groups, config, gamma=None):
+    """
+    Solve 3-period rotation problem with PuLP using PLOTS formulation (binary).
+    
+    Uses McCormick relaxation to linearize the quadratic rotation synergy terms.
+    For each Y_{p,c,t-1} * Y_{p,c',t} product, creates auxiliary binary variable Z_{p,c,c',t}.
+    
+    Implements time-indexed binary variables: Y_{p,c,t} for plot p, crop c, period t ∈ {1,2,3}
+    
+    Args:
+        farms: List of plot names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food group mappings
+        config: Configuration including land_availability and parameters
+        gamma: Rotation synergy weight (default: ROTATION_GAMMA)
+    
+    Returns:
+        Tuple of (model, results)
+    """
+    print("  NOTE: PuLP using McCormick relaxation to linearize rotation synergy")
+    print("        Quadratic terms Y_{t-1} * Y_t converted to auxiliary variables Z")
+    
+    if gamma is None:
+        gamma = ROTATION_GAMMA
+    
+    # Load rotation matrix
+    rotation_matrix = load_rotation_matrix()
+    if rotation_matrix is None:
+        print("  WARNING: Rotation matrix not found. Proceeding with linear objective only.")
+        rotation_matrix = None
+    
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    n_periods = 3
+    total_land_area = sum(land_availability.values())
+    crop_list = list(foods.keys())
+    
+    # Create time-indexed binary variables Y_{p,c,t}
+    Y_pulp = {}
+    for plot in farms:
+        for crop in foods:
+            for t in range(1, n_periods + 1):
+                var_name = f"Y_{plot}_{crop}_t{t}"
+                Y_pulp[var_name] = pl.LpVariable(var_name, cat='Binary')
+    
+    # Create auxiliary binary variables Z for linearizing rotation synergy
+    # Z_{p,c_prev,c_curr,t} represents Y_{p,c_prev,t-1} * Y_{p,c_curr,t}
+    Z_pulp = {}
+    rotation_pairs = []
+    
+    if rotation_matrix is not None:
+        for t in range(2, n_periods + 1):  # t = 2, 3
+            for plot in farms:
+                plot_area = land_availability[plot]
+                for crop_prev in crop_list:
+                    for crop_curr in crop_list:
+                        try:
+                            R_cc = rotation_matrix.loc[crop_prev, crop_curr]
+                            if abs(R_cc) > 1e-6:  # Only create Z if rotation benefit exists
+                                var_name_z = f"Z_{plot}_{crop_prev}_{crop_curr}_t{t}"
+                                Z_pulp[var_name_z] = pl.LpVariable(var_name_z, cat='Binary')
+                                rotation_pairs.append((plot, crop_prev, crop_curr, t, R_cc, plot_area))
+                        except KeyError:
+                            continue  # Crop not in rotation matrix
+    
+    print(f"  Created {len(rotation_pairs)} rotation synergy pairs to linearize")
+    
+    # Build objective function
+    goal = 0
+    
+    # Part 1: Linear crop value terms
+    for t in range(1, n_periods + 1):
+        for plot in farms:
+            plot_area = land_availability[plot]
+            for crop in foods:
+                var_name = f"Y_{plot}_{crop}_t{t}"
+                area_weighted_value = plot_area * (
+                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                )
+                goal += area_weighted_value * Y_pulp[var_name]
+    
+    # Part 2: Linearized quadratic rotation synergy
+    # Use Z variables instead of Y_{t-1} * Y_t products
+    if rotation_pairs:
+        synergy_terms = []
+        for plot, crop_prev, crop_curr, t, R_cc, plot_area in rotation_pairs:
+            var_name_z = f"Z_{plot}_{crop_prev}_{crop_curr}_t{t}"
+            # Synergy contribution: gamma * plot_area * R_{c,c'} * Z
+            synergy_terms.append(gamma * plot_area * R_cc * Z_pulp[var_name_z])
+        goal += pl.lpSum(synergy_terms)
+    
+    # Normalize by total land area
+    goal = goal / total_land_area
+    
+    model = pl.LpProblem("Rotation_3Period_Plots_Linearized", pl.LpMaximize)
+    model += goal, "Objective"
+    
+    # McCormick relaxation constraints for Z_{p,c_prev,c_curr,t} = Y_{p,c_prev,t-1} * Y_{p,c_curr,t}
+    # Constraints: Z <= Y_{t-1}, Z <= Y_t, Z >= Y_{t-1} + Y_t - 1
+    if rotation_pairs:
+        for plot, crop_prev, crop_curr, t, R_cc, plot_area in rotation_pairs:
+            var_name_z = f"Z_{plot}_{crop_prev}_{crop_curr}_t{t}"
+            var_name_y_prev = f"Y_{plot}_{crop_prev}_t{t-1}"
+            var_name_y_curr = f"Y_{plot}_{crop_curr}_t{t}"
+            
+            model += Z_pulp[var_name_z] <= Y_pulp[var_name_y_prev], \
+                    f"Z_upper1_{plot}_{crop_prev}_{crop_curr}_t{t}"
+            model += Z_pulp[var_name_z] <= Y_pulp[var_name_y_curr], \
+                    f"Z_upper2_{plot}_{crop_prev}_{crop_curr}_t{t}"
+            model += Z_pulp[var_name_z] >= Y_pulp[var_name_y_prev] + Y_pulp[var_name_y_curr] - 1, \
+                    f"Z_lower_{plot}_{crop_prev}_{crop_curr}_t{t}"
+    
+    # Constraint 1: Plot single assignment per period
+    for t in range(1, n_periods + 1):
+        for plot in farms:
+            constraint_vars = [Y_pulp[f"Y_{plot}_{crop}_t{t}"] for crop in foods]
+            model += pl.lpSum(constraint_vars) <= 1, f"Plot_{plot}_Period_{t}_SingleAssignment"
+    
+    # Constraint 2: Food group constraints per period (if specified)
+    if food_group_constraints:
+        for t in range(1, n_periods + 1):
+            for group, constraints in food_group_constraints.items():
+                foods_in_group = food_groups.get(group, [])
+                if foods_in_group:
+                    group_vars = [Y_pulp[f"Y_{plot}_{crop}_t{t}"] 
+                                  for plot in farms for crop in foods_in_group]
+                    if 'min_foods' in constraints:
+                        model += pl.lpSum(group_vars) >= constraints['min_foods'], \
+                                f"FoodGroup_{group}_Period_{t}_Min"
+                    if 'max_foods' in constraints:
+                        model += pl.lpSum(group_vars) <= constraints['max_foods'], \
+                                f"FoodGroup_{group}_Period_{t}_Max"
+    
+    # Solve with Gurobi
+    print("  Solving 3-period plots rotation with PuLP/Gurobi (linearized)...")
+    start_time = time.time()
+    gurobi_options = [
+        ('Method', 2),           # Barrier method
+        ('Crossover', 0),        # Disable crossover
+        ('BarHomogeneous', 1),   # Homogeneous barrier
+        ('Threads', 0),          # Use all threads
+        ('MIPFocus', 1),         # Focus on solutions
+        ('Presolve', 2),         # Aggressive presolve
+    ]
+    
+    try:
+        solver = pl.GUROBI(msg=1, timeLimit=300)
+        for param, value in gurobi_options:
+            solver.optionsDict[param] = value
+        model.solve(solver)
+    except Exception as e:
+        print(f"  Gurobi failed, trying default solver: {e}")
+        model.solve()
+    
+    solve_time = time.time() - start_time
+    
+    # Extract results
+    results = {
+        'status': pl.LpStatus[model.status],
+        'objective_value': pl.value(model.objective),
+        'solve_time': solve_time,
+        'solution': {},
+        'rotation_pairs': {}  # Store Z values for analysis
+    }
+    
+    # Extract solution values
+    for var_name, var in Y_pulp.items():
+        results['solution'][var_name] = var.value() if var.value() is not None else 0.0
+    
+    for var_name, var in Z_pulp.items():
+        results['rotation_pairs'][var_name] = var.value() if var.value() is not None else 0.0
+    
+    print(f"  PuLP/Gurobi: {results['status']} in {solve_time:.3f}s")
+    if results['objective_value'] is not None:
+        print(f"  Objective (with linearized rotation): {results['objective_value']:.6f}")
+    
+    return model, results
+    
+
+
+
+
+def solve_with_pyomo_farm_rotation(farms, foods, food_groups, config, gamma=None):
+    """Solve 3-period rotation with Pyomo (farm formulation, native quadratic)."""
+    print('  NOTE: Pyomo handles quadratic rotation terms natively (no linearization needed)')
+    
+    if gamma is None:
+        gamma = ROTATION_GAMMA
+    
+    rotation_matrix = load_rotation_matrix()
+    if rotation_matrix is None:
+        print('  WARNING: Rotation matrix not found.')
+        rotation_matrix = None
+    
+    try:
+        import pyomo.environ as pyo
+        from pyomo.opt import SolverFactory
+    except ImportError:
+        raise ImportError('Pyomo is required. Install with: pip install pyomo')
+    
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    n_periods = 3
+    total_land_area = sum(land_availability.values())
+    crop_list = list(foods.keys())
+    
+    model = pyo.ConcreteModel()
+    model.farms = pyo.Set(initialize=farms)
+    model.crops = pyo.Set(initialize=crop_list)
+    model.periods = pyo.Set(initialize=range(1, n_periods + 1))
+    
+    model.A = pyo.Var(model.farms, model.crops, model.periods, 
+                      domain=pyo.NonNegativeReals, 
+                      bounds=lambda m, f, c, t: (0, land_availability[f]))
+    model.Y = pyo.Var(model.farms, model.crops, model.periods, domain=pyo.Binary)
+    
+    def objective_rule(m):
+        obj = 0.0
+        for t in m.periods:
+            for f in m.farms:
+                for c in m.crops:
+                    B_c = (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
+                           weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
+                           weights.get('environmental_impact', 0) * foods[c].get('environmental_impact', 0) +
+                           weights.get('affordability', 0) * foods[c].get('affordability', 0) +
+                           weights.get('sustainability', 0) * foods[c].get('sustainability', 0))
+                    obj += B_c * m.A[f, c, t]
+        if rotation_matrix is not None:
+            for t in range(2, n_periods + 1):
+                for f in m.farms:
+                    for c_prev in m.crops:
+                        for c_curr in m.crops:
+                            try:
+                                R_cc = rotation_matrix.loc[c_prev, c_curr]
+                                if abs(R_cc) > 1e-6:
+                                    obj += (gamma * R_cc * m.A[f, c_prev, t-1] * m.A[f, c_curr, t]) / total_land_area
+                            except KeyError:
+                                continue
+        return obj / total_land_area
+    
+    model.objective = pyo.Objective(rule=objective_rule, sense=pyo.maximize)
+    
+    def land_constraint_rule(m, f, t):
+        return sum(m.A[f, c, t] for c in m.crops) <= land_availability[f]
+    model.land_constraint = pyo.Constraint(model.farms, model.periods, rule=land_constraint_rule)
+    
+    def min_area_rule(m, f, c, t):
+        if c in min_planting_area:
+            return m.A[f, c, t] >= min_planting_area[c] * m.Y[f, c, t]
+        return pyo.Constraint.Skip
+    model.min_area_constraint = pyo.Constraint(model.farms, model.crops, model.periods, rule=min_area_rule)
+    
+    def max_area_rule(m, f, c, t):
+        return m.A[f, c, t] <= land_availability[f] * m.Y[f, c, t]
+    model.max_area_constraint = pyo.Constraint(model.farms, model.crops, model.periods, rule=max_area_rule)
+    
+    if food_group_constraints:
+        def food_group_min_rule(m, g, t):
+            if g in food_groups:
+                crops_in_group = food_groups[g]
+                min_foods = food_group_constraints[g].get('min_foods', 0)
+                if min_foods > 0:
+                    return sum(m.Y[f, c, t] for f in m.farms for c in crops_in_group) >= min_foods
+            return pyo.Constraint.Skip
+        model.food_group_min = pyo.Constraint(food_groups.keys(), model.periods, rule=food_group_min_rule)
+        
+        def food_group_max_rule(m, g, t):
+            if g in food_groups:
+                crops_in_group = food_groups[g]
+                max_foods = food_group_constraints[g].get('max_foods', len(crops_in_group))
+                if max_foods < len(crops_in_group):
+                    return sum(m.Y[f, c, t] for f in m.farms for c in crops_in_group) <= max_foods
+            return pyo.Constraint.Skip
+        model.food_group_max = pyo.Constraint(food_groups.keys(), model.periods, rule=food_group_max_rule)
+    
+    print('  Solving 3-period farm rotation with Pyomo/Gurobi (native quadratic)...')
+    start_time = time.time()
+    
+    solver = SolverFactory('gurobi')
+    solver.options['TimeLimit'] = 300
+    solver.options['NonConvex'] = 2
+    
+    results_obj = solver.solve(model, tee=False)
+    solve_time = time.time() - start_time
+    
+    status_map = {
+        pyo.TerminationCondition.optimal: 'Optimal',
+        pyo.TerminationCondition.feasible: 'Feasible',
+        pyo.TerminationCondition.infeasible: 'Infeasible',
+        pyo.TerminationCondition.unbounded: 'Unbounded',
+        pyo.TerminationCondition.maxTimeLimit: 'Time Limit',
+        pyo.TerminationCondition.maxIterations: 'Max Iterations'
+    }
+    status = status_map.get(results_obj.solver.termination_condition, 'Unknown')
+    
+    results = {
+        'status': status,
+        'objective_value': pyo.value(model.objective) if status in ['Optimal', 'Feasible'] else None,
+        'solve_time': solve_time,
+        'solution': {},
+        'areas': {},
+        'selections': {}
+    }
+    
+    if status in ['Optimal', 'Feasible']:
+        for f in model.farms:
+            for c in model.crops:
+                for t in model.periods:
+                    var_name_a = f'A_{f}_{c}_t{t}'
+                    var_name_y = f'Y_{f}_{c}_t{t}'
+                    results['areas'][var_name_a] = pyo.value(model.A[f, c, t])
+                    results['selections'][var_name_y] = pyo.value(model.Y[f, c, t])
+                    results['solution'][var_name_y] = pyo.value(model.Y[f, c, t])
+    
+    print(f'  Pyomo/Gurobi: {results["status"]} in {solve_time:.3f}s')
+    if results['objective_value'] is not None:
+        print(f'  Objective (native quadratic): {results["objective_value"]:.6f}')
+    
+    return model, results
+
+
+def solve_with_pyomo_plots_rotation(farms, foods, food_groups, config, gamma=None):
+    """Solve 3-period rotation with Pyomo (plots formulation, native quadratic)."""
+    print('  NOTE: Pyomo handles quadratic rotation terms natively (no linearization needed)')
+    
+    if gamma is None:
+        gamma = ROTATION_GAMMA
+    
+    rotation_matrix = load_rotation_matrix()
+    if rotation_matrix is None:
+        print('  WARNING: Rotation matrix not found.')
+        rotation_matrix = None
+    
+    try:
+        import pyomo.environ as pyo
+        from pyomo.opt import SolverFactory
+    except ImportError:
+        raise ImportError('Pyomo is required. Install with: pip install pyomo')
+    
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    n_periods = 3
+    total_land_area = sum(land_availability.values())
+    crop_list = list(foods.keys())
+    
+    model = pyo.ConcreteModel()
+    model.plots = pyo.Set(initialize=farms)
+    model.crops = pyo.Set(initialize=crop_list)
+    model.periods = pyo.Set(initialize=range(1, n_periods + 1))
+    model.Y = pyo.Var(model.plots, model.crops, model.periods, domain=pyo.Binary)
+    
+    def objective_rule(m):
+        obj = 0.0
+        for t in m.periods:
+            for p in m.plots:
+                for c in m.crops:
+                    B_c = (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
+                           weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
+                           weights.get('environmental_impact', 0) * foods[c].get('environmental_impact', 0) +
+                           weights.get('affordability', 0) * foods[c].get('affordability', 0) +
+                           weights.get('sustainability', 0) * foods[c].get('sustainability', 0))
+                    obj += land_availability[p] * B_c * m.Y[p, c, t]
+        if rotation_matrix is not None:
+            for t in range(2, n_periods + 1):
+                for p in m.plots:
+                    for c_prev in m.crops:
+                        for c_curr in m.crops:
+                            try:
+                                R_cc = rotation_matrix.loc[c_prev, c_curr]
+                                if abs(R_cc) > 1e-6:
+                                    obj += (gamma * (land_availability[p]**2) * R_cc * m.Y[p, c_prev, t-1] * m.Y[p, c_curr, t]) / total_land_area
+                            except KeyError:
+                                continue
+        return obj / total_land_area
+    
+    model.objective = pyo.Objective(rule=objective_rule, sense=pyo.maximize)
+    
+    def plot_assignment_rule(m, p, t):
+        return sum(m.Y[p, c, t] for c in m.crops) <= 1
+    model.plot_assignment = pyo.Constraint(model.plots, model.periods, rule=plot_assignment_rule)
+    
+    if food_group_constraints:
+        def food_group_min_rule(m, g, t):
+            if g in food_groups:
+                crops_in_group = food_groups[g]
+                min_foods = food_group_constraints[g].get('min_foods', 0)
+                if min_foods > 0:
+                    return sum(m.Y[p, c, t] for p in m.plots for c in crops_in_group) >= min_foods
+            return pyo.Constraint.Skip
+        model.food_group_min = pyo.Constraint(food_groups.keys(), model.periods, rule=food_group_min_rule)
+        
+        def food_group_max_rule(m, g, t):
+            if g in food_groups:
+                crops_in_group = food_groups[g]
+                max_foods = food_group_constraints[g].get('max_foods', len(crops_in_group))
+                if max_foods < len(crops_in_group):
+                    return sum(m.Y[p, c, t] for p in m.plots for c in crops_in_group) <= max_foods
+            return pyo.Constraint.Skip
+        model.food_group_max = pyo.Constraint(food_groups.keys(), model.periods, rule=food_group_max_rule)
+    
+    print('  Solving 3-period plots rotation with Pyomo/Gurobi (native quadratic)...')
+    start_time = time.time()
+    
+    solver = SolverFactory('gurobi')
+    solver.options['TimeLimit'] = 300
+    solver.options['NonConvex'] = 2
+    
+    results_obj = solver.solve(model, tee=False)
+    solve_time = time.time() - start_time
+    
+    status_map = {
+        pyo.TerminationCondition.optimal: 'Optimal',
+        pyo.TerminationCondition.feasible: 'Feasible',
+        pyo.TerminationCondition.infeasible: 'Infeasible',
+        pyo.TerminationCondition.unbounded: 'Unbounded',
+        pyo.TerminationCondition.maxTimeLimit: 'Time Limit',
+        pyo.TerminationCondition.maxIterations: 'Max Iterations'
+    }
+    status = status_map.get(results_obj.solver.termination_condition, 'Unknown')
+    
+    results = {
+        'status': status,
+        'objective_value': pyo.value(model.objective) if status in ['Optimal', 'Feasible'] else None,
+        'solve_time': solve_time,
+        'solution': {}
+    }
+    
+    if status in ['Optimal', 'Feasible']:
+        for p in model.plots:
+            for c in model.crops:
+                for t in model.periods:
+                    var_name = f'Y_{p}_{c}_t{t}'
+                    results['solution'][var_name] = pyo.value(model.Y[p, c, t])
+    
+    print(f'  Pyomo/Gurobi: {results["status"]} in {solve_time:.3f}s')
+    if results['objective_value'] is not None:
+        print(f'  Objective (native quadratic): {results["objective_value"]:.6f}')
+    
+    return model, results
+    
 
 def validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config):
     """

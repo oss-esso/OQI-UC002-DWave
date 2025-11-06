@@ -742,9 +742,15 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
                 total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                 
+                # Validate constraints
+                validation = solver_runner.validate_solution_constraints(
+                    cqm_sample, plots_list, foods, food_groups, land_data, config
+                )
+                
                 # Format objective value for printing
                 obj_str = f"{cqm_objective:.6f}" if cqm_objective is not None else "N/A"
-                print(f"       ✓ Gurobi QUBO: {qubo_result['status']} in {qubo_time:.3f}s (obj: {obj_str})")
+                violations_str = f", {validation['n_violations']} violations" if validation else ""
+                print(f"       ✓ Gurobi QUBO: {qubo_result['status']} in {qubo_time:.3f}s (obj: {obj_str}{violations_str})")
                 
                 gurobi_qubo_result = {
                     'status': qubo_result['status'],
@@ -760,7 +766,8 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     'n_variables': len(bqm.variables),
                     'bqm_interactions': qubo_result.get('bqm_interactions', 0),
                     'total_covered_area': total_covered_area,
-                    'solution_plantations': cqm_sample
+                    'solution_plantations': cqm_sample,
+                    'validation': validation
                 }
                 
                 results['solvers']['gurobi_qubo'] = gurobi_qubo_result

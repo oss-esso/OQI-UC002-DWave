@@ -65,6 +65,12 @@ R_{c,c'}\;A_{f,c,t-1}\;A_{f,c',t}
   \item The first double-sum is the area-weighted value of crops across all periods.
   \item The second term rewards (if \(R_{c,c'}>0\)) or penalizes (if \(R_{c,c'}<0\)) planting \(c'\) immediately after \(c\) on the \emph{same farm area} between consecutive periods \(t-1\) and \(t\). The scalar \(\gamma\) controls the relative importance of rotation synergy.
   \item Note: If the rotation effect is local to plots, replace sum over farms \(f\) with sum over plots \(p\) in the binary model.
+  \item \textbf{D-Wave CQM Implementation Note:} D-Wave's Constrained Quadratic Model (CQM) does not support quadratic terms between continuous (REAL) variables. For the continuous formulation when using D-Wave CQM, the rotation synergy term must be reformulated using the binary indicator variables \(Y_{f,c,t}\) instead of continuous area variables \(A_{f,c,t}\):
+  \begin{equation}
+    \gamma \sum_{t=2}^3 \sum_{f\in\mathcal F}\sum_{c\in\mathcal C}\sum_{c'\in\mathcal C}
+    R_{c,c'}\;L_f\;Y_{f,c,t-1}\;Y_{f,c',t}
+  \end{equation}
+  where \(L_f\) (farm area) scales the synergy to approximate the area-weighted effect. This binary-based synergy represents rotation benefits based on crop selection rather than exact area allocation.
 \end{itemize}
 
 \subsection{Constraints (time-indexed)}
@@ -100,6 +106,13 @@ R_{c,c'}\;A_{f,c,t-1}\;A_{f,c',t}
 \begin{itemize}
   \item The rotation term in \eqref{eq:cont_obj} is \emph{quadratic} in the continuous area variables \(A_{f,c,t}\). This generally produces a nonconvex problem (unless \(R\) and \(\gamma\) happen to yield a concave quadratic overall); expect to use nonlinear global solvers or to reformulate as discrete (binary) if global optimality is required.
   \item If you prefer fraction variables \(x_{f,c,t}=A_{f,c,t}/A_{\text{tot}}\), rewrite all areas consistent with the normalization; the structure remains the same.
+  \item \textbf{McCormick Relaxation for Classical MILP Solvers:} When solving the continuous formulation with classical MILP solvers (e.g., Gurobi via PuLP), the bilinear rotation terms \(Y_{f,c,t-1} \cdot Y_{f,c',t}\) must be linearized. The McCormick relaxation introduces auxiliary binary variables \(Z_{f,c,c',t}\) to represent each product, with constraints:
+  \begin{align*}
+    Z_{f,c,c',t} &\le Y_{f,c,t-1}, \\
+    Z_{f,c,c',t} &\le Y_{f,c',t}, \\
+    Z_{f,c,c',t} &\ge Y_{f,c,t-1} + Y_{f,c',t} - 1.
+  \end{align*}
+  This linearization significantly increases problem size (adding \(O(|\mathcal{F}| \cdot |\mathcal{C}|^2 \cdot T)\) auxiliary variables and constraints) and makes the continuous formulation much slower than the pure binary formulation for classical solvers. The continuous formulation is primarily designed for D-Wave CQM, which handles continuous variables and quadratic terms natively without linearization.
 \end{itemize}
 
 \section{Binary (plot-level) formulation (three periods, normalized by total area)}

@@ -1,0 +1,258 @@
+{
+  "metadata": {
+    "timestamp": "2025-11-06T11:31:23.397640",
+    "config_values": [
+      1
+    ],
+    "total_runtime": 1.774406909942627,
+    "dwave_enabled": false,
+    "scenarios": [
+      "farm",
+      "patch"
+    ],
+    "solvers": {
+      "farm": [
+        "gurobi",
+        "dwave_cqm"
+      ],
+      "patch": [
+        "gurobi",
+        "dwave_cqm",
+        "gurobi_qubo",
+        "dwave_bqm"
+      ]
+    }
+  },
+  "farm_results": [
+    {
+      "sample_id": 0,
+      "scenario_type": "farm",
+      "land_method": "uneven_distribution",
+      "n_units": 1,
+      "total_area": 100.0,
+      "n_foods": 27,
+      "n_variables": 54,
+      "n_constraints": 65,
+      "cqm_time": 0.0445249080657959,
+      "solvers": {
+        "gurobi": {
+          "status": "Optimal",
+          "objective_value": 0.4299501869230915,
+          "solve_time": 0.01782083511352539,
+          "solver_time": 0.014541864395141602,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 1,
+          "total_area": 100.0,
+          "n_foods": 27,
+          "n_variables": 54,
+          "n_constraints": 65,
+          "solution_areas": {
+            "Farm1_Beef": 0.0,
+            "Farm1_Chicken": 0.0,
+            "Farm1_Egg": 0.0,
+            "Farm1_Lamb": 0.0,
+            "Farm1_Pork": 0.0001,
+            "Farm1_Apple": 0.0,
+            "Farm1_Avocado": 0.0,
+            "Farm1_Banana": 0.0,
+            "Farm1_Durian": 0.0,
+            "Farm1_Guava": 0.0001,
+            "Farm1_Mango": 0.0,
+            "Farm1_Orange": 0.0,
+            "Farm1_Papaya": 0.0,
+            "Farm1_Watermelon": 0.0,
+            "Farm1_Chickpeas": 0.00010000000001421086,
+            "Farm1_Peanuts": 0.0,
+            "Farm1_Tempeh": 0.0,
+            "Farm1_Tofu": 0.0,
+            "Farm1_Corn": 0.0,
+            "Farm1_Potato": 0.0001,
+            "Farm1_Cabbage": 0.0,
+            "Farm1_Cucumber": 0.0,
+            "Farm1_Eggplant": 0.0,
+            "Farm1_Long bean": 0.0,
+            "Farm1_Pumpkin": 0.0,
+            "Farm1_Spinach": 99.99959999999999,
+            "Farm1_Tomatoes": 0.0
+          },
+          "solution_selections": {
+            "Farm1_Beef": -0.0,
+            "Farm1_Chicken": -0.0,
+            "Farm1_Egg": -0.0,
+            "Farm1_Lamb": -0.0,
+            "Farm1_Pork": 1.0,
+            "Farm1_Apple": -0.0,
+            "Farm1_Avocado": -0.0,
+            "Farm1_Banana": -0.0,
+            "Farm1_Durian": -0.0,
+            "Farm1_Guava": 1.0,
+            "Farm1_Mango": -0.0,
+            "Farm1_Orange": -0.0,
+            "Farm1_Papaya": -0.0,
+            "Farm1_Watermelon": -0.0,
+            "Farm1_Chickpeas": 1.0,
+            "Farm1_Peanuts": -0.0,
+            "Farm1_Tempeh": -0.0,
+            "Farm1_Tofu": -0.0,
+            "Farm1_Corn": -0.0,
+            "Farm1_Potato": 1.0,
+            "Farm1_Cabbage": -0.0,
+            "Farm1_Cucumber": -0.0,
+            "Farm1_Eggplant": -0.0,
+            "Farm1_Long bean": -0.0,
+            "Farm1_Pumpkin": -0.0,
+            "Farm1_Spinach": 1.0,
+            "Farm1_Tomatoes": -0.0
+          },
+          "total_covered_area": 100.0
+        },
+        "dwave_cqm": {
+          "status": "Skipped",
+          "success": false
+        }
+      }
+    }
+  ],
+  "patch_results": [
+    {
+      "sample_id": 0,
+      "scenario_type": "patch",
+      "land_method": "even_grid",
+      "n_units": 1,
+      "total_area": 100.0,
+      "n_foods": 27,
+      "n_variables": 27,
+      "n_constraints": 38,
+      "cqm_time": 0.005187273025512695,
+      "solvers": {
+        "gurobi": {
+          "status": "Infeasible",
+          "objective_value": null,
+          "solve_time": 0.002012968063354492,
+          "solver_time": 0.001325845718383789,
+          "success": false,
+          "sample_id": 0,
+          "n_units": 1,
+          "total_area": 100.0,
+          "n_foods": 27,
+          "n_variables": 27,
+          "n_constraints": 38
+        },
+        "dwave_cqm": {
+          "status": "Skipped",
+          "success": false
+        },
+        "dwave_bqm": {
+          "status": "Skipped",
+          "success": false
+        },
+        "gurobi_qubo": {
+          "status": "Optimal",
+          "objective_value": 0.7390339939485553,
+          "bqm_energy": 2899999.2609660067,
+          "solve_time": 1.296900987625122,
+          "bqm_conversion_time": 0.006455898284912109,
+          "success": true,
+          "sample_id": 0,
+          "n_units": 1,
+          "total_area": 100.0,
+          "n_foods": 27,
+          "n_variables": 41,
+          "bqm_interactions": 0,
+          "total_covered_area": 1500.0,
+          "solution_plantations": {
+            "Y_Patch1_Beef": 0,
+            "Y_Patch1_Chicken": 0,
+            "Y_Patch1_Egg": 0,
+            "Y_Patch1_Lamb": 0,
+            "Y_Patch1_Pork": 1,
+            "Y_Patch1_Apple": 0,
+            "Y_Patch1_Avocado": 0,
+            "Y_Patch1_Banana": 0,
+            "Y_Patch1_Durian": 0,
+            "Y_Patch1_Guava": 0,
+            "Y_Patch1_Mango": 0,
+            "Y_Patch1_Orange": 0,
+            "Y_Patch1_Papaya": 0,
+            "Y_Patch1_Watermelon": 0,
+            "Y_Patch1_Chickpeas": 0,
+            "Y_Patch1_Peanuts": 0,
+            "Y_Patch1_Tempeh": 0,
+            "Y_Patch1_Tofu": 0,
+            "Y_Patch1_Corn": 0,
+            "Y_Patch1_Potato": 0,
+            "Y_Patch1_Cabbage": 0,
+            "Y_Patch1_Cucumber": 0,
+            "Y_Patch1_Eggplant": 0,
+            "Y_Patch1_Long bean": 0,
+            "Y_Patch1_Pumpkin": 0,
+            "Y_Patch1_Spinach": 1,
+            "Y_Patch1_Tomatoes": 0,
+            "slack_v2d0275e4688e4d429e7784c1e73ad784_0": 0,
+            "slack_v5f8f499463834b3eb0f492115de254c8_0": 1,
+            "slack_v5f8f499463834b3eb0f492115de254c8_1": 1,
+            "slack_v5f8f499463834b3eb0f492115de254c8_2": 1,
+            "slack_v55dd9aec34344b7dae9006ebbd055155_0": 1,
+            "slack_v55dd9aec34344b7dae9006ebbd055155_1": 1,
+            "slack_v55dd9aec34344b7dae9006ebbd055155_2": 1,
+            "slack_v55dd9aec34344b7dae9006ebbd055155_3": 1,
+            "slack_v179d4786c99b4fa687d334509fc520ff_0": 1,
+            "slack_v179d4786c99b4fa687d334509fc520ff_1": 1,
+            "slack_vc775259cf7b94b73947d8433f6d701d9_0": 1,
+            "slack_v03abdd4cb4cb46879a1991b6dfc16ba1_0": 1,
+            "slack_v03abdd4cb4cb46879a1991b6dfc16ba1_1": 1,
+            "slack_v03abdd4cb4cb46879a1991b6dfc16ba1_2": 1
+          },
+          "validation": {
+            "is_feasible": false,
+            "n_violations": 1,
+            "violations": [
+              "Plot Patch1: 2.000 crops assigned (should be \u2264 1)"
+            ],
+            "constraint_checks": {
+              "at_most_one_per_plot": {
+                "passed": 0,
+                "failed": 1,
+                "violations": [
+                  "Plot Patch1: 2.000 crops assigned (should be \u2264 1)"
+                ]
+              },
+              "x_y_linking": {
+                "passed": 0,
+                "failed": 0,
+                "violations": []
+              },
+              "y_activation": {
+                "passed": 0,
+                "failed": 0,
+                "violations": []
+              },
+              "area_bounds_min": {
+                "passed": 27,
+                "failed": 0,
+                "violations": []
+              },
+              "food_group_constraints": {
+                "passed": 5,
+                "failed": 0,
+                "violations": []
+              }
+            },
+            "summary": {
+              "total_checks": 33,
+              "total_passed": 32,
+              "total_failed": 1,
+              "pass_rate": 0.9696969696969697
+            }
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "farm_samples_completed": 1,
+    "patch_samples_completed": 1,
+    "total_solver_runs": 6
+  }
+}
