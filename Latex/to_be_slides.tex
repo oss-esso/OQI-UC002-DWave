@@ -1,0 +1,1168 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{adjustbox}
+\usepackage{makecell}
+\usepackage{colortbl}
+
+\title{Implementation of a Proof of Concept}
+\subtitle{Agricultural Land Optimization}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}{Problem Overview}
+\frametitle{Food Optimization Problem}
+
+The problem addresses allocation of agricultural land across multiple farms to grow various crops, maximizing:
+\begin{itemize}
+    \item Nutritional value
+    \item Sustainability
+    \item Affordability
+    \item Other attributes
+\end{itemize}
+
+While satisfying:
+\begin{itemize}
+    \item Land availability constraints
+    \item Diversity constraints
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Notation - Problem Context}
+
+\textbf{Sets}
+\begin{itemize}
+    \item $\mathcal{F}$: Farms with land availability $L_f$
+    \item $\mathcal{C}$: Crops with attributes
+    \item $\mathcal{G}$: Food groups with diversity requirements
+    \item $w_k \in \mathcal{W}$: Objective weights
+    \item $v_{k,c} \in \mathcal{V}$: Objective values for each crop
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Notation - Variables and Constraints}
+
+\textbf{Decision variables}
+\begin{itemize}
+\item $A_{f,c} \in \{0\} \cup [A_{min,c}, L_f]$: Continuous area for crop $c$ on farm $f$
+\item $Y_{f,c} \in \{0,1\}$: Binary selection indicator
+\end{itemize}
+
+\textbf{Common constraints}
+\begin{itemize}
+\item Maximum farm occupation: $\sum_{c \in \mathcal{C}} A_{f,c} \leq L_f$
+\item Minimum crop allocation: $A_{f,c} \geq A_{\min,c} \cdot Y_{f,c}$
+\item Maximum crop allocation: $A_{f,c} \leq L_f \cdot Y_{f,c}$
+\item Food group diversity: $N_{\min,g} \leq \sum_{f,c \in \mathcal{G}_g} Y_{f,c} \leq N_{\max,g}$
+\item Convexity: $\sum_{k} w_k = 1$
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Objective Implementations}
+
+\begin{block}{Approach}
+We investigate solver performance with varying levels of non-linearity by implementing different objective formulations
+\end{block}
+
+\textbf{Formulations covered:}
+\begin{enumerate}
+    \item Non-Linear with Piecewise Approximation
+    \item Fractional Non-Linear with Dinkelbach
+    \item Linear-Quadratic with Synergy
+    \item BQUBO Formulation
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}{Non-Linear with Piecewise Approximation}
+
+\textbf{Mathematical Formulation:}
+
+Concave power function to model diminishing returns:
+\begin{equation*}
+\max \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_C \cdot g(A_{f,c})
+\end{equation*}
+
+where $g(A) = A^\alpha$ with $\alpha = 0.548$
+
+\vspace{0.5cm}
+
+\textbf{Challenge:} Non-convex for MILP solvers $\rightarrow$ Use piecewise linear approximation with SOS2 constraints
+
+\end{frame}
+
+\begin{frame}{Piecewise Approximation Details}
+
+\textbf{Breakpoint Definition:} For each $(f,c)$, define $K+1$ breakpoints (typically $K=10$):
+\begin{equation*}
+0 = b_0 < b_1 < \cdots < b_K = L_f
+\end{equation*}
+
+\textbf{Additional Variables:}
+\begin{itemize}
+    \item $\lambda_{f,c,i} \in [0,1]$: Convex combination weights
+    \item $\tilde{g}_{f,c} \in \mathbb{R}$: Approximated function value
+\end{itemize}
+
+\textbf{Key Constraints:}
+\begin{itemize}
+    \item $\sum_{i=0}^{K} \lambda_{f,c,i} \cdot b_i = A_{f,c}$
+    \item $\sum_{i=0}^{K} \lambda_{f,c,i} \cdot \phi_i = \tilde{g}_{f,c}$
+    \item SOS2: At most 2 consecutive $\lambda_{f,c,i} > 0$
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Piecewise: Problem Classification}
+
+\begin{itemize}
+    \item \textbf{Type:} MILP with SOS2 constraints
+    \item \textbf{Variables:} $(K+4)|\mathcal{F}||\mathcal{C}| \approx 14n$ for $K=10$
+    \begin{itemize}
+        \item Base: $2n$ (A and Y)
+        \item Lambda: $11n$ ($K+1$ per $(f,c)$ pair)
+        \item Approximation: $n$ ($\tilde{g}$ variables)
+    \end{itemize}
+    \item \textbf{Approximation Error:} $O(K^{-2})$ ($\approx 0.1\%-0.5\%$ for $K=10$)
+    \item \textbf{Solve Time:} Empirically $2-4\times$ slower than linear
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Piecewise: Results}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Plots/nln_speedup_comparison.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Fractional Non-Linear with Dinkelbach}
+
+\textbf{Mathematical Formulation:}
+
+Fractional objective to model efficiency as benefit per unit area:
+\begin{equation*}
+\max \frac{\sum_{f,c} B_C \cdot A_{f,c}}{\sum_{f,c} A_{f,c} + \epsilon}
+\end{equation*}
+
+where $\epsilon > 0$ is small ($\sim 10^{-8}$) to avoid division by zero
+
+\vspace{0.5cm}
+
+\textbf{Solution Approach:} Dinkelbach's Algorithm converts fractional program into sequence of parametric linear programs
+
+\end{frame}
+
+\begin{frame}{Dinkelbach's Algorithm}
+
+\begin{algorithmic}[1]
+\STATE Initialize $\lambda^{(0)} = 0$, $k = 0$
+\REPEAT
+    \STATE Solve: $z(\lambda^{(k)}) = \max \left\{\sum_{f,c} B_c \cdot A_{f,c} - \lambda^{(k)} \sum_{f,c} A_{f,c}\right\}$
+    \STATE Get optimal solution $(A^{(k)}, Y^{(k)})$
+    \STATE Update: $\lambda^{(k+1)} = \frac{\sum_{f,c} B_c \cdot A^{(k)}_{f,c}}{\sum_{f,c} A^{(k)}_{f,c} + \epsilon}$
+    \STATE $k \leftarrow k + 1$
+\UNTIL{$|z(\lambda^{(k)})| < \tau$ or $|\lambda^{(k)} - \lambda^{(k-1)}| < \tau$}
+\RETURN $(A^{(k)}, Y^{(k)})$
+\end{algorithmic}
+
+\vspace{0.3cm}
+
+\textbf{Convergence:} Typically 5-15 iterations with quadratic convergence
+
+\end{frame}
+
+\begin{frame}{Fractional: Computational Properties}
+
+\begin{itemize}
+    \item \textbf{Type:} Sequence of MILPs
+    \item \textbf{Variables:} $2n$ per iteration (same as linear)
+    \item \textbf{Iterations:} $T \in [5, 15]$ typically
+    \item \textbf{Total Time:} $O(T \cdot t_{\text{MILP}})$ 
+    \item \textbf{Approximation:} None - exact solution
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Key Advantage:} Guarantees convergence for fractional programs with positive denominators
+
+\end{frame}
+
+\begin{frame}{Linear-Quadratic with Synergy}
+
+\textbf{Mathematical Formulation:}
+
+Combines linear returns with quadratic synergy effects:
+\begin{equation*}
+\max \sum_{f,c} B_c \cdot A_{f,c} + w_s \sum_f \sum_{\substack{c_1,c_2 \in \mathcal{G}_g\\ c_1 < c_2}} s_{c_1,c_2} \cdot Y_{f,c_1} \cdot Y_{f,c_2}
+\end{equation*}
+
+where:
+\begin{itemize}
+    \item $s_{c_1,c_2}$: Synergy bonus for planting crops together
+    \item $w_s$: Synergy weight (typically $w_s = 0.1$)
+    \item Synergy only for crop pairs in same food group
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Challenge:} Quadratic term $Y_{f,c_1} \cdot Y_{f,c_2}$ requires linearization for MILP
+
+\end{frame}
+
+\begin{frame}{McCormick Linearization}
+
+For each synergy pair $(c_1, c_2)$ and farm $f$, introduce:
+\begin{equation*}
+Z_{f,c_1c_2} \in \{0,1\}
+\end{equation*}
+
+to represent product $Y_{f,c_1} \cdot Y_{f,c_2}$
+
+\vspace{0.3cm}
+
+\textbf{Linearization Constraints:}
+\begin{align*}
+Z_{f,c_1c_2} &\leq Y_{f,c_1} \\
+Z_{f,c_1c_2} &\leq Y_{f,c_2} \\
+Z_{f,c_1c_2} &\geq Y_{f,c_1} + Y_{f,c_2} - 1
+\end{align*}
+
+\textbf{Key Property:} This linearization is \textbf{exact} for binary variables (not an approximation)
+
+\end{frame}
+
+\begin{frame}{Synergy: Problem Classification}
+
+\textbf{For Linearized (MILP):}
+\begin{itemize}
+    \item \textbf{Variables:} $2n + |\mathcal{F}| \cdot |\mathcal{S}| \approx 2.3n$
+    \item \textbf{Linearization Constraints:} $3|\mathcal{F}| \cdot |\mathcal{S}|$
+\end{itemize}
+
+\textbf{For Native Quadratic (MIQP):}
+\begin{itemize}
+    \item \textbf{Variables:} $2n$ (no Z variables needed)
+    \item \textbf{Quadratic Terms:} $O(|\mathcal{F}| \cdot |\mathcal{S}|)$
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Solve Time:} Comparable to linear (1.0-1.5$\times$)
+
+\end{frame}
+
+\begin{frame}{Synergy: Results}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Plots/lq_speedup_comparison.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{BQUBO Formulation}
+
+\textbf{Fundamental Difference:} Binary-only formulation (no continuous variables)
+
+\vspace{0.3cm}
+
+\textbf{Approach:} Discretize decision space - each farm-crop uses single binary variable for 1-hectare plot
+
+\vspace{0.3cm}
+
+\textbf{Decision Variables:}
+\begin{itemize}
+    \item $Y_{f,c} \in \{0,1\}$: Binary indicating if 1-ha plot of crop $c$ planted on farm $f$
+\end{itemize}
+
+\textbf{Objective:}
+\begin{equation*}
+\max \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_C \cdot Y_{f,c}
+\end{equation*}
+
+\textbf{Key Constraints:}
+\begin{align*}
+\sum_{c} Y_{f,c} &\leq \lfloor L_f \rfloor \quad \text{(discrete land limit)}\\
+\sum_{c \in \mathcal{G}_g} Y_{f,c} &\geq N_{\min,g} \quad \text{(diversity)}
+\end{align*}
+
+\end{frame}
+
+\begin{frame}{BQUBO: Problem Classification}
+
+\begin{itemize}
+    \item \textbf{Type:} 0-1 Integer Linear Program (ILP)
+    \item \textbf{Variables:} $n$ (only Y variables)
+    \begin{itemize}
+        \item \textbf{50\% reduction} vs continuous MILP
+    \end{itemize}
+    \item \textbf{Constraints:} $O(|\mathcal{F}|(1 + 2|\mathcal{G}|))$
+    \item \textbf{Trade-off:} Simplicity vs modeling flexibility (discretization error)
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{DWave Implementation:} CQM converted to BQM using penalty method
+\begin{itemize}
+    \item Constraints embedded as quadratic penalties
+    \item Solved with LeapHybridBQMSampler
+    \item Better QPU utilization than general CQM
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{BQUBO: Results}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Plots/bqubo_speedup_comparison.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Comparative Analysis}
+
+\begin{table}
+\centering
+\tiny
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \textbf{Piecewise} & \textbf{Fractional} & \textbf{Quadratic} & \textbf{Binary} \\
+\midrule
+\textbf{Type} & MILP+SOS2 & Fractional & MILP/MIQP & Binary ILP \\
+\textbf{Variables} & ${\sim}14n$ & $2n$/iter & $2.3n$ & $n$ \\
+\textbf{Solve Time} & 2--4$\times$ & 5--15$\times$ & 1.0--1.5$\times$ & 0.5--1.0$\times$ \\
+\textbf{Error} & $O(K^{-2})$ & None & None & Discretization \\
+\midrule
+\textbf{Diminishing Returns} & Yes & Yes & No & No \\
+\textbf{Interactions} & No & No & Yes & No \\
+\textbf{Continuous Alloc.} & Yes & Yes & Yes & No \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+
+\textbf{Key Insight:} Different formulations trade off between modeling capability, computational complexity, and approximation accuracy
+
+\end{frame}
+
+\begin{frame}{Solver Performance: Gurobi (MILP)}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Plots/gurobi_milp_cross_scenario.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Solver Performance: Ipopt (MINLP)}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Plots/ipopt_minlp_cross_scenario.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Solver Performance: D-Wave}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Plots/dwave_cross_scenario.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Key Findings from Testing}
+
+From preliminary testing across multiple scenarios:
+
+\begin{itemize}
+    \item Quantum solvers consistently underperform in objective value with increasing gap at larger problem sizes
+    \item In LQ formulation: quantum solver shows speedup vs classical, constant solve time $\sim5$s
+    \item In BQUBO: QPU usage varies (absence of continuous variables)
+    \item QPU usage is orders of magnitude lower than total solve time
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Best Practice:} Compare highest performing solvers on their native formulations
+\begin{itemize}
+    \item Classical solvers on MI(N)LPs
+    \item Quantum solvers on QUBOs
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Conclusion}
+
+\textbf{Benchmarking Strategy:}
+\begin{itemize}
+    \item Two formulations: Binary (even grid) vs Continuous (uneven distribution)
+    \item Three solver approaches: Gurobi, Ipopt, D-Wave Hybrid
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Results match literature:}
+\begin{itemize}
+    \item Classical MILP fastest overall
+    \item Classical QUBO slowest
+    \item Quantum-classical hybrid in between
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Future Work:}
+\begin{itemize}
+    \item Investigate local advantage scenarios
+    \item Scale to larger problem instances
+    \item Explore problem-specific formulations
+\end{itemize}
+
+\end{frame}
+
+\end{document}
+
+Since the power function is non-convex for MILP solvers, we use piecewise linear approximation with Special Ordered Set of type 2 (SOS2) constraints:
+
+\textbf{Breakpoint Definition:}
+For each farm-food pair $(f,c)$, define $K+1$ breakpoints:
+\begin{equation}
+0 = b_0 < b_1 < \cdots < b_K = L_f
+\end{equation}
+
+Typically, $K = 10$ breakpoints with uniform spacing:
+\begin{equation}
+b_i = \frac{i \cdot L_f}{K} \quad \text{for } i = 0, \ldots, K
+\end{equation}
+
+\textbf{Function Values at Breakpoints:}
+\begin{equation}
+\phi_i = g(b_i) = b_i^{0.548}
+\end{equation}
+
+\textbf{Additional Variables:}
+For each $(f,c)$ pair, introduce:
+\begin{itemize}
+    \item $\lambda_{f,c,i} \in [0,1]$ for $i = 0,\ldots,K$: Convex combination weights
+    \item $\tilde{g}_{f,c} \in \mathbb{R}$: Approximated function value
+\end{itemize}
+
+\textbf{Piecewise Constraints:}
+\begin{align}
+ \sum_{i=0}^{K} &\lambda_{f,c,i} \cdot b_i =A_{f,c}\label{eq:pw_area}\\
+ \sum_{i=0}^{K} &\lambda_{f,c,i} \cdot \phi_i =\tilde{g}_{f,c}\label{eq:pw_func}\\
+\sum_{i=0}^{K} &\lambda_{f,c,i} = 1 \label{eq:pw_convex}\\
+&\lambda_{f,c,i} \geq 0, \quad \text{at most 2 consecutive } \lambda_{f,c,i} > 0 \label{eq:sos2}
+\end{align}
+
+The SOS2 constraint (\ref{eq:sos2}) ensures only adjacent breakpoints have positive weights.
+
+
+\textbf{Modified Objective:}
+\begin{equation}
+\max \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_C \cdot \tilde{g}_{f,c}
+\label{eq:pw_obj}
+\end{equation}
+
+\paragraph{Problem Classification}\mbox{}\\
+\begin{itemize}
+    \item \textbf{Type:} Mixed-Integer Linear Program with SOS2 constraints
+    \item \textbf{Variables:} $2|\mathcal{F}||\mathcal{C}| + (K+1)|\mathcal{F}||\mathcal{C}| + |\mathcal{F}||\mathcal{C}|$
+    \begin{itemize}
+        \item Base: $2|\mathcal{F}||\mathcal{C}|$ (A and Y)
+        \item Lambda: $(K+1)|\mathcal{F}||\mathcal{C}|$ (typically 11n)
+        \item Approximation: $|\mathcal{F}||\mathcal{C}|$ ($\tilde{g}$ variables)
+    \end{itemize}
+    \item \textbf{Total Variables:} $(K+4)|\mathcal{F}||\mathcal{C}| \approx 14n$ for $K=10$
+    \item \textbf{Additional Constraints:} $3|\mathcal{F}||\mathcal{C}|$ piecewise constraints
+\end{itemize}
+
+% \paragraph{Solution Methods}
+
+% \subparagraph{PuLP Implementation:}
+% \begin{itemize}
+%     \item Uses SOS2 variables natively supported in CBC
+%     \item Branch-and-bound explores SOS2 branching decisions
+%     \item Linear relaxation provides bounds
+% \end{itemize}
+
+% \subparagraph{Pyomo Implementation:}
+% \begin{itemize}
+%     \item Formulates as true MINLP (Mixed-Integer Non-Linear Program)
+%     \item Uses specialized solvers: IPOPT, BONMIN, COUENNE
+%     \item Applies outer approximation or branch-and-reduce algorithms
+%     \item Can solve exact non-linear formulation without approximation
+% \end{itemize}
+
+\paragraph{Approximation Error Analysis}\mbox{}\\
+
+The piecewise linear approximation introduces error bounded by:
+
+\begin{equation}
+\epsilon_{\max} = \max_{i=0,\ldots,K-1} \max_{x \in [b_i, b_{i+1}]} |g(x) - \hat{g}(x)|
+\end{equation}
+
+where $\hat{g}(x)$ is the piecewise linear interpolation.
+
+For $g(x) = x^\alpha$ with uniform breakpoints and $K$ intervals:
+
+\begin{equation}
+\epsilon_{\max} = O\left(\frac{L_f^{2\alpha}}{K^2}\right)
+\end{equation}
+
+\textbf{Typical Values:}
+\begin{itemize}
+    \item $K = 10$: Approximation error $\approx 0.1\%$ - $0.5\%$
+    \item $K = 20$: Approximation error $\approx 0.02\%$ - $0.1\%$
+\end{itemize}
+
+\paragraph{Computational Complexity}\mbox{}\\
+\begin{itemize}
+    \item \textbf{Variable Count:} For $n = |\mathcal{F}||\mathcal{C}|$ base problem size:
+\begin{itemize}
+    \item Linear solver: $2n$ variables
+    \item \ref{eq:nonlinear_obj} solver: $(K+4)n \approx 14n$ variables (for $K=10$)
+    \item \textbf{Increase:} $7\times$ more variables
+\end{itemize}
+
+\item \textbf{Memory:} $O(Kn)$ for lambda variables \cite{vielma2010mixed}
+\item \textbf{Solve Time:} Empirically $2-4\times$ slower than linear due to SOS2 branching. The piecewise approximation complexity depends on the number of breakpoints and the convexity structure \cite{vielma2010mixed,beale1970special}.
+\item \textbf{Approximation Error:} $O(K^{-2})$ for uniform breakpoints with concave functions \cite{croxton2003comparison}.
+\end{itemize}
+
+
+
+\paragraph{Plots}\mbox{}\\
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{Plots/nln_speedup_comparison.png}
+    %\caption{Caption}
+    \label{fig:NLN_results}
+\end{figure}
+
+
+\newpage
+\subsubsection{Fractional Non-Linear with Dinkelbach}
+
+\paragraph{Mathematical Formulation}
+
+This formulation uses a fractional objective to model efficiency as benefit per unit area allocated:
+
+\begin{equation}
+\max \frac{\sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_C \cdot A_{f,c}}{\sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} A_{f,c} + \epsilon}
+\label{eq:fractional_obj}
+\end{equation}
+
+where $\epsilon > 0$ is a small constant (typically $10^{-8}$) to avoid division by zero.
+
+
+\paragraph{Dinkelbach's Algorithm}\mbox{}\\
+
+Dinkelbach's algorithm converts the fractional program into a sequence of parametric linear programs:
+
+\begin{algorithm}[H]
+\caption{Dinkelbach's Algorithm for Fractional Programming}
+\begin{algorithmic}[1]
+\State Initialize $\lambda^{(0)} = 0$, $k = 0$
+\Repeat
+    \State Solve parametric problem:
+    \begin{equation*}
+    z(\lambda^{(k)}) = \max_{A,Y} \left\{\sum_{f,c} B_c \cdot A_{f,c} - \lambda^{(k)} \sum_{f,c} A_{f,c}\right\}
+    \end{equation*}
+    \State Let $(A^{(k)}, Y^{(k)})$ be the optimal solution
+    \State Update parameter:
+    \begin{equation*}
+    \lambda^{(k+1)} = \frac{\sum_{f,c} B_c \cdot A^{(k)}_{f,c}}{\sum_{f,c} A^{(k)}_{f,c} + \epsilon}
+    \end{equation*}
+    \State $k \leftarrow k + 1$
+\Until{$|z(\lambda^{(k)})| < \tau$ or $|\lambda^{(k)} - \lambda^{(k-1)}| < \tau$}
+\State \Return $(A^{(k)}, Y^{(k)})$
+\end{algorithmic}
+\end{algorithm}
+
+
+\paragraph{Problem Classification}\mbox{}\\
+\begin{itemize}
+    \item \textbf{Original Type:} Fractional Mixed-Integer Program
+    \item \textbf{Transformed Type:} Sequence of MILPs
+    \item \textbf{Variables per iteration:} $2|\mathcal{F}||\mathcal{C}|$
+    \item \textbf{Iterations:} Typically 5-15 until convergence
+\end{itemize}
+
+% \paragraph{Solution Methods}
+
+% Each iteration solves a parametric MILP:
+% \begin{itemize}
+%     \item PuLP with CBC for each subproblem
+%     \item Warm-starting from previous solution
+%     \item Convergence tolerance $\tau = 10^{-6}$
+% \end{itemize}
+
+\paragraph{Computational Complexity}\mbox{}\\
+
+\begin{itemize}
+    \item \textbf{Variables:} Same as linear formulation ($2n$) per iteration
+    \item \textbf{Time per iteration:} Similar to linear MILP
+    \item \textbf{Total iterations:} $T \in [5, 15]$ typically with superlinear convergence \cite{dinkelbach1967nonlinear}
+    \item \textbf{Total time:} $O(T \cdot t_{\text{MILP}})$ where $t_{\text{MILP}}$ is single MILP solve time
+    \item \textbf{Convergence:} Guaranteed for fractional programs with positive denominators, with quadratic convergence near optimum \cite{schaible1976fractional,crouzeix1985algorithmic}.
+\end{itemize}
+
+
+
+
+
+
+\newpage
+
+
+\subsubsection{Linear-Quadratic with Synergy}
+
+\paragraph{Mathematical Formulation}\mbox{}\\
+
+This formulation combines linear returns with quadratic synergy effects:
+
+\begin{equation}
+\max \underbrace{\sum_{f,c} B_c \cdot A_{f,c}}_{\text{Linear term}} + \underbrace{w_s \sum_f \sum_{\substack{c_1,c_2 \in \mathcal{G}_g\\ c_1 < c_2}} s_{c_1,c_2} \cdot Y_{f,c_1} \cdot Y_{f,c_2}}_{\text{Quadratic synergy term}}
+\label{eq:lq_obj}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $s_{c_1,c_2}$: Synergy bonus for planting crops $c_1$ and $c_2$ together
+    \item $w_s$: Weight for synergy bonus (typically $w_s = 0.1$)
+    \item Synergy exists only for crop pairs in the same food group
+\end{itemize}
+
+This obviously means that, for this particular case:
+\begin{equation}
+    \sum_k w_k \in B_c = 1-w_s
+\end{equation}
+
+to maintain the convexity constraint valid in accordance to the definition we gave earlier for the benefit.
+
+
+\textbf{Synergy Matrix Construction:}
+\begin{equation}
+s_{c_1,c_2} = \begin{cases}
+\beta > 0 & \text{if } c_1, c_2 \in \mathcal{G}_g \text{ for some } g \text{ and } c_1 \neq c_2\\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+
+\paragraph{McCormick Linearization}\mbox{}\\
+
+The quadratic term $Y_{f,c_1} \cdot Y_{f,c_2}$ must be linearized for MILP solvers.
+
+\textbf{McCormick Relaxation:}
+For each synergy pair $(c_1, c_2)$ and farm $f$, introduce auxiliary variable:
+\begin{equation}
+Z_{f,c_1c_2} \in \{0,1\}
+\end{equation}
+
+to represent the product $Y_{f,c_1} \cdot Y_{f,c_2}$.
+
+\textbf{Linearization Constraints:}
+\begin{align}
+Z_{f,c_1c_2} &\leq Y_{f,c_1} \label{eq:mcc1}\\
+Z_{f,c_1c_2} &\leq Y_{f,c_2} \label{eq:mcc2}\\
+Z_{f,c_1c_2} &\geq Y_{f,c_1} + Y_{f,c_2} - 1 \label{eq:mcc3}
+\end{align}
+
+\textbf{Correctness:}
+\begin{itemize}
+    \item If $Y_{f,c_1} = 0$ or $Y_{f,c_2} = 0$: (\ref{eq:mcc1})-(\ref{eq:mcc2}) force $Z_{f,c_1c_2} = 0$
+    \item If $Y_{f,c_1} = Y_{f,c_2} = 1$: (\ref{eq:mcc3}) forces $Z_{f,c_1c_2} \geq 1$, combined with binary constraint gives $Z_{f,c_1c_2} = 1$
+\end{itemize}
+
+This linearization is \textbf{exact} for binary variables (not an approximation).
+
+\textbf{Linearized Objective:}
+\begin{equation}
+\max \sum_{f,c} B_c \cdot A_{f,c} + w_s \sum_f \sum_{(c_1,c_2) \in \mathcal{S}} s_{c_1,c_2} \cdot Z_{f,c_1c_2}
+\end{equation}
+
+where $\mathcal{S}$ is the set of synergy pairs.
+
+\paragraph{Problem Classification}\mbox{}\\
+
+\textbf{For PuLP (Linearized):}
+\begin{itemize}
+    \item \textbf{Type:} Mixed-Integer Linear Program (after linearization)
+    \item \textbf{Base Variables:} $2|\mathcal{F}||\mathcal{C}|$
+    \item \textbf{Z Variables:} $|\mathcal{F}| \cdot |\mathcal{S}|$ where $|\mathcal{S}| = \sum_g \binom{|\mathcal{G}_g|}{2}$
+    \item \textbf{Total Variables:} $2n + |\mathcal{F}| \cdot |\mathcal{S}|$
+    \item \textbf{Linearization Constraints:} $3|\mathcal{F}| \cdot |\mathcal{S}|$
+\end{itemize}
+
+\textbf{For Pyomo/CQM (Native Quadratic):}
+\begin{itemize}
+    \item \textbf{Type:} Mixed-Integer Quadratic Program (MIQP)
+    \item \textbf{Variables:} $2|\mathcal{F}||\mathcal{C}|$ (no Z variables needed)
+    \item \textbf{Quadratic Terms:} $O(|\mathcal{F}| \cdot |\mathcal{S}|)$ in objective
+\end{itemize}
+
+% \paragraph{Variable Count Analysis}
+
+% For typical problem with 27 crops in 5 food groups:
+% \begin{itemize}
+%     \item Grains (3 crops): $\binom{3}{2} = 3$ pairs
+%     \item Legumes (2 crops): $\binom{2}{2} = 1$ pair
+%     \item Vegetables (4 crops): $\binom{4}{2} = 6$ pairs
+%     \item Fruits (1 crop): $\binom{1}{2} = 0$ pairs
+% \end{itemize}
+
+% Total synergy pairs: $|\mathcal{S}| = 10$
+
+% For $|\mathcal{F}| = 5$ farms, $|\mathcal{C}| = 30$ crops ($n = 150$):
+% \begin{itemize}
+%     \item Base variables: $2 \times 150 = 300$
+%     \item Z variables (PuLP): $5 \times 10 = 50$
+%     \item \textbf{PuLP total:} 350 variables
+%     \item \textbf{CQM/Pyomo total:} 300 variables
+%     \item \textbf{Linearization constraints:} $3 \times 50 = 150$
+% \end{itemize}
+
+% \paragraph{Solution Methods}
+
+% \subparagraph{PuLP Implementation:}
+% \begin{itemize}
+%     \item Linearizes using McCormick relaxation
+%     \item Solves with CBC as standard MILP
+%     \item Exact solution (no approximation error)
+% \end{itemize}
+
+% \subparagraph{Pyomo Implementation:}
+
+% \begin{itemize}
+%     \item Uses native MIQP formulation
+%     \item Requires MIQP solver: Gurobi, CPLEX, CBC, or GLPK
+%     \item No linearization needed
+%     \item Solves quadratic objective directly
+% \end{itemize}
+
+% \subparagraph{DWave CQM Implementation:}
+% \begin{itemize}
+%     \item Native quadratic objective support
+%     \item Quantum-classical hybrid solving
+%     \item Particularly well-suited for quadratic problems
+% \end{itemize}
+
+\paragraph{Computational Complexity}\mbox{}\\
+\begin{itemize}
+    \item \textbf{Variables:}
+\begin{itemize}
+    \item Linearized: $2n + |\mathcal{F}| \cdot |\mathcal{S}| \approx 2.3n$ (for typical $|\mathcal{S}|$)
+    \item Original: $2n$
+\end{itemize}
+
+\item \textbf{Constraints:}
+\begin{itemize}
+    \item Linearized: $3|\mathcal{F}| \cdot |\mathcal{S}|$ additional linearization constraints from McCormick relaxation \cite{mccormick1976computability}
+    \item Original: Same as linear formulation \ref{eq:linear_obj}
+    
+\end{itemize}
+
+
+\item \textbf{Solve Time:} Empirically comparable to linear, slightly slower than linear due to:
+\begin{itemize}
+    \item Linearized: Additional Z variables and constraints. McCormick relaxation is exact for binary variables \cite{mccormick1976computability,gupte2013solving}.
+    \item Original: Quadratic terms require MIQP solver (more complex than LP relaxation). MIQP is NP-hard but often solvable in practice with specialized algorithms \cite{burer2012non,billionnet2007improving}.
+\end{itemize}
+\end{itemize}
+
+
+
+
+
+
+
+
+\paragraph{Plots}\mbox{}\\
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{Plots/lq_speedup_comparison.png}
+    %\caption{Caption}
+    \label{fig:SYN_results}
+\end{figure}
+
+
+\newpage
+\subsubsection{BQUBO Formulation }
+
+We introduce a fundamentally different formulation based on Quadratic Unconstrained Binary Optimization (QUBO) principles. Instead of continuous area variables, it uses only binary variables, simplifying the problem space at the cost of modeling flexibility.
+
+\paragraph{Mathematical Formulation}\mbox{}\\
+
+The core idea is to discretize the decision space. Each farm-crop combination is represented by a single binary variable, indicating whether a fixed-size plot (e.g., 1 hectare) is planted or not.
+
+Decision variables:
+\begin{itemize}
+    \item $Y_{f,c} \in \{0,1\}$: Binary variable indicating if a 1-hectare plot of crop $c$ is planted on farm $f$.
+\end{itemize}
+
+The objective function remains linear but is now defined over binary variables:
+\begin{equation}
+\max \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_C \cdot Y_{f,c}
+\label{eq:bqubo_obj}
+\end{equation}
+
+The constraints are adapted to this binary model:
+\begin{align}
+\sum_{c \in \mathcal{C}} Y_{f,c} &\leq \lfloor L_f \rfloor \quad \forall f \in \mathcal{F} \label{eq:land_binary}\\
+\sum_{c \in \mathcal{G}_g} Y_{f,c} &\geq N_{\min,g} \quad \forall f,g \label{eq:diversity_binary}
+\end{align}
+Constraint (\ref{eq:land_binary}) limits the number of 1-hectare plots on a farm, which is a discretized version of the original land constraint.
+
+\paragraph{Problem Classification}\mbox{}\\
+\begin{itemize}
+    \item \textbf{Type:} 0-1 Integer Linear Program (ILP).
+    \item \textbf{Variables:} $|\mathcal{F}||\mathcal{C}|$ (only Y variables). This is a $50\%$ reduction compared to the linear MILP formulation.
+    \item \textbf{Constraints:} $O(|\mathcal{F}|(1 + 2|\mathcal{G}|))$.
+    \item \textbf{Linearity:} Fully linear objective and constraints.
+\end{itemize}
+
+% \paragraph{Solution Methods}
+
+% \subparagraph{PuLP Implementation:}
+% Solves the 0-1 ILP directly using the CBC solver. This is highly efficient due to the absence of continuous variables.
+
+% \subparagraph{DWave BQUBO Implementation:}
+% This is the key part of this solver. The Constrained Quadratic Model (CQM) is converted into a Binary Quadratic Model (BQM) using the \texttt{cqm\_to\_bqm} utility.
+% \begin{itemize}
+%     \item \textbf{Conversion:} This process transforms the constrained problem into an unconstrained one by embedding the constraints (\ref{eq:land_binary}) and (\ref{eq:diversity_binary}) into the objective function as quadratic penalty terms. The result is a BQM suitable for quantum annealers.
+%     \item \textbf{Solver:} The resulting BQM is solved using the \texttt{LeapHybridBQMSampler}, which is designed for these types of problems and can leverage QPU resources more effectively than the general CQM sampler.
+% \end{itemize}
+
+\paragraph{Computational Complexity}\mbox{}\\
+
+\textbf{Variable Count:} For $n = |\mathcal{F}||\mathcal{C}|$:
+\begin{itemize}
+    \item Total variables: $n$. This is the leanest formulation.
+\end{itemize}
+
+\textbf{Space Complexity:} $O(n)$ for variables. The BQM conversion can introduce many new quadratic terms, potentially increasing memory for the BQM object itself.
+
+\textbf{Time Complexity:} Pure 0-1 ILP is NP-hard \cite{garey1979computers,karp1972reducibility}, but often highly efficient in practice. QUBO formulations have theoretical worst-case exponential complexity but can be solved efficiently on quantum annealers for certain problem structures \cite{lucas2014ising,glover2018tutorial}.
+
+% \textbf{Solve Time:}
+% \begin{itemize}
+%     \item \textbf{PuLP:} Extremely fast, often faster than the standard linear MILP due to having half the variables and no continuous relaxation complexities.
+%     \item \textbf{DWave:} Includes a non-trivial classical pre-processing time for the \texttt{cqm\_to\_bqm} conversion, followed by the hybrid solver time. The goal is better scaling for very large, complex problems where the BQM formulation can be efficiently processed by the QPU.
+% \end{itemize}
+
+
+
+
+
+\paragraph{Plots}\mbox{}\\
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{Plots/bqubo_speedup_comparison.png}
+    %\caption{Caption}
+    \label{fig:BQUBO_results}
+\end{figure}
+
+
+\newpage
+\subsection{Comparative Analysis of Objective Formulations}
+
+Table~\ref{tab:formulation_comparison} provides a comprehensive comparison of all five objective formulations, highlighting their key characteristics, advantages, and limitations. This unified view enables selection of the most appropriate formulation based on problem requirements and computational resources.
+
+\begin{table}[!ht]
+\centering
+\small
+\caption{Comparative Analysis of Optimization Formulations for Agricultural Land Allocation}
+\label{tab:formulation_comparison}
+\begin{adjustbox}{max width=\textwidth}
+\makegapedcells
+\begin{tabular}{@{}l *{5}{p{2.4cm}}@{}}
+\toprule
+ & \makecell[tl]{\textbf{Linear}\\\textbf{(LQ)}} & \makecell[tl]{\textbf{Piecewise}\\\textbf{Nonlinear}} & \makecell[tl]{\textbf{Fractional}\\\textbf{(Dinkelbach)}} & \makecell[tl]{\textbf{Quadratic}\\\textbf{Synergy}} & \makecell[tl]{\textbf{Binary}\\\textbf{Quadratic}} \\
+\midrule
+\multicolumn{6}{@{}l}{\cellcolor{gray!15}\textbf{Problem Classification}} \\
+\addlinespace[0.1cm]
+Problem type & MILP & \makecell[tl]{MILP with\\SOS2} & \makecell[tl]{Fractional\\programming} & MILP/MIQP & Binary ILP \\
+Variables & $2n$ & ${\sim}14n$ & \makecell[tl]{$2n$ per\\iteration} & \makecell[tl]{$2.3n$\\(linearized)} & $n$ \\
+Constraints & $O(n)$ & $O(Kn)$ & $O(n)$ & \makecell[tl]{$O(n^2)$\\(quadratic)} & $O(n)$ \\
+Complexity & NP-hard & NP-hard & NP-hard & NP-hard & NP-hard \\
+\addlinespace[0.15cm]
+\midrule
+\multicolumn{6}{@{}l}{\cellcolor{gray!15}\textbf{Mathematical Properties}} \\
+\addlinespace[0.1cm]
+Objective form & Linear & \makecell[tl]{Piecewise\\linear} & Fractional & Quadratic & \makecell[tl]{Linear\\(binary)} \\
+Nonlinearity & None & Approximated & Implicit & Explicit & None \\
+%Interaction terms & \makecell[tl]{Not\\supported} & \makecell[tl]{Not\\supported} & \makecell[tl]{Not\\supported} & Supported & \makecell[tl]{Not\\supported} \\
+\makecell[tl]{Approximation\\error} & None & $O(K^{-2})$ & None & None & Discretization\footnote{refer to \ref{sub:refinement}} \\
+\addlinespace[0.15cm]
+\midrule
+\multicolumn{6}{@{}l}{\cellcolor{gray!15}\textbf{Computational Characteristics}} \\
+\addlinespace[0.1cm]
+\makecell[tl]{Expected solve\\time} & \makecell[tl]{1.0$\times$\\(baseline)} & 2--4$\times$ & 5--15$\times$ & 1.0--1.5$\times$ & 0.5--1.0$\times$ \\
+\makecell[tl]{Memory\\complexity} & $O(n)$ & $O(Kn)$ & $O(n)$ & $O(n^2)$ & $O(n)$ \\
+%Scalability & High & Moderate & Moderate & High & High \\
+%Solver maturity & Established & Established & Specialized & Established & Emerging \\
+\addlinespace[0.15cm]
+\midrule
+\multicolumn{6}{@{}l}{\cellcolor{gray!15}\textbf{Modeling Capabilities}} \\
+\addlinespace[0.1cm]
+\makecell[tl]{Diminishing\\returns} & No & Yes & Yes & No & No \\
+\makecell[tl]{Crop\\interactions} & No & No & No & Yes & No \\
+\makecell[tl]{Resource\\efficiency} & Implicit & Implicit & Explicit & Implicit & Implicit \\
+\makecell[tl]{Continuous\\allocation} & Yes & Yes & Yes & Yes & No \\
+\addlinespace[0.15cm]
+\midrule
+% \multicolumn{6}{@{}l}{\cellcolor{gray!15}\textbf{Application Domains}} \\
+% \addlinespace[0.1cm]
+% Primary use case & \makecell[tl]{Baseline\\models; rapid\\prototyping} & \makecell[tl]{Diminishing\\marginal\\productivity} & \makecell[tl]{Efficiency\\maximization} & \makecell[tl]{Synergistic\\systems} & \makecell[tl]{Fixed plot\\allocation;\\quantum\\computing} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+
+
+}
+
+
+\subsubsection{Solver Performance}
+
+
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{Plots/gurobi_milp_cross_scenario.png}
+    %\caption{Caption}
+    \label{fig:pulp_results}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{Plots/ipopt_minlp_cross_scenario.png}
+    %\caption{Caption}
+    \label{fig:pyomo_results}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\linewidth]{Plots/dwave_cross_scenario.png}
+    %\caption{Caption}
+    \label{fig:DWAVE_results}
+\end{figure}
+
+
+
+\clearpage
+\newpage
+\subsection{Benchmarking Strategies}
+
+Our benchmark consists of two main components: \textbf{scenarios} and \textbf{solvers}.
+
+We will test three solvers, namely the state of the art open source python library for modeling Linear Programs, PuLP (which can run solvers like Gurobi \cite{gurobi2023} and CPLEX \cite{cplex2023}) the D-Wave Leap Hybrid Solver, to maintain a direct comparison in case we detect any possibility of \textit{local advantage} \cite{ronnow2014defining}{\color{blue}, and the state of the art open source python library for modeling Non Linear Programs - when needed - Pyomo \cite{bynum2021pyomo}, which also uses state of the art solvers like Ipopt.
+
+\subsubsection{Results from testing - to be moved}
+From preliminary testing of the classical and hybrid solvers across multiple scenarios and strategies \ref{fig:NLN_result} \ref{fig:SYN_results} \ref{fig:BQUBO_results}, we can observe the following:
+\begin{itemize}
+    \item The quantum solvers always underperform in terms of objective value, having an increasing gap with problem size
+    \item In the LQ formulation \ref{fig:SYN_results} the quantum solver shows a speedup with respect to the classical solvers, keeping a constant solve time of $\sim5\,s$
+    \item In the BQUBO formulation the QPU usage is not constant, probably due to the absence of continuous variables.
+\end{itemize}
+
+
+More generally we can observe that the QPU usage in the hybrid solvers is orders of magnitude lower than the total solve time; this is in accordance to what was found in \cite{opticalrouting}
+
+It is also important to notice that, as presented in \cite{Gurobi2025BuzzwordJungle}, while it is good to compare apples with apples - meaning the same formulation on different solvers \cite{koch}, the best practice is to compare the two highest performing solvers on their native formulations, so classical solvers on MI(N)LPs and quantum solvers on QUBOs.
+
+This not only because classical solvers are inherently bad at solving QUBOs, since all structure is lost during the conversion, but because we try to adhere to the practices highlighted in \cite{Koch2025QuantumOptimizationBenchmarkLibrary}.
+
+To this end we show in \ref{fig:BQUBO_results} the results we get when trying to - unfairly - solve the problem in the QUBO formulation on a classical solver. We can see that even at the second to smallest problem size the solver hits the solve time limit of $100\,s$ and that the objective value degrades with size.
+
+To conclude this preliminary outlook, our results match the findings of \cite{krellner2025solvingrealworldmodularlogistic} regarding the fact that classical MILP solver is (prevalently) the fastest and classical QUBO is the slowest, while the other solvers are generally in between.
+
+\subsubsection{Scenario Adaptation}
+
+In all of the above formulations, the total area was dictated by the number of farms, as they were sampled from a distribution \cite{LOWDER201616}.
+
+Due to how the model is currently formulated, the total area is a parameter known \textit{a priori}; this total area is going to get subdivided either into a number of farms with uneven area, or into a number of uniformly sized plots.
+
+Additional information regarding the difference between the two choices can be found in Appendix 1
+
+\subsubsection{Overview}
+Having analyzed all the previous formulations and their performance on classical and quantum hardware, the benchmark will be comprehensive of two formulations:
+
+\begin{enumerate}
+    \item \textbf{Binary Formulation} (Even Grid): Used when land is divided into equal-sized plots
+    \item \textbf{Continuous Formulation} (Uneven Distribution): Used when farms have varying sizes
+\end{enumerate}
+
+
+The script solves the optimization problem using three different methods:
+\begin{itemize}
+    \item PuLP with Gurobi solver (classical optimization)
+    \item D-Wave Hybrid CQM Sampler (quantum-classical hybrid)
+    \item D-Wave Hybrid BQM Sampler (quantum-enabled via CQM→BQM conversion)
+\end{itemize}
+
+
+
+\subsubsection{Objective Functions}
+
+\paragraph{Continuous Formulation Objective}
+
+The objective function maximizes the weighted sum of agricultural value metrics, normalized by total available land:
+
+$$\max \quad Z = \frac{1}{\sum_{f \in F} L_f} \sum_{f \in F} \sum_{c \in C} B_c \cdot A_{f,c}$$
+
+where the composite value $v_c$ for crop $c$ is defined as:
+
+$$B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}$$
+
+\textbf{Note:} This is equivalent to \ref{eq:linear_obj} after appropriate renormalization.
+
+\paragraph{Binary Formulation Objective}
+
+For the binary formulation, the objective accounts for the fixed area $a_p$ of each plot:
+
+$$\max \quad Z = \frac{1}{\sum_{p \in F} a_p} \sum_{p \in F} \sum_{c \in C} a_p \cdot B_c \cdot Y_{p,c}$$
+
+where $B_c$ is defined identically as in the continuous formulation.
+
+\textbf{Interpretation:} Each selected assignment contributes the plot's area multiplied by the crop's value density.
+
+\subsubsection{Constraints}
+
+\paragraph{Continuous Formulation Constraints}
+
+\subparagraph{Land Availability Constraints}
+
+Each farm cannot allocate more land than available:
+
+$$\sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall f \in \mathcal{F}$$
+
+\textbf{Label:} \texttt{Land\_Availability\_\{farm\}}
+
+\subparagraph{Minimum Planting Area Constraints}
+
+If a crop is selected on a farm, it must occupy at least the minimum required area:
+
+$$A_{f,c} \geq A_{min,c} \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, c \in C$$
+
+
+\textbf{Logical Interpretation:}
+\begin{itemize}
+    \item If $Y_{f,c} = 1$: $A_{f,c} \geq A_{min,c}$ (enforces minimum area)
+    \item If $Y_{f,c} = 0$: $A_{f,c} \geq 0$ (no planting, so area can be zero)
+\end{itemize}
+
+\textbf{Label:} \texttt{Min\_Area\_If\_Selected\_\{farm\}\_\{crop\}}
+
+\subparagraph{Maximum Planting Area Constraints}
+
+If a crop is not selected, its allocated area must be zero:
+
+$$A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, c \in C$$
+
+
+\textbf{Logical Interpretation:}
+\begin{itemize}
+    \item If $Y_{f,c} = 1$: $A_{f,c} \leq L_f$ (area can be up to farm size)
+    \item If $Y_{f,c} = 0$: $A_{f,c} \leq 0$ (forces area to zero)
+\end{itemize}
+
+\textbf{Label:} \texttt{Max\_Area\_If\_Selected\_\{farm\}\_\{crop\}}
+
+\subparagraph{Food Group Minimum Constraints}
+
+At least a minimum number of different crops from specified food groups must be cultivated:
+
+$$\sum_{f \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{f,c} \geq N_{min,g} \quad \forall g \in \mathcal{G} \text{ where } N_{min,g} \text{ is defined}$$
+
+\textbf{Label:} \texttt{Food\_Group\_Min\_\{group\}}
+
+\subparagraph{Food Group Maximum Constraints}
+
+A maximum number of different crops from specified food groups must not be exceeded:
+
+$$\sum_{f \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{f,c} \leq N_{max,g} \quad \forall g \in \mathcal{G} \text{ where } N_{max,g} \text{ is defined}$$
+
+\textbf{Label:} \texttt{Food\_Group\_Max\_\{group\}}
+
+\paragraph{Binary Formulation Constraints}
+
+\subparagraph{Plot Assignment Constraints}
+
+Each plot can be assigned to at most one crop (or remain idle):
+
+$$\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p \in \mathcal{F}$$
+
+
+
+\textbf{Interpretation:}
+\begin{itemize}
+    \item $\sum_{c \in C} Y_{p,c} = 0$: Plot remains idle
+    \item $\sum_{c \in C} Y_{p,c} = 1$: Plot is assigned to exactly one crop
+\end{itemize}
+
+\textbf{Label:} \texttt{Max\_Assignment\_\{plot\}}
+
+\subparagraph{Minimum Plots Per Crop Constraints}
+
+For crops with minimum planting area requirements, the constraint is converted to a minimum number of plots:
+
+$$\sum_{p \in \mathcal{F}} Y_{p,c} \geq \left\lceil \frac{A_{min,c}}{a_p} \right\rceil \quad \forall c \in \mathcal{F} \text{ where } A_{min,c} > 0$$
+
+where $a_p$ is the area of each plot (assumed equal in even grid).
+
+
+
+\textbf{Interpretation:} If a crop $c$ requires minimum area $A_{min,c}$, it must be planted on at least $\lceil A_{min,c} / a_p \rceil$ plots.
+
+\textbf{Label:} \texttt{Min\_Plots\_\{crop\}}
+
+\subparagraph{Maximum Plots Per Crop Constraints}
+
+For crops with maximum planting area limits, the constraint is converted to a maximum number of plots:
+
+$$\sum_{p \in \mathcal{F}} Y_{p,c} \leq \left\lfloor \frac{A_{max,c}}{a_p} \right\rfloor \quad \forall c \in \mathcal{C} \text{ where } A_{max,c} \text{ is defined}$$
+
+
+
+\textbf{Interpretation:} If a crop $c$ has maximum area $A_{max,c}$, it can be planted on at most $\lfloor A_{max,c} / a_p \rfloor$ plots.
+
+
+\textbf{Label:} \texttt{Max\_Plots\_\{crop\}}
+
+
+
+
+\subparagraph{Food Group Constraints}
+
+The same food group minimum and maximum constraints apply as in the continuous formulation:
+
+$$\sum_{p \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{p,c} \geq N_{min,g} \quad \forall g \in \mathcal{G}$$
+$$\sum_{p \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{p,c} \leq N_{max,g} \quad \forall g \in \mathcal{G}$$
+
+\textbf{Labels:} \texttt{Food\_Group\_Min\_\{group\}}, \texttt{Food\_Group\_Max\_\{group\}}
