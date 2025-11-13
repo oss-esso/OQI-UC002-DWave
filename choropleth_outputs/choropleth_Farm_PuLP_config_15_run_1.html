@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_ef1992869f4b42582275af3c5548ba92 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <div style="position: fixed; 
+                top: 10px; right: 10px; width: 200px; height: auto; 
+                background-color: white; z-index:9999; font-size:14px;
+                border:2px solid grey; border-radius: 5px; padding: 10px">
+    <h4 style="margin-top:0;">Crop Legend</h4>
+    
+        <p style="margin: 5px 0;">
+            <span style="background-color:#DEB887; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Chickpeas
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#CD853F; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Pork
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#228B22; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Spinach
+        </p>
+        </div>
+    
+            <div class="folium-map" id="map_ef1992869f4b42582275af3c5548ba92" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_ef1992869f4b42582275af3c5548ba92 = L.map(
+                "map_ef1992869f4b42582275af3c5548ba92",
+                {
+                    center: [-5.975236032882191, 107.058068],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 15,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_244604c989e896077f2e0cf29c7b9705 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_244604c989e896077f2e0cf29c7b9705.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_260c89945075a13efdadc0d5ce2cacda_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#CD853F", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_260c89945075a13efdadc0d5ce2cacda_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_260c89945075a13efdadc0d5ce2cacda = L.geoJson(null, {
+                onEachFeature: geo_json_260c89945075a13efdadc0d5ce2cacda_onEachFeature,
+            
+                style: geo_json_260c89945075a13efdadc0d5ce2cacda_styler,
+            ...{
+}
+        });
+
+        function geo_json_260c89945075a13efdadc0d5ce2cacda_add (data) {
+            geo_json_260c89945075a13efdadc0d5ce2cacda
+                .addData(data);
+        }
+            geo_json_260c89945075a13efdadc0d5ce2cacda_add({"features": [{"geometry": {"coordinates": [[[107.05798173057231, -5.972502714737927], [107.05798173057231, -5.971221073185473], [107.05670008901986, -5.971221073185473], [107.05670008901986, -5.972502714737927], [107.05798173057231, -5.972502714737927]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_03480cb3ecb656da106d1702b7d5c8fb = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_221c67f9b26c9af4854a5062d8c4c3e8 = $(`<div id="html_221c67f9b26c9af4854a5062d8c4c3e8" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm1<br>                     <b>Crop:</b> Pork<br>                     <b>Area:</b> 2.10 ha                     </div>`)[0];
+                popup_03480cb3ecb656da106d1702b7d5c8fb.setContent(html_221c67f9b26c9af4854a5062d8c4c3e8);
+            
+        
+
+        geo_json_260c89945075a13efdadc0d5ce2cacda.bindPopup(popup_03480cb3ecb656da106d1702b7d5c8fb)
+        ;
+
+        
+    
+    
+            geo_json_260c89945075a13efdadc0d5ce2cacda.bindTooltip(
+                `<div>
+                     Farm1: Pork
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_260c89945075a13efdadc0d5ce2cacda.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_f935cf91675e60b1c7eb0ebce6396e3d_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#DEB887", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_f935cf91675e60b1c7eb0ebce6396e3d_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_f935cf91675e60b1c7eb0ebce6396e3d = L.geoJson(null, {
+                onEachFeature: geo_json_f935cf91675e60b1c7eb0ebce6396e3d_onEachFeature,
+            
+                style: geo_json_f935cf91675e60b1c7eb0ebce6396e3d_styler,
+            ...{
+}
+        });
+
+        function geo_json_f935cf91675e60b1c7eb0ebce6396e3d_add (data) {
+            geo_json_f935cf91675e60b1c7eb0ebce6396e3d
+                .addData(data);
+        }
+            geo_json_f935cf91675e60b1c7eb0ebce6396e3d_add({"features": [{"geometry": {"coordinates": [[[107.0635966075655, -5.973632848315774], [107.0635966075655, -5.971742698579637], [107.06170645782936, -5.971742698579637], [107.06170645782936, -5.973632848315774], [107.0635966075655, -5.973632848315774]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_18a1b8da2785e6b0f53f1b5cda848cc9 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_117ee332ae9b387f44193f8ab2ed46e6 = $(`<div id="html_117ee332ae9b387f44193f8ab2ed46e6" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm2<br>                     <b>Crop:</b> Chickpeas<br>                     <b>Area:</b> 1.39 ha                     </div>`)[0];
+                popup_18a1b8da2785e6b0f53f1b5cda848cc9.setContent(html_117ee332ae9b387f44193f8ab2ed46e6);
+            
+        
+
+        geo_json_f935cf91675e60b1c7eb0ebce6396e3d.bindPopup(popup_18a1b8da2785e6b0f53f1b5cda848cc9)
+        ;
+
+        
+    
+    
+            geo_json_f935cf91675e60b1c7eb0ebce6396e3d.bindTooltip(
+                `<div>
+                     Farm2: Chickpeas
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_f935cf91675e60b1c7eb0ebce6396e3d.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_56526d1d76a530d40aaa164ae0ea430c_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#CD853F", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_56526d1d76a530d40aaa164ae0ea430c_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_56526d1d76a530d40aaa164ae0ea430c = L.geoJson(null, {
+                onEachFeature: geo_json_56526d1d76a530d40aaa164ae0ea430c_onEachFeature,
+            
+                style: geo_json_56526d1d76a530d40aaa164ae0ea430c_styler,
+            ...{
+}
+        });
+
+        function geo_json_56526d1d76a530d40aaa164ae0ea430c_add (data) {
+            geo_json_56526d1d76a530d40aaa164ae0ea430c
+                .addData(data);
+        }
+            geo_json_56526d1d76a530d40aaa164ae0ea430c_add({"features": [{"geometry": {"coordinates": [[[107.05338999222187, -5.982022521019908], [107.05338999222187, -5.9803392225484595], [107.05170669375042, -5.9803392225484595], [107.05170669375042, -5.982022521019908], [107.05338999222187, -5.982022521019908]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_33d4be421f06be570b62d39e1a65b51a = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_fc6f9fe10408d7b1919063f502467bbc = $(`<div id="html_fc6f9fe10408d7b1919063f502467bbc" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm3<br>                     <b>Crop:</b> Pork<br>                     <b>Area:</b> 1.59 ha                     </div>`)[0];
+                popup_33d4be421f06be570b62d39e1a65b51a.setContent(html_fc6f9fe10408d7b1919063f502467bbc);
+            
+        
+
+        geo_json_56526d1d76a530d40aaa164ae0ea430c.bindPopup(popup_33d4be421f06be570b62d39e1a65b51a)
+        ;
+
+        
+    
+    
+            geo_json_56526d1d76a530d40aaa164ae0ea430c.bindTooltip(
+                `<div>
+                     Farm3: Pork
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_56526d1d76a530d40aaa164ae0ea430c.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_0deba5616e1e618914b673d87c7b0b32_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#CD853F", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_0deba5616e1e618914b673d87c7b0b32_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_0deba5616e1e618914b673d87c7b0b32 = L.geoJson(null, {
+                onEachFeature: geo_json_0deba5616e1e618914b673d87c7b0b32_onEachFeature,
+            
+                style: geo_json_0deba5616e1e618914b673d87c7b0b32_styler,
+            ...{
+}
+        });
+
+        function geo_json_0deba5616e1e618914b673d87c7b0b32_add (data) {
+            geo_json_0deba5616e1e618914b673d87c7b0b32
+                .addData(data);
+        }
+            geo_json_0deba5616e1e618914b673d87c7b0b32_add({"features": [{"geometry": {"coordinates": [[[107.05530112110847, -5.973308975736077], [107.05530112110847, -5.971765674939079], [107.05375782031146, -5.971765674939079], [107.05375782031146, -5.973308975736077], [107.05530112110847, -5.973308975736077]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_49f654ddf28e0e4f29e7f180a8473867 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_63d5ec93e2fc7664ce9c232fa2b2823e = $(`<div id="html_63d5ec93e2fc7664ce9c232fa2b2823e" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm4<br>                     <b>Crop:</b> Pork<br>                     <b>Area:</b> 1.95 ha                     </div>`)[0];
+                popup_49f654ddf28e0e4f29e7f180a8473867.setContent(html_63d5ec93e2fc7664ce9c232fa2b2823e);
+            
+        
+
+        geo_json_0deba5616e1e618914b673d87c7b0b32.bindPopup(popup_49f654ddf28e0e4f29e7f180a8473867)
+        ;
+
+        
+    
+    
+            geo_json_0deba5616e1e618914b673d87c7b0b32.bindTooltip(
+                `<div>
+                     Farm4: Pork
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_0deba5616e1e618914b673d87c7b0b32.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_a39a76c92155e7f2707f37f77da07b75_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#DEB887", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_a39a76c92155e7f2707f37f77da07b75_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_a39a76c92155e7f2707f37f77da07b75 = L.geoJson(null, {
+                onEachFeature: geo_json_a39a76c92155e7f2707f37f77da07b75_onEachFeature,
+            
+                style: geo_json_a39a76c92155e7f2707f37f77da07b75_styler,
+            ...{
+}
+        });
+
+        function geo_json_a39a76c92155e7f2707f37f77da07b75_add (data) {
+            geo_json_a39a76c92155e7f2707f37f77da07b75
+                .addData(data);
+        }
+            geo_json_a39a76c92155e7f2707f37f77da07b75_add({"features": [{"geometry": {"coordinates": [[[107.06049895735511, -5.97339946224357], [107.06049895735511, -5.9724489714293405], [107.05954846654087, -5.9724489714293405], [107.05954846654087, -5.97339946224357], [107.06049895735511, -5.97339946224357]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_aa92a22f4b0d61cdd3da7b47bbfd53e0 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_d9e2d9fedbba835b5abf1db9deadd38d = $(`<div id="html_d9e2d9fedbba835b5abf1db9deadd38d" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm5<br>                     <b>Crop:</b> Chickpeas<br>                     <b>Area:</b> 0.65 ha                     </div>`)[0];
+                popup_aa92a22f4b0d61cdd3da7b47bbfd53e0.setContent(html_d9e2d9fedbba835b5abf1db9deadd38d);
+            
+        
+
+        geo_json_a39a76c92155e7f2707f37f77da07b75.bindPopup(popup_aa92a22f4b0d61cdd3da7b47bbfd53e0)
+        ;
+
+        
+    
+    
+            geo_json_a39a76c92155e7f2707f37f77da07b75.bindTooltip(
+                `<div>
+                     Farm5: Chickpeas
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_a39a76c92155e7f2707f37f77da07b75.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_38abcce8fa6ad3024e2dd3663f3ae22d_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#DEB887", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_38abcce8fa6ad3024e2dd3663f3ae22d_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_38abcce8fa6ad3024e2dd3663f3ae22d = L.geoJson(null, {
+                onEachFeature: geo_json_38abcce8fa6ad3024e2dd3663f3ae22d_onEachFeature,
+            
+                style: geo_json_38abcce8fa6ad3024e2dd3663f3ae22d_styler,
+            ...{
+}
+        });
+
+        function geo_json_38abcce8fa6ad3024e2dd3663f3ae22d_add (data) {
+            geo_json_38abcce8fa6ad3024e2dd3663f3ae22d
+                .addData(data);
+        }
+            geo_json_38abcce8fa6ad3024e2dd3663f3ae22d_add({"features": [{"geometry": {"coordinates": [[[107.05551268919238, -5.970546147872707], [107.05551268919238, -5.969595657058477], [107.05456219837815, -5.969595657058477], [107.05456219837815, -5.970546147872707], [107.05551268919238, -5.970546147872707]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_2ed17c9ec5610f2d8e491d66f5ab4ba1 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_6bb177da61070b0f415fb8d51feb4f3c = $(`<div id="html_6bb177da61070b0f415fb8d51feb4f3c" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm6<br>                     <b>Crop:</b> Chickpeas<br>                     <b>Area:</b> 0.49 ha                     </div>`)[0];
+                popup_2ed17c9ec5610f2d8e491d66f5ab4ba1.setContent(html_6bb177da61070b0f415fb8d51feb4f3c);
+            
+        
+
+        geo_json_38abcce8fa6ad3024e2dd3663f3ae22d.bindPopup(popup_2ed17c9ec5610f2d8e491d66f5ab4ba1)
+        ;
+
+        
+    
+    
+            geo_json_38abcce8fa6ad3024e2dd3663f3ae22d.bindTooltip(
+                `<div>
+                     Farm6: Chickpeas
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_38abcce8fa6ad3024e2dd3663f3ae22d.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_756122486d2bfd0be00480953a34ce5e_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#CD853F", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_756122486d2bfd0be00480953a34ce5e_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_756122486d2bfd0be00480953a34ce5e = L.geoJson(null, {
+                onEachFeature: geo_json_756122486d2bfd0be00480953a34ce5e_onEachFeature,
+            
+                style: geo_json_756122486d2bfd0be00480953a34ce5e_styler,
+            ...{
+}
+        });
+
+        function geo_json_756122486d2bfd0be00480953a34ce5e_add (data) {
+            geo_json_756122486d2bfd0be00480953a34ce5e
+                .addData(data);
+        }
+            geo_json_756122486d2bfd0be00480953a34ce5e_add({"features": [{"geometry": {"coordinates": [[[107.061589129642, -5.975595830633163], [107.061589129642, -5.974837601265398], [107.06083090027424, -5.974837601265398], [107.06083090027424, -5.975595830633163], [107.061589129642, -5.975595830633163]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_fc5c626cecb13cf393b3d35b81ff9d50 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_63f517958ee9b24ebd42a74353bc3404 = $(`<div id="html_63f517958ee9b24ebd42a74353bc3404" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm7<br>                     <b>Crop:</b> Pork<br>                     <b>Area:</b> 1.83 ha                     </div>`)[0];
+                popup_fc5c626cecb13cf393b3d35b81ff9d50.setContent(html_63f517958ee9b24ebd42a74353bc3404);
+            
+        
+
+        geo_json_756122486d2bfd0be00480953a34ce5e.bindPopup(popup_fc5c626cecb13cf393b3d35b81ff9d50)
+        ;
+
+        
+    
+    
+            geo_json_756122486d2bfd0be00480953a34ce5e.bindTooltip(
+                `<div>
+                     Farm7: Pork
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_756122486d2bfd0be00480953a34ce5e.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_17110ae27b234348a1276a8554515ec4_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_17110ae27b234348a1276a8554515ec4_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_17110ae27b234348a1276a8554515ec4 = L.geoJson(null, {
+                onEachFeature: geo_json_17110ae27b234348a1276a8554515ec4_onEachFeature,
+            
+                style: geo_json_17110ae27b234348a1276a8554515ec4_styler,
+            ...{
+}
+        });
+
+        function geo_json_17110ae27b234348a1276a8554515ec4_add (data) {
+            geo_json_17110ae27b234348a1276a8554515ec4
+                .addData(data);
+        }
+            geo_json_17110ae27b234348a1276a8554515ec4_add({"features": [{"geometry": {"coordinates": [[[107.05751913175898, -5.981656563836162], [107.05751913175898, -5.979507185610605], [107.05536975353341, -5.979507185610605], [107.05536975353341, -5.981656563836162], [107.05751913175898, -5.981656563836162]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_e582d6280bddb6291eb31505cb413e82 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_1b4dbebb3f3c4ffdfa7de625a1ee674c = $(`<div id="html_1b4dbebb3f3c4ffdfa7de625a1ee674c" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm8<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 3.11 ha                     </div>`)[0];
+                popup_e582d6280bddb6291eb31505cb413e82.setContent(html_1b4dbebb3f3c4ffdfa7de625a1ee674c);
+            
+        
+
+        geo_json_17110ae27b234348a1276a8554515ec4.bindPopup(popup_e582d6280bddb6291eb31505cb413e82)
+        ;
+
+        
+    
+    
+            geo_json_17110ae27b234348a1276a8554515ec4.bindTooltip(
+                `<div>
+                     Farm8: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_17110ae27b234348a1276a8554515ec4.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_1cd0943a7d8c9a4f173421e91f33f435_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#CD853F", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_1cd0943a7d8c9a4f173421e91f33f435_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_1cd0943a7d8c9a4f173421e91f33f435 = L.geoJson(null, {
+                onEachFeature: geo_json_1cd0943a7d8c9a4f173421e91f33f435_onEachFeature,
+            
+                style: geo_json_1cd0943a7d8c9a4f173421e91f33f435_styler,
+            ...{
+}
+        });
+
+        function geo_json_1cd0943a7d8c9a4f173421e91f33f435_add (data) {
+            geo_json_1cd0943a7d8c9a4f173421e91f33f435
+                .addData(data);
+        }
+            geo_json_1cd0943a7d8c9a4f173421e91f33f435_add({"features": [{"geometry": {"coordinates": [[[107.05849116177671, -5.975707790669635], [107.05849116177671, -5.973717116228923], [107.056500487336, -5.973717116228923], [107.056500487336, -5.975707790669635], [107.05849116177671, -5.975707790669635]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_3da1b300b718ec76964302bb8f43445e = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_8b7ea209bfbc5389fe4d33e001410ee2 = $(`<div id="html_8b7ea209bfbc5389fe4d33e001410ee2" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm9<br>                     <b>Crop:</b> Pork<br>                     <b>Area:</b> 3.01 ha                     </div>`)[0];
+                popup_3da1b300b718ec76964302bb8f43445e.setContent(html_8b7ea209bfbc5389fe4d33e001410ee2);
+            
+        
+
+        geo_json_1cd0943a7d8c9a4f173421e91f33f435.bindPopup(popup_3da1b300b718ec76964302bb8f43445e)
+        ;
+
+        
+    
+    
+            geo_json_1cd0943a7d8c9a4f173421e91f33f435.bindTooltip(
+                `<div>
+                     Farm9: Pork
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_1cd0943a7d8c9a4f173421e91f33f435.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_23932e7d816b79eac0440029ec65aa4c_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_23932e7d816b79eac0440029ec65aa4c_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_23932e7d816b79eac0440029ec65aa4c = L.geoJson(null, {
+                onEachFeature: geo_json_23932e7d816b79eac0440029ec65aa4c_onEachFeature,
+            
+                style: geo_json_23932e7d816b79eac0440029ec65aa4c_styler,
+            ...{
+}
+        });
+
+        function geo_json_23932e7d816b79eac0440029ec65aa4c_add (data) {
+            geo_json_23932e7d816b79eac0440029ec65aa4c
+                .addData(data);
+        }
+            geo_json_23932e7d816b79eac0440029ec65aa4c_add({"features": [{"geometry": {"coordinates": [[[107.06043670826094, -5.978960799920979], [107.06043670826094, -5.976904174516922], [107.05838008285687, -5.976904174516922], [107.05838008285687, -5.978960799920979], [107.06043670826094, -5.978960799920979]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_4b6904e8606c376d1a6b699e47c1a997 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_740dc4592a4749e0e62dd52ccbcf73fc = $(`<div id="html_740dc4592a4749e0e62dd52ccbcf73fc" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm10<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 3.88 ha                     </div>`)[0];
+                popup_4b6904e8606c376d1a6b699e47c1a997.setContent(html_740dc4592a4749e0e62dd52ccbcf73fc);
+            
+        
+
+        geo_json_23932e7d816b79eac0440029ec65aa4c.bindPopup(popup_4b6904e8606c376d1a6b699e47c1a997)
+        ;
+
+        
+    
+    
+            geo_json_23932e7d816b79eac0440029ec65aa4c.bindTooltip(
+                `<div>
+                     Farm10: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_23932e7d816b79eac0440029ec65aa4c.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_ad3fef75c0727c7bf8f1e973359e5ab3_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_ad3fef75c0727c7bf8f1e973359e5ab3_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_ad3fef75c0727c7bf8f1e973359e5ab3 = L.geoJson(null, {
+                onEachFeature: geo_json_ad3fef75c0727c7bf8f1e973359e5ab3_onEachFeature,
+            
+                style: geo_json_ad3fef75c0727c7bf8f1e973359e5ab3_styler,
+            ...{
+}
+        });
+
+        function geo_json_ad3fef75c0727c7bf8f1e973359e5ab3_add (data) {
+            geo_json_ad3fef75c0727c7bf8f1e973359e5ab3
+                .addData(data);
+        }
+            geo_json_ad3fef75c0727c7bf8f1e973359e5ab3_add({"features": [{"geometry": {"coordinates": [[[107.06439392722709, -5.979676752645651], [107.06439392722709, -5.976924205483358], [107.0616413800648, -5.976924205483358], [107.0616413800648, -5.979676752645651], [107.06439392722709, -5.979676752645651]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_c26ee5e832751def0f64f0d3633ec452 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_baf3eb0310ea2f70880723fad7da8163 = $(`<div id="html_baf3eb0310ea2f70880723fad7da8163" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm11<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 12.73 ha                     </div>`)[0];
+                popup_c26ee5e832751def0f64f0d3633ec452.setContent(html_baf3eb0310ea2f70880723fad7da8163);
+            
+        
+
+        geo_json_ad3fef75c0727c7bf8f1e973359e5ab3.bindPopup(popup_c26ee5e832751def0f64f0d3633ec452)
+        ;
+
+        
+    
+    
+            geo_json_ad3fef75c0727c7bf8f1e973359e5ab3.bindTooltip(
+                `<div>
+                     Farm11: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_ad3fef75c0727c7bf8f1e973359e5ab3.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_231517def705a0af34a45da96e2a7351_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_231517def705a0af34a45da96e2a7351_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_231517def705a0af34a45da96e2a7351 = L.geoJson(null, {
+                onEachFeature: geo_json_231517def705a0af34a45da96e2a7351_onEachFeature,
+            
+                style: geo_json_231517def705a0af34a45da96e2a7351_styler,
+            ...{
+}
+        });
+
+        function geo_json_231517def705a0af34a45da96e2a7351_add (data) {
+            geo_json_231517def705a0af34a45da96e2a7351
+                .addData(data);
+        }
+            geo_json_231517def705a0af34a45da96e2a7351_add({"features": [{"geometry": {"coordinates": [[[107.05529709203384, -5.979070040711122], [107.05529709203384, -5.974824149681902], [107.05105120100461, -5.974824149681902], [107.05105120100461, -5.979070040711122], [107.05529709203384, -5.979070040711122]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_74dd448325abe565207736c773c66cb5 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_33c8d347f897a2aea4e29f3ab0a0484f = $(`<div id="html_33c8d347f897a2aea4e29f3ab0a0484f" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm12<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 7.27 ha                     </div>`)[0];
+                popup_74dd448325abe565207736c773c66cb5.setContent(html_33c8d347f897a2aea4e29f3ab0a0484f);
+            
+        
+
+        geo_json_231517def705a0af34a45da96e2a7351.bindPopup(popup_74dd448325abe565207736c773c66cb5)
+        ;
+
+        
+    
+    
+            geo_json_231517def705a0af34a45da96e2a7351.bindTooltip(
+                `<div>
+                     Farm12: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_231517def705a0af34a45da96e2a7351.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_c26058bf0fbb619094796b9161f78d70_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_c26058bf0fbb619094796b9161f78d70_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_c26058bf0fbb619094796b9161f78d70 = L.geoJson(null, {
+                onEachFeature: geo_json_c26058bf0fbb619094796b9161f78d70_onEachFeature,
+            
+                style: geo_json_c26058bf0fbb619094796b9161f78d70_styler,
+            ...{
+}
+        });
+
+        function geo_json_c26058bf0fbb619094796b9161f78d70_add (data) {
+            geo_json_c26058bf0fbb619094796b9161f78d70
+                .addData(data);
+        }
+            geo_json_c26058bf0fbb619094796b9161f78d70_add({"features": [{"geometry": {"coordinates": [[[107.06285255079365, -5.97005719330099], [107.06285255079365, -5.965675647141966], [107.05847100463464, -5.965675647141966], [107.05847100463464, -5.97005719330099], [107.06285255079365, -5.97005719330099]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_d3053ea0890dff287b7085ef59cba1f9 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_01f1a17658f5351ff67d5cbed1df26a3 = $(`<div id="html_01f1a17658f5351ff67d5cbed1df26a3" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm13<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 15.00 ha                     </div>`)[0];
+                popup_d3053ea0890dff287b7085ef59cba1f9.setContent(html_01f1a17658f5351ff67d5cbed1df26a3);
+            
+        
+
+        geo_json_c26058bf0fbb619094796b9161f78d70.bindPopup(popup_d3053ea0890dff287b7085ef59cba1f9)
+        ;
+
+        
+    
+    
+            geo_json_c26058bf0fbb619094796b9161f78d70.bindTooltip(
+                `<div>
+                     Farm13: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_c26058bf0fbb619094796b9161f78d70.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_9501548a2face2e8d14e7555bbd0adff_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_9501548a2face2e8d14e7555bbd0adff_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_9501548a2face2e8d14e7555bbd0adff = L.geoJson(null, {
+                onEachFeature: geo_json_9501548a2face2e8d14e7555bbd0adff_onEachFeature,
+            
+                style: geo_json_9501548a2face2e8d14e7555bbd0adff_styler,
+            ...{
+}
+        });
+
+        function geo_json_9501548a2face2e8d14e7555bbd0adff_add (data) {
+            geo_json_9501548a2face2e8d14e7555bbd0adff
+                .addData(data);
+        }
+            geo_json_9501548a2face2e8d14e7555bbd0adff_add({"features": [{"geometry": {"coordinates": [[[107.0506453911145, -5.974561918389284], [107.0506453911145, -5.969503897635146], [107.04558737036035, -5.969503897635146], [107.04558737036035, -5.974561918389284], [107.0506453911145, -5.974561918389284]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_66d03a64b48391425d7019828549e1e3 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_8d8b435a3d9c7a031476eb742a4be7b0 = $(`<div id="html_8d8b435a3d9c7a031476eb742a4be7b0" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm14<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 20.00 ha                     </div>`)[0];
+                popup_66d03a64b48391425d7019828549e1e3.setContent(html_8d8b435a3d9c7a031476eb742a4be7b0);
+            
+        
+
+        geo_json_9501548a2face2e8d14e7555bbd0adff.bindPopup(popup_66d03a64b48391425d7019828549e1e3)
+        ;
+
+        
+    
+    
+            geo_json_9501548a2face2e8d14e7555bbd0adff.bindTooltip(
+                `<div>
+                     Farm14: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_9501548a2face2e8d14e7555bbd0adff.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+    
+        function geo_json_37eb1fdd253aa3d8847e9f394b847477_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#228B22", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_37eb1fdd253aa3d8847e9f394b847477_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_37eb1fdd253aa3d8847e9f394b847477 = L.geoJson(null, {
+                onEachFeature: geo_json_37eb1fdd253aa3d8847e9f394b847477_onEachFeature,
+            
+                style: geo_json_37eb1fdd253aa3d8847e9f394b847477_styler,
+            ...{
+}
+        });
+
+        function geo_json_37eb1fdd253aa3d8847e9f394b847477_add (data) {
+            geo_json_37eb1fdd253aa3d8847e9f394b847477
+                .addData(data);
+        }
+            geo_json_37eb1fdd253aa3d8847e9f394b847477_add({"features": [{"geometry": {"coordinates": [[[107.06437543919657, -5.987176689971605], [107.06437543919657, -5.981520743214579], [107.05871949243954, -5.981520743214579], [107.05871949243954, -5.987176689971605], [107.06437543919657, -5.987176689971605]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_941fcf29940739d4d7a5a87c9755e39e = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_326aad582c737483a334e76e606f08e6 = $(`<div id="html_326aad582c737483a334e76e606f08e6" style="width: 100.0%; height: 100.0%;">                     <b>Farm:</b> Farm15<br>                     <b>Crop:</b> Spinach<br>                     <b>Area:</b> 24.99 ha                     </div>`)[0];
+                popup_941fcf29940739d4d7a5a87c9755e39e.setContent(html_326aad582c737483a334e76e606f08e6);
+            
+        
+
+        geo_json_37eb1fdd253aa3d8847e9f394b847477.bindPopup(popup_941fcf29940739d4d7a5a87c9755e39e)
+        ;
+
+        
+    
+    
+            geo_json_37eb1fdd253aa3d8847e9f394b847477.bindTooltip(
+                `<div>
+                     Farm15: Spinach
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_37eb1fdd253aa3d8847e9f394b847477.addTo(map_ef1992869f4b42582275af3c5548ba92);
+        
+</script>
+</html>

@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_27e0406538abb3083fd191346e276df7 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <div style="position: fixed; 
+                top: 10px; right: 10px; width: 200px; height: auto; 
+                background-color: white; z-index:9999; font-size:14px;
+                border:2px solid grey; border-radius: 5px; padding: 10px">
+    <h4 style="margin-top:0;">Crop Legend</h4>
+    
+        <p style="margin: 5px 0;">
+            <span style="background-color:#A9A9A9; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Avocado
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#FFFF00; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Banana
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#90EE90; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Cabbage
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#DEB887; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Chickpeas
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#FFDB58; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Corn
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#A9A9A9; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Cucumber
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#DAA520; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Durian
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#A9A9A9; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Egg
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#FFDAB9; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Guava
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#A0522D; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Lamb
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#32CD32; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Long bean
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#FFB347; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Papaya
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#C19A6B; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Peanuts
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#D2B48C; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Tempeh
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#F5F5DC; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Tofu
+        </p>
+        
+        <p style="margin: 5px 0;">
+            <span style="background-color:#A9A9A9; 
+                        width: 20px; height: 20px; 
+                        display: inline-block; 
+                        border: 1px solid black;"></span>
+            Watermelon
+        </p>
+        </div>
+    
+            <div class="folium-map" id="map_27e0406538abb3083fd191346e276df7" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_27e0406538abb3083fd191346e276df7 = L.map(
+                "map_27e0406538abb3083fd191346e276df7",
+                {
+                    center: [-5.975236032882191, 107.058068],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 15,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_5d76e3db979e622b87940967fc3b73ca = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_5d76e3db979e622b87940967fc3b73ca.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_9c135f1d8438bd48baa592df3c9b53ea_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#A9A9A9", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_9c135f1d8438bd48baa592df3c9b53ea_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_9c135f1d8438bd48baa592df3c9b53ea = L.geoJson(null, {
+                onEachFeature: geo_json_9c135f1d8438bd48baa592df3c9b53ea_onEachFeature,
+            
+                style: geo_json_9c135f1d8438bd48baa592df3c9b53ea_styler,
+            ...{
+}
+        });
+
+        function geo_json_9c135f1d8438bd48baa592df3c9b53ea_add (data) {
+            geo_json_9c135f1d8438bd48baa592df3c9b53ea
+                .addData(data);
+        }
+            geo_json_9c135f1d8438bd48baa592df3c9b53ea_add({"features": [{"geometry": {"coordinates": [[[107.05945128332895, -5.9699531449233], [107.05945128332895, -5.96776225469328], [107.05653009635559, -5.96776225469328], [107.05653009635559, -5.9699531449233], [107.05945128332895, -5.9699531449233]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_c6d2a5fc90cc4ac424db471c39533d4e = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_495b532fbab097fd4ec3a74d33a917ff = $(`<div id="html_495b532fbab097fd4ec3a74d33a917ff" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch1<br>                     <b>Crop:</b> Avocado<br>                     <b>Area:</b> 0.166 ha                     </div>`)[0];
+                popup_c6d2a5fc90cc4ac424db471c39533d4e.setContent(html_495b532fbab097fd4ec3a74d33a917ff);
+            
+        
+
+        geo_json_9c135f1d8438bd48baa592df3c9b53ea.bindPopup(popup_c6d2a5fc90cc4ac424db471c39533d4e)
+        ;
+
+        
+    
+    
+            geo_json_9c135f1d8438bd48baa592df3c9b53ea.bindTooltip(
+                `<div>
+                     Patch1: Avocado
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_9c135f1d8438bd48baa592df3c9b53ea.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_1b89081f743534e78f5c821f83eb6bf3_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#D2B48C", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_1b89081f743534e78f5c821f83eb6bf3_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_1b89081f743534e78f5c821f83eb6bf3 = L.geoJson(null, {
+                onEachFeature: geo_json_1b89081f743534e78f5c821f83eb6bf3_onEachFeature,
+            
+                style: geo_json_1b89081f743534e78f5c821f83eb6bf3_styler,
+            ...{
+}
+        });
+
+        function geo_json_1b89081f743534e78f5c821f83eb6bf3_add (data) {
+            geo_json_1b89081f743534e78f5c821f83eb6bf3
+                .addData(data);
+        }
+            geo_json_1b89081f743534e78f5c821f83eb6bf3_add({"features": [{"geometry": {"coordinates": [[[107.06641541950472, -5.975584613918997], [107.06641541950472, -5.973393723688977], [107.06349423253135, -5.973393723688977], [107.06349423253135, -5.975584613918997], [107.06641541950472, -5.975584613918997]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_0aa99f94bdf21e8e699abc02b1400f94 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_33d767ee68dc03093a6baf9ec72e0fdc = $(`<div id="html_33d767ee68dc03093a6baf9ec72e0fdc" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch2<br>                     <b>Crop:</b> Tempeh<br>                     <b>Area:</b> 0.150 ha                     </div>`)[0];
+                popup_0aa99f94bdf21e8e699abc02b1400f94.setContent(html_33d767ee68dc03093a6baf9ec72e0fdc);
+            
+        
+
+        geo_json_1b89081f743534e78f5c821f83eb6bf3.bindPopup(popup_0aa99f94bdf21e8e699abc02b1400f94)
+        ;
+
+        
+    
+    
+            geo_json_1b89081f743534e78f5c821f83eb6bf3.bindTooltip(
+                `<div>
+                     Patch2: Tempeh
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_1b89081f743534e78f5c821f83eb6bf3.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#DEB887", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5 = L.geoJson(null, {
+                onEachFeature: geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5_onEachFeature,
+            
+                style: geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5_styler,
+            ...{
+}
+        });
+
+        function geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5_add (data) {
+            geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5
+                .addData(data);
+        }
+            geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5_add({"features": [{"geometry": {"coordinates": [[[107.05237490765354, -5.9802807213128375], [107.05237490765354, -5.978089831082817], [107.04945372068018, -5.978089831082817], [107.04945372068018, -5.9802807213128375], [107.05237490765354, -5.9802807213128375]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_38b245c82b6b6af5e1af2b7aa9c19470 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_b3e9999767a13191f538a171717fc7fe = $(`<div id="html_b3e9999767a13191f538a171717fc7fe" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch3<br>                     <b>Crop:</b> Chickpeas<br>                     <b>Area:</b> 0.089 ha                     </div>`)[0];
+                popup_38b245c82b6b6af5e1af2b7aa9c19470.setContent(html_b3e9999767a13191f538a171717fc7fe);
+            
+        
+
+        geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5.bindPopup(popup_38b245c82b6b6af5e1af2b7aa9c19470)
+        ;
+
+        
+    
+    
+            geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5.bindTooltip(
+                `<div>
+                     Patch3: Chickpeas
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_6274a46c5f41fc0df7b2dd9f91ac0cf5.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_4e706fdf1604cda436c8f78fcb2e8155_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#A9A9A9", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_4e706fdf1604cda436c8f78fcb2e8155_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_4e706fdf1604cda436c8f78fcb2e8155 = L.geoJson(null, {
+                onEachFeature: geo_json_4e706fdf1604cda436c8f78fcb2e8155_onEachFeature,
+            
+                style: geo_json_4e706fdf1604cda436c8f78fcb2e8155_styler,
+            ...{
+}
+        });
+
+        function geo_json_4e706fdf1604cda436c8f78fcb2e8155_add (data) {
+            geo_json_4e706fdf1604cda436c8f78fcb2e8155
+                .addData(data);
+        }
+            geo_json_4e706fdf1604cda436c8f78fcb2e8155_add({"features": [{"geometry": {"coordinates": [[[107.05148373159022, -5.973454558856842], [107.05148373159022, -5.971263668626822], [107.04856254461686, -5.971263668626822], [107.04856254461686, -5.973454558856842], [107.05148373159022, -5.973454558856842]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_1ab7b6b2c63f5568a4acbd34ddcd1016 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_6dc788579f60e1a8b0c61c0bf8a10392 = $(`<div id="html_6dc788579f60e1a8b0c61c0bf8a10392" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch4<br>                     <b>Crop:</b> Cucumber<br>                     <b>Area:</b> 0.098 ha                     </div>`)[0];
+                popup_1ab7b6b2c63f5568a4acbd34ddcd1016.setContent(html_6dc788579f60e1a8b0c61c0bf8a10392);
+            
+        
+
+        geo_json_4e706fdf1604cda436c8f78fcb2e8155.bindPopup(popup_1ab7b6b2c63f5568a4acbd34ddcd1016)
+        ;
+
+        
+    
+    
+            geo_json_4e706fdf1604cda436c8f78fcb2e8155.bindTooltip(
+                `<div>
+                     Patch4: Cucumber
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_4e706fdf1604cda436c8f78fcb2e8155.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_6e3fb34b9555ee8b204f84671f31dd7b_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#DAA520", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_6e3fb34b9555ee8b204f84671f31dd7b_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_6e3fb34b9555ee8b204f84671f31dd7b = L.geoJson(null, {
+                onEachFeature: geo_json_6e3fb34b9555ee8b204f84671f31dd7b_onEachFeature,
+            
+                style: geo_json_6e3fb34b9555ee8b204f84671f31dd7b_styler,
+            ...{
+}
+        });
+
+        function geo_json_6e3fb34b9555ee8b204f84671f31dd7b_add (data) {
+            geo_json_6e3fb34b9555ee8b204f84671f31dd7b
+                .addData(data);
+        }
+            geo_json_6e3fb34b9555ee8b204f84671f31dd7b_add({"features": [{"geometry": {"coordinates": [[[107.06463397509687, -5.972192037147062], [107.06463397509687, -5.970001146917042], [107.0617127881235, -5.970001146917042], [107.0617127881235, -5.972192037147062], [107.06463397509687, -5.972192037147062]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_04a913a0ca4f716e038a5de8d1ee42df = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_ec3362656386372e41d3c0afb7dbb8bf = $(`<div id="html_ec3362656386372e41d3c0afb7dbb8bf" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch5<br>                     <b>Crop:</b> Durian<br>                     <b>Area:</b> 0.019 ha                     </div>`)[0];
+                popup_04a913a0ca4f716e038a5de8d1ee42df.setContent(html_ec3362656386372e41d3c0afb7dbb8bf);
+            
+        
+
+        geo_json_6e3fb34b9555ee8b204f84671f31dd7b.bindPopup(popup_04a913a0ca4f716e038a5de8d1ee42df)
+        ;
+
+        
+    
+    
+            geo_json_6e3fb34b9555ee8b204f84671f31dd7b.bindTooltip(
+                `<div>
+                     Patch5: Durian
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_6e3fb34b9555ee8b204f84671f31dd7b.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_c90d1490bcf9cd8062821309589254eb_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#FFFF00", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_c90d1490bcf9cd8062821309589254eb_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_c90d1490bcf9cd8062821309589254eb = L.geoJson(null, {
+                onEachFeature: geo_json_c90d1490bcf9cd8062821309589254eb_onEachFeature,
+            
+                style: geo_json_c90d1490bcf9cd8062821309589254eb_styler,
+            ...{
+}
+        });
+
+        function geo_json_c90d1490bcf9cd8062821309589254eb_add (data) {
+            geo_json_c90d1490bcf9cd8062821309589254eb
+                .addData(data);
+        }
+            geo_json_c90d1490bcf9cd8062821309589254eb_add({"features": [{"geometry": {"coordinates": [[[107.05426145672175, -5.970062361408143], [107.05426145672175, -5.967871471178123], [107.05134026974838, -5.967871471178123], [107.05134026974838, -5.970062361408143], [107.05426145672175, -5.970062361408143]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_accfa39a991c13f1102ce5f2ed1b8a79 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_911e6b8b8c92d091f54b4053ed791953 = $(`<div id="html_911e6b8b8c92d091f54b4053ed791953" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch6<br>                     <b>Crop:</b> Banana<br>                     <b>Area:</b> 0.161 ha                     </div>`)[0];
+                popup_accfa39a991c13f1102ce5f2ed1b8a79.setContent(html_911e6b8b8c92d091f54b4053ed791953);
+            
+        
+
+        geo_json_c90d1490bcf9cd8062821309589254eb.bindPopup(popup_accfa39a991c13f1102ce5f2ed1b8a79)
+        ;
+
+        
+    
+    
+            geo_json_c90d1490bcf9cd8062821309589254eb.bindTooltip(
+                `<div>
+                     Patch6: Banana
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_c90d1490bcf9cd8062821309589254eb.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#A9A9A9", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014 = L.geoJson(null, {
+                onEachFeature: geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014_onEachFeature,
+            
+                style: geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014_styler,
+            ...{
+}
+        });
+
+        function geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014_add (data) {
+            geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014
+                .addData(data);
+        }
+            geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014_add({"features": [{"geometry": {"coordinates": [[[107.06775032257042, -5.978993913006129], [107.06775032257042, -5.976803022776109], [107.06482913559705, -5.976803022776109], [107.06482913559705, -5.978993913006129], [107.06775032257042, -5.978993913006129]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_14b6afde716223deb4392996aa661f64 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_c8d6bfc147871df3090cc373ffec7eae = $(`<div id="html_c8d6bfc147871df3090cc373ffec7eae" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch7<br>                     <b>Crop:</b> Egg<br>                     <b>Area:</b> 0.077 ha                     </div>`)[0];
+                popup_14b6afde716223deb4392996aa661f64.setContent(html_c8d6bfc147871df3090cc373ffec7eae);
+            
+        
+
+        geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014.bindPopup(popup_14b6afde716223deb4392996aa661f64)
+        ;
+
+        
+    
+    
+            geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014.bindTooltip(
+                `<div>
+                     Patch7: Egg
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_6f8cdc7b54a6b2c4e7875e14e49d1014.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_9e0a844a01dca104f3eeda4434d4afe7_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#C19A6B", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_9e0a844a01dca104f3eeda4434d4afe7_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_9e0a844a01dca104f3eeda4434d4afe7 = L.geoJson(null, {
+                onEachFeature: geo_json_9e0a844a01dca104f3eeda4434d4afe7_onEachFeature,
+            
+                style: geo_json_9e0a844a01dca104f3eeda4434d4afe7_styler,
+            ...{
+}
+        });
+
+        function geo_json_9e0a844a01dca104f3eeda4434d4afe7_add (data) {
+            geo_json_9e0a844a01dca104f3eeda4434d4afe7
+                .addData(data);
+        }
+            geo_json_9e0a844a01dca104f3eeda4434d4afe7_add({"features": [{"geometry": {"coordinates": [[[107.05656067814438, -5.983004223536421], [107.05656067814438, -5.980813333306401], [107.05363949117101, -5.980813333306401], [107.05363949117101, -5.983004223536421], [107.05656067814438, -5.983004223536421]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_f9781aa2fd36da033a2bfd5908316402 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_35c5111e8fc441b6bc49ac265e81fb9b = $(`<div id="html_35c5111e8fc441b6bc49ac265e81fb9b" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch8<br>                     <b>Crop:</b> Peanuts<br>                     <b>Area:</b> 0.232 ha                     </div>`)[0];
+                popup_f9781aa2fd36da033a2bfd5908316402.setContent(html_35c5111e8fc441b6bc49ac265e81fb9b);
+            
+        
+
+        geo_json_9e0a844a01dca104f3eeda4434d4afe7.bindPopup(popup_f9781aa2fd36da033a2bfd5908316402)
+        ;
+
+        
+    
+    
+            geo_json_9e0a844a01dca104f3eeda4434d4afe7.bindTooltip(
+                `<div>
+                     Patch8: Peanuts
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_9e0a844a01dca104f3eeda4434d4afe7.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_bd9a35abdf710ebcab98ff4719479b48_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#A0522D", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_bd9a35abdf710ebcab98ff4719479b48_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_bd9a35abdf710ebcab98ff4719479b48 = L.geoJson(null, {
+                onEachFeature: geo_json_bd9a35abdf710ebcab98ff4719479b48_onEachFeature,
+            
+                style: geo_json_bd9a35abdf710ebcab98ff4719479b48_styler,
+            ...{
+}
+        });
+
+        function geo_json_bd9a35abdf710ebcab98ff4719479b48_add (data) {
+            geo_json_bd9a35abdf710ebcab98ff4719479b48
+                .addData(data);
+        }
+            geo_json_bd9a35abdf710ebcab98ff4719479b48_add({"features": [{"geometry": {"coordinates": [[[107.05636064708052, -5.973455674699347], [107.05636064708052, -5.9723602295843365], [107.05343946010716, -5.9723602295843365], [107.05343946010716, -5.973455674699347], [107.05636064708052, -5.973455674699347]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_a726a04643d9b06d32e658308fb05a72 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_cec4bf65b7376e3ef10a024e3386a7f3 = $(`<div id="html_cec4bf65b7376e3ef10a024e3386a7f3" style="width: 100.0%; height: 100.0%;">                         <b>Plot:</b> Patch9<br>                         <b>Crop:</b> Lamb<br>                         <b>Area:</b> 0.225 ha                         </div>`)[0];
+                popup_a726a04643d9b06d32e658308fb05a72.setContent(html_cec4bf65b7376e3ef10a024e3386a7f3);
+            
+        
+
+        geo_json_bd9a35abdf710ebcab98ff4719479b48.bindPopup(popup_a726a04643d9b06d32e658308fb05a72)
+        ;
+
+        
+    
+    
+            geo_json_bd9a35abdf710ebcab98ff4719479b48.bindTooltip(
+                `<div>
+                     Patch9: Lamb
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_bd9a35abdf710ebcab98ff4719479b48.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_64cf0a89b27885919aa6ff7230e52685_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#A9A9A9", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_64cf0a89b27885919aa6ff7230e52685_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_64cf0a89b27885919aa6ff7230e52685 = L.geoJson(null, {
+                onEachFeature: geo_json_64cf0a89b27885919aa6ff7230e52685_onEachFeature,
+            
+                style: geo_json_64cf0a89b27885919aa6ff7230e52685_styler,
+            ...{
+}
+        });
+
+        function geo_json_64cf0a89b27885919aa6ff7230e52685_add (data) {
+            geo_json_64cf0a89b27885919aa6ff7230e52685
+                .addData(data);
+        }
+            geo_json_64cf0a89b27885919aa6ff7230e52685_add({"features": [{"geometry": {"coordinates": [[[107.05636064708052, -5.9723602295843365], [107.05636064708052, -5.9712647844693265], [107.05343946010716, -5.9712647844693265], [107.05343946010716, -5.9723602295843365], [107.05636064708052, -5.9723602295843365]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_0e1e10fbc152c569f625c76a594eb82c = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_56388c94a17c5d7b171ead661839d375 = $(`<div id="html_56388c94a17c5d7b171ead661839d375" style="width: 100.0%; height: 100.0%;">                         <b>Plot:</b> Patch9<br>                         <b>Crop:</b> Watermelon<br>                         <b>Area:</b> 0.225 ha                         </div>`)[0];
+                popup_0e1e10fbc152c569f625c76a594eb82c.setContent(html_56388c94a17c5d7b171ead661839d375);
+            
+        
+
+        geo_json_64cf0a89b27885919aa6ff7230e52685.bindPopup(popup_0e1e10fbc152c569f625c76a594eb82c)
+        ;
+
+        
+    
+    
+            geo_json_64cf0a89b27885919aa6ff7230e52685.bindTooltip(
+                `<div>
+                     Patch9: Watermelon
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_64cf0a89b27885919aa6ff7230e52685.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_80824575950d9b07bde4197d3ba067f7_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#F5F5DC", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_80824575950d9b07bde4197d3ba067f7_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_80824575950d9b07bde4197d3ba067f7 = L.geoJson(null, {
+                onEachFeature: geo_json_80824575950d9b07bde4197d3ba067f7_onEachFeature,
+            
+                style: geo_json_80824575950d9b07bde4197d3ba067f7_styler,
+            ...{
+}
+        });
+
+        function geo_json_80824575950d9b07bde4197d3ba067f7_add (data) {
+            geo_json_80824575950d9b07bde4197d3ba067f7
+                .addData(data);
+        }
+            geo_json_80824575950d9b07bde4197d3ba067f7_add({"features": [{"geometry": {"coordinates": [[[107.06033322421996, -5.976774368804546], [107.06033322421996, -5.974583478574526], [107.05741203724659, -5.974583478574526], [107.05741203724659, -5.976774368804546], [107.06033322421996, -5.976774368804546]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_59a468101e476bf4f76bc8a94a1b76ca = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_ab51c3ced7c60440b5f1313a2db321ad = $(`<div id="html_ab51c3ced7c60440b5f1313a2db321ad" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch10<br>                     <b>Crop:</b> Tofu<br>                     <b>Area:</b> 0.302 ha                     </div>`)[0];
+                popup_59a468101e476bf4f76bc8a94a1b76ca.setContent(html_ab51c3ced7c60440b5f1313a2db321ad);
+            
+        
+
+        geo_json_80824575950d9b07bde4197d3ba067f7.bindPopup(popup_59a468101e476bf4f76bc8a94a1b76ca)
+        ;
+
+        
+    
+    
+            geo_json_80824575950d9b07bde4197d3ba067f7.bindTooltip(
+                `<div>
+                     Patch10: Tofu
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_80824575950d9b07bde4197d3ba067f7.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_ef81e43c9f256cb42c45b5126bcf66c7_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#FFB347", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_ef81e43c9f256cb42c45b5126bcf66c7_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_ef81e43c9f256cb42c45b5126bcf66c7 = L.geoJson(null, {
+                onEachFeature: geo_json_ef81e43c9f256cb42c45b5126bcf66c7_onEachFeature,
+            
+                style: geo_json_ef81e43c9f256cb42c45b5126bcf66c7_styler,
+            ...{
+}
+        });
+
+        function geo_json_ef81e43c9f256cb42c45b5126bcf66c7_add (data) {
+            geo_json_ef81e43c9f256cb42c45b5126bcf66c7
+                .addData(data);
+        }
+            geo_json_ef81e43c9f256cb42c45b5126bcf66c7_add({"features": [{"geometry": {"coordinates": [[[107.06363005382882, -5.979349990743977], [107.06363005382882, -5.977159100513957], [107.06070886685545, -5.977159100513957], [107.06070886685545, -5.979349990743977], [107.06363005382882, -5.979349990743977]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_f222ebbb910bb9abba71636c9a557d0d = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_2b56a2248cf20ba25384a09d18f69ce6 = $(`<div id="html_2b56a2248cf20ba25384a09d18f69ce6" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch11<br>                     <b>Crop:</b> Papaya<br>                     <b>Area:</b> 0.727 ha                     </div>`)[0];
+                popup_f222ebbb910bb9abba71636c9a557d0d.setContent(html_2b56a2248cf20ba25384a09d18f69ce6);
+            
+        
+
+        geo_json_ef81e43c9f256cb42c45b5126bcf66c7.bindPopup(popup_f222ebbb910bb9abba71636c9a557d0d)
+        ;
+
+        
+    
+    
+            geo_json_ef81e43c9f256cb42c45b5126bcf66c7.bindTooltip(
+                `<div>
+                     Patch11: Papaya
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_ef81e43c9f256cb42c45b5126bcf66c7.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_4204805642a075a88ee0ea0e308c28d3_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#FFDAB9", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_4204805642a075a88ee0ea0e308c28d3_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_4204805642a075a88ee0ea0e308c28d3 = L.geoJson(null, {
+                onEachFeature: geo_json_4204805642a075a88ee0ea0e308c28d3_onEachFeature,
+            
+                style: geo_json_4204805642a075a88ee0ea0e308c28d3_styler,
+            ...{
+}
+        });
+
+        function geo_json_4204805642a075a88ee0ea0e308c28d3_add (data) {
+            geo_json_4204805642a075a88ee0ea0e308c28d3
+                .addData(data);
+        }
+            geo_json_4204805642a075a88ee0ea0e308c28d3_add({"features": [{"geometry": {"coordinates": [[[107.0570140274516, -5.97958584846115], [107.0570140274516, -5.97739495823113], [107.05409284047823, -5.97739495823113], [107.05409284047823, -5.97958584846115], [107.0570140274516, -5.97958584846115]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_d6d414689e96e6fd7139e57809a5d3d3 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_76f1061ea112ba775692514c59549be3 = $(`<div id="html_76f1061ea112ba775692514c59549be3" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch12<br>                     <b>Crop:</b> Guava<br>                     <b>Area:</b> 0.791 ha                     </div>`)[0];
+                popup_d6d414689e96e6fd7139e57809a5d3d3.setContent(html_76f1061ea112ba775692514c59549be3);
+            
+        
+
+        geo_json_4204805642a075a88ee0ea0e308c28d3.bindPopup(popup_d6d414689e96e6fd7139e57809a5d3d3)
+        ;
+
+        
+    
+    
+            geo_json_4204805642a075a88ee0ea0e308c28d3.bindTooltip(
+                `<div>
+                     Patch12: Guava
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_4204805642a075a88ee0ea0e308c28d3.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_f508464d41c47a19b43f43e30df80115_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#32CD32", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_f508464d41c47a19b43f43e30df80115_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_f508464d41c47a19b43f43e30df80115 = L.geoJson(null, {
+                onEachFeature: geo_json_f508464d41c47a19b43f43e30df80115_onEachFeature,
+            
+                style: geo_json_f508464d41c47a19b43f43e30df80115_styler,
+            ...{
+}
+        });
+
+        function geo_json_f508464d41c47a19b43f43e30df80115_add (data) {
+            geo_json_f508464d41c47a19b43f43e30df80115
+                .addData(data);
+        }
+            geo_json_f508464d41c47a19b43f43e30df80115_add({"features": [{"geometry": {"coordinates": [[[107.06050148951398, -5.9733485089603935], [107.06050148951398, -5.971157618730373], [107.05758030254061, -5.971157618730373], [107.05758030254061, -5.9733485089603935], [107.06050148951398, -5.9733485089603935]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_35e03637a0e895173f7a12eee06dbd8f = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_23468bd3012c28cebb33eca36833dca7 = $(`<div id="html_23468bd3012c28cebb33eca36833dca7" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch13<br>                     <b>Crop:</b> Long bean<br>                     <b>Area:</b> 1.138 ha                     </div>`)[0];
+                popup_35e03637a0e895173f7a12eee06dbd8f.setContent(html_23468bd3012c28cebb33eca36833dca7);
+            
+        
+
+        geo_json_f508464d41c47a19b43f43e30df80115.bindPopup(popup_35e03637a0e895173f7a12eee06dbd8f)
+        ;
+
+        
+    
+    
+            geo_json_f508464d41c47a19b43f43e30df80115.bindTooltip(
+                `<div>
+                     Patch13: Long bean
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_f508464d41c47a19b43f43e30df80115.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_7177781c5f89f99ae0067102128255f5_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#FFDB58", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_7177781c5f89f99ae0067102128255f5_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_7177781c5f89f99ae0067102128255f5 = L.geoJson(null, {
+                onEachFeature: geo_json_7177781c5f89f99ae0067102128255f5_onEachFeature,
+            
+                style: geo_json_7177781c5f89f99ae0067102128255f5_styler,
+            ...{
+}
+        });
+
+        function geo_json_7177781c5f89f99ae0067102128255f5_add (data) {
+            geo_json_7177781c5f89f99ae0067102128255f5
+                .addData(data);
+        }
+            geo_json_7177781c5f89f99ae0067102128255f5_add({"features": [{"geometry": {"coordinates": [[[107.05368625196817, -5.976849467726754], [107.05368625196817, -5.974658577496734], [107.0507650649948, -5.974658577496734], [107.0507650649948, -5.976849467726754], [107.05368625196817, -5.976849467726754]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_ebc47e34984268ac5f7e8bd4b78ed32f = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_d8090f3bc18987068b485a1d1f5c1340 = $(`<div id="html_d8090f3bc18987068b485a1d1f5c1340" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch14<br>                     <b>Crop:</b> Corn<br>                     <b>Area:</b> 1.518 ha                     </div>`)[0];
+                popup_ebc47e34984268ac5f7e8bd4b78ed32f.setContent(html_d8090f3bc18987068b485a1d1f5c1340);
+            
+        
+
+        geo_json_7177781c5f89f99ae0067102128255f5.bindPopup(popup_ebc47e34984268ac5f7e8bd4b78ed32f)
+        ;
+
+        
+    
+    
+            geo_json_7177781c5f89f99ae0067102128255f5.bindTooltip(
+                `<div>
+                     Patch14: Corn
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_7177781c5f89f99ae0067102128255f5.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+    
+        function geo_json_bb6cfefae6bd0836c4b2d6403181cc51_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "black", "fillColor": "#90EE90", "fillOpacity": 0.7, "weight": 1};
+            }
+        }
+
+        function geo_json_bb6cfefae6bd0836c4b2d6403181cc51_onEachFeature(feature, layer) {
+
+            layer.on({
+            });
+        };
+        var geo_json_bb6cfefae6bd0836c4b2d6403181cc51 = L.geoJson(null, {
+                onEachFeature: geo_json_bb6cfefae6bd0836c4b2d6403181cc51_onEachFeature,
+            
+                style: geo_json_bb6cfefae6bd0836c4b2d6403181cc51_styler,
+            ...{
+}
+        });
+
+        function geo_json_bb6cfefae6bd0836c4b2d6403181cc51_add (data) {
+            geo_json_bb6cfefae6bd0836c4b2d6403181cc51
+                .addData(data);
+        }
+            geo_json_bb6cfefae6bd0836c4b2d6403181cc51_add({"features": [{"geometry": {"coordinates": [[[107.06069169329442, -5.982741602182907], [107.06069169329442, -5.980550711952887], [107.05777050632105, -5.980550711952887], [107.05777050632105, -5.982741602182907], [107.06069169329442, -5.982741602182907]]], "type": "Polygon"}, "id": "0", "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+        var popup_b287c0518fbb56c76176cf9f785b2fb1 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_cda0e0015a0ac8702b345d6f0e125c9d = $(`<div id="html_cda0e0015a0ac8702b345d6f0e125c9d" style="width: 100.0%; height: 100.0%;">                     <b>Plot:</b> Patch15<br>                     <b>Crop:</b> Cabbage<br>                     <b>Area:</b> 1.897 ha                     </div>`)[0];
+                popup_b287c0518fbb56c76176cf9f785b2fb1.setContent(html_cda0e0015a0ac8702b345d6f0e125c9d);
+            
+        
+
+        geo_json_bb6cfefae6bd0836c4b2d6403181cc51.bindPopup(popup_b287c0518fbb56c76176cf9f785b2fb1)
+        ;
+
+        
+    
+    
+            geo_json_bb6cfefae6bd0836c4b2d6403181cc51.bindTooltip(
+                `<div>
+                     Patch15: Cabbage
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            geo_json_bb6cfefae6bd0836c4b2d6403181cc51.addTo(map_27e0406538abb3083fd191346e276df7);
+        
+</script>
+</html>
