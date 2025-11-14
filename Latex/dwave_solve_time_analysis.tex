@@ -1,0 +1,240 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\title{DWave Quantum Annealer Solve Time Analysis}
+\author{Computational Benchmark Report}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document presents a comprehensive analysis of DWave quantum annealer solve times across all benchmark runs in the Legacy and Benchmarks directories. The analysis includes 45 runs spanning various problem formulations and sizes, with a focus on understanding the relationship between problem size (number of variables) and computational time requirements.
+\end{abstract}
+
+\section{Executive Summary}
+
+\subsection{Key Findings}
+
+\begin{itemize}
+    \item \textbf{Total Runs Analyzed:} 45
+    \item \textbf{Total Solve Time:} 1870.52 seconds (0.52 hours, 0.02 days)
+    \item \textbf{Average Solve Time:} 41.567 seconds
+    \item \textbf{Median Solve Time:} 5.311 seconds
+    \item \textbf{Problem Size Range:} 135 to 29592 variables
+    \item \textbf{Average Time per Variable:} 0.025349 seconds/variable
+    \item \textbf{Median Time per Variable:} 0.018717 seconds/variable
+\end{itemize}
+
+\subsection{Computational Cost Estimate}
+
+To reproduce all 45 DWave runs would require approximately:
+
+\begin{center}
+\textbf{0.5 hours (0.02 days)}
+\end{center}
+
+This assumes sequential execution. With parallel execution on multiple DWave systems, this time could be significantly reduced.
+
+\section{Detailed Statistics}
+
+\subsection{Solve Time Distribution}
+
+\begin{table}[H]
+\centering
+\caption{Statistical Summary of Solve Times}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value (seconds)} \\
+\midrule
+Mean & 41.567 \\
+Median & 5.311 \\
+Standard Deviation & 57.668 \\
+Minimum & 2.986 \\
+Maximum & 216.270 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Problem Size Distribution}
+
+\begin{table}[H]
+\centering
+\caption{Statistical Summary of Problem Sizes}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value (variables)} \\
+\midrule
+Mean & 3088.5 \\
+Median & 540 \\
+Minimum & 135 \\
+Maximum & 29592 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Efficiency Metrics}
+
+\begin{table}[H]
+\centering
+\caption{Time per Variable Statistics}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value (seconds/variable)} \\
+\midrule
+Mean & 0.025349 \\
+Median & 0.018717 \\
+Standard Deviation & 0.025940 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Scenario-Wise Analysis}
+
+\begin{table}[H]
+\centering
+\caption{Solve Time Analysis by Scenario}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Scenario} & \textbf{Runs} & \textbf{Total Time (s)} & \textbf{Mean Time (s)} & \textbf{Time/Var (s)} \\
+\midrule
+BQUBO & 22 & 1725.10 & 78.414 & 0.038873 \\
+Farm DWave & 4 & 21.15 & 5.288 & 0.011485 \\
+LQ & 4 & 20.00 & 5.000 & 0.012505 \\
+NLN & 4 & 56.23 & 14.056 & 0.017869 \\
+PATCH & 4 & 18.65 & 4.662 & 0.016263 \\
+Patch DWave & 3 & 15.91 & 5.303 & 0.012560 \\
+Patch DWaveBQM & 4 & 13.48 & 3.370 & 0.003831 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Visualizations}
+
+\subsection{Solve Time vs Problem Size}
+
+Figure \ref{fig:solve_time_vs_vars} shows the relationship between problem size (number of variables) and solve time. The polynomial fit line indicates the scaling behavior of the quantum annealer.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{solve_time_vs_variables.pdf}
+\caption{Solve time as a function of problem size with polynomial trend line}
+\label{fig:solve_time_vs_vars}
+\end{figure}
+
+\subsection{Time per Variable Analysis}
+
+Figure \ref{fig:time_per_var} shows the distribution of solve time per variable across all runs. This metric helps normalize for problem size and understand the efficiency of the solver.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{time_per_variable_dist.pdf}
+\caption{Distribution of solve time per variable}
+\label{fig:time_per_var}
+\end{figure}
+
+\subsection{Solve Time Distribution}
+
+Figure \ref{fig:solve_time_dist} shows the overall distribution of solve times across all benchmark runs.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{solve_time_dist.pdf}
+\caption{Distribution of solve times across all runs}
+\label{fig:solve_time_dist}
+\end{figure}
+
+
+\subsection{Analysis by Problem Size}
+
+Figure \ref{fig:by_size} shows how solve time and efficiency vary with problem size.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{solve_time_by_size.pdf}
+\caption{Left: Average solve time by problem size with error bars. Right: Time per variable showing efficiency scaling.}
+\label{fig:by_size}
+\end{figure}
+
+
+\subsection{Scenario Comparison}
+
+Figure \ref{fig:scenarios} compares the computational requirements across different problem scenarios.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{scenario_comparison.pdf}
+\caption{Left: Total solve time by scenario. Right: Mean time per variable by scenario.}
+\label{fig:scenarios}
+\end{figure}
+
+
+\section{Time Estimation Formula}
+
+Based on the analysis, we can estimate the solve time for a new problem using the following approaches:
+
+\subsection{Linear Approximation}
+
+For a problem with $n$ variables, the estimated solve time using the average time per variable is:
+
+\begin{equation}
+t_{\text{est}} = n \times 0.025349 \text{ seconds}
+\end{equation}
+
+\subsection{Conservative Estimate}
+
+Using the mean solve time plus one standard deviation as a conservative estimate:
+
+\begin{equation}
+t_{\text{conservative}} = n \times \left(0.025349 + 0.025940\right) = n \times 0.051289 \text{ seconds}
+\end{equation}
+
+\subsection{Usage Examples}
+
+\begin{table}[H]
+\centering
+\caption{Estimated Solve Times for Various Problem Sizes}
+\begin{tabular}{rrr}
+\toprule
+\textbf{Variables} & \textbf{Expected Time (s)} & \textbf{Conservative Time (s)} \\
+\midrule
+50 & 1.27 & 2.56 \\
+100 & 2.53 & 5.13 \\
+200 & 5.07 & 10.26 \\
+500 & 12.67 & 25.64 \\
+1000 & 25.35 & 51.29 \\
+2000 & 50.70 & 102.58 \\
+5000 & 126.74 & 256.45 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusions}
+
+\begin{enumerate}
+    \item The total computational cost to reproduce all DWave runs is approximately 0.5 hours.
+    \item The average solve time per variable of 0.025349 seconds provides a useful metric for estimating computational requirements for new problems.
+    \item There is significant variability in solve times (CV = 102.3\%), suggesting that problem-specific characteristics significantly impact solver performance.
+    \item For project planning, we recommend using the conservative estimate formula to ensure adequate computational resources.
+\end{enumerate}
+
+\section{Recommendations}
+
+\begin{itemize}
+    \item For large-scale benchmarking campaigns, consider using parallel execution across multiple DWave systems to reduce wall-clock time.
+    \item Monitor time per variable as a key efficiency metric for detecting problematic problem formulations.
+    \item Consider implementing early termination strategies for runs that exceed expected solve times by a large margin.
+    \item Budget computational resources based on the conservative estimate to account for variability.
+\end{itemize}
+
+\end{document}
