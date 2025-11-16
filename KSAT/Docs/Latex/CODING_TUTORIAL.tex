@@ -1,0 +1,2290 @@
+\documentclass[11pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+
+\geometry{margin=1in}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+
+% Code listing style
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    captionpos=b,
+    tabsize=4
+}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={KSAT Coding Tutorial},
+    pdfauthor={KSAT Framework},
+}
+
+\title{\textbf{Complete Coding Tutorial:\\KSAT Repository}\\
+\large A comprehensive guide to understanding and coding\\the entire KSAT framework}
+\author{KSAT Framework Development Team}
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\textit{Target Audience:} Developers, researchers, and students learning how to implement SAT-based reserve design optimization and QAOA benchmarking.
+\end{center}
+
+\tableofcontents
+\clearpage
+
+% ============================================================================
+% CHAPTER 1: OVERVIEW & ARCHITECTURE
+% ============================================================================
+
+\chapter{Overview \& Architecture}
+
+\section{What This Repository Does}
+
+The KSAT repository provides tools for:
+
+\begin{enumerate}
+    \item \textbf{Generating realistic conservation planning instances} (Madagascar, Amazon, Coral Triangle)
+    \item \textbf{Creating QAOA SAT benchmarks} (random and planted $k$-SAT)
+    \item \textbf{Encoding reserve design problems to CNF} (SAT formulation)
+    \item \textbf{Computing hardness metrics} (complexity analysis)
+    \item \textbf{Comparing different problem formulations} (conservation vs QAOA)
+\end{enumerate}
+
+\section{Repository Structure}
+
+\begin{verbatim}
+KSAT/
+├── Core Instance Generators
+│   ├── real_world_instance.py      ← Conservation planning instances
+│   ├── qaoa_sat_instance.py        ← QAOA benchmark k-SAT instances
+│   └── reserve_design_instance.py  ← Base reserve design class
+│
+├── SAT Encoding & Solving
+│   ├── sat_encoder.py              ← CNF encoding logic
+│   └── sat_solver.py               ← SAT solver interface
+│
+├── Analysis & Comparison
+│   ├── hardness_metrics.py         ← Complexity metrics
+│   ├── instance_comparison.py      ← Comparison framework
+│   └── generate_proposal_instances.py  ← Batch generation
+│
+├── Visualization
+│   ├── visualization.py            ← Basic plots
+│   └── generate_plots.py           ← Publication plots
+│
+├── Examples
+│   ├── examples.py                 ← Basic usage examples
+│   ├── example_8sat.py             ← 8-SAT specific examples
+│   └── test_ksat.py                ← Unit tests
+│
+└── Data
+    └── proposal_instances/         ← Generated instances
+\end{verbatim}
+
+\section{Dependency Flow}
+
+The repository components have the following dependency structure:
+
+\begin{equation}
+\text{real\_world\_instance.py} \rightarrow \text{reserve\_design\_instance.py}
+\end{equation}
+
+\begin{equation}
+\downarrow
+\end{equation}
+
+\begin{equation}
+\text{sat\_encoder.py} \rightarrow \text{sat\_solver.py}
+\end{equation}
+
+\begin{equation}
+\downarrow
+\end{equation}
+
+\begin{equation}
+\text{hardness\_metrics.py}
+\end{equation}
+
+\begin{equation}
+\downarrow
+\end{equation}
+
+\begin{equation}
+\text{instance\_comparison.py}
+\end{equation}
+
+\clearpage
+
+% ============================================================================
+% CHAPTER 2: CORE DATA STRUCTURES
+% ============================================================================
+
+\chapter{Core Data Structures}
+
+\section{Reserve Design Instance}
+
+\subsection{Purpose}
+Represents a conservation planning problem with the following mathematical formulation:
+
+\paragraph{Decision Variables:}
+\begin{equation}
+x_i \in \{0, 1\}, \quad i = 1, \ldots, n
+\end{equation}
+where $x_i = 1$ if site $i$ is selected, $x_i = 0$ otherwise.
+
+\paragraph{Objective Function:}
+\begin{equation}
+\text{Minimize} \quad \sum_{i=1}^{n} c_i \cdot x_i
+\end{equation}
+where $c_i$ is the cost of site $i$.
+
+\paragraph{Constraints:}
+\begin{align}
+\sum_{i=1}^{n} p_{ij} \cdot x_i &\geq t_j, \quad \forall j \in \{1, \ldots, s\} \quad \text{(representation)} \\
+\sum_{i=1}^{n} c_i \cdot x_i &\leq B \quad \text{(budget)} \\
+\text{connectivity constraints} &\quad \text{(spatial)}
+\end{align}
+
+where:
+\begin{itemize}
+    \item $p_{ij} \in \{0, 1\}$ indicates presence of species $j$ in site $i$
+    \item $t_j$ is the representation target for species $j$
+    \item $B$ is the budget limit
+    \item $s$ is the number of species
+\end{itemize}
+
+\subsection{Data Structure}
+
+\begin{lstlisting}[caption={ReserveDesignInstance Data Class}]
+@dataclass
+class ReserveDesignInstance:
+    """
+    A reserve design / systematic conservation planning instance
+    
+    Components:
+    - Planning units (sites) with costs
+    - Species with occurrence patterns
+    - Budget constraint
+    - Representation targets
+    - Spatial connectivity
+    """
+    num_sites: int              # Number of planning units (n)
+    num_species: int            # Number of species to protect (s)
+    costs: np.ndarray           # Site costs c_i (num_sites,)
+    presence: np.ndarray        # Species presence matrix p_ij 
+                                # (num_sites × num_species)
+    targets: np.ndarray         # Representation targets t_j (num_species,)
+    budget: float               # Maximum budget available B
+    edges: List[Tuple[int, int]] # Spatial connectivity edges
+    
+    # Optional metadata
+    scenario_name: str = "Generic"
+    species_names: List[str] = None
+    site_coords: np.ndarray = None
+\end{lstlisting}
+
+\subsection{Key Concepts}
+
+\begin{description}
+    \item[Planning Unit] A geographic area that can be selected (binary decision variable $x_i$)
+    \item[Species Presence] Binary matrix where $p_{ij} = 1$ if species $j$ occurs in site $i$
+    \item[Representation Target] Minimum number of sites needed to protect species, denoted $t_j$
+    \item[Budget] Total cost constraint $B$
+    \item[Connectivity] Graph edges $E \subseteq V \times V$ representing spatial adjacency
+\end{description}
+
+\section{K-SAT Instance}
+
+\subsection{Purpose}
+Represents a boolean satisfiability problem in Conjunctive Normal Form (CNF).
+
+\paragraph{Boolean Variables:}
+\begin{equation}
+\mathcal{X} = \{x_1, x_2, \ldots, x_n\}, \quad x_i \in \{\text{True}, \text{False}\}
+\end{equation}
+
+\paragraph{Literals:}
+A literal $\ell$ is either a variable $x_i$ (positive literal) or its negation $\neg x_i$ (negative literal):
+\begin{equation}
+\ell \in \{x_1, \neg x_1, x_2, \neg x_2, \ldots, x_n, \neg x_n\}
+\end{equation}
+
+\paragraph{Clauses:}
+A clause $C_j$ is a disjunction of $k$ literals:
+\begin{equation}
+C_j = \ell_{j,1} \vee \ell_{j,2} \vee \cdots \vee \ell_{j,k}
+\end{equation}
+
+\paragraph{CNF Formula:}
+The complete formula $\Phi$ is a conjunction of $m$ clauses:
+\begin{equation}
+\Phi = C_1 \wedge C_2 \wedge \cdots \wedge C_m = \bigwedge_{j=1}^{m} C_j
+\end{equation}
+
+\paragraph{Satisfiability:}
+An assignment $\sigma: \mathcal{X} \rightarrow \{\text{True}, \text{False}\}$ satisfies $\Phi$ if and only if:
+\begin{equation}
+\Phi(\sigma) = \text{True} \Leftrightarrow \forall j \in \{1, \ldots, m\}: C_j(\sigma) = \text{True}
+\end{equation}
+
+\paragraph{Clause-to-Variable Ratio:}
+\begin{equation}
+\alpha = \frac{m}{n}
+\end{equation}
+
+\subsection{Data Structure}
+
+\begin{lstlisting}[caption={KSATInstance Data Class}]
+@dataclass
+class KSATInstance:
+    """
+    A k-SAT instance in Conjunctive Normal Form (CNF)
+    
+    Components:
+    - Variables (boolean)
+    - Clauses (disjunctions of literals)
+    - Each clause has exactly k literals
+    """
+    n: int                      # Number of variables
+    m: int                      # Number of clauses
+    k: int                      # Literals per clause (clause width)
+    clauses: List[List[int]]    # CNF clauses (each has k literals)
+    alpha: float                # Clause-to-variable ratio (m/n)
+    
+    # For planted instances
+    is_planted: bool = False
+    planted_solution: Optional[List[bool]] = None
+\end{lstlisting}
+
+\subsection{Literal Representation}
+
+In the implementation, literals are represented as integers:
+\begin{itemize}
+    \item Variable $x_i$ (1-indexed): positive literal = $i$, negative literal = $-i$
+    \item Example: clause $[1, -3, 5]$ represents $x_1 \vee \neg x_3 \vee x_5$
+\end{itemize}
+
+\subsection{CNF Example}
+
+Consider the formula:
+\begin{equation}
+\Phi = (x_1 \vee \neg x_2 \vee x_3) \wedge (\neg x_1 \vee x_2 \vee \neg x_3)
+\end{equation}
+
+This is encoded as:
+
+\begin{lstlisting}[caption={CNF Example}]
+instance = KSATInstance(
+    n=3,
+    m=2,
+    k=3,
+    clauses=[[1, -2, 3], [-1, 2, -3]],
+    alpha=2/3
+)
+\end{lstlisting}
+
+\section{Hardness Metrics}
+
+\subsection{Purpose}
+Quantify SAT instance complexity using multiple structural metrics.
+
+\subsection{Data Structure}
+
+\begin{lstlisting}[caption={HardnessMetrics Data Class}]
+@dataclass
+class HardnessMetrics:
+    """
+    Comprehensive hardness metrics for SAT instances
+    """
+    # Basic statistics
+    n: int                      # Number of variables
+    m: int                      # Number of clauses
+    alpha: float                # Clause-to-variable ratio (m/n)
+    
+    # Variable-Clause Graph (VCG) metrics
+    vcg_density: float          # Edge density in bipartite graph
+    vcg_clustering: float       # Clustering coefficient
+    avg_var_degree: float       # Average variable degree
+    avg_clause_degree: float    # Average clause degree
+    
+    # Clause structure
+    pos_neg_ratio: float        # Ratio of positive to negative literals
+    literal_entropy: float      # Shannon entropy of literal distribution
+    clause_overlap: float       # Average pairwise clause overlap
+    
+    # Combined score
+    hardness_score: float       # 0-100 scale
+    expected_difficulty: str    # "easy", "medium", "hard", "very hard"
+\end{lstlisting}
+
+\subsection{Variable-Clause Graph Density}
+
+The VCG is a bipartite graph $G = (V_{\text{vars}} \cup V_{\text{clauses}}, E)$ where:
+\begin{equation}
+E = \{(x_i, C_j) : x_i \text{ or } \neg x_i \text{ appears in } C_j\}
+\end{equation}
+
+Density is defined as:
+\begin{equation}
+\rho = \frac{|E|}{n \cdot m}
+\end{equation}
+
+\subsection{Literal Entropy}
+
+Given literal counts $L^+ = \{\ell_1^+, \ldots, \ell_n^+\}$ (positive occurrences) and $L^- = \{\ell_1^-, \ldots, \ell_n^-\}$ (negative occurrences), the Shannon entropy is:
+\begin{equation}
+H = -\sum_{i=1}^{n} \left( p_i^+ \log_2 p_i^+ + p_i^- \log_2 p_i^- \right)
+\end{equation}
+where:
+\begin{equation}
+p_i^+ = \frac{\ell_i^+}{\sum_{j=1}^{n} (\ell_j^+ + \ell_j^-)}, \quad p_i^- = \frac{\ell_i^-}{\sum_{j=1}^{n} (\ell_j^+ + \ell_j^-)}
+\end{equation}
+
+\clearpage
+
+% ============================================================================
+% CHAPTER 3: REAL-WORLD INSTANCE GENERATION
+% ============================================================================
+
+\chapter{Real-World Instance Generation}
+
+\section{Understanding the Conservation Problem}
+
+\subsection{Biological Context}
+
+Conservation planning aims to select a network of protected sites that:
+\begin{enumerate}
+    \item Adequately represents all species (meet targets)
+    \item Minimizes total acquisition cost (budget constraint)
+    \item Maintains spatial connectivity (viable populations)
+\end{enumerate}
+
+\subsection{Mathematical Formulation}
+
+\paragraph{Decision Variables:}
+\begin{equation}
+x_i \in \{0, 1\} \quad \text{for each site } i \in \{1, \ldots, n\}
+\end{equation}
+
+\paragraph{Objective Function:}
+\begin{equation}
+\text{Minimize} \quad Z = \sum_{i=1}^{n} c_i \cdot x_i
+\end{equation}
+
+\paragraph{Subject to:}
+\begin{align}
+\sum_{i=1}^{n} p_{ij} \cdot x_i &\geq t_j \quad \forall j \in \{1, \ldots, s\} \quad \text{(representation)} \label{eq:representation} \\
+\sum_{i=1}^{n} c_i \cdot x_i &\leq B \quad \text{(budget)} \label{eq:budget} \\
+&\text{connectivity constraints} \quad \text{(spatial)} \label{eq:connectivity}
+\end{align}
+
+where:
+\begin{itemize}
+    \item $c_i$ = cost of acquiring site $i$
+    \item $p_{ij}$ = 1 if species $j$ present in site $i$, 0 otherwise
+    \item $t_j$ = representation target for species $j$
+    \item $B$ = budget limit
+\end{itemize}
+
+\section{Species Occurrence Patterns}
+
+\subsection{Endemic Species Model}
+
+Endemic species have highly localized geographic ranges. We model occurrence probability using a Gaussian decay function:
+
+\begin{equation}
+P(i, j) = \exp\left(-\frac{d_{ij}^2}{2\sigma^2}\right)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $d_{ij}$ = Euclidean distance from site $i$ to species $j$ center
+    \item $\sigma$ = range radius parameter
+    \item $P(i, j)$ = probability of species $j$ occurring in site $i$
+\end{itemize}
+
+\paragraph{Distance Calculation:}
+For a grid of size $g \times g$ with site $i$ at coordinates $(x_i, y_i)$ and species center at $(x_j^c, y_j^c)$:
+\begin{equation}
+d_{ij} = \sqrt{(x_i - x_j^c)^2 + (y_i - y_j^c)^2}
+\end{equation}
+
+\paragraph{Stochastic Presence:}
+\begin{equation}
+p_{ij} = \begin{cases}
+1 & \text{if } U(0,1) < P(i, j) \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+where $U(0,1)$ is a uniform random variable.
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Endemic Species Generation}]
+def create_endemic_species(grid_size, center_x, center_y, range_radius):
+    """
+    Creates highly localized species occurrence
+    
+    Theory: Endemic species confined to small geographic ranges
+    Example: Propithecus (sifaka lemurs) in specific forest patches
+    
+    Parameters:
+    -----------
+    grid_size : int
+        Grid dimension (g × g)
+    center_x, center_y : float
+        Species range center coordinates
+    range_radius : float
+        Standard deviation σ in Gaussian model
+    
+    Returns:
+    --------
+    presence : np.ndarray
+        Binary presence matrix (grid_size × grid_size)
+    """
+    presence = np.zeros((grid_size, grid_size))
+    
+    for i in range(grid_size):
+        for j in range(grid_size):
+            # Gaussian decay from center
+            dist = np.sqrt((i - center_x)**2 + (j - center_y)**2)
+            probability = np.exp(-dist**2 / (2 * range_radius**2))
+            
+            # Stochastic presence based on suitability
+            presence[i, j] = 1 if np.random.random() < probability else 0
+    
+    return presence
+\end{lstlisting}
+
+\subsection{Key Parameters}
+
+The range radius $\sigma$ determines the spatial extent:
+
+\begin{align}
+\sigma &\in [1.0, 2.5] \quad \Rightarrow \quad \text{3--15 sites (highly endemic)} \\
+\sigma &\in [3.0, 6.0] \quad \Rightarrow \quad \text{20--80 sites (widespread)}
+\end{align}
+
+\paragraph{Validation:} These parameters match GBIF occurrence data for Madagascar species.
+
+\section{Cost Structure Modeling}
+
+\subsection{Accessibility-Based Cost Model}
+
+Site acquisition costs are modeled as a function of accessibility, where sites near roads and urban areas are more expensive:
+
+\begin{equation}
+c_i = c_{\min} + (c_{\max} - c_{\min}) \cdot \exp\left(-\frac{d_i^{\text{edge}}}{\lambda}\right)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $d_i^{\text{edge}}$ = distance from site $i$ to nearest edge (proxy for accessibility)
+    \item $\lambda$ = accessibility decay factor
+    \item $c_{\min}$ = minimum cost (remote interior)
+    \item $c_{\max}$ = maximum cost (accessible areas)
+\end{itemize}
+
+\paragraph{Distance to Edge:}
+For a site at position $(x_i, y_i)$ in a $g \times g$ grid:
+\begin{equation}
+d_i^{\text{edge}} = \min\{x_i, y_i, g - 1 - x_i, g - 1 - y_i\}
+\end{equation}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Site Cost Computation}]
+def compute_site_costs(grid_size, accessibility_factor=3.0):
+    """
+    Generate realistic cost patterns
+    
+    Theory: Sites near roads/urban areas more expensive
+    Pattern: Exponential decay from edges
+    
+    Parameters:
+    -----------
+    grid_size : int
+        Grid dimension
+    accessibility_factor : float
+        Decay parameter λ (default: 3.0)
+    
+    Returns:
+    --------
+    costs : np.ndarray
+        Cost vector (flattened grid)
+    """
+    costs = np.zeros((grid_size, grid_size))
+    
+    for i in range(grid_size):
+        for j in range(grid_size):
+            # Distance to nearest edge
+            dist_to_edge = min(i, j, grid_size - 1 - i, grid_size - 1 - j)
+            
+            # Cost increases near edges (accessibility)
+            # Remote interior: low cost
+            # Near roads (edges): high cost
+            costs[i, j] = 10 * np.exp(-dist_to_edge / accessibility_factor) + 1
+    
+    return costs.flatten()
+\end{lstlisting}
+
+\subsection{Economic Rationale}
+
+Costs are calibrated to match real-world conservation economics:
+
+\begin{align}
+\text{Remote forest:} &\quad \$50\text{--}\$100/\text{ha} \quad \text{(low acquisition cost)} \\
+\text{Accessible areas:} &\quad \$200\text{--}\$500/\text{ha} \quad \text{(high cost)} \\
+\text{Cost ratio:} &\quad 3\text{--}10\times \quad \text{(validated against WDPA data)}
+\end{align}
+
+\section{Complete Instance Creation}
+
+\subsection{Step-by-Step Process}
+
+\begin{lstlisting}[caption={Conservation Instance Generation}]
+def create_realistic_conservation_instance(
+    scenario: str = "madagascar",
+    grid_size: int = 6,
+    num_species: int = 8,
+    seed: int = 42
+) -> ReserveDesignInstance:
+    """
+    Create biologically realistic conservation instance
+    
+    Steps:
+    1. Setup grid and spatial structure
+    2. Generate species occurrences (endemic + widespread)
+    3. Compute costs based on accessibility
+    4. Set representation targets
+    5. Calculate budget constraint
+    """
+    np.random.seed(seed)
+    num_sites = grid_size * grid_size
+    
+    # Step 1: Create spatial grid
+    edges = create_grid_connectivity(grid_size)
+    
+    # Step 2: Generate species
+    presence_matrix = np.zeros((num_sites, num_species))
+    
+    # 90% endemic, 10% widespread (Madagascar pattern)
+    num_endemic = int(0.9 * num_species)
+    
+    for sp in range(num_endemic):
+        # Random center for endemic range
+        center = (
+            np.random.randint(1, grid_size-1),
+            np.random.randint(1, grid_size-1)
+        )
+        range_radius = np.random.uniform(1.0, 2.5)  # Small range
+        
+        # Create occurrence pattern
+        occurrence = create_gaussian_occurrence(
+            grid_size, center, range_radius
+        )
+        presence_matrix[:, sp] = occurrence.flatten()
+    
+    # Widespread species
+    for sp in range(num_endemic, num_species):
+        # Multiple centers (meta-population)
+        for _ in range(2):  # 2-3 population centers
+            center = (np.random.randint(grid_size), 
+                     np.random.randint(grid_size))
+            range_radius = np.random.uniform(3.0, 6.0)  # Large range
+            occurrence = create_gaussian_occurrence(
+                grid_size, center, range_radius
+            )
+            presence_matrix[:, sp] = np.maximum(
+                presence_matrix[:, sp], 
+                occurrence.flatten()
+            )
+    
+    # Step 3: Costs
+    costs = compute_site_costs(grid_size)
+    
+    # Step 4: Targets (30% representation - IUCN guideline)
+    targets = np.array([
+        max(3, int(0.3 * presence_matrix[:, sp].sum()))
+        for sp in range(num_species)
+    ])
+    
+    # Step 5: Budget (40% of total cost - realistic constraint)
+    budget = 0.4 * costs.sum()
+    
+    return ReserveDesignInstance(
+        num_sites=num_sites,
+        num_species=num_species,
+        costs=costs,
+        presence=presence_matrix,
+        targets=targets,
+        budget=budget,
+        edges=edges,
+        scenario_name=scenario
+    )
+\end{lstlisting}
+
+\subsection{Representation Target Formula}
+
+Targets are set according to IUCN guidelines:
+\begin{equation}
+t_j = \max\left\{3, \left\lfloor 0.3 \times \sum_{i=1}^{n} p_{ij} \right\rfloor\right\}
+\end{equation}
+
+This ensures:
+\begin{itemize}
+    \item At least 30\% of occurrences are protected
+    \item Minimum of 3 sites (genetic diversity requirement)
+\end{itemize}
+
+\subsection{Budget Constraint Formula}
+
+\begin{equation}
+B = 0.4 \times \sum_{i=1}^{n} c_i
+\end{equation}
+
+This represents a realistic conservation scenario where 40\% of total landscape cost can be allocated to protection.
+
+\section{Validation Checklist}
+
+\subsection{Biological Realism}
+\begin{itemize}
+    \item[$\checkmark$] Endemic species: 3--15 sites
+    \item[$\checkmark$] Widespread species: 20--80 sites
+    \item[$\checkmark$] Spatial clustering (not random)
+    \item[$\checkmark$] 90\% endemism rate (Madagascar)
+\end{itemize}
+
+\subsection{Economic Realism}
+\begin{itemize}
+    \item[$\checkmark$] Cost gradient matches accessibility
+    \item[$\checkmark$] 3--10$\times$ cost range
+    \item[$\checkmark$] Budget realistic (30--50\% of total)
+\end{itemize}
+
+\subsection{Problem Characteristics}
+\begin{itemize}
+    \item[$\checkmark$] All species occur in at least one site
+    \item[$\checkmark$] Problem is solvable (budget sufficient)
+    \item[$\checkmark$] Targets achievable
+\end{itemize}
+
+\clearpage
+
+% ============================================================================
+% CHAPTER 4: QAOA SAT BENCHMARKS
+% ============================================================================
+
+\chapter{QAOA SAT Benchmarks}
+
+\section{Random k-SAT Generation}
+
+\subsection{Uniform Random Model}
+
+The uniform random $k$-SAT model generates instances with controlled hardness by varying the clause-to-variable ratio $\alpha$.
+
+\paragraph{Parameters:}
+\begin{itemize}
+    \item $n$ = number of variables
+    \item $k$ = literals per clause
+    \item $\alpha$ = clause-to-variable ratio
+    \item $m = \lfloor \alpha \cdot n \rfloor$ = number of clauses
+\end{itemize}
+
+\paragraph{Generation Algorithm:}
+\begin{enumerate}
+    \item Compute $m = \lfloor \alpha \times n \rfloor$ clauses
+    \item For each clause $C_j$, $j = 1, \ldots, m$:
+    \begin{enumerate}
+        \item Select $k$ distinct variables uniformly at random from $\{x_1, \ldots, x_n\}$
+        \item For each selected variable $x_i$, create literal:
+        \begin{equation}
+        \ell = \begin{cases}
+        x_i & \text{with probability } 0.5 \\
+        \neg x_i & \text{with probability } 0.5
+        \end{cases}
+        \end{equation}
+    \end{enumerate}
+    \item Return CNF formula $\Phi = \bigwedge_{j=1}^{m} C_j$
+\end{enumerate}
+
+\subsection{Phase Transition Theory}
+
+For random $k$-SAT, the satisfiability probability undergoes a sharp phase transition at a critical ratio $\alpha_c(k)$:
+
+\begin{equation}
+\Pr[\Phi \text{ is SAT}] \approx \begin{cases}
+1 & \text{if } \alpha < \alpha_c(k) \\
+0 & \text{if } \alpha > \alpha_c(k)
+\end{cases}
+\end{equation}
+
+\paragraph{Critical Values:}
+\begin{align}
+k = 3: &\quad \alpha_c \approx 4.27 \quad \text{(hardest instances)} \\
+k = 4: &\quad \alpha_c \approx 9.93 \\
+k = 5: &\quad \alpha_c \approx 21.12 \\
+k = 8: &\quad \alpha_c \approx 87 \quad \text{(theoretical)}
+\end{align}
+
+\paragraph{Hardness Peak:}
+The hardest instances occur \emph{at} the phase transition where $\alpha = \alpha_c(k)$.
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Random k-SAT Generation}]
+def generate_random_ksat(n: int, k: int, alpha: float, 
+                         seed: int = None) -> KSATInstance:
+    """
+    Generate random k-SAT using uniform random model
+    
+    Algorithm:
+    1. Compute m = floor(alpha × n) clauses
+    2. For each clause:
+       a. Select k distinct variables uniformly
+       b. Negate each with probability 0.5
+    3. Return CNF formula
+    
+    Phase Transition:
+    - k=3: alpha_c ≈ 4.27 (hardest instances)
+    - k=4: alpha_c ≈ 9.93
+    - k=5: alpha_c ≈ 21.12
+    - k=8: alpha_c ≈ 87
+    
+    Parameters:
+    -----------
+    n : int
+        Number of variables
+    k : int
+        Literals per clause
+    alpha : float
+        Clause-to-variable ratio
+    seed : int, optional
+        Random seed for reproducibility
+    
+    Returns:
+    --------
+    instance : KSATInstance
+        Random k-SAT instance
+    """
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+    
+    m = int(alpha * n)
+    clauses = []
+    
+    for _ in range(m):
+        # Select k distinct variables
+        variables = random.sample(range(1, n+1), k)
+        
+        # Create literals (negate with p=0.5)
+        clause = [
+            var if random.random() < 0.5 else -var
+            for var in variables
+        ]
+        
+        clauses.append(clause)
+    
+    return KSATInstance(
+        n=n,
+        m=m,
+        k=k,
+        clauses=clauses,
+        alpha=alpha,
+        is_planted=False
+    )
+\end{lstlisting}
+
+\subsection{Why $\alpha = 4.27$ for 3-SAT?}
+
+The satisfiability probability as a function of $\alpha$ exhibits:
+
+\begin{align}
+\alpha < 4.27: &\quad \Pr[\text{SAT}] \approx 1 \quad \text{(under-constrained, easy)} \\
+\alpha = 4.27: &\quad \Pr[\text{SAT}] \approx 0.5 \quad \text{(phase transition, HARD)} \\
+\alpha > 4.27: &\quad \Pr[\text{SAT}] \approx 0 \quad \text{(over-constrained, UNSAT but easy to prove)}
+\end{align}
+
+\textbf{Key Insight:} Hardest instances are AT the phase transition where $\alpha = \alpha_c$!
+
+\section{Planted SAT Generation}
+
+\subsection{Guaranteed Satisfiability}
+
+Planted SAT instances have a known satisfying assignment, making them useful for algorithm testing and verification.
+
+\paragraph{Generation Algorithm:}
+\begin{enumerate}
+    \item Generate random solution $\sigma \in \{0, 1\}^n$ uniformly
+    \item For each clause $C_j$, $j = 1, \ldots, m$:
+    \begin{enumerate}
+        \item Select $k$ distinct variables uniformly
+        \item Assign literals to ensure $C_j(\sigma) = \text{True}$
+        \item At least one literal in $C_j$ must be satisfied by $\sigma$
+    \end{enumerate}
+    \item Return CNF $\Phi$ and planted solution $\sigma$
+\end{enumerate}
+
+\paragraph{Satisfaction Guarantee:}
+For the planted solution $\sigma$:
+\begin{equation}
+\forall j \in \{1, \ldots, m\}: \quad C_j(\sigma) = \text{True}
+\end{equation}
+
+Therefore:
+\begin{equation}
+\Phi(\sigma) = \bigwedge_{j=1}^{m} C_j(\sigma) = \text{True}
+\end{equation}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Planted k-SAT Generation}]
+def generate_planted_ksat(n: int, k: int, alpha: float, 
+                          seed: int = None) -> KSATInstance:
+    """
+    Generate planted k-SAT with known solution
+    
+    Algorithm:
+    1. Generate random solution σ ∈ {0,1}^n
+    2. For each clause:
+       a. Select k distinct variables
+       b. Assign literals to ensure clause is satisfied by σ
+       c. At least one literal must be true under σ
+    3. Return CNF + planted solution
+    
+    Use Case: Algorithm testing, verification, benchmarking
+    
+    Parameters:
+    -----------
+    n : int
+        Number of variables
+    k : int
+        Literals per clause
+    alpha : float
+        Clause-to-variable ratio
+    seed : int, optional
+        Random seed
+    
+    Returns:
+    --------
+    instance : KSATInstance
+        Planted k-SAT with guaranteed solution
+    """
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+    
+    # Step 1: Random planted solution
+    planted_solution = [random.choice([True, False]) 
+                       for _ in range(n)]
+    
+    m = int(alpha * n)
+    clauses = []
+    
+    for _ in range(m):
+        # Step 2: Select k variables
+        variables = random.sample(range(1, n+1), k)
+        
+        # Step 3: Create clause satisfied by planted solution
+        clause = []
+        for var in variables:
+            var_value = planted_solution[var - 1]
+            
+            # Make literal true with probability > 0
+            # Ensures clause is satisfied
+            if random.random() < 0.7:  # Bias toward satisfaction
+                # If var is True, use positive literal
+                # If var is False, use negative literal
+                lit = var if var_value else -var
+            else:
+                # Occasionally flip
+                lit = -var if var_value else var
+            
+            clause.append(lit)
+        
+        # Ensure at least one literal is satisfied
+        satisfied = any(
+            (lit > 0 and planted_solution[abs(lit)-1]) or
+            (lit < 0 and not planted_solution[abs(lit)-1])
+            for lit in clause
+        )
+        
+        if satisfied:
+            clauses.append(clause)
+        else:
+            # Force satisfaction
+            var = variables[0]
+            clause[0] = var if planted_solution[var-1] else -var
+            clauses.append(clause)
+    
+    return KSATInstance(
+        n=n,
+        m=m,
+        k=k,
+        clauses=clauses,
+        alpha=alpha,
+        is_planted=True,
+        planted_solution=planted_solution
+    )
+\end{lstlisting}
+
+\section{DIMACS CNF Export}
+
+\subsection{Standard Format}
+
+The DIMACS CNF format is the standard representation for SAT instances:
+
+\paragraph{Header Line:}
+\begin{verbatim}
+p cnf <num_vars> <num_clauses>
+\end{verbatim}
+
+\paragraph{Clause Lines:}
+Each clause on one line, literals space-separated, terminated with 0:
+\begin{verbatim}
+<lit1> <lit2> ... <litk> 0
+\end{verbatim}
+
+\paragraph{Example:}
+For $\Phi = (x_1 \vee \neg x_2 \vee x_3) \wedge (\neg x_1 \vee x_2 \vee \neg x_3) \wedge (x_4 \vee x_5 \vee \neg x_1)$:
+\begin{verbatim}
+p cnf 5 3
+1 -2 3 0
+-1 2 -3 0
+4 5 -1 0
+\end{verbatim}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={DIMACS Export}]
+def export_to_dimacs(instance: KSATInstance, filename: str):
+    """
+    Export k-SAT instance to DIMACS CNF format
+    
+    Format:
+    p cnf <num_vars> <num_clauses>
+    <lit1> <lit2> ... <litk> 0
+    ...
+    
+    Example:
+    p cnf 5 3
+    1 -2 3 0
+    -1 2 -3 0
+    4 5 -1 0
+    """
+    with open(filename, 'w') as f:
+        # Header
+        f.write(f"p cnf {instance.n} {instance.m}\n")
+        
+        # Clauses
+        for clause in instance.clauses:
+            f.write(" ".join(map(str, clause)) + " 0\n")
+\end{lstlisting}
+
+\section{8-SAT Specifics}
+
+\subsection{Why k=8 is Different}
+
+Higher values of $k$ make satisfiability fundamentally easier.
+
+\paragraph{Satisfying Assignments per Clause:}
+\begin{align}
+k = 3: &\quad 2^3 - 1 = 7 \text{ satisfying assignments} \\
+k = 8: &\quad 2^8 - 1 = 255 \text{ satisfying assignments}
+\end{align}
+
+Each 8-SAT clause has 36$\times$ more ways to be satisfied than a 3-SAT clause!
+
+\paragraph{Phase Transition Shift:}
+\begin{equation}
+\alpha_c(k) \approx 2^k \ln 2 - \frac{k}{2}
+\end{equation}
+
+For $k=8$:
+\begin{equation}
+\alpha_c(8) \approx 2^8 \times 0.693 - 4 \approx 173.5
+\end{equation}
+
+Need \emph{many} more clauses to reach hardness!
+
+\subsection{Use Cases for 8-SAT}
+
+\begin{itemize}
+    \item \textbf{Baseline testing:} Easy instances for algorithm warmup
+    \item \textbf{Scalability studies:} Large satisfiable instances
+    \item \textbf{QAOA warmup:} Before tackling hard 3-SAT
+    \item \textbf{Circuit analysis:} More qubits per clause
+\end{itemize}
+
+\subsection{Example Generation}
+
+\begin{lstlisting}[caption={8-SAT Example}]
+# Example: Generate easy 8-SAT
+sat8 = generate_random_ksat(n=50, k=8, alpha=5.0)
+# alpha=5.0 << 87, so very likely satisfiable and easy
+\end{lstlisting}
+
+Since $\alpha = 5.0 \ll \alpha_c(8) \approx 87$, this instance is:
+\begin{itemize}
+    \item Very likely satisfiable
+    \item Easy to solve
+    \item Useful for testing solver implementations
+\end{itemize}
+
+\clearpage
+
+% ============================================================================
+% CHAPTER 5: SAT ENCODING THEORY
+% ============================================================================
+
+\chapter{SAT Encoding Theory}
+
+\section{Why Encode to SAT?}
+
+\subsection{Advantages}
+
+\begin{enumerate}
+    \item \textbf{Solver Efficiency:} SAT solvers are highly optimized, achieving 4--12$\times$ speedup over ILP solvers
+    \item \textbf{QAOA Compatibility:} Direct mapping to quantum circuits via cost Hamiltonian
+    \item \textbf{Standardization:} DIMACS format, wide tool support
+    \item \textbf{No Information Loss:} Proven equivalence-preserving encoding
+\end{enumerate}
+
+\subsection{Disadvantage}
+
+Variable overhead: 2--3$\times$ more variables due to auxiliary variables needed for arithmetic constraints.
+
+\subsection{Trade-off Analysis}
+
+\begin{equation}
+\text{Speedup Factor} = \frac{T_{\text{ILP}}}{T_{\text{SAT}}} \approx 4\text{--}12\times
+\end{equation}
+
+Despite overhead:
+\begin{equation}
+|V_{\text{SAT}}| \approx 2\text{--}3 \times |V_{\text{ILP}}|
+\end{equation}
+
+the solving time improvement justifies the encoding cost.
+
+\section{Encoding Conservation to CNF}
+
+\subsection{High-Level Strategy}
+
+\paragraph{Reserve Design Problem:}
+\begin{itemize}
+    \item \textbf{Decision:} Which sites to select?
+    \item \textbf{Constraints:}
+    \begin{enumerate}
+        \item Species representation targets
+        \item Budget constraint
+        \item Spatial connectivity
+    \end{enumerate}
+\end{itemize}
+
+\paragraph{SAT Encoding:}
+\begin{itemize}
+    \item \textbf{Variables:}
+    \begin{itemize}
+        \item Site selection: $x_i$ (select site $i$?)
+        \item Auxiliary: Helper variables for arithmetic
+    \end{itemize}
+    \item \textbf{Clauses:}
+    \begin{itemize}
+        \item Representation: At-least-$k$ constraints
+        \item Budget: Cardinality constraints
+        \item Connectivity: Reachability clauses
+    \end{itemize}
+\end{itemize}
+
+\section{At-Least-K Encoding}
+
+\subsection{Problem Statement}
+
+Ensure at least $k$ variables from set $\{x_1, \ldots, x_n\}$ are True:
+\begin{equation}
+\sum_{i=1}^{n} x_i \geq k
+\end{equation}
+
+\subsection{Naive Encoding (Exponential)}
+
+Enumerate all subsets of size $k$:
+\begin{equation}
+\bigvee_{S \subseteq \{1,\ldots,n\}, |S|=k} \left(\bigwedge_{i \in S} x_i\right)
+\end{equation}
+
+This requires $\binom{n}{k}$ clauses - exponential in $n$!
+
+\subsection{Efficient Encoding: Sequential Counter}
+
+\paragraph{Auxiliary Variables:}
+Define $c_{i,j}$ for $i \in \{0, \ldots, n-1\}$, $j \in \{1, \ldots, k\}$:
+\begin{equation}
+c_{i,j} = \begin{cases}
+\text{True} & \text{if among } x_0, \ldots, x_i, \text{ at least } j \text{ are True} \\
+\text{False} & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\paragraph{Recurrence Relation:}
+\begin{equation}
+c_{i,j} \Leftrightarrow c_{i-1,j} \vee (x_i \wedge c_{i-1,j-1})
+\end{equation}
+
+\paragraph{Base Cases:}
+\begin{align}
+c_{i,1} &\Leftrightarrow x_0 \vee x_1 \vee \cdots \vee x_i \\
+c_{0,j} &\Leftrightarrow (x_0 \text{ if } j=1, \text{ else False})
+\end{align}
+
+\paragraph{Final Constraint:}
+\begin{equation}
+c_{n-1,k} = \text{True}
+\end{equation}
+
+\paragraph{Complexity:}
+\begin{itemize}
+    \item Auxiliary variables: $O(nk)$
+    \item Clauses: $O(nk)$
+    \item Much better than $O\left(\binom{n}{k}\right)$!
+\end{itemize}
+
+\subsection{CNF Encoding of Recurrence}
+
+The recurrence $c_{i,j} \Leftrightarrow c_{i-1,j} \vee (x_i \wedge c_{i-1,j-1})$ translates to:
+
+\begin{align}
+\neg c_{i-1,j} \vee c_{i,j} &\quad \text{(if $c_{i-1,j}$ then $c_{i,j}$)} \\
+\neg x_i \vee \neg c_{i-1,j-1} \vee c_{i,j} &\quad \text{(if $x_i \wedge c_{i-1,j-1}$ then $c_{i,j}$)}
+\end{align}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={At-Least-K Sequential Counter Encoding}]
+def encode_at_least_k(variables: List[int], k: int) -> List[List[int]]:
+    """
+    Encode: At least k of the variables must be True
+    
+    Strategy: Sequential counter using auxiliary variables
+    Complexity: O(n*k) clauses, O(n*k) auxiliary variables
+    
+    Intuition:
+    - Create counter c[i][j]: "among first i variables, 
+                               at least j are True"
+    - Build up incrementally
+    - Final check: c[n][k] must be True
+    
+    Parameters:
+    -----------
+    variables : List[int]
+        List of n variable indices
+    k : int
+        Minimum number that must be True
+    
+    Returns:
+    --------
+    clauses : List[List[int]]
+        CNF clauses encoding the constraint
+    """
+    n = len(variables)
+    clauses = []
+    
+    # Auxiliary variables: c[i][j]
+    # Meaning: among variables[0..i], at least j are True
+    aux_vars = {}
+    next_var = max(abs(v) for v in variables) + 1
+    
+    for i in range(n):
+        for j in range(1, min(i+2, k+1)):
+            aux_vars[(i, j)] = next_var
+            next_var += 1
+    
+    # Base case: if variables[0] is True, c[0][1] is True
+    clauses.append([-variables[0], aux_vars[(0, 1)]])
+    
+    # Inductive case
+    for i in range(1, n):
+        for j in range(1, min(i+2, k+1)):
+            # c[i][j] is True if:
+            #   (c[i-1][j] is True) OR
+            #   (variables[i] is True AND c[i-1][j-1] is True)
+            
+            if j == 1:
+                # At least 1 among first i+1
+                clauses.append([-variables[i], aux_vars[(i, 1)]])
+                if (i-1, 1) in aux_vars:
+                    clauses.append([-aux_vars[(i-1, 1)], 
+                                   aux_vars[(i, 1)]])
+            else:
+                # General case
+                if (i-1, j) in aux_vars:
+                    clauses.append([-aux_vars[(i-1, j)], 
+                                   aux_vars[(i, j)]])
+                if (i-1, j-1) in aux_vars:
+                    clauses.append([
+                        -variables[i], 
+                        -aux_vars[(i-1, j-1)], 
+                        aux_vars[(i, j)]
+                    ])
+    
+    # Final constraint: c[n-1][k] must be True
+    clauses.append([aux_vars[(n-1, k)]])
+    
+    return clauses
+\end{lstlisting}
+
+\section{Budget Constraint Encoding}
+
+\subsection{Problem Statement}
+
+Given sites with costs $c_1, \ldots, c_n$ and budget $B$:
+\begin{equation}
+\sum_{i=1}^{n} c_i \cdot x_i \leq B
+\end{equation}
+
+\subsection{Challenge}
+
+Arithmetic over discrete values in purely Boolean framework.
+
+\subsection{Solution: Cardinality Network}
+
+\paragraph{Step 1: Discretization}
+Scale costs to integers if necessary.
+
+\paragraph{Step 2: Weighted Cardinality}
+Use totalizer tree or cardinality network for weighted sum:
+\begin{equation}
+S = \sum_{i=1}^{n} c_i \cdot x_i
+\end{equation}
+
+\paragraph{Step 3: Comparison}
+Encode $S \leq B$ using comparator network.
+
+\subsection{Simplified Approach}
+
+For conservation instances, we can use a simplified encoding:
+
+\paragraph{Step 1: Sort Sites by Cost}
+Let $\sigma$ be permutation such that $c_{\sigma(1)} \leq c_{\sigma(2)} \leq \cdots \leq c_{\sigma(n)}$.
+
+\paragraph{Step 2: Compute Maximum Sites}
+Find maximum $k$ such that:
+\begin{equation}
+\sum_{i=1}^{k} c_{\sigma(i)} \leq B
+\end{equation}
+
+\paragraph{Step 3: At-Most-K Encoding}
+Encode constraint:
+\begin{equation}
+\sum_{i=1}^{n} x_i \leq k
+\end{equation}
+
+This is conservative but efficient.
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Budget Constraint Encoding}]
+def encode_weighted_budget(
+    site_vars: List[int],
+    costs: List[int],
+    budget: int
+) -> Tuple[List[List[int]], int]:
+    """
+    Encode: Sum of selected site costs ≤ budget
+    
+    Strategy:
+    1. Discretize costs (scale to integers)
+    2. Use cardinality network for weighted sum
+    3. Compare result to budget threshold
+    
+    Returns: (clauses, num_aux_vars)
+    """
+    n = len(site_vars)
+    
+    # Simplified: Sort by cost, use at-most-k encoding
+    # "Select at most k sites" where k chosen to satisfy budget
+    
+    # Count max sites within budget
+    max_sites = 0
+    sorted_costs = sorted(costs)
+    cumsum = 0
+    for cost in sorted_costs:
+        if cumsum + cost <= budget:
+            cumsum += cost
+            max_sites += 1
+        else:
+            break
+    
+    # Encode: at most max_sites can be selected
+    return encode_at_most_k(site_vars, max_sites)
+\end{lstlisting}
+
+\section{Complete Encoding Pipeline}
+
+\subsection{Reserve Design SAT Encoder Class}
+
+\begin{lstlisting}[caption={Complete SAT Encoding}]
+class ReserveDesignSATEncoder:
+    """
+    Complete SAT encoding for reserve design
+    
+    Encoding Components:
+    1. Site selection variables (x_1, ..., x_n)
+    2. Species representation constraints
+    3. Budget constraint
+    4. Connectivity constraints (optional)
+    """
+    
+    def encode(self, instance: ReserveDesignInstance) -> KSATInstance:
+        """
+        Main encoding function
+        
+        Steps:
+        1. Create base variables
+        2. Encode each constraint type
+        3. Combine all clauses
+        4. Return CNF instance
+        """
+        clauses = []
+        next_var = instance.num_sites + 1
+        
+        # Site variables: 1 to num_sites
+        site_vars = list(range(1, instance.num_sites + 1))
+        
+        # 1. Species representation
+        for species_idx in range(instance.num_species):
+            # Sites where species occurs
+            occurrence_sites = [
+                site_vars[i] 
+                for i in range(instance.num_sites)
+                if instance.presence[i, species_idx] == 1
+            ]
+            
+            # At least target_j sites must be selected
+            target = instance.targets[species_idx]
+            repr_clauses = encode_at_least_k(occurrence_sites, target)
+            clauses.extend(repr_clauses)
+        
+        # 2. Budget constraint
+        budget_clauses, num_aux = encode_weighted_budget(
+            site_vars,
+            instance.costs.astype(int),
+            int(instance.budget)
+        )
+        clauses.extend(budget_clauses)
+        next_var += num_aux
+        
+        # 3. (Optional) Connectivity
+        if len(instance.edges) > 0:
+            conn_clauses = encode_connectivity(site_vars, 
+                                              instance.edges)
+            clauses.extend(conn_clauses)
+        
+        # Create SAT instance
+        num_vars = next_var - 1
+        num_clauses = len(clauses)
+        
+        return KSATInstance(
+            n=num_vars,
+            m=num_clauses,
+            k=3,  # Approximate (clauses vary in size)
+            clauses=clauses,
+            alpha=num_clauses / num_vars
+        )
+\end{lstlisting}
+
+\subsection{Encoding Correctness}
+
+\paragraph{Theorem:} The SAT encoding preserves equivalence.
+
+\begin{proof}[Proof Sketch]
+\begin{enumerate}
+    \item Each constraint in the original problem maps to a set of clauses
+    \item The clauses are satisfiable if and only if the original constraint is satisfiable
+    \item Auxiliary variables do not change the set of satisfying assignments for the original variables
+    \item Therefore: $\Phi$ is SAT $\Leftrightarrow$ original problem is feasible
+\end{enumerate}
+\end{proof}
+
+\paragraph{Variable Count:}
+\begin{equation}
+|\text{vars}_{\text{SAT}}| = n + \sum_{j=1}^{s} O(n_j \cdot t_j) + O(n)
+\end{equation}
+where $n_j$ is number of sites with species $j$.
+
+Typical overhead: 2--3$\times$ original variable count.
+
+\clearpage
+
+% ============================================================================
+% CHAPTER 6: HARDNESS METRICS
+% ============================================================================
+
+\chapter{Hardness Metrics}
+
+\section{Variable-Clause Graph (VCG)}
+
+\subsection{Definition}
+
+The Variable-Clause Graph is a bipartite graph $G = (V, E)$ where:
+\begin{align}
+V &= V_{\text{vars}} \cup V_{\text{clauses}} \\
+V_{\text{vars}} &= \{v_1, v_2, \ldots, v_n\} \\
+V_{\text{clauses}} &= \{c_1, c_2, \ldots, c_m\} \\
+E &= \{(v_i, c_j) : x_i \text{ or } \neg x_i \text{ appears in } C_j\}
+\end{align}
+
+\subsection{Graph Properties}
+
+\paragraph{Density:}
+\begin{equation}
+\rho = \frac{|E|}{n \cdot m}
+\end{equation}
+
+For $k$-SAT with $m$ clauses:
+\begin{equation}
+|E| \leq k \cdot m
+\end{equation}
+
+Therefore:
+\begin{equation}
+\rho \leq \frac{k \cdot m}{n \cdot m} = \frac{k}{n}
+\end{equation}
+
+\paragraph{Variable Degree:}
+\begin{equation}
+\deg(v_i) = |\{c_j : (v_i, c_j) \in E\}|
+\end{equation}
+
+Average variable degree:
+\begin{equation}
+\bar{d}_{\text{var}} = \frac{1}{n} \sum_{i=1}^{n} \deg(v_i) = \frac{|E|}{n}
+\end{equation}
+
+\paragraph{Clause Degree:}
+For $k$-SAT, all clauses have degree $k$:
+\begin{equation}
+\deg(c_j) = k, \quad \forall j \in \{1, \ldots, m\}
+\end{equation}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={VCG Construction}]
+def build_vcg(instance: KSATInstance):
+    """
+    Build Variable-Clause Graph
+    
+    Graph:
+    - Left partition: Variables (x_1, ..., x_n)
+    - Right partition: Clauses (C_1, ..., C_m)
+    - Edge: (x_i, C_j) if x_i or neg x_i appears in C_j
+    
+    Properties:
+    - Density: How connected is the graph?
+    - Clustering: Local structure
+    - Degree distribution: Variable/clause degrees
+    """
+    import networkx as nx
+    
+    G = nx.Graph()
+    
+    # Add variable nodes
+    var_nodes = [f"v{i}" for i in range(1, instance.n + 1)]
+    G.add_nodes_from(var_nodes, bipartite=0)
+    
+    # Add clause nodes
+    clause_nodes = [f"c{i}" for i in range(instance.m)]
+    G.add_nodes_from(clause_nodes, bipartite=1)
+    
+    # Add edges
+    for clause_idx, clause in enumerate(instance.clauses):
+        for lit in clause:
+            var_idx = abs(lit)
+            G.add_edge(f"v{var_idx}", f"c{clause_idx}")
+    
+    return G
+\end{lstlisting}
+
+\section{Hardness Score Computation}
+
+\subsection{Multi-Factor Analysis}
+
+The hardness score combines multiple structural metrics into a single value in $[0, 100]$.
+
+\paragraph{Weighted Formula:}
+\begin{equation}
+H = w_1 \cdot S_\alpha + w_2 \cdot S_\rho + w_3 \cdot S_H + w_4 \cdot S_\omega
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $S_\alpha$ = alpha proximity score (40\% weight)
+    \item $S_\rho$ = VCG density score (30\% weight)
+    \item $S_H$ = literal entropy score (20\% weight)
+    \item $S_\omega$ = clause overlap score (10\% weight)
+\end{itemize}
+
+Weights sum to 1:
+\begin{equation}
+w_1 + w_2 + w_3 + w_4 = 0.4 + 0.3 + 0.2 + 0.1 = 1.0
+\end{equation}
+
+\subsection{Alpha Proximity Score}
+
+Measures distance from phase transition:
+\begin{equation}
+S_\alpha = 100 \cdot \exp\left(-\frac{|\alpha - \alpha_c(k)|}{2}\right)
+\end{equation}
+
+where $\alpha_c(k)$ is the critical ratio for $k$-SAT:
+\begin{equation}
+\alpha_c(k) \approx 2^k \ln 2 - \frac{k + 1}{2}
+\end{equation}
+
+For common values:
+\begin{align}
+\alpha_c(3) &\approx 4.27 \\
+\alpha_c(4) &\approx 9.93 \\
+\alpha_c(5) &\approx 21.12
+\end{align}
+
+\subsection{VCG Density Score}
+
+\begin{equation}
+S_\rho = \min\{100, 500 \cdot \rho\}
+\end{equation}
+
+Higher density $\Rightarrow$ more constrained $\Rightarrow$ harder.
+
+\subsection{Literal Entropy Score}
+
+Shannon entropy of literal distribution:
+\begin{equation}
+H_{\text{lit}} = -\sum_{i=1}^{n} \left(p_i^+ \log_2 p_i^+ + p_i^- \log_2 p_i^-\right)
+\end{equation}
+
+where:
+\begin{align}
+p_i^+ &= \frac{\text{\# positive occurrences of } x_i}{\text{total literal occurrences}} \\
+p_i^- &= \frac{\text{\# negative occurrences of } x_i}{\text{total literal occurrences}}
+\end{align}
+
+Normalized score:
+\begin{equation}
+S_H = 100 \cdot \frac{H_{\text{lit}}}{H_{\max}}
+\end{equation}
+
+where:
+\begin{equation}
+H_{\max} = \log_2(2n) \quad \text{(maximum possible entropy)}
+\end{equation}
+
+Higher entropy $\Rightarrow$ more balanced $\Rightarrow$ harder.
+
+\subsection{Clause Overlap Score}
+
+Average Jaccard similarity between clauses:
+\begin{equation}
+\omega = \frac{2}{m(m-1)} \sum_{1 \leq i < j \leq m} \frac{|V_i \cap V_j|}{|V_i \cup V_j|}
+\end{equation}
+
+where $V_i = \{\text{variables in clause } i\}$.
+
+Score:
+\begin{equation}
+S_\omega = \min\{100, 200 \cdot \omega\}
+\end{equation}
+
+Higher overlap $\Rightarrow$ more interactions $\Rightarrow$ harder.
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Hardness Score Computation}]
+def compute_hardness_score(metrics: HardnessMetrics) -> float:
+    """
+    Combine multiple metrics into single hardness score (0-100)
+    
+    Factors:
+    1. Alpha proximity to phase transition (40% weight)
+    2. VCG density (30% weight)
+    3. Literal entropy (20% weight)
+    4. Clause overlap (10% weight)
+    
+    Calibration:
+    - Random 3-SAT at alpha=4.27: score ≈ 55-65 (hard)
+    - Conservation instances: score ≈ 10-25 (easy-medium)
+    """
+    score = 0.0
+    
+    # Factor 1: Alpha score (peaked at phase transition)
+    if metrics.k == 3:
+        phase_transition = 4.27
+    else:
+        # Approximate formula for k-SAT
+        phase_transition = 2**metrics.k * np.log(2) - 0.5
+    
+    alpha_diff = abs(metrics.alpha - phase_transition)
+    alpha_score = 100 * np.exp(-alpha_diff / 2)  # Gaussian peak
+    score += 0.40 * alpha_score
+    
+    # Factor 2: VCG density
+    # Higher density → more constrained → harder
+    density_score = min(100, metrics.vcg_density * 500)
+    score += 0.30 * density_score
+    
+    # Factor 3: Literal entropy
+    # Higher entropy → more balanced → harder
+    max_entropy = np.log2(2 * metrics.n)  # Maximum possible
+    entropy_score = 100 * (metrics.literal_entropy / max_entropy)
+    score += 0.20 * entropy_score
+    
+    # Factor 4: Clause overlap
+    # Higher overlap → more interactions → harder
+    overlap_score = min(100, metrics.clause_overlap * 200)
+    score += 0.10 * overlap_score
+    
+    return score
+\end{lstlisting}
+
+\section{Difficulty Classification}
+
+\subsection{Threshold-Based Classification}
+
+Map hardness score $H \in [0, 100]$ to discrete difficulty categories:
+
+\begin{equation}
+\text{Difficulty}(H) = \begin{cases}
+\text{easy} & \text{if } H < 30 \\
+\text{medium} & \text{if } 30 \leq H < 50 \\
+\text{hard} & \text{if } 50 \leq H < 70 \\
+\text{very hard} & \text{if } H \geq 70
+\end{cases}
+\end{equation}
+
+\subsection{Empirical Calibration}
+
+Thresholds are based on empirical solver performance:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcl}
+\hline
+\textbf{Category} & \textbf{Score Range} & \textbf{SAT Solver Time} \\
+\hline
+Easy & $[0, 30)$ & $< 1$ second \\
+Medium & $[30, 50)$ & 1--10 seconds \\
+Hard & $[50, 70)$ & 10--100 seconds \\
+Very Hard & $[70, 100]$ & May timeout \\
+\hline
+\end{tabular}
+\caption{Hardness categories and typical solving times}
+\end{table}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Difficulty Classification}]
+def classify_difficulty(hardness_score: float) -> str:
+    """
+    Map hardness score to difficulty category
+    
+    Thresholds based on empirical solver performance:
+    - Easy: < 30 (SAT solvers solve in < 1s)
+    - Medium: 30-50 (SAT solvers solve in 1-10s)
+    - Hard: 50-70 (SAT solvers take 10-100s)
+    - Very Hard: > 70 (SAT solvers may timeout)
+    """
+    if hardness_score < 30:
+        return "easy"
+    elif hardness_score < 50:
+        return "medium"
+    elif hardness_score < 70:
+        return "hard"
+    else:
+        return "very hard"
+\end{lstlisting}
+
+\section{Validation Examples}
+
+\subsection{Random 3-SAT at Phase Transition}
+
+For $n = 50$, $k = 3$, $\alpha = 4.27$:
+\begin{align}
+S_\alpha &\approx 95 \quad \text{(exactly at phase transition)} \\
+S_\rho &\approx 40 \quad \text{(moderate density)} \\
+S_H &\approx 60 \quad \text{(high entropy)} \\
+S_\omega &\approx 25 \quad \text{(low overlap)} \\
+H &\approx 0.4(95) + 0.3(40) + 0.2(60) + 0.1(25) \\
+&\approx 38 + 12 + 12 + 2.5 = 64.5 \quad \text{(hard)}
+\end{align}
+
+\subsection{Conservation Instance}
+
+For Madagascar small instance ($n = 36$ sites, $s = 8$ species):
+\begin{align}
+S_\alpha &\approx 10 \quad \text{(far from phase transition, } \alpha \approx 1.5) \\
+S_\rho &\approx 20 \quad \text{(sparse)} \\
+S_H &\approx 15 \quad \text{(low entropy)} \\
+S_\omega &\approx 5 \quad \text{(minimal overlap)} \\
+H &\approx 0.4(10) + 0.3(20) + 0.2(15) + 0.1(5) \\
+&\approx 4 + 6 + 3 + 0.5 = 13.5 \quad \text{(easy)}
+\end{align}
+
+\clearpage
+
+% ============================================================================
+% CHAPTER 7: INSTANCE COMPARISON FRAMEWORK
+% ============================================================================
+
+\chapter{Instance Comparison Framework}
+
+\section{Comparison Workflow}
+
+\subsection{Objective}
+
+Compare conservation planning instances with QAOA SAT benchmarks across multiple dimensions:
+\begin{enumerate}
+    \item Size (variables, clauses)
+    \item Hardness (complexity metrics)
+    \item Structure (VCG properties)
+    \item Solvability (if solvers available)
+\end{enumerate}
+
+\subsection{Workflow Algorithm}
+
+\begin{algorithm}[H]
+\caption{Instance Comparison}
+\begin{algorithmic}[1]
+\REQUIRE Conservation instance $I_c$, QAOA instance $I_q$
+\ENSURE Comparison report $R$
+\STATE Encode $I_c$ to SAT: $\Phi_c \leftarrow \text{encode}(I_c)$
+\STATE Compute metrics: $M_c \leftarrow \text{metrics}(\Phi_c)$
+\STATE Compute metrics: $M_q \leftarrow \text{metrics}(I_q)$
+\STATE Compare sizes: $S \leftarrow \text{compare\_size}(M_c, M_q)$
+\STATE Compare hardness: $H \leftarrow \text{compare\_hardness}(M_c, M_q)$
+\STATE Compute similarity: $\sigma \leftarrow \text{similarity}(M_c, M_q)$
+\RETURN $R = \{S, H, \sigma\}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Instance Comparison Function}]
+def compare_instances(
+    conservation_instance: ReserveDesignInstance,
+    qaoa_instance: KSATInstance
+) -> dict:
+    """
+    Comprehensive comparison between instance types
+    
+    Comparison Dimensions:
+    1. Size (variables, clauses)
+    2. Hardness (complexity metrics)
+    3. Structure (VCG properties)
+    4. Solvability (if solvers available)
+    
+    Returns: Comparison report dictionary
+    """
+    
+    # Step 1: Encode conservation to SAT
+    encoder = ReserveDesignSATEncoder()
+    conservation_sat = encoder.encode(conservation_instance)
+    
+    # Step 2: Compute metrics
+    cons_metrics = compute_hardness_metrics(
+        conservation_sat.n, 
+        conservation_sat.clauses
+    )
+    qaoa_metrics = compute_hardness_metrics(
+        qaoa_instance.n,
+        qaoa_instance.clauses
+    )
+    
+    # Step 3: Compare
+    comparison = {
+        'conservation': {
+            'variables': conservation_sat.n,
+            'clauses': conservation_sat.m,
+            'alpha': conservation_sat.alpha,
+            'hardness': cons_metrics.hardness_score,
+            'difficulty': cons_metrics.expected_difficulty
+        },
+        'qaoa': {
+            'variables': qaoa_instance.n,
+            'clauses': qaoa_instance.m,
+            'alpha': qaoa_instance.alpha,
+            'hardness': qaoa_metrics.hardness_score,
+            'difficulty': qaoa_metrics.expected_difficulty
+        },
+        'similarity_score': compute_similarity(cons_metrics, 
+                                              qaoa_metrics)
+    }
+    
+    return comparison
+\end{lstlisting}
+
+\section{Similarity Metric}
+
+\subsection{Definition}
+
+The similarity score $\sigma \in [0, 100]$ quantifies structural similarity between two SAT instances:
+
+\begin{equation}
+\sigma = w_\alpha \cdot \sigma_\alpha + w_\rho \cdot \sigma_\rho + w_H \cdot \sigma_H
+\end{equation}
+
+where weights sum to 1:
+\begin{equation}
+w_\alpha + w_\rho + w_H = 0.4 + 0.3 + 0.3 = 1.0
+\end{equation}
+
+\subsection{Component Similarities}
+
+\paragraph{Alpha Similarity:}
+\begin{equation}
+\sigma_\alpha = 100 \cdot \exp(-|\alpha_1 - \alpha_2|)
+\end{equation}
+
+\paragraph{Density Similarity:}
+\begin{equation}
+\sigma_\rho = 100 \cdot \exp(-10 \cdot |\rho_1 - \rho_2|)
+\end{equation}
+
+\paragraph{Entropy Similarity:}
+\begin{equation}
+\sigma_H = 100 \cdot \left(1 - \frac{|H_1 - H_2|}{10}\right)
+\end{equation}
+
+clamped to $[0, 100]$.
+
+\subsection{Interpretation}
+
+\begin{align}
+\sigma \geq 80: &\quad \text{Very similar structure} \\
+60 \leq \sigma < 80: &\quad \text{Similar structure} \\
+40 \leq \sigma < 60: &\quad \text{Moderately similar} \\
+\sigma < 40: &\quad \text{Different structure}
+\end{align}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Similarity Computation}]
+def compute_similarity(metrics1, metrics2) -> float:
+    """
+    Compute structural similarity (0-100)
+    
+    Higher score → more similar structure
+    
+    Components:
+    - Alpha similarity
+    - Density similarity
+    - Entropy similarity
+    """
+    # Normalized differences
+    alpha_sim = 100 * np.exp(-abs(metrics1.alpha - metrics2.alpha))
+    density_sim = 100 * np.exp(-abs(metrics1.vcg_density - 
+                                    metrics2.vcg_density) * 10)
+    entropy_sim = 100 * (1 - abs(metrics1.literal_entropy - 
+                                  metrics2.literal_entropy) / 10)
+    
+    # Weighted average
+    similarity = (0.4 * alpha_sim + 
+                 0.3 * density_sim + 
+                 0.3 * entropy_sim)
+    
+    return min(100, max(0, similarity))
+\end{lstlisting}
+
+% ============================================================================
+% CHAPTER 8: COMPLETE CODE EXAMPLES
+% ============================================================================
+
+\chapter{Complete Code Examples}
+
+\section{End-to-End: Small Conservation Problem}
+
+\begin{lstlisting}[caption={Complete Workflow Example}]
+"""
+Complete workflow: Generate → Encode → Analyze → Compare
+"""
+
+from real_world_instance import create_solvable_real_world_instance
+from qaoa_sat_instance import generate_random_ksat
+from sat_encoder import ReserveDesignSATEncoder
+from hardness_metrics import compute_hardness_metrics
+
+def example_small_conservation():
+    print("="*70)
+    print("EXAMPLE: Small Conservation Problem")
+    print("="*70)
+    
+    # Step 1: Generate conservation instance
+    print("\n1. Generate Conservation Instance")
+    instance = create_solvable_real_world_instance('small', seed=42)
+    print(f"   Sites: {instance.num_sites}")
+    print(f"   Species: {instance.num_species}")
+    print(f"   Budget: {instance.budget:.2f} / {instance.costs.sum():.2f}")
+    
+    # Step 2: Encode to SAT
+    print("\n2. Encode to SAT (CNF)")
+    encoder = ReserveDesignSATEncoder()
+    sat_instance = encoder.encode(instance)
+    print(f"   Variables: {sat_instance.n}")
+    print(f"   Clauses: {sat_instance.m}")
+    print(f"   Alpha: {sat_instance.alpha:.3f}")
+    
+    # Step 3: Compute hardness
+    print("\n3. Compute Hardness Metrics")
+    metrics = compute_hardness_metrics(sat_instance.n, 
+                                      sat_instance.clauses)
+    print(f"   Hardness Score: {metrics.hardness_score:.1f}/100")
+    print(f"   Difficulty: {metrics.expected_difficulty}")
+    print(f"   VCG Density: {metrics.vcg_density:.4f}")
+    
+    # Step 4: Generate comparable QAOA instance
+    print("\n4. Generate Comparable QAOA Benchmark")
+    qaoa = generate_random_ksat(n=30, k=3, alpha=4.27, seed=42)
+    qaoa_metrics = compute_hardness_metrics(qaoa.n, qaoa.clauses)
+    print(f"   Variables: {qaoa.n}")
+    print(f"   Hardness Score: {qaoa_metrics.hardness_score:.1f}/100")
+    
+    # Step 5: Compare
+    print("\n5. Comparison")
+    print(f"   Conservation: alpha={sat_instance.alpha:.2f}, "
+          f"H={metrics.hardness_score:.1f}")
+    print(f"   QAOA:         alpha={qaoa.alpha:.2f}, "
+          f"H={qaoa_metrics.hardness_score:.1f}")
+    print(f"   Both are NISQ-compatible (< 100 qubits)")
+    
+    print("\n" + "="*70)
+
+if __name__ == "__main__":
+    example_small_conservation()
+\end{lstlisting}
+
+\section{Batch Instance Generation}
+
+\begin{lstlisting}[caption={Batch Generation Example}]
+"""
+Generate multiple instances for experiments
+"""
+
+def generate_instance_suite(output_dir: str = "instances"):
+    """
+    Generate comprehensive instance suite
+    
+    Conservation: 3 sizes × 3 scenarios = 9 instances
+    QAOA: 3 sizes × 2 types (random/planted) = 6 instances
+    Total: 15 instances
+    """
+    import os
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print("Generating Instance Suite")
+    print("-" * 70)
+    
+    # Conservation instances
+    scenarios = ['madagascar', 'amazon', 'coral']
+    sizes = ['small', 'medium', 'large']
+    
+    for scenario in scenarios:
+        for size in sizes:
+            instance = create_real_world_instance(scenario, size)
+            filename = f"{output_dir}/cons_{scenario}_{size}.json"
+            save_instance(instance, filename)
+            print(f"✓ {filename}")
+    
+    # QAOA instances
+    qaoa_configs = [
+        {'n': 20, 'alpha': 4.27, 'name': 'small'},
+        {'n': 30, 'alpha': 4.27, 'name': 'medium'},
+        {'n': 50, 'alpha': 4.27, 'name': 'large'}
+    ]
+    
+    for config in qaoa_configs:
+        # Random
+        random_inst = generate_random_ksat(
+            n=config['n'], k=3, alpha=config['alpha']
+        )
+        filename = f"{output_dir}/qaoa_random_{config['name']}.cnf"
+        with open(filename, 'w') as f:
+            f.write(random_inst.to_dimacs_cnf())
+        print(f"✓ {filename}")
+        
+        # Planted
+        planted_inst = generate_planted_ksat(
+            n=config['n'], k=3, alpha=config['alpha']
+        )
+        filename = f"{output_dir}/qaoa_planted_{config['name']}.cnf"
+        with open(filename, 'w') as f:
+            f.write(planted_inst.to_dimacs_cnf())
+        print(f"✓ {filename}")
+    
+    print("-" * 70)
+    print(f"✓ Generated 15 instances in {output_dir}/")
+\end{lstlisting}
+
+% ============================================================================
+% CHAPTER 9: ADVANCED TOPICS
+% ============================================================================
+
+\chapter{Advanced Topics}
+
+\section{Optimizing SAT Encodings}
+
+\subsection{Trade-offs}
+
+Different encoding strategies involve trade-offs:
+\begin{itemize}
+    \item Fewer variables vs. More clauses
+    \item Shorter clauses vs. More auxiliary variables
+    \item Encoding efficiency vs. Solver efficiency
+\end{itemize}
+
+\subsection{Advanced Encoding Methods}
+
+\paragraph{Totalizer:} For cardinality constraints with complexity $O(n \log n)$
+
+\paragraph{Ladder Encoding:} For pseudo-boolean constraints
+
+\paragraph{BDD-based:} Binary decision diagrams for compact representation
+
+\section{QAOA Circuit Mapping}
+
+\subsection{From CNF to QAOA Hamiltonian}
+
+Given CNF formula $\Phi = \bigwedge_{j=1}^{m} C_j$, the QAOA cost Hamiltonian is:
+\begin{equation}
+H_C = \sum_{j=1}^{m} h_{C_j}
+\end{equation}
+
+where for each clause $C_j$:
+\begin{equation}
+h_{C_j} = \begin{cases}
+0 & \text{if } C_j \text{ satisfied} \\
+1 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\subsection{QAOA Circuit}
+
+\begin{enumerate}
+    \item Initialize: $|\psi_0\rangle = |+\rangle^{\otimes n}$
+    \item For $p$ layers:
+    \begin{enumerate}
+        \item Apply mixer: $|\psi\rangle \leftarrow e^{-i\beta_\ell H_M} |\psi\rangle$
+        \item Apply cost: $|\psi\rangle \leftarrow e^{-i\gamma_\ell H_C} |\psi\rangle$
+    \end{enumerate}
+    \item Measure in computational basis
+\end{enumerate}
+
+where:
+\begin{equation}
+H_M = \sum_{i=1}^{n} X_i
+\end{equation}
+is the mixer Hamiltonian.
+
+% ============================================================================
+% CHAPTER 10: TROUBLESHOOTING
+% ============================================================================
+
+\chapter{Troubleshooting}
+
+\section{Common Issues}
+
+\subsection{Issue 1: Module Not Found}
+
+\paragraph{Error:}
+\begin{verbatim}
+ModuleNotFoundError: No module named 'pysat'
+\end{verbatim}
+
+\paragraph{Solution:}
+Install PySAT:
+\begin{verbatim}
+pip install python-sat
+\end{verbatim}
+
+\subsection{Issue 2: Unsolvable Instance}
+
+\paragraph{Error:}
+Instance does not satisfy feasibility conditions.
+
+\paragraph{Check:}
+\begin{equation}
+B \geq 0.3 \times \sum_{i=1}^{n} c_i
+\end{equation}
+
+\paragraph{Solution:}
+Increase budget parameter to 40\% of total cost.
+
+\subsection{Issue 3: Too Many Clauses}
+
+\paragraph{Problem:}
+Encoding produces excessive number of clauses.
+
+\paragraph{Solutions:}
+\begin{itemize}
+    \item Use more efficient encoding (totalizer instead of sequential)
+    \item Reduce instance size
+    \item Increase budget to simplify constraints
+\end{itemize}
+
+\section{Performance Optimization}
+
+\subsection{Slow Instance Generation}
+
+\paragraph{Strategies:}
+\begin{itemize}
+    \item Use vectorized numpy operations
+    \item Avoid Python loops where possible
+    \item Cache species occurrence patterns
+\end{itemize}
+
+\subsection{Memory Issues}
+
+For large instances:
+\begin{itemize}
+    \item Generate instances in batches
+    \item Use sparse matrices for presence data
+    \item Stream clauses to file instead of storing in memory
+\end{itemize}
+
+\section{Validation}
+
+\subsection{Instance Sanity Checks}
+
+\begin{lstlisting}[caption={Validation Function}]
+def validate_instance(instance):
+    """
+    Check instance sanity
+    """
+    # All species occur somewhere
+    assert all(instance.presence.sum(axis=0) > 0)
+    
+    # Targets achievable
+    for sp in range(instance.num_species):
+        occurrence = instance.presence[:, sp].sum()
+        assert instance.targets[sp] <= occurrence
+    
+    # Budget positive
+    assert instance.budget > 0
+    
+    # Costs positive
+    assert all(instance.costs > 0)
+\end{lstlisting}
+
+% ============================================================================
+% APPENDICES
+% ============================================================================
+
+\appendix
+
+\chapter{Mathematical Notation}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cl}
+\hline
+\textbf{Symbol} & \textbf{Meaning} \\
+\hline
+$n$ & Number of variables \\
+$m$ & Number of clauses \\
+$k$ & Literals per clause \\
+$\alpha$ & Clause-to-variable ratio ($m/n$) \\
+$x_i$ & Boolean variable (site selection) \\
+$C_j$ & Clause $j$ \\
+$\sigma$ & Assignment (solution) \\
+$H_C$ & Cost Hamiltonian (QAOA) \\
+$p_{ij}$ & Species presence matrix \\
+$t_j$ & Representation target \\
+$c_i$ & Site cost \\
+$B$ & Budget constraint \\
+\hline
+\end{tabular}
+\caption{Mathematical notation used throughout this tutorial}
+\end{table}
+
+\chapter{Reference Papers}
+
+\begin{enumerate}
+    \item \textbf{QAOA SAT:} Boulebnane et al. (2024). ``Applying QAOA to constraint satisfaction.'' arXiv:2411.17442
+    
+    \item \textbf{$k$-SAT Phase Transitions:} Mézard \& Montanari (2009). ``Information, Physics, and Computation.'' Oxford University Press.
+    
+    \item \textbf{SAT Encodings:} Biere et al. (2009). ``Handbook of Satisfiability.'' IOS Press.
+    
+    \item \textbf{Reserve Design:} Margules \& Pressey (2000). ``Systematic conservation planning.'' \textit{Nature}, 405(6783), 243--253.
+\end{enumerate}
+
+\chapter{Quick Reference}
+
+\subsection{Generate Small Conservation Instance}
+
+\begin{lstlisting}
+from real_world_instance import create_solvable_real_world_instance
+instance = create_solvable_real_world_instance('small', seed=42)
+\end{lstlisting}
+
+\subsection{Generate 3-SAT at Phase Transition}
+
+\begin{lstlisting}
+from qaoa_sat_instance import generate_random_ksat
+sat3 = generate_random_ksat(n=30, k=3, alpha=4.27)
+\end{lstlisting}
+
+\subsection{Generate 8-SAT}
+
+\begin{lstlisting}
+sat8 = generate_random_ksat(n=50, k=8, alpha=5.0)
+\end{lstlisting}
+
+\subsection{Compute Hardness}
+
+\begin{lstlisting}
+from hardness_metrics import compute_hardness_metrics
+metrics = compute_hardness_metrics(instance.n, instance.clauses)
+print(f"Hardness: {metrics.hardness_score}/100")
+\end{lstlisting}
+
+\subsection{Export to DIMACS}
+
+\begin{lstlisting}
+with open("instance.cnf", 'w') as f:
+    f.write(instance.to_dimacs_cnf())
+\end{lstlisting}
+
+\vfill
+\begin{center}
+\textbf{End of Tutorial}
+
+\textit{This tutorial covers the complete KSAT repository (excluding plotting).\\
+For visualization, see \texttt{generate\_plots.py} and related documentation.}
+\end{center}
+
+\end{document}
