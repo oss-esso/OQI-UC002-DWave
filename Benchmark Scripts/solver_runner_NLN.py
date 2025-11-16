@@ -28,7 +28,7 @@ from dimod import ConstrainedQuadraticModel, Binary, Real
 from dwave.system import LeapHybridCQMSampler
 import pulp as pl
 from tqdm import tqdm
-from piecewise_approximation import PiecewiseApproximation
+from Utils.piecewise_approximation import PiecewiseApproximation
 
 # Try to import Pyomo for true non-linear solving
 try:

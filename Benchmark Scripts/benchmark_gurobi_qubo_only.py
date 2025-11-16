@@ -20,7 +20,7 @@ from typing import Dict, List, Optional
 sys.path.insert(0, os.path.dirname(__file__))
 
 # Import generators and solvers
-from patch_sampler import generate_farms as generate_patches_small
+from Utils.patch_sampler import generate_farms as generate_patches_small
 from src.scenarios import load_food_data
 from solver_runner_PATCH import (
     create_cqm, solve_with_gurobi_qubo,

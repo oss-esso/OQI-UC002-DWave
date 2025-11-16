@@ -16,10 +16,11 @@ from datetime import datetime
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
-from patch_sampler import generate_farms as generate_patches
+from Utils.patch_sampler import generate_farms as generate_patches
 from solver_runner_PATCH import create_cqm, validate_solution_constraints
-from enhanced_dwave_solver import solve_with_dwave_enhanced, validate_bqm_solution
+from Utils.enhanced_dwave_solver import solve_with_dwave_enhanced, validate_bqm_solution
 
 
 def test_enhanced_solver():

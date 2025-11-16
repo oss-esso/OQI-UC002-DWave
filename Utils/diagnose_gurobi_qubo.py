@@ -15,9 +15,11 @@ import json
 import time
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(__file__))
+# Add project root to path for accessing Benchmark Scripts
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), 'Benchmark Scripts'))
 
-from patch_sampler import generate_farms as generate_patches
+from .patch_sampler import generate_farms as generate_patches
 from src.scenarios import load_food_data
 from solver_runner_PATCH import create_cqm, solve_with_pulp, solve_with_gurobi_qubo
 from dimod import cqm_to_bqm

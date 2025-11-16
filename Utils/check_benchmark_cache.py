@@ -8,7 +8,7 @@ showing which configurations have been completed and which still need runs.
 import os
 import sys
 import json
-from benchmark_cache import BenchmarkCache
+from .benchmark_cache import BenchmarkCache
 
 # Import configurations from each benchmark script
 sys.path.insert(0, os.path.dirname(__file__))

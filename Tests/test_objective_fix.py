@@ -2,8 +2,15 @@
 Quick test script to verify the objective calculation fix.
 Tests all 4 benchmark configurations without caching.
 """
-from benchmark_scalability_PATCH import run_benchmark
 import os
+import sys
+
+# Add project root and Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
+
+from benchmark_scalability_PATCH import run_benchmark
 
 configs = [5, 10, 15, 25]
 dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')

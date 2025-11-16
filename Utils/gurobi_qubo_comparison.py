@@ -18,7 +18,10 @@ from typing import Dict, Tuple
 import json
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add project root and Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 try:
     import gurobipy as gp
@@ -33,8 +36,8 @@ try:
     from dimod import BinaryQuadraticModel, cqm_to_bqm
     from solver_runner_PATCH import create_cqm as create_patch_cqm
     from solver_runner_BQUBO import create_cqm as create_bqubo_cqm
-    from patch_sampler import generate_farms as generate_patches
-    from farm_sampler import generate_farms as generate_farms_bqubo
+    from .patch_sampler import generate_farms as generate_patches
+    from .farm_sampler import generate_farms as generate_farms_bqubo
     from src.scenarios import load_food_data
 except ImportError as e:
     print(f"ERROR: Could not import project modules: {e}")

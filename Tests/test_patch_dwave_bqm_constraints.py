@@ -26,9 +26,10 @@ from datetime import datetime
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 from src.scenarios import load_food_data
-from patch_sampler import generate_farms as generate_patches
+from Utils.patch_sampler import generate_farms as generate_patches
 from solver_runner_PATCH import (
     create_cqm, solve_with_dwave, solve_with_dwave_cqm, 
     calculate_original_objective, extract_solution_summary,

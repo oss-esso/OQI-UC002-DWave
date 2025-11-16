@@ -13,12 +13,12 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from patch_sampler import generate_farms as generate_patches
+from Utils.patch_sampler import generate_farms as generate_patches
 from src.scenarios import load_food_data
 from solver_runner_PATCH import create_cqm, solve_with_pulp, solve_with_dwave, solve_with_simulated_annealing, solve_with_gurobi_qubo
 from dimod import cqm_to_bqm
-from benchmark_cache import BenchmarkCache, serialize_cqm
-from constraint_validator import validate_bqm_patch_constraints, validate_pulp_patch_constraints, print_validation_report
+from Utils.benchmark_cache import BenchmarkCache, serialize_cqm
+from Utils.constraint_validator import validate_bqm_patch_constraints, validate_pulp_patch_constraints, print_validation_report
 import pulp as pl
 
 # Helper function to clean solution data for JSON serialization

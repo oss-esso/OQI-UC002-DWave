@@ -16,6 +16,11 @@ import os
 import sys
 import time
 
+# Add project root to sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
+
 sys.path.insert(0, os.path.dirname(__file__))
 
 # Standard imports
@@ -59,8 +64,8 @@ except Exception as e:
     from solver_runner import solve_with_pulp as solve_with_pulp_continuous
 
 # Import patch sampler (for both farms and patches)
-import patch_sampler
-from farm_sampler import generate_farms as generate_farms_continuous
+from . import patch_sampler
+from .farm_sampler import generate_farms as generate_farms_continuous
 
 # Grid refinement configurations
 # These represent different levels of discretization

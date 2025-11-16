@@ -33,8 +33,8 @@ from typing import Dict, List, Tuple, Optional
 sys.path.insert(0, os.path.dirname(__file__))
 
 # Import farm and patch generators
-from farm_sampler import generate_farms as generate_farms_large
-from patch_sampler import generate_farms as generate_patches_small
+from Utils.farm_sampler import generate_farms as generate_farms_large
+from Utils.patch_sampler import generate_farms as generate_patches_small
 from src.scenarios import load_food_data
 
 # Import solvers from unified solver_runner_BINARY (handles both formulations)

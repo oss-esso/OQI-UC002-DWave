@@ -23,6 +23,7 @@ from datetime import datetime
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 # Import test modules
 try:
@@ -41,7 +42,7 @@ except ImportError:
 
 # Import project modules
 from src.scenarios import load_food_data
-from patch_sampler import generate_farms as generate_patches
+from Utils.patch_sampler import generate_farms as generate_patches
 
 
 def setup_test_environment():

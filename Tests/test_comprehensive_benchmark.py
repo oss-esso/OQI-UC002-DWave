@@ -18,7 +18,10 @@ import shutil
 from datetime import datetime
 
 # Add current directory to path
-sys.path.insert(0, os.path.dirname(__file__))
+# Add project root and Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 def test_json_structure(results_data: dict) -> bool:
     """
@@ -270,8 +273,8 @@ def main():
         return False
     
     try:
-        from farm_sampler import generate_farms
-        from patch_sampler import generate_farms as generate_patches
+        from Utils.farm_sampler import generate_farms
+        from Utils.patch_sampler import generate_farms as generate_patches
         print("    ✓ Farm and patch samplers available")
     except ImportError as e:
         print(f"    ❌ Cannot import samplers: {e}")

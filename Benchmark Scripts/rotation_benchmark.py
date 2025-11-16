@@ -33,7 +33,7 @@ from typing import Dict, List, Tuple, Optional
 sys.path.insert(0, os.path.dirname(__file__))
 
 # Import patch generator (plots/patches for rotation model)
-from patch_sampler import generate_farms as generate_patches
+from Utils.patch_sampler import generate_farms as generate_patches
 from src.scenarios import load_food_data
 
 # Import rotation solver

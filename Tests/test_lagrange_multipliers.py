@@ -9,9 +9,12 @@ Test different Lagrange multipliers to find the sweet spot between:
 import json
 import sys
 import os
-sys.path.insert(0, os.path.dirname(__file__))
+# Add project root and Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
-from patch_sampler import generate_farms
+from Utils.patch_sampler import generate_farms
 from src.scenarios import load_food_data
 import solver_runner_BINARY as solver_binary
 from dimod import cqm_to_bqm

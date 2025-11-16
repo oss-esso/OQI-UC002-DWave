@@ -24,6 +24,7 @@ from scipy import stats
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 # Configure logging
 logging.basicConfig(

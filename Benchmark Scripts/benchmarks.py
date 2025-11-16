@@ -5,7 +5,7 @@ Tests different combinations of farms and food groups to analyze solver performa
 import pulp as pl
 from solver_runner import create_cqm, solve_with_pulp, solve_with_dwave
 from src.scenarios import load_food_data
-from farm_sampler import generate_farms
+from Utils.farm_sampler import generate_farms
 import os
 import sys
 import json

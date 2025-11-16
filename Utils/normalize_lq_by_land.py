@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from farm_sampler import generate_farms
+from .farm_sampler import generate_farms
 
 def calculate_total_available_land():
     """Calculate total available land for each configuration using generate_farms."""

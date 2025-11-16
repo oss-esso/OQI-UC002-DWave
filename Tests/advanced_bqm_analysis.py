@@ -24,6 +24,7 @@ from typing import Dict, List, Tuple, Optional
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 from dimod import BinaryQuadraticModel, cqm_to_bqm
 from dwave.system import LeapHybridBQMSampler

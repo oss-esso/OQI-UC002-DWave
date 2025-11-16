@@ -13,7 +13,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from farm_sampler import generate_farms
+from Utils.farm_sampler import generate_farms
 from src.scenarios import load_food_data
 from solver_runner_NLD import (
     create_cqm, 
@@ -22,7 +22,7 @@ from solver_runner_NLD import (
     solve_with_dwave,
     solve_with_dwave_charnes_cooper
 )
-from benchmark_cache import BenchmarkCache, serialize_cqm
+from Utils.benchmark_cache import BenchmarkCache, serialize_cqm
 import pulp as pl
 
 # Benchmark configurations

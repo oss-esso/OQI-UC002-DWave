@@ -2,13 +2,19 @@
 Compare constraint satisfaction between PuLP and DWave solutions.
 """
 import os
+import sys
+
+# Add Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
+
 from benchmark_scalability_PATCH import (
     load_full_family_with_n_patches, 
     calculate_objective_from_bqm_sample
 )
 from solver_runner_PATCH import create_cqm, solve_with_pulp
 from dimod import cqm_to_bqm
-from constraint_validator import validate_bqm_patch_constraints, validate_pulp_patch_constraints, print_validation_report
+from .constraint_validator import validate_bqm_patch_constraints, validate_pulp_patch_constraints, print_validation_report
 
 # Test configuration
 n_patches = 5

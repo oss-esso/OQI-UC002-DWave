@@ -3,13 +3,20 @@ Check constraint satisfaction for all cached DWave results.
 """
 import json
 from pathlib import Path
+import os
+import sys
+
+# Add Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
+
 from benchmark_scalability_PATCH import (
     load_full_family_with_n_patches, 
     calculate_objective_from_bqm_sample
 )
 from solver_runner_PATCH import create_cqm
 from dimod import cqm_to_bqm
-from constraint_validator import validate_bqm_patch_constraints
+from .constraint_validator import validate_bqm_patch_constraints
 from dwave.system import LeapHybridBQMSampler
 import os
 

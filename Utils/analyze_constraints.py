@@ -7,12 +7,17 @@ import os
 import sys
 import json
 
+# Add project root and Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
+
 # Add project root to path
 sys.path.insert(0, os.path.dirname(__file__))
 
 from src.scenarios import load_food_data
-from farm_sampler import generate_farms as generate_farms_large
-from patch_sampler import generate_farms as generate_patches_small
+from .farm_sampler import generate_farms as generate_farms_large
+from .patch_sampler import generate_farms as generate_patches_small
 from solver_runner_PATCH import create_cqm
 
 def analyze_scenario(scenario_name, land_data, foods, food_groups, config):

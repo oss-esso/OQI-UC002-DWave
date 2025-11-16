@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 import sys
 
 # Import farm_sampler to generate farm sizes if needed
-from farm_sampler import generate_farms
+from Utils.farm_sampler import generate_farms
 
 # ============================================================
 # CONFIGURATION

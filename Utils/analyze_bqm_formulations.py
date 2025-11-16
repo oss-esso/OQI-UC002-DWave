@@ -33,7 +33,10 @@ from dimod import cqm_to_bqm, BinaryQuadraticModel
 from dwave.samplers import SimulatedAnnealingSampler
 
 # Add project root to path to import local modules
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add project root and Benchmark Scripts to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 # --- Imports from other project files ---
 # To make this script self-contained, we import the necessary functions.
@@ -41,8 +44,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     from solver_runner_PATCH import create_cqm as create_patch_cqm
     from solver_runner_BQUBO import create_cqm as create_bqubo_cqm
-    from patch_sampler import generate_farms as generate_patches
-    from farm_sampler import generate_farms as generate_farms_bqubo
+    from .patch_sampler import generate_farms as generate_patches
+    from .farm_sampler import generate_farms as generate_farms_bqubo
     from src.scenarios import load_food_data
 except ImportError as e:
     print(f"Error: Could not import necessary modules. {e}")

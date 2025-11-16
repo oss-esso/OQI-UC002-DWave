@@ -22,7 +22,7 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
 from src.scenarios import load_food_data
-from patch_sampler import generate_farms as generate_patches
+from Utils.patch_sampler import generate_farms as generate_patches
 from dimod import ConstrainedQuadraticModel, Binary, Real, cqm_to_bqm
 from dwave.system import LeapHybridCQMSampler, LeapHybridBQMSampler
 from dwave.samplers import SimulatedAnnealingSampler
