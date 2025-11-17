@@ -35,6 +35,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 # Import farm and patch generators
 from Utils.farm_sampler import generate_farms as generate_farms_large
 from Utils.patch_sampler import generate_farms as generate_patches_small
+from Utils.save_dwave_sampleset import save_sampleset_to_dataframe
+from Utils.validate_cqm_vs_pulp import validate_before_dwave_submission
 from src.scenarios import load_food_data
 
 # Import solvers from unified solver_runner_BINARY (handles both formulations)
@@ -329,11 +331,18 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
     # 1. Gurobi Solver (MINLP with continuous and binary variables)
     print(f"     Running Gurobi (MINLP)...")
     
+    # Always create PuLP model (needed for validation even if results are cached)
+    pulp_model = None
+    
     # Check for cached result first (config_id = n_units, run_id = 1)
     cached = check_cached_results('farm', 'gurobi', sample_data['n_units'], run_id=1)
     if cached:
         print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
         results['solvers']['gurobi'] = cached
+        
+        # Still need to build PuLP model for D-Wave validation
+        print(f"       Building PuLP model for validation...")
+        pulp_model, _ = solver_runner.solve_with_pulp_farm(farms_list, foods, food_groups, config)
     else:
         try:
             pulp_start = time.time()
@@ -361,6 +370,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                 # Calculate total covered area (sum of all areas across farms and foods)
                 total_covered_area = sum(gurobi_result['solution_areas'].values())
                 gurobi_result['total_covered_area'] = total_covered_area
+                gurobi_result['land_data'] = land_data  # Save exact land data for consistency
             
             results['solvers']['gurobi'] = gurobi_result
             
@@ -383,9 +393,51 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
             print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
             results['solvers']['dwave_cqm'] = cached
         else:
+            # VALIDATE CQM vs PuLP before D-Wave submission
+            print(f"       Validating CQM formulation vs PuLP...")
+            scenario_info = {
+                'n_units': sample_data['n_units'],
+                'n_foods': len(foods),
+                'scenario_type': 'farm'
+            }
+            
+            is_valid = validate_before_dwave_submission(
+                cqm=cqm,
+                pulp_model=pulp_model,
+                scenario_type='farm',
+                scenario_info=scenario_info,
+                strict=True
+            )
+            
+            if not is_valid:
+                print(f"       ❌ CQM validation failed - SKIPPING D-Wave submission")
+                results['solvers']['dwave_cqm'] = {
+                    'status': 'ValidationFailed',
+                    'error': 'CQM formulation does not match PuLP - validation failed',
+                    'success': False
+                }
+                # Stop the entire benchmark
+                raise ValueError("CQM validation failed for Farm scenario. Fix formulation before re-running.")
+            
+            print(f"       ✓ Validation passed - submitting to D-Wave")
+            
             try:
 
                 sampleset, solve_time, qpu_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
+                
+                # Save complete sampleset to DataFrame for future analysis
+                try:
+                    sampleset_path = save_sampleset_to_dataframe(
+                        sampleset=sampleset,
+                        benchmark_type='COMPREHENSIVE',
+                        scenario_type='Farm',
+                        solver_type='DWave',
+                        config_id=sample_data['n_units'],
+                        run_id=1
+                    )
+                    print(f"       ✓ Saved sampleset to: {os.path.basename(sampleset_path)}")
+                except Exception as e:
+                    print(f"       Warning: Failed to save sampleset: {e}")
 
                 # Extract best solution
                 if len(sampleset) > 0:
@@ -393,12 +445,133 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                     is_feasible = best.is_feasible
                     cqm_sample = dict(best.sample)
                     
-                    # Calculate total covered area (sum of all areas in solution for farm scenario)
-                    total_covered_area = sum(v for v in cqm_sample.values() if isinstance(v, (int, float)) and v > 0)
+                    # Calculate total covered area (sum of all A variables in solution for farm scenario)
+                    total_covered_area = sum(
+                        v for k, v in cqm_sample.items() 
+                        if k.startswith('A_') and isinstance(v, (int, float)) and v > 0
+                    )
+                    
+                    # Farm-specific validation (different from patch)
+                    # Farm allows multiple crops per farm, constrained by total area
+                    # Use the EXACT same land_data that was used to create the CQM
+                    farm_validation = {
+                        'is_feasible': True,
+                        'violations': [],
+                        'constraint_checks': {
+                            'land_availability': {'passed': 0, 'failed': 0, 'violations': []},
+                            'linking_constraints': {'passed': 0, 'failed': 0, 'violations': []},
+                            'food_group': {'passed': 0, 'failed': 0, 'violations': []}
+                        }
+                    }
+                    
+                    # Check land availability per farm using EXACT land_data from sample
+                    for farm in farms_list:
+                        farm_total = sum(
+                            cqm_sample.get(f"A_{farm}_{crop}", 0) 
+                            for crop in foods
+                        )
+                        farm_capacity = land_data[farm]  # This is the scaled data used in CQM
+                        
+                        if farm_total > farm_capacity + 0.01:  # Small tolerance
+                            violation = f"Farm {farm}: {farm_total:.4f} ha allocated > {farm_capacity:.4f} ha capacity"
+                            farm_validation['violations'].append(violation)
+                            farm_validation['constraint_checks']['land_availability']['violations'].append(violation)
+                            farm_validation['constraint_checks']['land_availability']['failed'] += 1
+                            farm_validation['is_feasible'] = False
+                        else:
+                            farm_validation['constraint_checks']['land_availability']['passed'] += 1
+                    
+                    # Check linking constraints: A_{f,c} should be >= min_area * Y_{f,c} and <= farm_area * Y_{f,c}
+                    # Use exact same config and land_data that was used for CQM creation
+                    min_planting_area = config['parameters'].get('minimum_planting_area', {})
+                    for farm in farms_list:
+                        farm_capacity = land_data[farm]  # Use EXACT capacity from CQM creation
+                        for crop in foods:
+                            a_val = cqm_sample.get(f"A_{farm}_{crop}", 0)
+                            y_val = cqm_sample.get(f"Y_{farm}_{crop}", 0)
+                            min_area = min_planting_area.get(crop, 0)
+                            
+                            # If Y=1 (selected), check A is within bounds
+                            if y_val > 0.5:  # Selected
+                                if a_val < min_area - 0.001:
+                                    violation = f"A_{farm}_{crop}={a_val:.4f} < min_area={min_area:.4f} (Y=1)"
+                                    farm_validation['violations'].append(violation)
+                                    farm_validation['constraint_checks']['linking_constraints']['violations'].append(violation)
+                                    farm_validation['constraint_checks']['linking_constraints']['failed'] += 1
+                                    farm_validation['is_feasible'] = False
+                                elif a_val > farm_capacity + 0.001:
+                                    violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f}"
+                                    farm_validation['violations'].append(violation)
+                                    farm_validation['constraint_checks']['linking_constraints']['violations'].append(violation)
+                                    farm_validation['constraint_checks']['linking_constraints']['failed'] += 1
+                                    farm_validation['is_feasible'] = False
+                                else:
+                                    farm_validation['constraint_checks']['linking_constraints']['passed'] += 1
+                            else:  # Y=0 (not selected)
+                                if a_val > 0.001:
+                                    violation = f"A_{farm}_{crop}={a_val:.4f} but Y_{farm}_{crop}={y_val:.4f} (should be 0)"
+                                    farm_validation['violations'].append(violation)
+                                    farm_validation['constraint_checks']['linking_constraints']['violations'].append(violation)
+                                    farm_validation['constraint_checks']['linking_constraints']['failed'] += 1
+                                    farm_validation['is_feasible'] = False
+                                else:
+                                    farm_validation['constraint_checks']['linking_constraints']['passed'] += 1
+                    
+                    # Check food group constraints
+                    food_group_constraints = config['parameters'].get('food_group_constraints', {})
+                    if food_group_constraints:
+                        for group_name, group_constraints in food_group_constraints.items():
+                            if group_name in food_groups:
+                                crops_in_group = food_groups[group_name]
+                                
+                                # Count how many crops from this group are selected (Y=1) across ALL farms
+                                selected_crops = set()
+                                for crop in crops_in_group:
+                                    for farm in farms_list:
+                                        y_val = cqm_sample.get(f"Y_{farm}_{crop}", 0)
+                                        if y_val > 0.5:  # Crop is selected on this farm
+                                            selected_crops.add(crop)
+                                            break  # Only need to find it selected once
+                                
+                                n_selected = len(selected_crops)
+                                min_foods = group_constraints.get('min_foods', 0)
+                                max_foods = group_constraints.get('max_foods', len(crops_in_group))
+                                
+                                if n_selected < min_foods:
+                                    violation = f"Food group {group_name}: {n_selected} crops selected < min_foods={min_foods}"
+                                    farm_validation['violations'].append(violation)
+                                    farm_validation['constraint_checks']['food_group']['violations'].append(violation)
+                                    farm_validation['constraint_checks']['food_group']['failed'] += 1
+                                    farm_validation['is_feasible'] = False
+                                elif n_selected > max_foods:
+                                    violation = f"Food group {group_name}: {n_selected} crops selected > max_foods={max_foods}"
+                                    farm_validation['violations'].append(violation)
+                                    farm_validation['constraint_checks']['food_group']['violations'].append(violation)
+                                    farm_validation['constraint_checks']['food_group']['failed'] += 1
+                                    farm_validation['is_feasible'] = False
+                                else:
+                                    farm_validation['constraint_checks']['food_group']['passed'] += 1
+                    
+                    # Add summary
+                    total_checks = sum(
+                        check['passed'] + check['failed'] 
+                        for check in farm_validation['constraint_checks'].values()
+                    )
+                    total_passed = sum(
+                        check['passed'] 
+                        for check in farm_validation['constraint_checks'].values()
+                    )
+                    farm_validation['n_violations'] = len(farm_validation['violations'])
+                    farm_validation['summary'] = {
+                        'total_checks': total_checks,
+                        'total_passed': total_passed,
+                        'total_failed': len(farm_validation['violations']),
+                        'pass_rate': total_passed / total_checks if total_checks > 0 else 0
+                    }
                     
                     dwave_result = {
                         'status': 'Optimal' if is_feasible else 'Infeasible',
-                        'objective_value': -best.energy / total_covered_area if is_feasible else None,
+                        'objective_value': -best.energy / total_covered_area if is_feasible and total_covered_area > 0 else None,
                         'qpu_time': qpu_time,
                         'solve_time': solve_time,
                         'is_feasible': is_feasible,
@@ -411,10 +584,17 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                         'n_variables': len(cqm.variables),
                         'n_constraints': len(cqm.constraints),
                         'total_covered_area': total_covered_area,
-                        'solution_areas': cqm_sample
+                        'solution_areas': cqm_sample,
+                        'land_data': land_data,  # Save the exact land data used for CQM
+                        'validation': farm_validation
                     }
                     
-                    print(f"       ✓ DWave CQM: {'Feasible' if is_feasible else 'Infeasible'} in {solve_time:.3f}s")
+                    # Print result with validation
+                    n_violations = farm_validation['n_violations']
+                    if farm_validation['is_feasible']:
+                        print(f"       DWave CQM: ✓ Feasible in {solve_time:.3f}s")
+                    else:
+                        print(f"       DWave CQM: ❌ Infeasible ({n_violations} violations) in {solve_time:.3f}s")
                 else:
                     dwave_result = {
                         'status': 'No Solutions',
@@ -486,11 +666,18 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
     # 1. Gurobi Solver (BIP with only binary variables)
     print(f"     Running Gurobi (BIP)...")
     
+    # Always create PuLP model (needed for validation even if results are cached)
+    pulp_model = None
+    
     # Check for cached result first
     cached = check_cached_results('patch', 'gurobi', sample_data['n_units'], run_id=1)
     if cached:
         print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
         results['solvers']['gurobi'] = cached
+        
+        # Still need to build PuLP model for D-Wave validation
+        print(f"       Building PuLP model for validation...")
+        pulp_model, _ = solver_runner.solve_with_pulp_plots(plots_list, foods, food_groups, config)
     else:
         try:
             pulp_start = time.time()
@@ -518,6 +705,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                 num_plots_selected = sum(1 for v in gurobi_result['solution_plantations'].values() if v > 0.5)
                 total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                 gurobi_result['total_covered_area'] = total_covered_area
+                gurobi_result['land_data'] = land_data  # Save exact land data for consistency
             
             results['solvers']['gurobi'] = gurobi_result
             
@@ -539,8 +727,50 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
             print(f"       ✓ Using cached result (objective: {cached.get('objective_value', 'N/A')})")
             results['solvers']['dwave_cqm'] = cached
         else:
+            # VALIDATE CQM vs PuLP before D-Wave submission
+            print(f"       Validating CQM formulation vs PuLP...")
+            scenario_info = {
+                'n_units': sample_data['n_units'],
+                'n_foods': len(foods),
+                'scenario_type': 'patch'
+            }
+            
+            is_valid = validate_before_dwave_submission(
+                cqm=cqm,
+                pulp_model=pulp_model,
+                scenario_type='patch',
+                scenario_info=scenario_info,
+                strict=True
+            )
+            
+            if not is_valid:
+                print(f"       ❌ CQM validation failed - SKIPPING D-Wave submission")
+                results['solvers']['dwave_cqm'] = {
+                    'status': 'ValidationFailed',
+                    'error': 'CQM formulation does not match PuLP - validation failed',
+                    'success': False
+                }
+                # Stop the entire benchmark
+                raise ValueError("CQM validation failed for Patch scenario. Fix formulation before re-running.")
+            
+            print(f"       ✓ Validation passed - submitting to D-Wave")
+            
             try:
                 sampleset, hybrid_time, qpu_time = solver_runner.solve_with_dwave_cqm(cqm, dwave_token)
+                
+                # Save complete sampleset to DataFrame for future analysis
+                try:
+                    sampleset_path = save_sampleset_to_dataframe(
+                        sampleset=sampleset,
+                        benchmark_type='COMPREHENSIVE',
+                        scenario_type='Patch',
+                        solver_type='DWave',
+                        config_id=sample_data['n_units'],
+                        run_id=1
+                    )
+                    print(f"       ✓ Saved sampleset to: {os.path.basename(sampleset_path)}")
+                except Exception as e:
+                    print(f"       Warning: Failed to save sampleset: {e}")
                 
                 # Extract best solution
                 if len(sampleset) > 0:
@@ -576,6 +806,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                         'n_constraints': len(cqm.constraints),
                         'total_covered_area': total_covered_area,
                         'solution_plantations': cqm_sample,
+                        'land_data': land_data,  # Save exact land data for consistency
                         'validation': validation_result
                     }
                     
@@ -636,6 +867,20 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     dwave_token
                 )
                 
+                # Save complete sampleset to DataFrame for future analysis
+                try:
+                    sampleset_path = save_sampleset_to_dataframe(
+                        sampleset=sampleset_bqm,
+                        benchmark_type='COMPREHENSIVE',
+                        scenario_type='Patch',
+                        solver_type='DWaveBQM',
+                        config_id=sample_data['n_units'],
+                        run_id=1
+                    )
+                    print(f"       ✓ Saved BQM sampleset to: {os.path.basename(sampleset_path)}")
+                except Exception as e:
+                    print(f"       Warning: Failed to save BQM sampleset: {e}")
+                
                 # Extract best solution
                 if len(sampleset_bqm) > 0:
                     best_sample = sampleset_bqm.first
@@ -676,6 +921,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                         'bqm_interactions': len(bqm.quadratic),
                         'total_covered_area': total_covered_area,
                         'solution_plantations': cqm_sample,
+                        'land_data': land_data,  # Save exact land data for consistency
                         'validation': validation_result
                     }
                     
@@ -919,8 +1165,8 @@ Examples:
         if args.token:
             dwave_token = args.token
         else:
-            #dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
-            dwave_token = None
+            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            #dwave_token = None
         
         if not dwave_token:
             print("Warning: D-Wave enabled but no token found. Set DWAVE_API_TOKEN environment variable or use --token")

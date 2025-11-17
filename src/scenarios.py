@@ -1480,8 +1480,10 @@ def _load_full_family_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]
     L = generate_farms(n_farms=125, seed=42)
     farms = list(L.keys())
 
-    print(f"Generated {len(farms)} farms with farm_sampler")
-    print(f"Total land: {sum(L.values()):.2f} ha")
+    # Note: These farms are used as a default scenario template
+    # Actual farm data should be provided by the calling code
+    # print(f"Generated {len(farms)} farms with farm_sampler")
+    # print(f"Total land: {sum(L.values()):.2f} ha")
 
     # Use the same food data as full scenario
     # Load from Excel (same as _load_full_food_data)

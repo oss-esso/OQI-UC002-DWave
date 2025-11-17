@@ -29,78 +29,47 @@ from dwave.samplers import SimulatedAnnealingSampler
 import pulp as pl
 from tqdm import tqdm
 
-def calculate_original_objective(solution, farms, foods, land_availability, weights, idle_penalty):
+def calculate_original_objective(solution, farms, foods, land_availability, weights, idle_penalty=None):
     """
     Calculate the original CQM objective from a solution.
     
-    This reconstructs the objective: sum_{p,c} (B_c + λ) * s_p * X_{p,c}
-    
-    Works for both PATCH formulation (X variables) and BQUBO formulation (Y variables).
+    This reconstructs the objective: sum_{p,c} B_c * s_p * X_{p,c}
     
     Args:
-        solution: Dictionary with variable assignments (X_{plot}_{crop} or Y_{farm}_{crop})
+        solution: Dictionary with variable assignments (X_{plot}_{crop})
         farms: List of farm/plot names
         foods: Dictionary of food data with nutritional values
         land_availability: Dictionary mapping plot to area
         weights: Dictionary of objective weights
-        idle_penalty: Lambda penalty for idle land
+        idle_penalty: Unused (kept for compatibility)
         
     Returns:
         float: The original objective value (to be maximized)
     """
     objective = 0.0
+    total_land_area = sum(land_availability.values())
     
-    # Detect which formulation we're using
-    # BQUBO uses Y variables, PATCH uses X variables
-    is_bqubo = any(var.startswith("Y_") for var in solution.keys())
+    # Streamlined binary formulation: X_{plot}_{crop} = 1 if plot assigned to crop
+    for plot in farms:
+        farm_area = land_availability[plot]  # Area of plot p
+        for crop in foods:
+            # Get X_{p,c} value from solution
+            var_name = f"X_{plot}_{crop}"
+            x_pc = solution.get(var_name, 0)
+            
+            if x_pc > 0:  # Only count if assigned
+                # Calculate B_c: weighted benefit per unit area
+                area_weighted_value = farm_area * (
+                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                )
+                objective += area_weighted_value * x_pc
     
-    if is_bqubo:
-        # BQUBO formulation: Y_{farm}_{crop} = 1 if planted (1 acre), 0 otherwise
-        # Objective without normalization: sum (B_c * Y_{farm}_{crop})
-        # Each Y represents a 1-acre plantation
-        for plot in farms:
-            for crop in foods:
-                # Get Y_{p,c} value from solution
-                var_name = f"Y_{plot}_{crop}"
-                y_pc = solution.get(var_name, 0)
-                
-                if y_pc > 0:  # Only count if planted
-                    # Calculate B_c: weighted benefit per acre
-                    B_c = (
-                        weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                        weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                        weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                        weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
-                        weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
-                    )
-                    # Each Y_{p,c} = 1 represents 1 acre of crop c on plot p
-                    # Contribution is B_c * 1 acre * y_pc
-                    objective += B_c * y_pc
-        
-        # Normalize by total possible plantations
-        total_possible_plantations = len(farms) * len(foods)
-        if total_possible_plantations > 0:
-            objective = objective / total_possible_plantations
-    else:
-        # PATCH formulation: X_{plot}_{crop} is continuous [0,1] fraction
-        for plot in farms:
-            s_p = land_availability[plot]  # Area of plot p
-            for crop in foods:
-                # Get X_{p,c} value from solution
-                var_name = f"X_{plot}_{crop}"
-                x_pc = solution.get(var_name, 0)
-                
-                if x_pc > 0:  # Only count if assigned
-                    # Calculate B_c: weighted benefit per unit area
-                    B_c = (
-                        weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                        weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                        weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                        weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
-                        weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
-                    )
-                    # Add (B_c + λ) * s_p * X_{p,c} to objective
-                    objective += (B_c + idle_penalty) * s_p * x_pc
+    # Normalize by total land area to make objectives comparable
+    objective = objective / total_land_area if total_land_area > 0 else 0
     
     return objective
 
@@ -109,7 +78,7 @@ def extract_solution_summary(solution, farms, foods, land_availability):
     Extract a summary of the solution showing crop selections and plot assignments.
     
     Args:
-        solution: Dictionary with variable assignments (X_{plot}_{crop}, Y_{crop})
+        solution: Dictionary with variable assignments (X_{plot}_{crop})
         farms: List of farm/plot names
         foods: Dictionary of food data
         land_availability: Dictionary mapping plot to area
@@ -122,31 +91,26 @@ def extract_solution_summary(solution, farms, foods, land_availability):
     total_allocated = 0.0
     
     for crop in foods:
-        # Check if crop is selected (Y_c = 1)
-        y_var = f"Y_{crop}"
-        if solution.get(y_var, 0) > 0:
-            # Calculate total area allocated to this crop
-            total_area = sum(
-                solution.get(f"X_{plot}_{crop}", 0) * land_availability[plot]
-                for plot in farms
-            )
-            
-            # Get list of plots assigned to this crop
-            assigned_plots = [
-                {'plot': plot, 'area': land_availability[plot]}
-                for plot in farms 
-                if solution.get(f"X_{plot}_{crop}", 0) > 0
-            ]
-            
-            if total_area > 0:  # Only include if actually allocated
-                crops_selected.append(crop)
-                plot_assignments.append({
-                    'crop': crop,
-                    'total_area': total_area,
-                    'n_plots': len(assigned_plots),
-                    'plots': assigned_plots
-                })
-                total_allocated += total_area
+        # Calculate total area allocated to this crop by checking X_{plot}_{crop}
+        assigned_plots = []
+        total_area = 0.0
+        
+        for plot in farms:
+            x_val = solution.get(f"X_{plot}_{crop}", 0)
+            if x_val > 0:
+                area = land_availability[plot]
+                assigned_plots.append({'plot': plot, 'area': area})
+                total_area += area
+        
+        if total_area > 0:  # Only include if actually allocated
+            crops_selected.append(crop)
+            plot_assignments.append({
+                'crop': crop,
+                'total_area': total_area,
+                'n_plots': len(assigned_plots),
+                'plots': assigned_plots
+            })
+            total_allocated += total_area
     
     total_available = sum(land_availability.values())
     idle_area = total_available - total_allocated
@@ -166,7 +130,7 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
     Validate if a solution satisfies all original CQM constraints.
     
     Args:
-        solution: Dictionary with variable assignments (X_{plot}_{crop}, Y_{crop})
+        solution: Dictionary with variable assignments (X_{plot}_{crop})
         farms: List of farm/plot names
         foods: Dictionary of food data
         food_groups: Dictionary of food groups
@@ -178,16 +142,17 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
     """
     params = config['parameters']
     min_planting_area = params.get('minimum_planting_area', {})
+    max_planting_area = params.get('max_planting_area', {})
     food_group_constraints = params.get('food_group_constraints', {})
     
     total_land = sum(land_availability.values())
+    plot_area = list(land_availability.values())[0] if farms else 1.0
     
     violations = []
     constraint_checks = {
         'at_most_one_per_plot': {'passed': 0, 'failed': 0, 'violations': []},
-        'x_y_linking': {'passed': 0, 'failed': 0, 'violations': []},
-        'y_activation': {'passed': 0, 'failed': 0, 'violations': []},
-        'area_bounds_min': {'passed': 0, 'failed': 0, 'violations': []},
+        'min_plots_per_crop': {'passed': 0, 'failed': 0, 'violations': []},
+        'max_plots_per_crop': {'passed': 0, 'failed': 0, 'violations': []},
         'food_group_constraints': {'passed': 0, 'failed': 0, 'violations': []}
     }
     
@@ -202,72 +167,55 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
         else:
             constraint_checks['at_most_one_per_plot']['passed'] += 1
     
-    # 2. Check: X-Y Linking (X_{p,c} <= Y_c)
-    for plot in farms:
-        for crop in foods:
-            x_pc = solution.get(f"X_{plot}_{crop}", 0)
-            y_c = solution.get(f"Y_{crop}", 0)
-            if x_pc > y_c + 0.01:  # Allow small tolerance
-                violation = f"X_{plot}_{crop}={x_pc:.3f} > Y_{crop}={y_c:.3f}"
-                violations.append(violation)
-                constraint_checks['x_y_linking']['violations'].append(violation)
-                constraint_checks['x_y_linking']['failed'] += 1
-            else:
-                constraint_checks['x_y_linking']['passed'] += 1
-    
-    # 3. Check: Y Activation (Y_c <= sum_p X_{p,c})
+    # 2. Check: Minimum plots per crop
+    import math
     for crop in foods:
-        y_c = solution.get(f"Y_{crop}", 0)
-        sum_x = sum(solution.get(f"X_{plot}_{crop}", 0) for plot in farms)
-        if y_c > sum_x + 0.01:  # Allow small tolerance
-            violation = f"Y_{crop}={y_c:.3f} > sum(X_{{p,{crop}}})={sum_x:.3f}"
-            violations.append(violation)
-            constraint_checks['y_activation']['violations'].append(violation)
-            constraint_checks['y_activation']['failed'] += 1
-        else:
-            constraint_checks['y_activation']['passed'] += 1
-    
-    # 4. Check: Area bounds (minimum and maximum per crop)
-    for crop in foods:
-        crop_area = sum(
-            solution.get(f"X_{plot}_{crop}", 0) * land_availability[plot]
-            for plot in farms
-        )
-        
-        # Check minimum area
-        if crop in min_planting_area:
-            min_area = min_planting_area[crop]
-            y_c = solution.get(f"Y_{crop}", 0)
-            if y_c > 0.5 and crop_area < min_area - 0.001:  # If crop selected, check min
-                violation = f"Crop {crop}: area={crop_area:.4f} < min={min_area:.4f}"
+        if crop in min_planting_area and min_planting_area[crop] > 0:
+            min_plots = math.ceil(min_planting_area[crop] / plot_area)
+            n_plots = sum(solution.get(f"X_{plot}_{crop}", 0) for plot in farms)
+            if n_plots < min_plots - 0.01:  # Allow small tolerance
+                violation = f"Crop {crop}: {n_plots:.1f} plots < min={min_plots} (min_area={min_planting_area[crop]:.2f})"
                 violations.append(violation)
-                constraint_checks['area_bounds_min']['violations'].append(violation)
-                constraint_checks['area_bounds_min']['failed'] += 1
+                constraint_checks['min_plots_per_crop']['violations'].append(violation)
+                constraint_checks['min_plots_per_crop']['failed'] += 1
             else:
-                constraint_checks['area_bounds_min']['passed'] += 1
+                constraint_checks['min_plots_per_crop']['passed'] += 1
     
-    # NOTE: No maximum area constraints - matches original solver_runner.py
+    # 3. Check: Maximum plots per crop
+    for crop in foods:
+        if crop in max_planting_area:
+            max_plots = math.floor(max_planting_area[crop] / plot_area)
+            n_plots = sum(solution.get(f"X_{plot}_{crop}", 0) for plot in farms)
+            if n_plots > max_plots + 0.01:  # Allow small tolerance
+                violation = f"Crop {crop}: {n_plots:.1f} plots > max={max_plots} (max_area={max_planting_area[crop]:.2f})"
+                violations.append(violation)
+                constraint_checks['max_plots_per_crop']['violations'].append(violation)
+                constraint_checks['max_plots_per_crop']['failed'] += 1
+            else:
+                constraint_checks['max_plots_per_crop']['passed'] += 1
     
-    # 5. Check: Food group constraints
+    # 4. Check: Food group constraints - GLOBAL across all plots
     if food_group_constraints:
         for group_name, group_data in food_group_constraints.items():
             if group_name in food_groups:
                 crops_in_group = food_groups[group_name]
-                n_selected = sum(
-                    1 for crop in crops_in_group 
-                    if solution.get(f"Y_{crop}", 0) > 0.5
+                # Count total assignments across all plots
+                n_assignments = sum(
+                    solution.get(f"X_{plot}_{crop}", 0)
+                    for plot in farms
+                    for crop in crops_in_group
                 )
                 
-                min_crops = group_data.get('min', 0)
-                max_crops = group_data.get('max', len(crops_in_group))
+                min_foods = group_data.get('min_foods', 0)
+                max_foods = group_data.get('max_foods', len(crops_in_group) * len(farms))
                 
-                if n_selected < min_crops:
-                    violation = f"Group {group_name}: {n_selected} crops < min={min_crops}"
+                if n_assignments < min_foods - 0.01:
+                    violation = f"Group {group_name}: {n_assignments:.0f} assignments < min={min_foods}"
                     violations.append(violation)
                     constraint_checks['food_group_constraints']['violations'].append(violation)
                     constraint_checks['food_group_constraints']['failed'] += 1
-                elif n_selected > max_crops:
-                    violation = f"Group {group_name}: {n_selected} crops > max={max_crops}"
+                elif n_assignments > max_foods + 0.01:
+                    violation = f"Group {group_name}: {n_assignments:.0f} assignments > max={max_foods}"
                     violations.append(violation)
                     constraint_checks['food_group_constraints']['violations'].append(violation)
                     constraint_checks['food_group_constraints']['failed'] += 1
@@ -294,23 +242,21 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
 
 def create_cqm(farms, foods, food_groups, config):
     """
-    Creates a CQM for the plot-crop assignment problem (BQM_PATCH formulation).
+    Creates a CQM for the plot-crop assignment problem (streamlined binary formulation).
     
     Variables:
     - X_{p,c}: Binary, 1 if plot p is assigned to crop c, 0 otherwise
-    - Y_c: Binary, 1 if crop c is grown on at least one plot, 0 otherwise
     
-    Objective: Maximize sum_{p,c} (B_c + λ) * s_p * X_{p,c}
-    Where B_c is the weighted benefit per area, s_p is plot area, λ is idle penalty
+    Objective: Maximize sum_{p,c} B_c * s_p * X_{p,c}
+    Where B_c is the weighted benefit per area, s_p is plot area
     
     Constraints:
     1. At most one crop per plot: sum_c X_{p,c} <= 1 for all p
-    2. Linking X and Y: X_{p,c} <= Y_c for all p,c
-    3. Y activation: Y_c <= sum_p X_{p,c} for all c
-    4. Area bounds: A_c^min <= sum_p (s_p * X_{p,c}) <= A_c^max for all c
-    5. Food group diversity: FG_g^min <= sum_{c in G_g} Y_c <= FG_g^max for all g
+    2. Minimum plots per crop: sum_p X_{p,c} >= min_plots_c for crops with min area requirements
+    3. Maximum plots per crop: sum_p X_{p,c} <= max_plots_c for crops with max area requirements
+    4. Food group diversity: applied globally across all plots
     
-    Returns CQM, variables (X, Y), and constraint metadata.
+    Returns CQM, variables (X), and constraint metadata.
     """
     cqm = ConstrainedQuadraticModel()
     
@@ -319,32 +265,31 @@ def create_cqm(farms, foods, food_groups, config):
     land_availability = params['land_availability']  # s_p: area of each plot
     weights = params['weights']
     min_planting_area = params.get('minimum_planting_area', {})  # A_c^min
+    max_planting_area = params.get('max_planting_area', {})  # A_c^max
     food_group_constraints = params.get('food_group_constraints', {})
-    idle_penalty = params.get('idle_penalty_lambda', 0.1)  # λ: penalty for unused area
     
     n_farms = len(farms)
     n_foods = len(foods)
     n_food_groups = len(food_groups) if food_group_constraints else 0
     
-    # Calculate total land available
-    total_land = sum(land_availability.values())
+    # Calculate plot area (assuming even grid, all plots have same area)
+    plot_area = list(land_availability.values())[0] if farms else 1.0
     
-    # NOTE: Maximum area per crop = total land (no artificial limit)
-    # This matches the original solver_runner.py formulation
+    # Count crops with min/max constraints for progress bar
+    n_crops_with_min = len([c for c in foods if c in min_planting_area and min_planting_area[c] > 0])
+    n_crops_with_max = len([c for c in foods if c in max_planting_area])
     
     # Calculate total operations for progress bar
     total_ops = (
         n_farms * n_foods +       # X_{p,c} variables
-        n_foods +                 # Y_c variables
         n_farms * n_foods +       # Objective terms
         n_farms +                 # At most one crop per plot
-        n_farms * n_foods +       # X-Y linking constraints
-        n_foods +                 # Y activation constraints
-        n_foods +                 # Area bounds (min only)
+        n_crops_with_min +        # Minimum plot constraints per crop
+        n_crops_with_max +        # Maximum plot constraints per crop
         n_food_groups * 2         # Food group constraints (min and max)
     )
     
-    pbar = tqdm(total=total_ops, desc="Building CQM (BQM_PATCH formulation)", unit="op", ncols=100)
+    pbar = tqdm(total=total_ops, desc="Building CQM (streamlined binary formulation)", unit="op", ncols=100)
     
     # Define X_{p,c} variables: 1 if plot p is assigned to crop c
     X = {}
@@ -354,42 +299,37 @@ def create_cqm(farms, foods, food_groups, config):
             X[(plot, crop)] = Binary(f"X_{plot}_{crop}")
             pbar.update(1)
     
-    # Define Y_c variables: 1 if crop c is grown on at least one plot
-    Y = {}
-    pbar.set_description("Creating Y_c (crop activation) variables")
-    for crop in foods:
-        Y[crop] = Binary(f"Y_{crop}")
-        pbar.update(1)
-    
-    # Objective function: Maximize sum_{p,c} (B_c + λ) * s_p * X_{p,c}
+    # Objective function: Maximize sum_{p,c} B_c * s_p * X_{p,c}
     # B_c is the weighted benefit per unit area for crop c
     pbar.set_description("Building objective function")
+    total_land_area = sum(land_availability.values())  # Normalization factor
+    
     objective = 0
     for plot in farms:
-        s_p = land_availability[plot]  # Area of plot p
+        farm_area = land_availability[plot]  # Area of plot p
         for crop in foods:
             # Calculate B_c: weighted benefit per unit area
-            B_c = (
+            area_weighted_value = farm_area * (
                 weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
                 weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
                 weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
                 weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
                 weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
             )
-            # Add (B_c + λ) * s_p * X_{p,c} to objective
-            objective += (B_c + idle_penalty) * s_p * X[(plot, crop)]
+            objective += area_weighted_value * X[(plot, crop)]
             pbar.update(1)
+    
+    # Normalize by total land area to make objectives comparable
+    objective = objective / total_land_area
     
     # Set objective (maximize, so negate for minimization)
     cqm.set_objective(-objective)
     
     # Constraint metadata
     constraint_metadata = {
-        'at_most_one_per_plot': {},
-        'x_y_linking': {},
-        'y_activation': {},
-        'area_bounds_min': {},
-        'area_bounds_max': {},
+        'plantation_limit': {},
+        'min_plots_per_crop': {},
+        'max_plots_per_crop': {},
         'food_group_min': {},
         'food_group_max': {}
     }
@@ -400,115 +340,104 @@ def create_cqm(farms, foods, food_groups, config):
     for plot in farms:
         cqm.add_constraint(
             sum(X[(plot, crop)] for crop in foods) - 1 <= 0,
-            label=f"AtMostOne_{plot}"
+            label=f"Max_Assignment_{plot}"
         )
-        constraint_metadata['at_most_one_per_plot'][plot] = {
-            'type': 'at_most_one_per_plot',
+        constraint_metadata['plantation_limit'][plot] = {
+            'type': 'land_unit_assignment',
             'plot': plot,
-            'plot_area': land_availability[plot]
+            'area_ha': land_availability[plot]
         }
         pbar.update(1)
     
-    # Constraint 2: X-Y Linking
-    # For each plot p and crop c: X_{p,c} <= Y_c
-    # (If crop c is not selected, no plot can be assigned to it)
-    pbar.set_description("Adding X-Y linking constraints")
-    for plot in farms:
-        for crop in foods:
+    # Constraint 2: Minimum plots per crop
+    # If a crop requires minimum area, convert to minimum number of plots
+    pbar.set_description("Adding minimum plot constraints")
+    import math
+    for crop in foods:
+        if crop in min_planting_area and min_planting_area[crop] > 0:
+            min_plots = math.ceil(min_planting_area[crop] / plot_area)
             cqm.add_constraint(
-                X[(plot, crop)] - Y[crop] <= 0,
-                label=f"XY_Link_{plot}_{crop}"
+                sum(X[(plot, crop)] for plot in farms) - min_plots >= 0,
+                label=f"Min_Plots_{crop}"
             )
-            constraint_metadata['x_y_linking'][(plot, crop)] = {
-                'type': 'x_y_linking',
-                'plot': plot,
-                'crop': crop
+            constraint_metadata['min_plots_per_crop'][crop] = {
+                'type': 'min_plots_per_crop',
+                'crop': crop,
+                'min_area_ha': min_planting_area[crop],
+                'plot_area_ha': plot_area,
+                'min_plots': min_plots
             }
             pbar.update(1)
     
-    # Constraint 3: Y Activation
-    # For each crop c: Y_c <= sum_p X_{p,c}
-    # (If crop c is selected, at least one plot must be assigned to it)
-    pbar.set_description("Adding Y activation constraints")
+    # Constraint 3: Maximum plots per crop
+    # If a crop has maximum area, convert to maximum number of plots
+    pbar.set_description("Adding maximum plot constraints")
     for crop in foods:
-        cqm.add_constraint(
-            Y[crop] - sum(X[(plot, crop)] for plot in farms) <= 0,
-            label=f"Y_Activation_{crop}"
-        )
-        constraint_metadata['y_activation'][crop] = {
-            'type': 'y_activation',
-            'crop': crop
-        }
-        pbar.update(1)
-    
-    # Constraint 4: Area bounds per crop
-    # For each crop c: A_c^min <= sum_p (s_p * X_{p,c})
-    # NOTE: No maximum area constraint - matches original solver_runner.py
-    pbar.set_description("Adding area bounds constraints")
-    for crop in foods:
-        total_crop_area = sum(land_availability[plot] * X[(plot, crop)] for plot in farms)
-        
-        # Minimum area constraint (only if Y_c = 1, i.e., crop is selected)
-        # This ensures the constraint only applies to selected crops
-        if crop in min_planting_area and min_planting_area[crop] > 0:
+        if crop in max_planting_area:
+            max_plots = math.floor(max_planting_area[crop] / plot_area)
             cqm.add_constraint(
-                total_crop_area - min_planting_area[crop] * Y[crop] >= 0,
-                label=f"MinArea_{crop}"
+                sum(X[(plot, crop)] for plot in farms) - max_plots <= 0,
+                label=f"Max_Plots_{crop}"
             )
-            constraint_metadata['area_bounds_min'][crop] = {
-                'type': 'area_bounds_min',
+            constraint_metadata['max_plots_per_crop'][crop] = {
+                'type': 'max_plots_per_crop',
                 'crop': crop,
-                'min_area': min_planting_area[crop]
+                'max_area_ha': max_planting_area[crop],
+                'plot_area_ha': plot_area,
+                'max_plots': max_plots
             }
-        pbar.update(1)
+            pbar.update(1)
     
-    # Constraint 5: Food group diversity constraints
-    # For each food group g: FG_g^min <= sum_{c in G_g} Y_c <= FG_g^max
+    # Constraint 4: Food group diversity constraints - GLOBAL across all plots
     pbar.set_description("Adding food group diversity constraints")
     if food_group_constraints:
         for group, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                # Minimum number of crops from this group
+                # Normalize group name for constraint labels (replace spaces and special chars with underscores)
+                group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
+                
+                # Global minimum: across ALL plots, at least min_foods from this group
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[crop] for crop in foods_in_group) - constraints['min_foods'] >= 0,
-                        label=f"FoodGroup_Min_{group}"
+                        sum(X[(plot, crop)] for plot in farms for crop in foods_in_group) - constraints['min_foods'] >= 0,
+                        label=f"MinFoodGroup_Global_{group_label}"
                     )
                     constraint_metadata['food_group_min'][group] = {
-                        'type': 'food_group_min',
+                        'type': 'food_group_min_global',
                         'group': group,
                         'min_foods': constraints['min_foods'],
-                        'foods_in_group': foods_in_group
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
                     }
                     pbar.update(1)
                 
-                # Maximum number of crops from this group
+                # Global maximum: across ALL plots, at most max_foods from this group
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[crop] for crop in foods_in_group) - constraints['max_foods'] <= 0,
-                        label=f"FoodGroup_Max_{group}"
+                        sum(X[(plot, crop)] for plot in farms for crop in foods_in_group) - constraints['max_foods'] <= 0,
+                        label=f"MaxFoodGroup_Global_{group_label}"
                     )
                     constraint_metadata['food_group_max'][group] = {
-                        'type': 'food_group_max',
+                        'type': 'food_group_max_global',
                         'group': group,
                         'max_foods': constraints['max_foods'],
-                        'foods_in_group': foods_in_group
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
                     }
                     pbar.update(1)
     
-    pbar.set_description("CQM complete (BQM_PATCH formulation)")
+    pbar.set_description("CQM complete (streamlined binary formulation)")
     pbar.close()
     
-    return cqm, (X, Y), constraint_metadata
+    return cqm, X, constraint_metadata
 
 def solve_with_pulp(farms, foods, food_groups, config):
     """
-    Solve with PuLP using BQM_PATCH formulation.
+    Solve with PuLP using streamlined binary formulation.
     
     Variables:
     - X_{p,c}: Binary, 1 if plot p is assigned to crop c
-    - Y_c: Binary, 1 if crop c is grown on at least one plot
     
     Matches the CQM formulation exactly.
     """
@@ -516,94 +445,74 @@ def solve_with_pulp(farms, foods, food_groups, config):
     land_availability = params['land_availability']  # s_p: area of each plot
     weights = params['weights']
     min_planting_area = params.get('minimum_planting_area', {})  # A_c^min
-    max_percentage_per_crop = params.get('max_percentage_per_crop', {})
+    max_planting_area = params.get('max_planting_area', {})  # A_c^max
     food_group_constraints = params.get('food_group_constraints', {})
-    idle_penalty = params.get('idle_penalty_lambda', 0.1)  # λ: penalty for unused area
     
-    # Calculate total land and max areas
+    # Calculate total land
     total_land = sum(land_availability.values())
-    max_planting_area = {}
-    for crop in foods:
-        if crop in max_percentage_per_crop:
-            max_planting_area[crop] = max_percentage_per_crop[crop] * total_land
-        else:
-            max_planting_area[crop] = total_land
+    
+    # Calculate plot area (assuming even grid, all plots have same area)
+    plot_area = list(land_availability.values())[0] if farms else 1.0
     
     # Define X_{p,c} variables: 1 if plot p is assigned to crop c
     X_pulp = pl.LpVariable.dicts("X", [(p, c) for p in farms for c in foods], cat='Binary')
     
-    # Define Y_c variables: 1 if crop c is grown on at least one plot
-    Y_pulp = pl.LpVariable.dicts("Y", foods, cat='Binary')
+    model = pl.LpProblem("Food_Optimization_Binary_Streamlined", pl.LpMaximize)
     
-    model = pl.LpProblem("Food_Optimization_BQM_PATCH", pl.LpMaximize)
-    
-    # Objective: Maximize sum_{p,c} (B_c + λ) * s_p * X_{p,c} / total_land
+    # Objective: Maximize sum_{p,c} B_c * s_p * X_{p,c} / total_land
     # NOTE: Normalized by total_land to match continuous formulation's per-hectare metric
     objective = 0
     for plot in farms:
-        s_p = land_availability[plot]  # Area of plot p
+        farm_area = land_availability[plot]  # Area of plot p
         for crop in foods:
             # Calculate B_c: weighted benefit per unit area
-            B_c = (
+            area_weighted_value = farm_area * (
                 weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
                 weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
                 weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
                 weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
                 weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
             )
-            # Add (B_c + λ) * s_p * X_{p,c}
-            objective += (B_c + idle_penalty) * s_p * X_pulp[(plot, crop)]
+            objective += area_weighted_value * X_pulp[(plot, crop)]
     
-    # Normalize by total land area (to match continuous formulation)
+    # Normalize by total land area
     objective = objective / total_land
     
     model += objective, "Objective"
     
     # Constraint 1: At most one crop per plot
     for plot in farms:
-        model += pl.lpSum([X_pulp[(plot, crop)] for crop in foods]) <= 1, f"AtMostOne_{plot}"
+        model += pl.lpSum([X_pulp[(plot, crop)] for crop in foods]) <= 1, f"Max_Assignment_{plot}"
     
-    # Constraint 2: X-Y Linking - X_{p,c} <= Y_c
-    for plot in farms:
-        for crop in foods:
-            model += X_pulp[(plot, crop)] <= Y_pulp[crop], f"XY_Link_{plot}_{crop}"
-    
-    # Constraint 3: Y Activation - Y_c <= sum_p X_{p,c}
+    # Constraint 2: Minimum plots per crop
+    import math
     for crop in foods:
-        model += Y_pulp[crop] <= pl.lpSum([X_pulp[(plot, crop)] for plot in farms]), f"Y_Activation_{crop}"
-    
-    # Constraint 4: Area bounds per crop
-    for crop in foods:
-        total_crop_area = pl.lpSum([land_availability[plot] * X_pulp[(plot, crop)] for plot in farms])
-        
-        # Minimum area constraint: only applies if crop is selected (Y_pulp[crop] = 1)
-        # If crop not selected, Y_pulp[crop] = 0 and constraint becomes total_crop_area >= 0
         if crop in min_planting_area and min_planting_area[crop] > 0:
-            model += total_crop_area >= min_planting_area[crop] * Y_pulp[crop], f"MinArea_{crop}"
-        
-        # Maximum area constraint
-        if crop in max_planting_area and max_planting_area[crop] < total_land:
-            model += total_crop_area <= max_planting_area[crop], f"MaxArea_{crop}"
+            min_plots = math.ceil(min_planting_area[crop] / plot_area)
+            model += pl.lpSum([X_pulp[(plot, crop)] for plot in farms]) >= min_plots, f"Min_Plots_{crop}"
     
-    # Constraint 5: Food group diversity
+    # Constraint 3: Maximum plots per crop
+    for crop in foods:
+        if crop in max_planting_area:
+            max_plots = math.floor(max_planting_area[crop] / plot_area)
+            model += pl.lpSum([X_pulp[(plot, crop)] for plot in farms]) <= max_plots, f"Max_Plots_{crop}"
+    
+    # Constraint 4: Food group diversity - GLOBAL across all plots
     if food_group_constraints:
         for group, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
+                # Normalize group name for constraint labels (replace spaces and special chars with underscores)
+                group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
+                
                 if 'min_foods' in constraints:
-                    model += pl.lpSum([Y_pulp[crop] for crop in foods_in_group]) >= constraints['min_foods'], f"FoodGroup_Min_{group}"
+                    model += pl.lpSum([X_pulp[(plot, crop)] for plot in farms for crop in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_Global_{group_label}"
                 if 'max_foods' in constraints:
-                    model += pl.lpSum([Y_pulp[crop] for crop in foods_in_group]) <= constraints['max_foods'], f"FoodGroup_Max_{group}"
+                    model += pl.lpSum([X_pulp[(plot, crop)] for plot in farms for crop in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_Global_{group_label}"
+
     
     start_time = time.time()
     # Use Gurobi with GPU acceleration and aggressive parallelization
-    # GPU-specific parameters (requires Gurobi 9.0+ and CUDA-compatible GPU):
-    #   - Method=2: Use barrier method (GPU-accelerated)
-    #   - Crossover=0: Disable crossover to keep computation on GPU
-    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
-    #   - Threads=0: Use all available CPU threads for parallel processing
-    #   - MIPFocus=1: Focus on finding good solutions quickly
-    #   - Presolve=2: Aggressive presolve
     gurobi_options = [
         ('Method', 2),           # Barrier method (GPU-accelerated)
         ('Crossover', 0),        # Disable crossover to keep computation on GPU
@@ -634,20 +543,14 @@ def solve_with_pulp(farms, foods, food_groups, config):
         'status': pl.LpStatus[model.status],
         'objective_value': pl.value(model.objective),
         'solve_time': solve_time,
-        'X_variables': {},  # X_{p,c}: plot-crop assignments
-        'Y_variables': {}   # Y_c: crop selections
+        'plantations': {}  # X_{p,c}: plot-crop assignments
     }
     
     # Extract X_{p,c} values
     for plot in farms:
         for crop in foods:
-            key = f"X_{plot}_{crop}"
-            results['X_variables'][key] = X_pulp[(plot, crop)].value() if X_pulp[(plot, crop)].value() is not None else 0.0
-    
-    # Extract Y_c values
-    for crop in foods:
-        key = f"Y_{crop}"
-        results['Y_variables'][key] = Y_pulp[crop].value() if Y_pulp[crop].value() is not None else 0.0
+            key = f"{plot}_{crop}"
+            results['plantations'][key] = X_pulp[(plot, crop)].value() if X_pulp[(plot, crop)].value() is not None else 0.0
     
     return model, results
 
@@ -975,14 +878,13 @@ def main(scenario='simple', n_patches=None):
     # Create timestamp for this run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # Create CQM with BQM_PATCH formulation
-    print("\nCreating CQM with BQM_PATCH formulation (implicit idle area)...")
-    cqm, (X, Y), constraint_metadata = create_cqm(farms, foods, food_groups, config)
-    print(f"  Variables: {len(cqm.variables)} (X_{{p,c}} and Y_c, all binary)")
+    # Create CQM with streamlined binary formulation
+    print("\nCreating CQM with streamlined binary formulation...")
+    cqm, X, constraint_metadata = create_cqm(farms, foods, food_groups, config)
+    print(f"  Variables: {len(cqm.variables)} (X_{{p,c}}, all binary)")
     print(f"  - X variables (plot-crop assignments): {len(X)}")
-    print(f"  - Y variables (crop selections): {len(Y)}")
     print(f"  Constraints: {len(cqm.constraints)}")
-    print(f"  Formulation: Plot-crop assignment with implicit idle representation")
+    print(f"  Formulation: Streamlined plot-crop assignment (binary)")
     
     # Save CQM
     cqm_path = os.path.join(project_root, 'CQM_Models', f'cqm_{scenario}_{timestamp}.cqm')
@@ -1012,16 +914,14 @@ def main(scenario='simple', n_patches=None):
         'food_groups': food_groups,
         'config': config,
         'constraint_metadata': {
-            'at_most_one_per_plot': {str(k): v for k, v in constraint_metadata['at_most_one_per_plot'].items()},
-            'x_y_linking': {str(k): v for k, v in constraint_metadata['x_y_linking'].items()},
-            'y_activation': {str(k): v for k, v in constraint_metadata['y_activation'].items()},
-            'area_bounds_min': {str(k): v for k, v in constraint_metadata['area_bounds_min'].items()},
-            'area_bounds_max': {str(k): v for k, v in constraint_metadata['area_bounds_max'].items()},
+            'plantation_limit': {str(k): v for k, v in constraint_metadata['plantation_limit'].items()},
+            'min_plots_per_crop': {str(k): v for k, v in constraint_metadata['min_plots_per_crop'].items()},
+            'max_plots_per_crop': {str(k): v for k, v in constraint_metadata['max_plots_per_crop'].items()},
             'food_group_min': {str(k): v for k, v in constraint_metadata['food_group_min'].items()},
             'food_group_max': {str(k): v for k, v in constraint_metadata['food_group_max'].items()}
         },
-        'formulation': 'BQM_PATCH',
-        'description': 'Plot-crop assignment with implicit idle area representation'
+        'formulation': 'Binary_Streamlined',
+        'description': 'Streamlined plot-crop assignment (binary formulation, X variables only)'
     }
     
     with open(constraints_path, 'w') as f:
