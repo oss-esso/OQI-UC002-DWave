@@ -18,7 +18,7 @@ import time
 from datetime import datetime
 
 # Add project root to path
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
 from src.scenarios import load_food_data
@@ -299,13 +299,15 @@ def main(scenario='simple'):
     print(f"  Formulation: Each farm-crop = 1 acre if selected, 0 if not")
     
     # Save CQM
-    cqm_path = f'CQM_Models/cqm_{scenario}_{timestamp}.cqm'
+    cqm_path = os.path.join(project_root, 'CQM_Models', f'cqm_{scenario}_{timestamp}.cqm')
+    os.makedirs(os.path.dirname(cqm_path), exist_ok=True)
     print(f"\nSaving CQM to {cqm_path}...")
     with open(cqm_path, 'wb') as f:
         shutil.copyfileobj(cqm.to_file(), f)
     
     # Save constraint metadata
-    constraints_path = f'Constraints/constraints_{scenario}_{timestamp}.json'
+    constraints_path = os.path.join(project_root, 'Constraints', f'constraints_{scenario}_{timestamp}.json')
+    os.makedirs(os.path.dirname(constraints_path), exist_ok=True)
     print(f"Saving constraints to {constraints_path}...")
     
     # Convert constraint_metadata keys to strings for JSON serialization
@@ -345,7 +347,8 @@ def main(scenario='simple'):
     print(f"  Solve time: {pulp_results['solve_time']:.2f} seconds")
     
     # Save PuLP results
-    pulp_path = f'PuLP_Results/pulp_{scenario}_{timestamp}.json'
+    pulp_path = os.path.join(project_root, 'PuLP_Results', f'pulp_{scenario}_{timestamp}.json')
+    os.makedirs(os.path.dirname(pulp_path), exist_ok=True)
     print(f"\nSaving PuLP results to {pulp_path}...")
     with open(pulp_path, 'w') as f:
         json.dump(pulp_results, f, indent=2)
@@ -371,13 +374,14 @@ def main(scenario='simple'):
         print(f"  Best objective: {best_objective:.6f}")
     
     # Save DWave results (both pickle and JSON)
-    dwave_pickle_path = f'DWave_Results/dwave_bqubo_{scenario}_{timestamp}.pickle'
+    dwave_pickle_path = os.path.join(project_root, 'DWave_Results', f'dwave_bqubo_{scenario}_{timestamp}.pickle')
+    os.makedirs(os.path.dirname(dwave_pickle_path), exist_ok=True)
     print(f"\nSaving DWave sampleset to {dwave_pickle_path}...")
     with open(dwave_pickle_path, 'wb') as f:
         pickle.dump(sampleset, f)
     
     # Save DWave results as JSON for easy reading
-    dwave_json_path = f'DWave_Results/dwave_bqubo_{scenario}_{timestamp}.json'
+    dwave_json_path = os.path.join(project_root, 'DWave_Results', f'dwave_bqubo_{scenario}_{timestamp}.json')
     dwave_results = {
         'status': 'Optimal' if len(sampleset) > 0 else 'No solutions',
         'objective_value': best_objective if len(sampleset) > 0 else None,
@@ -410,7 +414,8 @@ def main(scenario='simple'):
         'formulation': 'binary_plantation'
     }
     
-    manifest_path = f'run_manifest_{scenario}_{timestamp}.json'
+    manifest_path = os.path.join(project_root, 'run_manifests', f'run_manifest_{scenario}_{timestamp}.json')
+    os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
     print(f"\nSaving run manifest to {manifest_path}...")
     with open(manifest_path, 'w') as f:
         json.dump(manifest, f, indent=2)

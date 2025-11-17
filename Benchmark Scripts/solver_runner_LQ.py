@@ -24,7 +24,7 @@ import time
 from datetime import datetime
 
 # Add project root to path
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
 from src.scenarios import load_food_data
@@ -622,13 +622,15 @@ def main(scenario='simple'):
     print(f"  Objective: Linear + Quadratic synergy bonus")
     
     # Save CQM
-    cqm_path = f'CQM_Models_LQ/cqm_lq_{scenario}_{timestamp}.cqm'
+    cqm_path = os.path.join(project_root, 'CQM_Models_LQ', f'cqm_lq_{scenario}_{timestamp}.cqm')
+    os.makedirs(os.path.dirname(cqm_path), exist_ok=True)
     print(f"\nSaving CQM to {cqm_path}...")
     with open(cqm_path, 'wb') as f:
         shutil.copyfileobj(cqm.to_file(), f)
     
     # Save constraint metadata
-    constraints_path = f'Constraints_LQ/constraints_lq_{scenario}_{timestamp}.json'
+    constraints_path = os.path.join(project_root, 'Constraints_LQ', f'constraints_lq_{scenario}_{timestamp}.json')
+    os.makedirs(os.path.dirname(constraints_path), exist_ok=True)
     print(f"Saving constraints to {constraints_path}...")
     
     # Convert constraint_metadata keys to strings for JSON serialization
@@ -676,7 +678,8 @@ def main(scenario='simple'):
     print(f"  Solve time: {pulp_results['solve_time']:.2f} seconds")
     
     # Save PuLP results
-    pulp_path = f'PuLP_Results_LQ/pulp_lq_{scenario}_{timestamp}.json'
+    pulp_path = os.path.join(project_root, 'PuLP_Results_LQ', f'pulp_lq_{scenario}_{timestamp}.json')
+    os.makedirs(os.path.dirname(pulp_path), exist_ok=True)
     print(f"\nSaving PuLP results to {pulp_path}...")
     with open(pulp_path, 'w') as f:
         json.dump(pulp_results, f, indent=2)
@@ -698,7 +701,8 @@ def main(scenario='simple'):
         print(f"  Solve time: {pyomo_results['solve_time']:.2f} seconds")
     
     # Save Pyomo results
-    pyomo_path = f'PuLP_Results_LQ/pyomo_lq_{scenario}_{timestamp}.json'
+    pyomo_path = os.path.join(project_root, 'PuLP_Results_LQ', f'pyomo_lq_{scenario}_{timestamp}.json')
+    os.makedirs(os.path.dirname(pyomo_path), exist_ok=True)
     print(f"\nSaving Pyomo results to {pyomo_path}...")
     with open(pyomo_path, 'w') as f:
         json.dump(pyomo_results, f, indent=2)
@@ -738,9 +742,9 @@ def main(scenario='simple'):
                 print("  WARNING: No feasible solutions found")
             
             # Save DWave results
-            dwave_path = f'DWave_Results_LQ/dwave_lq_{scenario}_{timestamp}.pickle'
+            dwave_path = os.path.join(project_root, 'DWave_Results_LQ', f'dwave_lq_{scenario}_{timestamp}.pickle')
+            os.makedirs(os.path.dirname(dwave_path), exist_ok=True)
             print(f"\nSaving DWave results to {dwave_path}...")
-            os.makedirs('DWave_Results_LQ', exist_ok=True)
             with open(dwave_path, 'wb') as f:
                 pickle.dump(sampleset, f)
             

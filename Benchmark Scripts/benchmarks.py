@@ -41,8 +41,8 @@ def load_full_family_with_n_farms(n_farms, seed=42):
     farms = list(L.keys())
 
     # Load food data from Excel or use fallback
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    excel_path = os.path.join(script_dir, "Inputs", "Combined_Food_Data.xlsx")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    excel_path = os.path.join(project_root, "Inputs", "Combined_Food_Data.xlsx")
 
     if not os.path.exists(excel_path):
         print("Excel file not found, using fallback foods")

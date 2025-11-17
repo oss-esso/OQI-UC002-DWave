@@ -209,7 +209,7 @@ def check_cached_results(scenario_type: str, solver_name: str, config_id: int, r
     Returns:
         Cached result dictionary if found, None otherwise
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
     # Map solver names to subdirectory names
     solver_dir_map = {
@@ -226,7 +226,7 @@ def check_cached_results(scenario_type: str, solver_name: str, config_id: int, r
         return None
     
     solver_dir = solver_dir_map[solver_key]
-    result_dir = os.path.join(script_dir, "Benchmarks", "COMPREHENSIVE", solver_dir)
+    result_dir = os.path.join(project_root, "Benchmarks", "COMPREHENSIVE", solver_dir)
     
     # Check if result file exists
     filename = f"config_{config_id}_run_{run_id}.json"
@@ -253,7 +253,7 @@ def save_solver_result(result: Dict, scenario_type: str, solver_name: str, confi
         config_id: Configuration ID (number of units)
         run_id: Run number for this configuration
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
     # Map solver names to subdirectory names matching other benchmarks
     solver_dir_map = {
@@ -271,7 +271,7 @@ def save_solver_result(result: Dict, scenario_type: str, solver_name: str, confi
         return
     
     solver_dir = solver_dir_map[solver_key]
-    output_dir = os.path.join(script_dir, "Benchmarks", "COMPREHENSIVE", solver_dir)
+    output_dir = os.path.join(project_root, "Benchmarks", "COMPREHENSIVE", solver_dir)
     os.makedirs(output_dir, exist_ok=True)
     
     # Create filename matching other benchmark format
@@ -929,8 +929,8 @@ Examples:
             print(f"✓ D-Wave token configured (length: {len(dwave_token)})")
     
     # Generate output filename and ensure Benchmarks directory exists
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    benchmarks_dir = os.path.join(script_dir, "Benchmarks", "COMPREHENSIVE")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    benchmarks_dir = os.path.join(project_root, "Benchmarks", "COMPREHENSIVE")
     os.makedirs(benchmarks_dir, exist_ok=True)
     
     if args.output:

@@ -526,7 +526,8 @@ def print_summary_table(times):
 
 def main():
     # Load data
-    benchmark_dir = Path(__file__).parent / "Benchmarks"
+    project_root = Path(__file__).parent.parent
+    benchmark_dir = project_root / "Benchmarks"
     data = load_benchmark_data(benchmark_dir)
     
     # Extract times
@@ -539,7 +540,7 @@ def main():
     print_summary_table(times)
     
     # Create plots
-    output_path = Path(__file__).parent / "Plots" / "lq_speedup_comparison.png"
+    output_path = project_root / "Plots" / "lq_speedup_comparison.png"
     output_path.parent.mkdir(exist_ok=True)
     plot_solve_times(times, objectives, gaps, output_path)
     
@@ -572,7 +573,7 @@ def main():
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    output_linear = Path(__file__).parent / "Plots" / "lq_solve_times_linear.png"
+    output_linear = project_root / "Plots" / "lq_solve_times_linear.png"
     plt.savefig(output_linear, dpi=300, bbox_inches='tight')
     print(f"Linear scale plot saved to: {output_linear}")
     

@@ -20,7 +20,7 @@ import numpy as np
 from datetime import datetime
 
 # Add project root to path
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
 from src.scenarios import load_food_data

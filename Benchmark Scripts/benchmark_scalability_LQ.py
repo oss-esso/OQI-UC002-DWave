@@ -66,8 +66,8 @@ def load_full_family_with_n_farms(n_farms, seed=42):
     farms = list(L.keys())
     
     # Load food data from Excel or use fallback
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    excel_path = os.path.join(script_dir, "Inputs", "Combined_Food_Data.xlsx")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    excel_path = os.path.join(project_root, "Inputs", "Combined_Food_Data.xlsx")
     
     if not os.path.exists(excel_path):
         print("Excel file not found, using fallback foods")
@@ -793,8 +793,8 @@ def main():
                 print(f"    Solution Diff: {aggregated['pulp_diff_mean']:.4f}% ± {aggregated['pulp_diff_std']:.4f}%")
     
     # Save results to Benchmarks/LQ folder
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    benchmark_dir = os.path.join(script_dir, "Benchmarks", "LQ")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    benchmark_dir = os.path.join(project_root, "Benchmarks", "LQ")
     os.makedirs(benchmark_dir, exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -816,7 +816,7 @@ def main():
     print(f"Aggregated stats saved to: {aggregated_file}")
     
     # Create plots in Plots folder
-    plots_dir = os.path.join(script_dir, "Plots")
+    plots_dir = os.path.join(project_root, "Plots")
     os.makedirs(plots_dir, exist_ok=True)
     
     print(f"\nGenerating plots...")
