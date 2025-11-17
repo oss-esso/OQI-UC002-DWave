@@ -49,10 +49,9 @@ from dimod import cqm_to_bqm
 BENCHMARK_CONFIGS = [
     10,
     15,
-    #20,
     25,
-    #50,
-    #100
+    50,
+    #125
 ]
 
 # Number of runs per configuration for statistical analysis
@@ -493,21 +492,23 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                             
                             # If Y=1 (selected), check A is within bounds
                             if y_val > 0.5:  # Selected
-                                if a_val < min_area - 0.001:
+                                # Check: A >= min_area * Y (when Y=1, this becomes A >= min_area)
+                                if a_val < min_area * 0.999:  # Use relative tolerance (0.1% below minimum)
                                     violation = f"A_{farm}_{crop}={a_val:.4f} < min_area={min_area:.4f} (Y=1)"
                                     farm_validation['violations'].append(violation)
                                     farm_validation['constraint_checks']['linking_constraints']['violations'].append(violation)
                                     farm_validation['constraint_checks']['linking_constraints']['failed'] += 1
                                     farm_validation['is_feasible'] = False
+                                # Check: A <= farm_capacity * Y (when Y=1, this becomes A <= farm_capacity)
                                 elif a_val > farm_capacity + 0.001:
-                                    violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f}"
+                                    violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f} (Y=1)"
                                     farm_validation['violations'].append(violation)
                                     farm_validation['constraint_checks']['linking_constraints']['violations'].append(violation)
                                     farm_validation['constraint_checks']['linking_constraints']['failed'] += 1
                                     farm_validation['is_feasible'] = False
                                 else:
                                     farm_validation['constraint_checks']['linking_constraints']['passed'] += 1
-                            else:  # Y=0 (not selected)
+                            else:  # Y=0 (not selected) - Check: A <= 0 * land_capacity = 0
                                 if a_val > 0.001:
                                     violation = f"A_{farm}_{crop}={a_val:.4f} but Y_{farm}_{crop}={y_val:.4f} (should be 0)"
                                     farm_validation['violations'].append(violation)
@@ -571,7 +572,7 @@ def run_farm_scenario(sample_data: Dict, dwave_token: Optional[str] = None) -> D
                     
                     dwave_result = {
                         'status': 'Optimal' if is_feasible else 'Infeasible',
-                        'objective_value': -best.energy / total_covered_area if is_feasible and total_covered_area > 0 else None,
+                        'objective_value': -best.energy / total_covered_area if total_covered_area > 0 else None,
                         'qpu_time': qpu_time,
                         'solve_time': solve_time,
                         'is_feasible': is_feasible,
@@ -782,8 +783,11 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     num_plots_selected = sum(1 for v in cqm_sample.values() if v > 0.5)
                     total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                     
-                    # Normalize objective by total area to match PuLP formulation
-                    normalized_objective = -best.energy / sample_data['total_area'] if is_feasible else None
+                    # The CQM objective was already normalized by total land area when the CQM
+                    # was created (see solver_runner_PATCH.create_cqm where objective /= total_land_area).
+                    # Therefore -best.energy already represents the normalized objective and
+                    # dividing by sample_data['total_area'] here would double-normalize it.
+                    normalized_objective = -best.energy
                     
                     # Validate constraints
                     validation_result = solver_runner.validate_solution_constraints(
@@ -897,7 +901,7 @@ def run_binary_scenario(sample_data: Dict, dwave_token: Optional[str] = None) ->
                     total_covered_area = num_plots_selected * (sample_data['total_area'] / sample_data['n_units'])
                     
                     # Normalize objective by total area to match PuLP formulation (POSITIVE sign)
-                    normalized_objective = -bqm_energy / sample_data['total_area']
+                    normalized_objective = bqm_energy / sample_data['total_area']
                     
                     # Validate constraints
                     validation_result = solver_runner.validate_solution_constraints(

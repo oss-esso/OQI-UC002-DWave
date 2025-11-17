@@ -4,20 +4,59 @@
     "solver": "PuLP",
     "n_farms": 279,
     "run_number": 1,
-    "timestamp": "2025-10-24T10:23:43.799299"
+    "timestamp": "2025-11-17T15:55:55.116760"
   },
   "result": {
-    "solve_time": 35.1453218460083,
+    "solve_time": 5.074023008346558,
     "status": "Optimal",
-    "objective_value": 711.5374327717852,
+    "objective_value": 162.54762392786233,
+    "normalized_objective": 0.31201555575833523,
+    "total_area": 520.96,
     "solution": {},
+    "validation": {
+      "is_feasible": false,
+      "n_violations": 5,
+      "violations": [
+        "Group Animal-source foods: 0 selections < min=1 (global)",
+        "Group Fruits: 0 selections < min=1 (global)",
+        "Group Pulses, nuts, and seeds: 0 selections < min=1 (global)",
+        "Group Starchy staples: 0 selections < min=1 (global)",
+        "Group Vegetables: 0 selections < min=1 (global)"
+      ],
+      "constraint_checks": {
+        "land_availability": {
+          "passed": 279,
+          "failed": 0,
+          "violations": []
+        },
+        "linking_constraints": {
+          "passed": 7533,
+          "failed": 0,
+          "violations": []
+        },
+        "food_group_constraints": {
+          "passed": 0,
+          "failed": 5,
+          "violations": [
+            "Group Animal-source foods: 0 selections < min=1 (global)",
+            "Group Fruits: 0 selections < min=1 (global)",
+            "Group Pulses, nuts, and seeds: 0 selections < min=1 (global)",
+            "Group Starchy staples: 0 selections < min=1 (global)",
+            "Group Vegetables: 0 selections < min=1 (global)"
+          ]
+        }
+      },
+      "summary": {
+        "total_checks": 7817,
+        "total_passed": 7812,
+        "total_failed": 5,
+        "pass_rate": 0.9993603684277856
+      }
+    },
     "n_foods": 27,
     "problem_size": 7533,
     "n_vars_pulp": 35712,
     "n_constraints_pulp": 80073,
-    "n_synergy_pairs": 74,
-    "normalized_objective": 0.4837264575762502,
-    "total_available_land": 1470.95,
-    "normalization_method": "total_available_land"
+    "n_synergy_pairs": 74
   }
 }

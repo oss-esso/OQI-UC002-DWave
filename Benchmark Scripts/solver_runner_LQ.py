@@ -183,40 +183,43 @@ def create_cqm(farms, foods, food_groups, config):
             }
             pbar.update(1)
     
-    # Food group constraints
+    # Food group constraints - GLOBAL across all farms
     pbar.set_description("Adding food group constraints")
     if food_group_constraints:
         for group, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                for farm in farms:
-                    if 'min_foods' in constraints:
-                        cqm.add_constraint(
-                            sum(Y[(farm, food)] for food in foods_in_group) - constraints['min_foods'] >= 0,
-                            label=f"Food_Group_Min_{group}_{farm}"
-                        )
-                        constraint_metadata['food_group_min'][(group, farm)] = {
-                            'type': 'food_group_min',
-                            'group': group,
-                            'farm': farm,
-                            'min_foods': constraints['min_foods'],
-                            'foods_in_group': foods_in_group
-                        }
-                        pbar.update(1)
-                    
-                    if 'max_foods' in constraints:
-                        cqm.add_constraint(
-                            sum(Y[(farm, food)] for food in foods_in_group) - constraints['max_foods'] <= 0,
-                            label=f"Food_Group_Max_{group}_{farm}"
-                        )
-                        constraint_metadata['food_group_max'][(group, farm)] = {
-                            'type': 'food_group_max',
-                            'group': group,
-                            'farm': farm,
-                            'max_foods': constraints['max_foods'],
-                            'foods_in_group': foods_in_group
-                        }
-                        pbar.update(1)
+                # Global minimum: across ALL farms, at least min_foods from this group
+                if 'min_foods' in constraints:
+                    cqm.add_constraint(
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        constraints['min_foods'] >= 0,
+                        label=f"Food_Group_Min_{group}_Global"
+                    )
+                    constraint_metadata['food_group_min'][group] = {
+                        'type': 'food_group_min_global',
+                        'group': group,
+                        'min_foods': constraints['min_foods'],
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
+                    }
+                    pbar.update(1)
+                
+                # Global maximum: across ALL farms, at most max_foods from this group
+                if 'max_foods' in constraints:
+                    cqm.add_constraint(
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        constraints['max_foods'] <= 0,
+                        label=f"Food_Group_Max_{group}_Global"
+                    )
+                    constraint_metadata['food_group_max'][group] = {
+                        'type': 'food_group_max_global',
+                        'group': group,
+                        'max_foods': constraints['max_foods'],
+                        'foods_in_group': foods_in_group,
+                        'scope': 'global'
+                    }
+                    pbar.update(1)
     
     pbar.set_description("CQM complete")
     pbar.close()
@@ -313,22 +316,49 @@ def solve_with_pulp(farms, foods, food_groups, config):
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                for f in farms:
-                    if 'min_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_{f}_{g}"
-                    if 'max_foods' in constraints:
-                        model += pl.lpSum([Y_pulp[(f, c)] for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_{f}_{g}"
+                # Global constraints: across ALL farms
+                if 'min_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
+                                      ) >= constraints['min_foods'], f"MinFoodGroup_Global_{g}"
+                if 'max_foods' in constraints:
+                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
+                                      ) <= constraints['max_foods'], f"MaxFoodGroup_Global_{g}"
     
     # Solve
-    print("  Solving with CBC...")
+    print("  Solving with Gurobi...")
     start_time = time.time()
-    solver = pl.PULP_CBC_CMD(
-            msg=0,  # Show progress
-            timeLimit=30,  # 10 minute limit
-            gapRel=0.05,  # 5% optimality gap acceptable
-            threads=4  # Use multiple threads
-        )
-    model.solve(solver)
+    
+    # Use Gurobi with GPU acceleration and aggressive parallelization
+    # GPU-specific parameters (requires Gurobi 9.0+ and CUDA-compatible GPU):
+    #   - Method=2: Use barrier method (GPU-accelerated)
+    #   - Crossover=0: Disable crossover to keep computation on GPU
+    #   - BarHomogeneous=1: Use homogeneous barrier algorithm (better for GPU)
+    #   - Threads=0: Use all available CPU threads for parallel processing
+    #   - MIPFocus=1: Focus on finding good solutions quickly
+    #   - Presolve=2: Aggressive presolve
+    gurobi_options = [
+        ('Method', 2),           # Barrier method (GPU-accelerated)
+        ('Crossover', 0),        # Disable crossover to keep computation on GPU
+        ('BarHomogeneous', 1),   # Homogeneous barrier (more GPU-friendly)
+        ('Threads', 0),          # Use all available CPU threads for parallelization
+        ('MIPFocus', 1),         # Focus on finding good solutions quickly
+        ('Presolve', 2),         # Aggressive presolve
+    ]
+    
+    try:
+        # Try using GUROBI API directly for better GPU support
+        solver = pl.GUROBI(msg=0, timeLimit=100)
+        # Set parameters directly on the solver
+        for param, value in gurobi_options:
+            solver.optionsDict[param] = value
+        model.solve(solver)
+    except Exception as e:
+        # Fallback to GUROBI_CMD if direct API is not available
+        print(f"  Gurobi API failed ({str(e)[:50]}...), using GUROBI_CMD...")
+        # GUROBI_CMD expects options as a list of "key=value" strings
+        options_list = [f'{k}={v}' for k, v in gurobi_options]
+        model.solve(pl.GUROBI_CMD(msg=0, options=options_list))
+    
     solve_time = time.time() - start_time
     
     # Extract results and calculate total area
@@ -350,6 +380,14 @@ def solve_with_pulp(farms, foods, food_groups, config):
     obj_value = pl.value(model.objective)
     normalized_objective = obj_value / total_area if total_area > 1e-6 else 0.0
     
+    # Merge areas and selections into single solution dict for validation
+    solution = {**areas, **selections}
+    
+    # Validate solution against constraints
+    validation_results = validate_solution_constraints(
+        solution, farms, foods, food_groups, land_availability, config
+    )
+    
     results = {
         'status': pl.LpStatus[model.status],
         'objective_value': obj_value,
@@ -357,14 +395,136 @@ def solve_with_pulp(farms, foods, food_groups, config):
         'total_area': total_area,
         'solve_time': solve_time,
         'areas': areas,
-        'selections': selections
+        'selections': selections,
+        'validation': validation_results
     }
     
     print(f"  Total area allocated: {total_area:.2f}")
     print(f"  Raw objective: {obj_value:.4f}")
     print(f"  Normalized objective: {normalized_objective:.6f}")
+    print(f"  Constraint validation: {'✅ PASSED' if validation_results['is_feasible'] else '❌ FAILED'}")
+    if not validation_results['is_feasible']:
+        print(f"    Violations: {validation_results['n_violations']}")
     
     return model, results
+
+def validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config):
+    """
+    Validate if a solution satisfies all original CQM constraints for LQ formulation.
+    
+    Args:
+        solution: Dictionary with variable assignments (A_{farm}_{food} and Y_{farm}_{food})
+        farms: List of farm names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food groups
+        land_availability: Dictionary mapping farm to area
+        config: Configuration dictionary with parameters
+        
+    Returns:
+        dict: Validation results with violations and constraint checks
+    """
+    params = config['parameters']
+    min_planting_area = params.get('minimum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    
+    violations = []
+    constraint_checks = {
+        'land_availability': {'passed': 0, 'failed': 0, 'violations': []},
+        'linking_constraints': {'passed': 0, 'failed': 0, 'violations': []},
+        'food_group_constraints': {'passed': 0, 'failed': 0, 'violations': []}
+    }
+    
+    # 1. Check: Land availability per farm
+    for farm in farms:
+        farm_total = sum(solution.get(f"A_{farm}_{crop}", 0) for crop in foods)
+        farm_capacity = land_availability[farm]
+        
+        if farm_total > farm_capacity + 0.01:  # Absolute tolerance
+            violation = f"{farm}: {farm_total:.4f} ha > {farm_capacity:.4f} ha capacity"
+            violations.append(violation)
+            constraint_checks['land_availability']['violations'].append(violation)
+            constraint_checks['land_availability']['failed'] += 1
+        else:
+            constraint_checks['land_availability']['passed'] += 1
+    
+    # 2. Check: Linking constraints A and Y
+    # Constraint: A >= min_area * Y  AND  A <= farm_capacity * Y
+    for farm in farms:
+        farm_capacity = land_availability[farm]
+        for crop in foods:
+            a_val = solution.get(f"A_{farm}_{crop}", 0)
+            y_val = solution.get(f"Y_{farm}_{crop}", 0)
+            min_area = min_planting_area.get(crop, 0)
+            
+            # If Y=1 (selected), check A >= min_area and A <= farm_capacity
+            if y_val > 0.5:
+                if a_val < min_area * 0.999:  # Relative tolerance
+                    violation = f"A_{farm}_{crop}={a_val:.4f} < min_area={min_area:.4f} (Y=1)"
+                    violations.append(violation)
+                    constraint_checks['linking_constraints']['violations'].append(violation)
+                    constraint_checks['linking_constraints']['failed'] += 1
+                elif a_val > farm_capacity + 0.001:
+                    violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f} (Y=1)"
+                    violations.append(violation)
+                    constraint_checks['linking_constraints']['violations'].append(violation)
+                    constraint_checks['linking_constraints']['failed'] += 1
+                else:
+                    constraint_checks['linking_constraints']['passed'] += 1
+            else:  # Y=0 (not selected), A must be 0
+                if a_val > 0.001:
+                    violation = f"A_{farm}_{crop}={a_val:.4f} but Y_{farm}_{crop}={y_val:.4f} (should be 0)"
+                    violations.append(violation)
+                    constraint_checks['linking_constraints']['violations'].append(violation)
+                    constraint_checks['linking_constraints']['failed'] += 1
+                else:
+                    constraint_checks['linking_constraints']['passed'] += 1
+    
+    # 3. Check: Food group constraints - GLOBAL across all farms
+    if food_group_constraints:
+        for group_name, group_data in food_group_constraints.items():
+            if group_name in food_groups:
+                crops_in_group = food_groups[group_name]
+                
+                # Count total selections across ALL farms (global constraint)
+                n_selected_global = sum(
+                    solution.get(f"Y_{farm}_{crop}", 0) 
+                    for farm in farms 
+                    for crop in crops_in_group
+                )
+                
+                min_foods = group_data.get('min_foods', 0)
+                max_foods = group_data.get('max_foods', len(crops_in_group) * len(farms))
+                
+                if n_selected_global < min_foods - 0.5:  # Tolerance for binary rounding
+                    violation = f"Group {group_name}: {n_selected_global:.0f} selections < min={min_foods} (global)"
+                    violations.append(violation)
+                    constraint_checks['food_group_constraints']['violations'].append(violation)
+                    constraint_checks['food_group_constraints']['failed'] += 1
+                elif n_selected_global > max_foods + 0.5:
+                    violation = f"Group {group_name}: {n_selected_global:.0f} selections > max={max_foods} (global)"
+                    violations.append(violation)
+                    constraint_checks['food_group_constraints']['violations'].append(violation)
+                    constraint_checks['food_group_constraints']['failed'] += 1
+                else:
+                    constraint_checks['food_group_constraints']['passed'] += 1
+    
+    # Calculate summary statistics
+    total_checks = sum(check['passed'] + check['failed'] for check in constraint_checks.values())
+    total_passed = sum(check['passed'] for check in constraint_checks.values())
+    total_failed = sum(check['failed'] for check in constraint_checks.values())
+    
+    return {
+        'is_feasible': len(violations) == 0,
+        'n_violations': len(violations),
+        'violations': violations,
+        'constraint_checks': constraint_checks,
+        'summary': {
+            'total_checks': total_checks,
+            'total_passed': total_passed,
+            'total_failed': total_failed,
+            'pass_rate': total_passed / total_checks if total_checks > 0 else 0
+        }
+    }
 
 def solve_with_dwave(cqm, token):
     """Solve with DWave and return sampleset."""
@@ -466,31 +626,29 @@ def solve_with_pyomo(farms, foods, food_groups, config):
         return m.A[f, c] <= land_availability[f] * m.Y[f, c]
     model.max_area = pyo.Constraint(model.farms, model.foods, rule=max_area_rule)
     
-    # Food group constraints
+    # Food group constraints - GLOBAL across all farms
     if food_group_constraints:
-        def min_food_group_rule(m, f, g):
+        def min_food_group_rule(m, g):
             foods_in_group = food_groups.get(g, [])
             min_foods = food_group_constraints[g].get('min_foods', None)
             if min_foods is not None and foods_in_group:
-                return sum(m.Y[f, c] for c in foods_in_group if c in m.foods) >= min_foods
+                return sum(m.Y[f, c] for f in m.farms for c in foods_in_group if c in m.foods) >= min_foods
             else:
                 return pyo.Constraint.Skip
         
-        def max_food_group_rule(m, f, g):
+        def max_food_group_rule(m, g):
             foods_in_group = food_groups.get(g, [])
             max_foods = food_group_constraints[g].get('max_foods', None)
             if max_foods is not None and foods_in_group:
-                return sum(m.Y[f, c] for c in foods_in_group if c in m.foods) <= max_foods
+                return sum(m.Y[f, c] for f in m.farms for c in foods_in_group if c in m.foods) <= max_foods
             else:
                 return pyo.Constraint.Skip
         
         model.min_food_group = pyo.Constraint(
-            model.farms, 
             list(food_group_constraints.keys()), 
             rule=min_food_group_rule
         )
         model.max_food_group = pyo.Constraint(
-            model.farms, 
             list(food_group_constraints.keys()), 
             rule=max_food_group_rule
         )
@@ -499,12 +657,11 @@ def solve_with_pyomo(farms, foods, food_groups, config):
     solver_name = None
     solver = None
     
-    print("  Searching for available MIQP/MIQCP solvers...")
+    print("  Searching for IPOPT solver (recommended for quadratic objectives)...")
     
-    # Prioritize free solvers that can handle quadratic problems
-    # CBC and GLPK can handle MILP but not MIQCP natively, so we use SCIP or IPOPT if available
-    # For free solvers: try SCIP first (best free MIQCP solver), then CBC (MILP only, will linearize)
-    solver_options = ['scip', 'cbc', 'glpk', 'ipopt', 'cplex', 'gurobi']
+    # Prioritize IPOPT for quadratic problems, which handles them natively
+    # IPOPT is the best open-source solver for nonlinear optimization
+    solver_options = ['ipopt', 'scip', 'cbc', 'glpk', 'cplex', 'gurobi']
     
     for solver_opt in solver_options:
         try:
@@ -519,9 +676,9 @@ def solve_with_pyomo(farms, foods, food_groups, config):
     
     if solver is None:
         print("  ERROR: No suitable solver found.")
-        print("  Recommended free solver: SCIP")
-        print("  Install with: conda install -c conda-forge pyscipopt")
-        print("  Alternative: CBC (MILP only): conda install -c conda-forge coincbc")
+        print("  Recommended solver for LQ: IPOPT (handles quadratic natively)")
+        print("  Install with: conda install -c conda-forge ipopt")
+        print("  Alternative: SCIP (MIQCP): conda install -c conda-forge pyscipopt")
         return model, {
             'status': 'No Solver',
             'objective_value': None,
@@ -561,6 +718,14 @@ def solve_with_pyomo(farms, foods, food_groups, config):
         obj_value = pyo.value(model.obj) if pyo.value(model.obj) is not None else None
         normalized_objective = obj_value / total_area if (obj_value is not None and total_area > 1e-6) else 0.0
         
+        # Merge areas and selections into single solution dict for validation
+        solution = {**areas, **selections}
+        
+        # Validate solution against constraints
+        validation_results = validate_solution_constraints(
+            solution, farms, foods, food_groups, land_availability, config
+        )
+        
         output = {
             'status': f"{status} ({termination})",
             'solver': solver_name,
@@ -569,12 +734,16 @@ def solve_with_pyomo(farms, foods, food_groups, config):
             'total_area': total_area,
             'solve_time': solve_time,
             'areas': areas,
-            'selections': selections
+            'selections': selections,
+            'validation': validation_results
         }
         
         print(f"  Total area allocated: {total_area:.2f}")
         print(f"  Raw objective: {obj_value:.4f}" if obj_value else "  Raw objective: None")
         print(f"  Normalized objective: {normalized_objective:.6f}")
+        print(f"  Constraint validation: {'✅ PASSED' if validation_results['is_feasible'] else '❌ FAILED'}")
+        if not validation_results['is_feasible']:
+            print(f"    Violations: {validation_results['n_violations']}")
         
         return model, output
         

@@ -51,9 +51,10 @@ class BenchmarkCache:
             base_dir: Base directory for benchmarks (default: ./Benchmarks)
         """
         if base_dir is None:
-            # Get directory where this script is located
+            # Get project root directory (parent of Utils)
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            base_dir = os.path.join(script_dir, "Benchmarks")
+            project_root = os.path.dirname(script_dir)
+            base_dir = os.path.join(project_root, "Benchmarks")
         
         self.base_dir = Path(base_dir)
         self._ensure_folder_structure()

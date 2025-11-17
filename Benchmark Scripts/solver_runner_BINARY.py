@@ -851,116 +851,89 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
     total_land = sum(land_availability.values())
     
     # Detect variable format
-    has_x_vars = any(k.startswith('X_') for k in solution.keys())
-    has_separate_y = any(k.startswith('Y_') and k.count('_') == 1 for k in solution.keys())
+    has_a_vars = any(k.startswith('A_') for k in solution.keys())
+    has_y_vars = any(k.startswith('Y_') for k in solution.keys())
     
-    # Patch format: only Y_{farm}_{food} variables
-    # Farm format: X_{plot}_{crop} and Y_{crop} variables
-    is_patch_format = not has_x_vars
+    # Farm format: A_{farm}_{food} (continuous) and Y_{farm}_{food} (binary)
+    # Patch format: only Y_{farm}_{food} (binary)
+    is_farm_format = has_a_vars and has_y_vars
     
     violations = []
     constraint_checks = {
-        'at_most_one_per_plot': {'passed': 0, 'failed': 0, 'violations': []},
-        'x_y_linking': {'passed': 0, 'failed': 0, 'violations': []},
-        'y_activation': {'passed': 0, 'failed': 0, 'violations': []},
-        'area_bounds_min': {'passed': 0, 'failed': 0, 'violations': []},
+        'land_availability': {'passed': 0, 'failed': 0, 'violations': []},
+        'linking_constraints': {'passed': 0, 'failed': 0, 'violations': []},
         'food_group_constraints': {'passed': 0, 'failed': 0, 'violations': []}
     }
     
-    # 1. Check: At most one crop per plot
-    for plot in farms:
-        if is_patch_format:
-            # Patch format: Y_{farm}_{food}
-            assigned = sum(solution.get(f"Y_{plot}_{crop}", 0) for crop in foods)
-        else:
-            # Farm format: X_{plot}_{crop}
-            assigned = sum(solution.get(f"X_{plot}_{crop}", 0) for crop in foods)
+    # FARM FORMAT VALIDATION
+    if is_farm_format:
+        # 1. Check: Land availability per farm
+        for farm in farms:
+            farm_total = sum(solution.get(f"A_{farm}_{crop}", 0) for crop in foods)
+            farm_capacity = land_availability[farm]
             
-        if assigned > 1.01:  # Allow small numerical tolerance
-            violation = f"Plot {plot}: {assigned:.3f} crops assigned (should be <= 1)"
-            violations.append(violation)
-            constraint_checks['at_most_one_per_plot']['violations'].append(violation)
-            constraint_checks['at_most_one_per_plot']['failed'] += 1
-        else:
-            constraint_checks['at_most_one_per_plot']['passed'] += 1
-    
-    # 2. Check: X-Y Linking (only for farm format)
-    if not is_patch_format:
-        for plot in farms:
-            for crop in foods:
-                x_pc = solution.get(f"X_{plot}_{crop}", 0)
-                y_c = solution.get(f"Y_{crop}", 0)
-                if x_pc > y_c + 0.01:  # Allow small tolerance
-                    violation = f"X_{plot}_{crop}={x_pc:.3f} > Y_{crop}={y_c:.3f}"
-                    violations.append(violation)
-                    constraint_checks['x_y_linking']['violations'].append(violation)
-                    constraint_checks['x_y_linking']['failed'] += 1
-                else:
-                    constraint_checks['x_y_linking']['passed'] += 1
-    
-        # 3. Check: Y Activation (Y_c <= sum_p X_{p,c}) - only for farm format
-        for crop in foods:
-            y_c = solution.get(f"Y_{crop}", 0)
-            sum_x = sum(solution.get(f"X_{plot}_{crop}", 0) for plot in farms)
-            if y_c > sum_x + 0.01:  # Allow small tolerance
-                violation = f"Y_{crop}={y_c:.3f} > sum(X_{{p,{crop}}})={sum_x:.3f}"
+            if farm_total > farm_capacity + 0.01:
+                violation = f"{farm}: {farm_total:.4f} ha > {farm_capacity:.4f} ha capacity"
                 violations.append(violation)
-                constraint_checks['y_activation']['violations'].append(violation)
-                constraint_checks['y_activation']['failed'] += 1
+                constraint_checks['land_availability']['violations'].append(violation)
+                constraint_checks['land_availability']['failed'] += 1
             else:
-                constraint_checks['y_activation']['passed'] += 1
-    
-    # 4. Check: Area bounds (minimum and maximum per crop)
-    for crop in foods:
-        if is_patch_format:
-            # Patch format: Y_{farm}_{food}
-            crop_area = sum(
-                solution.get(f"Y_{plot}_{crop}", 0) * land_availability[plot]
-                for plot in farms
-            )
-        else:
-            # Farm format: X_{plot}_{crop}
-            crop_area = sum(
-                solution.get(f"X_{plot}_{crop}", 0) * land_availability[plot]
-                for plot in farms
-            )
+                constraint_checks['land_availability']['passed'] += 1
         
-        # Check minimum area
-        if crop in min_planting_area:
-            min_area = min_planting_area[crop]
-            
-            if is_patch_format:
-                # Check if any plot has this crop
-                y_c = sum(solution.get(f"Y_{plot}_{crop}", 0) for plot in farms)
-            else:
-                y_c = solution.get(f"Y_{crop}", 0)
+        # 2. Check: Linking constraints A and Y
+        # Constraint: A >= min_area * Y  AND  A <= farm_capacity * Y
+        for farm in farms:
+            farm_capacity = land_availability[farm]
+            for crop in foods:
+                a_val = solution.get(f"A_{farm}_{crop}", 0)
+                y_val = solution.get(f"Y_{farm}_{crop}", 0)
+                min_area = min_planting_area.get(crop, 0)
                 
-            if y_c > 0.5 and crop_area < min_area - 0.001:  # If crop selected, check min
-                violation = f"Crop {crop}: area={crop_area:.4f} < min={min_area:.4f}"
-                violations.append(violation)
-                constraint_checks['area_bounds_min']['violations'].append(violation)
-                constraint_checks['area_bounds_min']['failed'] += 1
-            else:
-                constraint_checks['area_bounds_min']['passed'] += 1
+                # If Y=1 (selected), check A >= min_area
+                if y_val > 0.5:
+                    if a_val < min_area * 0.999:  # Relative tolerance
+                        violation = f"A_{farm}_{crop}={a_val:.4f} < min_area={min_area:.4f} (Y=1)"
+                        violations.append(violation)
+                        constraint_checks['linking_constraints']['violations'].append(violation)
+                        constraint_checks['linking_constraints']['failed'] += 1
+                    elif a_val > farm_capacity + 0.001:
+                        violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f} (Y=1)"
+                        violations.append(violation)
+                        constraint_checks['linking_constraints']['violations'].append(violation)
+                        constraint_checks['linking_constraints']['failed'] += 1
+                    else:
+                        constraint_checks['linking_constraints']['passed'] += 1
+                else:  # Y=0 (not selected), A must be 0
+                    if a_val > 0.001:
+                        violation = f"A_{farm}_{crop}={a_val:.4f} but Y_{farm}_{crop}={y_val:.4f} (should be 0)"
+                        violations.append(violation)
+                        constraint_checks['linking_constraints']['violations'].append(violation)
+                        constraint_checks['linking_constraints']['failed'] += 1
+                    else:
+                        constraint_checks['linking_constraints']['passed'] += 1
     
-    # NOTE: No maximum area constraints - matches original solver_runner.py
+    # PATCH FORMAT VALIDATION (binary-only formulation - not used for Farm)
+    else:
+        # For patch format, we don't have these linking constraints
+        pass
     
-    # 5. Check: Food group constraints
+    # 3. Check: Food group constraints (works for both formats)
     if food_group_constraints:
         for group_name, group_data in food_group_constraints.items():
             if group_name in food_groups:
                 crops_in_group = food_groups[group_name]
                 
-                if is_patch_format:
-                    # Count how many plots have each crop
+                if is_farm_format:
+                    # Farm format: count crops with Y_{farm}_{crop} > 0.5 anywhere
                     n_selected = sum(
                         1 for crop in crops_in_group 
-                        if sum(solution.get(f"Y_{plot}_{crop}", 0) for plot in farms) > 0.5
+                        if any(solution.get(f"Y_{farm}_{crop}", 0) > 0.5 for farm in farms)
                     )
                 else:
+                    # Patch format: count crops with Y_{farm}_{crop} > 0.5 anywhere
                     n_selected = sum(
                         1 for crop in crops_in_group 
-                        if solution.get(f"Y_{crop}", 0) > 0.5
+                        if any(solution.get(f"Y_{farm}_{crop}", 0) > 0.5 for farm in farms)
                     )
                 
                 min_crops = group_data.get('min', 0)

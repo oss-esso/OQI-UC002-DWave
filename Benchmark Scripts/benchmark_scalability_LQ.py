@@ -48,7 +48,11 @@ def clean_solution_for_json(solution):
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    5, 19, 72, 279#, 1096, 1535
+    10,
+    #15,
+    #25,
+    #50,
+    #279#, 1096, 1535
 ]
 
 # Number of runs per configuration for statistical analysis
@@ -269,13 +273,12 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         
         # Solve with PuLP (linearized quadratic)
         print(f"\n  Solving with PuLP (Linearized Quadratic)...")
-        pulp_start = time.time()
         pulp_model, pulp_results = solve_with_pulp(farms, foods, food_groups, config)
-        pulp_time = time.time() - pulp_start
+        pulp_time = pulp_results['solve_time']  # Use internal timing (solver only, no Python overhead)
         
         print(f"    Status: {pulp_results['status']}")
         print(f"    Objective: {pulp_results.get('objective_value', 'N/A')}")
-        print(f"    Time: {pulp_time:.3f}s")
+        print(f"    Solve Time (solver only): {pulp_time:.3f}s")
         
         # Save PuLP results to cache
         if save_to_cache and cache:
@@ -286,6 +289,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                 'normalized_objective': pulp_results.get('normalized_objective'),
                 'total_area': pulp_results.get('total_area'),
                 'solution': clean_solution_for_json(pulp_results.get('solution', {})),
+                'validation': pulp_results.get('validation', {}),
                 'n_foods': n_foods,
                 'problem_size': problem_size,
                 'n_vars_pulp': n_vars_pulp,
@@ -296,9 +300,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         
         # Solve with Pyomo (native quadratic)
         print(f"\n  Solving with Pyomo (Native Quadratic)...")
-        pyomo_start = time.time()
         pyomo_model, pyomo_results = solve_with_pyomo(farms, foods, food_groups, config)
-        pyomo_time = time.time() - pyomo_start
+        pyomo_time = pyomo_results.get('solve_time', None)  # Use internal timing (solver only)
         
         if pyomo_results.get('error'):
             print(f"    Status: {pyomo_results['status']}")
@@ -308,7 +311,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         else:
             print(f"    Status: {pyomo_results['status']}")
             print(f"    Objective: {pyomo_results.get('objective_value', 'N/A')}")
-            print(f"    Time: {pyomo_time:.3f}s")
+            print(f"    Solve Time (solver only): {pyomo_time:.3f}s" if pyomo_time else "    Solve Time: N/A")
             pyomo_objective = pyomo_results.get('objective_value')
         
         # Save Pyomo results to cache
@@ -320,6 +323,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                 'normalized_objective': pyomo_results.get('normalized_objective'),
                 'total_area': pyomo_results.get('total_area'),
                 'solution': clean_solution_for_json(pyomo_results.get('solution', {})),
+                'validation': pyomo_results.get('validation', {}),
                 'error': pyomo_results.get('error'),
                 'n_foods': n_foods,
                 'problem_size': problem_size,
@@ -424,11 +428,13 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
             'pulp_objective': pulp_results.get('objective_value'),
             'pulp_normalized_objective': pulp_results.get('normalized_objective'),
             'pulp_total_area': pulp_results.get('total_area'),
+            'pulp_validation': pulp_results.get('validation', {}),
             'pyomo_time': pyomo_time,
             'pyomo_status': pyomo_results.get('status', 'Error'),
             'pyomo_objective': pyomo_objective,
             'pyomo_normalized_objective': pyomo_results.get('normalized_objective'),
             'pyomo_total_area': pyomo_results.get('total_area'),
+            'pyomo_validation': pyomo_results.get('validation', {}),
             'pulp_diff_percent': pulp_error,
             'dwave_time': dwave_time,
             'qpu_time': qpu_time,

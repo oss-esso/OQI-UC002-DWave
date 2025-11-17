@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "benchmark_type": "LQ",
+    "solver": "PuLP",
+    "n_farms": 50,
+    "run_number": 1,
+    "timestamp": "2025-11-17T15:49:05.041816"
+  },
+  "result": {
+    "solve_time": 1.5221588611602783,
+    "status": "Optimal",
+    "objective_value": 88.20906883775038,
+    "normalized_objective": 0.35905510985366706,
+    "total_area": 245.66999999999996,
+    "solution": {},
+    "validation": {
+      "is_feasible": false,
+      "n_violations": 5,
+      "violations": [
+        "Group Animal-source foods: 0 selections < min=1 (global)",
+        "Group Fruits: 0 selections < min=1 (global)",
+        "Group Pulses, nuts, and seeds: 0 selections < min=1 (global)",
+        "Group Starchy staples: 0 selections < min=1 (global)",
+        "Group Vegetables: 0 selections < min=1 (global)"
+      ],
+      "constraint_checks": {
+        "land_availability": {
+          "passed": 50,
+          "failed": 0,
+          "violations": []
+        },
+        "linking_constraints": {
+          "passed": 1350,
+          "failed": 0,
+          "violations": []
+        },
+        "food_group_constraints": {
+          "passed": 0,
+          "failed": 5,
+          "violations": [
+            "Group Animal-source foods: 0 selections < min=1 (global)",
+            "Group Fruits: 0 selections < min=1 (global)",
+            "Group Pulses, nuts, and seeds: 0 selections < min=1 (global)",
+            "Group Starchy staples: 0 selections < min=1 (global)",
+            "Group Vegetables: 0 selections < min=1 (global)"
+          ]
+        }
+      },
+      "summary": {
+        "total_checks": 1405,
+        "total_passed": 1400,
+        "total_failed": 5,
+        "pass_rate": 0.99644128113879
+      }
+    },
+    "n_foods": 27,
+    "problem_size": 1350,
+    "n_vars_pulp": 6400,
+    "n_constraints_pulp": 14350,
+    "n_synergy_pairs": 74
+  }
+}

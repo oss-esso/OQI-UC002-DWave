@@ -262,7 +262,7 @@ SOLVER_CONFIGS = {
         'has_bqm_energy': False,
         'has_constraints': True,
         'has_quadratic': False,
-        'has_validation': False,
+        'has_validation': True,
         'has_status': True,
         'has_success': True,
         'time_limit': None,
@@ -337,52 +337,66 @@ def extract_metrics(data: Dict[int, Dict], solver_key: str) -> Dict[str, List]:
     for conf in configs:
         d = data[conf]
 
-        # Core metrics
-        metrics['n_variables'].append(d['n_variables'])
-        metrics['total_area'].append(d['total_area'])
-        metrics['solve_time'].append(d['solve_time'])
-        metrics['objective_value'].append(d['objective_value'])
+        # Core metrics - with defensive access
+        metrics['n_variables'].append(d.get('n_variables', 0))
+        metrics['total_area'].append(d.get('total_area', 0))
+        metrics['solve_time'].append(d.get('solve_time', 0))
+        
+        # Adjust objective value by pass rate if validation report exists
+        objective_value = d.get('objective_value', 0)
+        if config['has_validation'] and 'validation' in d:
+            pass_rate = d['validation']['summary']['pass_rate']
+            objective_value = objective_value * pass_rate
+        
+        metrics['objective_value'].append(objective_value)
         
         # Solution summary
         if 'solution_summary' in d:
             summary = d['solution_summary']
-            metrics['n_crops'].append(summary['n_crops'])
-            metrics['utilization'].append(summary['utilization'])
-            metrics['crops_selected'].append(summary['crops_selected'])
-            metrics['total_allocated'].append(summary['total_allocated'])
-            metrics['idle_area'].append(summary['idle_area'])
+            metrics['n_crops'].append(summary.get('n_crops', 0))
+            metrics['utilization'].append(summary.get('utilization', 1.0))
+            metrics['crops_selected'].append(summary.get('crops_selected', []))
+            metrics['total_allocated'].append(summary.get('total_allocated', 0))
+            metrics['idle_area'].append(summary.get('idle_area', 0.0))
         else:
             # Farm problems fallback
             metrics['n_crops'].append(0)
             metrics['utilization'].append(1.0)
             metrics['crops_selected'].append([])
-            metrics['total_allocated'].append(d['total_area'])
+            metrics['total_allocated'].append(d.get('total_area', 0))
             metrics['idle_area'].append(0.0)
 
         # Conditional metrics
         if config['has_constraints']:
-            metrics['n_constraints'].append(d['n_constraints'])
+            metrics['n_constraints'].append(d.get('n_constraints', 0))
         if config['has_quadratic']:
-            metrics['n_quadratic'].append(d['n_quadratic'])
+            metrics['n_quadratic'].append(d.get('n_quadratic', 0))
         if config['has_qpu_time']:
-            metrics['qpu_time'].append(d['qpu_time'])
+            metrics['qpu_time'].append(d.get('qpu_time', 0))
             metrics['hybrid_time'].append(d.get('hybrid_time', 0))
         if config['has_solver_time']:
-            metrics['solver_time'].append(d.get('solver_time', d['solve_time']))
+            metrics['solver_time'].append(d.get('solver_time', d.get('solve_time', 0)))
         if config['has_bqm_conversion']:
             metrics['bqm_conversion_time'].append(d.get('bqm_conversion_time', 0))
         if config['has_bqm_energy']:
             metrics['bqm_energy'].append(d.get('bqm_energy', 0))
         if config['has_validation']:
-            validation = d['validation']
-            metrics['is_feasible'].append(validation['is_feasible'])
-            metrics['n_violations'].append(validation['n_violations'])
-            metrics['pass_rate'].append(validation['summary']['pass_rate'])
-            metrics['total_checks'].append(validation['summary']['total_checks'])
+            if 'validation' in d:
+                validation = d['validation']
+                metrics['is_feasible'].append(validation['is_feasible'])
+                metrics['n_violations'].append(validation['n_violations'])
+                metrics['pass_rate'].append(validation['summary']['pass_rate'])
+                metrics['total_checks'].append(validation['summary']['total_checks'])
+            else:
+                # Append default values if validation data is missing
+                metrics['is_feasible'].append(False)
+                metrics['n_violations'].append(0)
+                metrics['pass_rate'].append(0.0)
+                metrics['total_checks'].append(0)
         if config['has_status']:
-            metrics['status'].append(d['status'])
+            metrics['status'].append(d.get('status', 'unknown'))
         if config['has_success']:
-            metrics['success'].append(d['success'])
+            metrics['success'].append(d.get('success', False))
 
     return metrics
 
@@ -405,6 +419,37 @@ def extract_solution_composition(data: Dict[int, Dict], solver_key: str) -> Dict
                 crop = allocation['crop']
                 area = allocation['area']
                 crop_areas[crop] = crop_areas.get(crop, 0) + area
+        elif 'solution_plantations' in config_data:
+            # Patch format: solution_plantations has binary values (0 or 1)
+            # Two formats exist:
+            #   - PuLP: "Patch#_FoodName"
+            #   - QUBO/BQM/DWave: "Y_Patch#_FoodName"
+            # Note: QUBO solvers may also have auxiliary variables like "Y_Patch#_v{hash}_{num}"
+            solution_plantations = config_data['solution_plantations']
+            for patch_food, is_selected in solution_plantations.items():
+                # Extract food name from the key
+                if '_' in patch_food:
+                    parts = patch_food.split('_')
+                    # Handle both formats: "Patch#_Food" and "Y_Patch#_Food"
+                    if len(parts) >= 2:
+                        # If starts with Y_, skip it and get the food name from the last part
+                        if parts[0] == 'Y' and len(parts) >= 3:
+                            crop = '_'.join(parts[2:])  # Everything after "Y_Patch#"
+                        else:
+                            crop = '_'.join(parts[1:])  # Everything after "Patch#"
+                        
+                        # Skip auxiliary/slack variables (they start with 'v' followed by a hash)
+                        if crop.startswith('v') and len(crop) > 10:
+                            continue
+                        
+                        # Count selections (1 = selected, 0 = not selected)
+                        # Handle both string and numeric values
+                        try:
+                            selected_val = float(is_selected) if isinstance(is_selected, str) else is_selected
+                            if selected_val > 0:
+                                crop_areas[crop] = crop_areas.get(crop, 0) + 1
+                        except (ValueError, TypeError):
+                            continue
         elif 'solution_areas' in config_data:
             # Farm_PuLP format: solution_areas has "Farm#_FoodName": area
             solution_areas = config_data['solution_areas']
@@ -492,12 +537,12 @@ def plot_solution_composition_pie_charts(all_compositions: Dict[str, Dict], outp
             other_percentage = sum(item[1] for item in sorted_items[8:])
             
             for crop, percentage in top_items:
-                labels.append(f'{crop}\n({percentage:.1f}\%)')
+                labels.append(f'{crop}\n({percentage:.1f}\\%)')
                 sizes.append(percentage)
                 colors.append(crop_colors.get(crop, ColorPalette.SEMANTIC['neutral']))
             
             if other_percentage > 0.5:  # Only show "Other" if significant
-                labels.append(f'Other\n({other_percentage:.1f}\%)')
+                labels.append(f'Other\n({other_percentage:.1f}\\%)')
                 sizes.append(other_percentage)
                 colors.append(ColorPalette.SEMANTIC['neutral'])
             
@@ -576,12 +621,12 @@ def plot_individual_solver_pie_charts(data: Dict[int, Dict], solver_key: str, ou
         other_percentage = sum(item[1] for item in sorted_items[6:])
         
         for crop, percentage in top_items:
-            labels.append(f'{crop}\n({percentage:.1f}\%)')
+            labels.append(f'{crop}\n({percentage:.1f}\\%)')
             sizes.append(percentage)
             colors.append(crop_colors.get(crop, ColorPalette.SEMANTIC['neutral']))
         
         if other_percentage > 1.0:
-            labels.append(f'Other\n({other_percentage:.1f}\%)')
+            labels.append(f'Other\n({other_percentage:.1f}\\%)')
             sizes.append(other_percentage)
             colors.append(ColorPalette.SEMANTIC['neutral'])
         
@@ -846,42 +891,43 @@ def plot_performance_comparison(all_metrics: Dict[str, Dict], output_path: Path)
     
     # Plot 4: Objective/Constraint Violation Quality
     ax = axes[1, 1]
-    validation_solvers = [s for s in solvers if SOLVER_CONFIGS[s]['has_validation']]
     
-    for solver in validation_solvers:
+    # Include all solvers, but use different metrics based on validation availability
+    for solver in solvers:
         metrics = all_metrics[solver]
         color = ColorPalette.get_solver_color(solver)
         marker_style = ColorPalette.get_marker_style(solver)
+        config = SOLVER_CONFIGS[solver]
         
         problem_size = [n * 27 for n in metrics['n_units']]
-        # Calculate quality metric: obj * (1 - violations/constraints)
-        # Higher values are better (good objective with low violation rate)
-        # Lower values are worse (poor objective or high violation rate)
         
-        # Check if n_constraints is available for this solver
-        if 'n_constraints' in metrics:
-            quality_metric = [obj * (1 - violations / max(constraints, 1)) 
-                             for obj, violations, constraints in 
-                             zip(metrics['objective_value'], metrics['n_violations'], metrics['n_constraints'])]
+        # Calculate quality metric based on available data
+        if config['has_validation'] and 'n_violations' in metrics and len(metrics['n_violations']) > 0:
+            # For solvers with validation: obj * (1 - violations/constraints)
+            # Higher values are better (good objective with low violation rate)
+            if 'n_constraints' in metrics:
+                quality_metric = [obj * (1 - violations / max(constraints, 1)) 
+                                 for obj, violations, constraints in 
+                                 zip(metrics['objective_value'], metrics['n_violations'], metrics['n_constraints'])]
+            else:
+                # If no constraints data, just use objective adjusted by violation count
+                quality_metric = [obj * (1 - min(violations / 100, 1.0))
+                                 for obj, violations in 
+                                 zip(metrics['objective_value'], metrics['n_violations'])]
         else:
-            # Fallback: just use objective value if constraints not available
+            # For solvers without validation: just use objective value
             quality_metric = metrics['objective_value']
         
         ax.plot(problem_size, quality_metric,
                 color=color, label=SOLVER_CONFIGS[solver]['display_name'],
                 **marker_style)
     
-    if validation_solvers:
-        ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
-        ax.set_ylabel(r'$\text{Objective} \times (1 - \text{Violations}/\text{Constraints})$')
-        ax.set_title(r'$\textbf{Objective/Violation Quality}$')
-        ax.legend(fontsize=9)
-        ax.set_yscale('log')
-        ax.grid(True, alpha=0.3)
-    else:
-        ax.text(0.5, 0.5, r'$\text{No Validation Data}$', 
-                ha='center', va='center', transform=ax.transAxes, fontsize=12)
-        ax.set_title(r'$\textbf{Objective/Violation Quality}$')
+    ax.set_xlabel(r'$\text{Problem Size (Units} \times \text{Foods)}$')
+    ax.set_ylabel(r'$\text{Quality Metric}$')
+    ax.set_title(r'$\textbf{Solution Quality}$')
+    ax.legend(fontsize=9)
+    ax.set_yscale('log')
+    ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=3000, bbox_inches='tight')
@@ -1320,7 +1366,7 @@ def main():
                        choices=list(SOLVER_CONFIGS.keys()),
                        default=list(SOLVER_CONFIGS.keys()),
                        help='Solvers to analyze (default: all)')
-    parser.add_argument('--benchmark-dir', type=str, default='Legacy',
+    parser.add_argument('--benchmark-dir', type=str, default='Benchmarks',
                        help='Benchmark directory (default: Legacy)')
     parser.add_argument('--output-dir', type=str, default='professional_plots',
                        help='Output directory (default: professional_plots)')
@@ -1333,7 +1379,7 @@ def main():
     configure_professional_style()
     
     # Set up paths
-    script_dir = Path(__file__).parent
+    script_dir = Path(__file__).parent.resolve().parent
     benchmark_dir = script_dir / args.benchmark_dir
     output_dir = script_dir / args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
