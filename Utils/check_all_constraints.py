@@ -21,7 +21,8 @@ from dwave.system import LeapHybridBQMSampler
 import os
 
 configs = [5, 10, 15, 25]
-dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+#dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+dwave_token = None
 
 print("\n" + "="*120)
 print("CONSTRAINT SATISFACTION CHECK FOR ALL CONFIGURATIONS")

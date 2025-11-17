@@ -18,7 +18,8 @@ from .constraint_validator import validate_bqm_patch_constraints, validate_pulp_
 
 # Test configuration
 n_patches = 5
-dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+#dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+dwave_token = None
 
 print("="*80)
 print(f"CONSTRAINT COMPARISON: PuLP vs DWave ({n_patches} Patches)")

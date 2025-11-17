@@ -2723,7 +2723,8 @@ def main(scenario='simple', land_method='even_grid', n_units=None, total_land=10
         print("\n" + "=" * 80)
         print("SOLVING WITH DWAVE (BQUBO: CQM→BQM + HybridBQM)")
         print("=" * 80)
-        token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+        #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+        token = None
         sampleset, dwave_solve_time, qpu_access_time, bqm_conversion_time, invert = solve_with_dwave_bqm(cqm, token)
         
         # BQM samplesets don't have feasibility - all samples are valid (constraints are penalties)

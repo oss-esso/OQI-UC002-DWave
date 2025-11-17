@@ -129,7 +129,8 @@ def run_comprehensive_investigation():
     overall_start = time.time()
     
     # Check D-Wave token
-    dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    #dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    dwave_token = None
 
     if not dwave_token:
         print("\\n⚠️  WARNING: No D-Wave token found!")

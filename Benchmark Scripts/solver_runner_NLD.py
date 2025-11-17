@@ -773,7 +773,8 @@ def main(scenario='simple'):
     print("\n" + "=" * 80)
     print("SOLVING WITH DWAVE")
     print("=" * 80)
-    token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    token = None
     sampleset, dwave_solve_time = solve_with_dwave(cqm, token)
     
     feasible_sampleset = sampleset.filter(lambda d: d.is_feasible)

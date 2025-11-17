@@ -708,7 +708,8 @@ def main(scenario='simple'):
     print("SOLVING WITH DWAVE (Linear-Quadratic Objective)")
     print("=" * 80)
     
-    token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    token = None
     if token:
         try:
             sampleset, dwave_solve_time = solve_with_dwave(cqm, token)

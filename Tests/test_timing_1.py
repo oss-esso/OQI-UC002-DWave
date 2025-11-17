@@ -223,7 +223,8 @@ if __name__ == '__main__':
     visualize_input_graph(G)
 
     cqm = build_cqm(G)
-    token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    token = None
     sampler = LeapHybridCQMSampler(token=token)
     sample = run_cqm_and_collect_solutions(cqm, sampler)
 

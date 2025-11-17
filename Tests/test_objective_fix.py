@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 from benchmark_scalability_PATCH import run_benchmark
 
 configs = [5, 10, 15, 25]
-dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+#dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+dwave_token = None
 
 print("\n" + "="*120)
 print("OBJECTIVE FIX VERIFICATION TEST")

@@ -228,7 +228,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1):
             print(f"    ✅ CQM created: {len(cqm.variables)} vars, {len(cqm.constraints)} constraints")
             
             # Solve
-            token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            token = None
             print(f"    Submitting to D-Wave Leap...")
             sampleset, dwave_time = solve_with_dwave(cqm, token)
             

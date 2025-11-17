@@ -1044,7 +1044,8 @@ def main(scenario='simple', n_patches=None):
     print("\n" + "=" * 80)
     print("SOLVING WITH DWAVE (BQUBO: CQM→BQM + HybridBQM)")
     print("=" * 80)
-    token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+    token = None
     
     # Convert CQM to BQM once (reuse for both samplers)
     print("\nConverting CQM to BQM...")
