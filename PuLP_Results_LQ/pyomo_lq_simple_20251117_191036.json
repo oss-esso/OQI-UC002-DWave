@@ -1,0 +1,110 @@
+{
+  "status": "ok (optimal)",
+  "solver": "gurobi",
+  "objective_value": 73.12500000000001,
+  "normalized_objective": 0.32500000000000007,
+  "total_area": 225.0,
+  "solve_time": 0.02050161361694336,
+  "areas": {
+    "Farm1_Wheat": 0.0,
+    "Farm1_Corn": 0.0,
+    "Farm1_Rice": 0.0,
+    "Farm1_Soybeans": 75.0,
+    "Farm1_Potatoes": 0.0,
+    "Farm1_Apples": 0.0,
+    "Farm2_Wheat": 0.0,
+    "Farm2_Corn": 0.0,
+    "Farm2_Rice": 0.0,
+    "Farm2_Soybeans": 100.0,
+    "Farm2_Potatoes": 0.0,
+    "Farm2_Apples": 0.0,
+    "Farm3_Wheat": 0.0,
+    "Farm3_Corn": 0.0,
+    "Farm3_Rice": 0.0,
+    "Farm3_Soybeans": 50.0,
+    "Farm3_Potatoes": 0.0,
+    "Farm3_Apples": 0.0
+  },
+  "selections": {
+    "Farm1_Wheat": 0.0,
+    "Farm1_Corn": 0.0,
+    "Farm1_Rice": 0.0,
+    "Farm1_Soybeans": 1.0,
+    "Farm1_Potatoes": 0.0,
+    "Farm1_Apples": 0.0,
+    "Farm2_Wheat": 0.0,
+    "Farm2_Corn": 0.0,
+    "Farm2_Rice": 0.0,
+    "Farm2_Soybeans": 1.0,
+    "Farm2_Potatoes": 0.0,
+    "Farm2_Apples": 0.0,
+    "Farm3_Wheat": 0.0,
+    "Farm3_Corn": 0.0,
+    "Farm3_Rice": 0.0,
+    "Farm3_Soybeans": 1.0,
+    "Farm3_Potatoes": 0.0,
+    "Farm3_Apples": 0.0
+  },
+  "solution_summary": {
+    "crops_selected": [
+      "Soybeans"
+    ],
+    "n_crops": 1,
+    "farm_assignments": [
+      {
+        "crop": "Soybeans",
+        "total_area": 225.0,
+        "n_farms": 3,
+        "farms": [
+          {
+            "farm": "Farm1",
+            "area": 75.0,
+            "selected": 1.0
+          },
+          {
+            "farm": "Farm2",
+            "area": 100.0,
+            "selected": 1.0
+          },
+          {
+            "farm": "Farm3",
+            "area": 50.0,
+            "selected": 1.0
+          }
+        ]
+      }
+    ],
+    "total_allocated": 225.0,
+    "total_available": 225,
+    "idle_area": 0.0,
+    "utilization": 1.0
+  },
+  "validation": {
+    "is_feasible": true,
+    "n_violations": 0,
+    "violations": [],
+    "constraint_checks": {
+      "land_availability": {
+        "passed": 3,
+        "failed": 0,
+        "violations": []
+      },
+      "linking_constraints": {
+        "passed": 18,
+        "failed": 0,
+        "violations": []
+      },
+      "food_group_constraints": {
+        "passed": 0,
+        "failed": 0,
+        "violations": []
+      }
+    },
+    "summary": {
+      "total_checks": 21,
+      "total_passed": 21,
+      "total_failed": 0,
+      "pass_rate": 1.0
+    }
+  }
+}

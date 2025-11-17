@@ -42,6 +42,65 @@ except ImportError:
     PYOMO_AVAILABLE = False
     print("Warning: Pyomo not available. Install with: pip install pyomo")
 
+def extract_solution_summary(solution, farms, foods, land_availability):
+    """
+    Extract a summary of the solution showing crop selections and area allocations (LQ formulation).
+    
+    Args:
+        solution: Dictionary with variable assignments (A_{farm}_{crop} and Y_{farm}_{crop})
+        farms: List of farm names
+        foods: Dictionary of food data
+        land_availability: Dictionary mapping farm to area
+        
+    Returns:
+        dict: Summary with crops selected, areas, and farm assignments
+    """
+    crops_selected = set()
+    farm_assignments = []
+    total_allocated = 0.0
+    
+    for crop in foods:
+        # Calculate total area allocated to this crop
+        total_area = 0.0
+        assigned_farms = []
+        
+        for farm in farms:
+            a_var = f"A_{farm}_{crop}"
+            y_var = f"Y_{farm}_{crop}"
+            area = solution.get(a_var, 0)
+            selected = solution.get(y_var, 0)
+            
+            if area > 1e-6:  # Only include if actually allocated
+                total_area += area
+                assigned_farms.append({
+                    'farm': farm,
+                    'area': area,
+                    'selected': selected
+                })
+        
+        if total_area > 1e-6:  # Only include if actually allocated
+            crops_selected.add(crop)
+            farm_assignments.append({
+                'crop': crop,
+                'total_area': total_area,
+                'n_farms': len(assigned_farms),
+                'farms': assigned_farms
+            })
+            total_allocated += total_area
+    
+    total_available = sum(land_availability.values())
+    idle_area = total_available - total_allocated
+    
+    return {
+        'crops_selected': list(crops_selected),
+        'n_crops': len(crops_selected),
+        'farm_assignments': farm_assignments,
+        'total_allocated': total_allocated,
+        'total_available': total_available,
+        'idle_area': idle_area,
+        'utilization': total_allocated / total_available if total_available > 0 else 0
+    }
+
 def create_cqm(farms, foods, food_groups, config):
     """
     Creates a CQM for the food optimization problem with linear-quadratic objective.
@@ -158,6 +217,10 @@ def create_cqm(farms, foods, food_groups, config):
     for farm in farms:
         for food in foods:
             A_min = min_planting_area.get(food, 0)
+            # CRITICAL FIX: If no minimum area is specified, use small epsilon (0.001 ha)
+            # This prevents Y=1 when A=0 (which would incorrectly claim synergy bonuses)
+            if A_min == 0:
+                A_min = 0.001  # 0.001 hectares = 10 square meters minimum
             
             cqm.add_constraint(
                 A[(farm, food)] - A_min * Y[(farm, food)] >= 0,
@@ -308,6 +371,10 @@ def solve_with_pulp(farms, foods, food_groups, config):
     for f in farms:
         for c in foods:
             A_min = min_planting_area.get(c, 0)
+            # CRITICAL FIX: If no minimum area is specified, use small epsilon (0.001 ha)
+            # This prevents Y=1 when A=0 (which would incorrectly claim synergy bonuses)
+            if A_min == 0:
+                A_min = 0.001  # 0.001 hectares = 10 square meters minimum
             model += A_pulp[(f, c)] >= A_min * Y_pulp[(f, c)], f"MinArea_{f}_{c}"
             model += A_pulp[(f, c)] <= land_availability[f] * Y_pulp[(f, c)], f"MaxArea_{f}_{c}"
     
@@ -380,13 +447,21 @@ def solve_with_pulp(farms, foods, food_groups, config):
     obj_value = pl.value(model.objective)
     normalized_objective = obj_value / total_area if total_area > 1e-6 else 0.0
     
-    # Merge areas and selections into single solution dict for validation
-    solution = {**areas, **selections}
+    # Create solution dict with proper prefixes for validation and summary extraction
+    # Use A_ and Y_ prefixes to distinguish area and selection variables
+    solution = {}
+    for key, val in areas.items():
+        solution[f"A_{key}"] = val
+    for key, val in selections.items():
+        solution[f"Y_{key}"] = val
     
     # Validate solution against constraints
     validation_results = validate_solution_constraints(
         solution, farms, foods, food_groups, land_availability, config
     )
+    
+    # Generate solution summary
+    solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
     
     results = {
         'status': pl.LpStatus[model.status],
@@ -396,15 +471,21 @@ def solve_with_pulp(farms, foods, food_groups, config):
         'solve_time': solve_time,
         'areas': areas,
         'selections': selections,
+        'solution_summary': solution_summary,
         'validation': validation_results
     }
     
     print(f"  Total area allocated: {total_area:.2f}")
     print(f"  Raw objective: {obj_value:.4f}")
     print(f"  Normalized objective: {normalized_objective:.6f}")
-    print(f"  Constraint validation: {'✅ PASSED' if validation_results['is_feasible'] else '❌ FAILED'}")
+    validation_status = "PASSED" if validation_results['is_feasible'] else "FAILED"
+    print(f"  Constraint validation: {validation_status}")
     if not validation_results['is_feasible']:
         print(f"    Violations: {validation_results['n_violations']}")
+        for violation in validation_results['violations'][:3]:  # Show first 3 violations
+            print(f"      - {violation}")
+        if validation_results['n_violations'] > 3:
+            print(f"      ... and {validation_results['n_violations'] - 3} more")
     
     return model, results
 
@@ -456,28 +537,38 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
             y_val = solution.get(f"Y_{farm}_{crop}", 0)
             min_area = min_planting_area.get(crop, 0)
             
-            # If Y=1 (selected), check A >= min_area and A <= farm_capacity
-            if y_val > 0.5:
+            # Treat Y values close to 0 or 1 as binary (for solvers with numerical imprecision)
+            # Y > 0.9 is considered selected (Y=1)
+            # Y < 0.1 is considered not selected (Y=0)
+            # 0.1 <= Y <= 0.9 is considered a violation (Y should be binary)
+            
+            if y_val > 0.9:  # Selected (Y ≈ 1)
                 if a_val < min_area * 0.999:  # Relative tolerance
-                    violation = f"A_{farm}_{crop}={a_val:.4f} < min_area={min_area:.4f} (Y=1)"
+                    violation = f"A_{farm}_{crop}={a_val:.4f} < min_area={min_area:.4f} (Y={y_val:.2f}≈1)"
                     violations.append(violation)
                     constraint_checks['linking_constraints']['violations'].append(violation)
                     constraint_checks['linking_constraints']['failed'] += 1
                 elif a_val > farm_capacity + 0.001:
-                    violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f} (Y=1)"
+                    violation = f"A_{farm}_{crop}={a_val:.4f} > farm_capacity={farm_capacity:.4f} (Y={y_val:.2f}≈1)"
                     violations.append(violation)
                     constraint_checks['linking_constraints']['violations'].append(violation)
                     constraint_checks['linking_constraints']['failed'] += 1
                 else:
                     constraint_checks['linking_constraints']['passed'] += 1
-            else:  # Y=0 (not selected), A must be 0
+            elif y_val < 0.1:  # Not selected (Y ≈ 0)
                 if a_val > 0.001:
-                    violation = f"A_{farm}_{crop}={a_val:.4f} but Y_{farm}_{crop}={y_val:.4f} (should be 0)"
+                    violation = f"A_{farm}_{crop}={a_val:.4f} but Y_{farm}_{crop}={y_val:.4f}≈0 (should be 0)"
                     violations.append(violation)
                     constraint_checks['linking_constraints']['violations'].append(violation)
                     constraint_checks['linking_constraints']['failed'] += 1
                 else:
                     constraint_checks['linking_constraints']['passed'] += 1
+            else:  # Y is not binary (0.1 <= Y <= 0.9)
+                # This indicates the solver is not properly enforcing binary constraints
+                violation = f"Y_{farm}_{crop}={y_val:.4f} is not binary (should be 0 or 1)"
+                violations.append(violation)
+                constraint_checks['linking_constraints']['violations'].append(violation)
+                constraint_checks['linking_constraints']['failed'] += 1
     
     # 3. Check: Food group constraints - GLOBAL across all farms
     if food_group_constraints:
@@ -486,8 +577,9 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
                 crops_in_group = food_groups[group_name]
                 
                 # Count total selections across ALL farms (global constraint)
+                # Round Y values: >0.9 counts as selected, <0.1 counts as not selected
                 n_selected_global = sum(
-                    solution.get(f"Y_{farm}_{crop}", 0) 
+                    1 if solution.get(f"Y_{farm}_{crop}", 0) > 0.9 else 0
                     for farm in farms 
                     for crop in crops_in_group
                 )
@@ -495,13 +587,13 @@ def validate_solution_constraints(solution, farms, foods, food_groups, land_avai
                 min_foods = group_data.get('min_foods', 0)
                 max_foods = group_data.get('max_foods', len(crops_in_group) * len(farms))
                 
-                if n_selected_global < min_foods - 0.5:  # Tolerance for binary rounding
-                    violation = f"Group {group_name}: {n_selected_global:.0f} selections < min={min_foods} (global)"
+                if n_selected_global < min_foods:
+                    violation = f"Group {group_name}: {n_selected_global} selections < min={min_foods} (global)"
                     violations.append(violation)
                     constraint_checks['food_group_constraints']['violations'].append(violation)
                     constraint_checks['food_group_constraints']['failed'] += 1
-                elif n_selected_global > max_foods + 0.5:
-                    violation = f"Group {group_name}: {n_selected_global:.0f} selections > max={max_foods} (global)"
+                elif n_selected_global > max_foods:
+                    violation = f"Group {group_name}: {n_selected_global} selections > max={max_foods} (global)"
                     violations.append(violation)
                     constraint_checks['food_group_constraints']['violations'].append(violation)
                     constraint_checks['food_group_constraints']['failed'] += 1
@@ -619,6 +711,10 @@ def solve_with_pyomo(farms, foods, food_groups, config):
     # Linking constraints (binary selection)
     def min_area_rule(m, f, c):
         A_min = min_planting_area.get(c, 0)
+        # CRITICAL FIX: If no minimum area is specified, use small epsilon (0.001 ha)
+        # This prevents Y=1 when A=0 (which would incorrectly claim synergy bonuses)
+        if A_min == 0:
+            A_min = 0.001  # 0.001 hectares = 10 square meters minimum
         return m.A[f, c] >= A_min * m.Y[f, c]
     model.min_area = pyo.Constraint(model.farms, model.foods, rule=min_area_rule)
     
@@ -657,11 +753,23 @@ def solve_with_pyomo(farms, foods, food_groups, config):
     solver_name = None
     solver = None
     
-    print("  Searching for IPOPT solver (recommended for quadratic objectives)...")
+    print("  Searching for MIQP/MIQCP solver (required for binary+quadratic)...")
     
-    # Prioritize IPOPT for quadratic problems, which handles them natively
-    # IPOPT is the best open-source solver for nonlinear optimization
-    solver_options = ['ipopt', 'scip', 'cbc', 'glpk', 'cplex', 'gurobi']
+    # CRITICAL: We need MIQP (Mixed-Integer Quadratic Programming) solvers
+    # IPOPT is NOT suitable - it's a continuous NLP solver that treats binaries as [0,1] continuous!
+    # Proper priority: Commercial MIQP solvers > Open-source MIQCP solvers
+    # - Gurobi, CPLEX: Commercial, excellent for MIQP
+    # - SCIP: Open-source, supports MIQCP
+    # - CBC, GLPK: Only support linear (no quadratic), will linearize
+    # - IPOPT: Continuous only - CANNOT handle binary variables!
+    
+    solver_options = [
+        'gurobi',  # Commercial MIQP - best performance
+        'cplex',   # Commercial MIQP - excellent
+        'scip',    # Open-source MIQCP - good
+        'cbc',     # Open-source MIP only (no Q) - requires linearization
+        'glpk',    # Open-source MIP only (no Q) - requires linearization
+    ]
     
     for solver_opt in solver_options:
         try:
@@ -669,23 +777,37 @@ def solve_with_pyomo(farms, foods, food_groups, config):
             if test_solver.available():
                 solver_name = solver_opt
                 solver = test_solver
-                print(f"  Found solver: {solver_name}")
+                print(f"  * Found solver: {solver_name}")
+                if solver_name in ['cbc', 'glpk']:
+                    print(f"  ! Warning: {solver_name} doesn't support quadratic objectives natively")
+                    print(f"    Pyomo will attempt automatic linearization (may be suboptimal)")
                 break
         except Exception as e:
             continue
     
     if solver is None:
-        print("  ERROR: No suitable solver found.")
-        print("  Recommended solver for LQ: IPOPT (handles quadratic natively)")
-        print("  Install with: conda install -c conda-forge ipopt")
-        print("  Alternative: SCIP (MIQCP): conda install -c conda-forge pyscipopt")
+        print("  X ERROR: No suitable MIQP/MIP solver found.")
+        print("  ")
+        print("  CRITICAL: IPOPT was intentionally excluded because it's a continuous")
+        print("            NLP solver that CANNOT handle binary variables properly!")
+        print("  ")
+        print("  Recommended solvers for LQ (in priority order):")
+        print("    1. Gurobi (commercial, free academic license):")
+        print("       conda install -c gurobi gurobi")
+        print("    2. CPLEX (commercial, free academic license):")
+        print("       conda install -c ibmdecisionoptimization cplex")
+        print("    3. SCIP (open-source MIQCP):")
+        print("       conda install -c conda-forge pyscipopt")
+        print("    4. CBC (open-source MIP, will linearize quadratic):")
+        print("       conda install -c conda-forge coincbc")
+        print("  ")
         return model, {
             'status': 'No Solver',
             'objective_value': None,
             'solve_time': 0.0,
             'areas': {},
             'selections': {},
-            'error': 'No MIQP solver available'
+            'error': 'No MIQP/MIP solver available. IPOPT excluded (continuous NLP only).'
         }
     
     # Solve
@@ -708,7 +830,19 @@ def solve_with_pyomo(farms, foods, food_groups, config):
             for c in foods:
                 key = f"{f}_{c}"
                 area_val = pyo.value(model.A[f, c]) if model.A[f, c].value is not None else 0.0
-                select_val = pyo.value(model.Y[f, c]) if model.Y[f, c].value is not None else 0.0
+                select_val_raw = pyo.value(model.Y[f, c]) if model.Y[f, c].value is not None else 0.0
+                
+                # Clean up numerical noise for area values
+                if abs(area_val) < 1e-6:
+                    area_val = 0.0
+                
+                # Round Y values to nearest binary (0 or 1)
+                # For MIQP solvers like Gurobi, Y should already be exactly 0 or 1
+                # But we round for robustness: values >0.5 -> 1, values <=0.5 -> 0
+                if select_val_raw > 0.5:
+                    select_val = 1.0
+                else:
+                    select_val = 0.0
                 
                 areas[key] = area_val
                 selections[key] = select_val
@@ -718,13 +852,21 @@ def solve_with_pyomo(farms, foods, food_groups, config):
         obj_value = pyo.value(model.obj) if pyo.value(model.obj) is not None else None
         normalized_objective = obj_value / total_area if (obj_value is not None and total_area > 1e-6) else 0.0
         
-        # Merge areas and selections into single solution dict for validation
-        solution = {**areas, **selections}
+        # Create solution dict with proper prefixes for validation and summary extraction
+        # Use A_ and Y_ prefixes to distinguish area and selection variables
+        solution = {}
+        for key, val in areas.items():
+            solution[f"A_{key}"] = val
+        for key, val in selections.items():
+            solution[f"Y_{key}"] = val
         
         # Validate solution against constraints
         validation_results = validate_solution_constraints(
             solution, farms, foods, food_groups, land_availability, config
         )
+        
+        # Generate solution summary
+        solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
         
         output = {
             'status': f"{status} ({termination})",
@@ -735,15 +877,22 @@ def solve_with_pyomo(farms, foods, food_groups, config):
             'solve_time': solve_time,
             'areas': areas,
             'selections': selections,
+            'solution_summary': solution_summary,
             'validation': validation_results
         }
         
         print(f"  Total area allocated: {total_area:.2f}")
         print(f"  Raw objective: {obj_value:.4f}" if obj_value else "  Raw objective: None")
         print(f"  Normalized objective: {normalized_objective:.6f}")
-        print(f"  Constraint validation: {'✅ PASSED' if validation_results['is_feasible'] else '❌ FAILED'}")
+        print(f"  Crops selected: {solution_summary['n_crops']}")
+        validation_status = "PASSED" if validation_results['is_feasible'] else "FAILED"
+        print(f"  Constraint validation: {validation_status}")
         if not validation_results['is_feasible']:
             print(f"    Violations: {validation_results['n_violations']}")
+            for violation in validation_results['violations'][:3]:  # Show first 3 violations
+                print(f"      - {violation}")
+            if validation_results['n_violations'] > 3:
+                print(f"      ... and {validation_results['n_violations'] - 3} more")
         
         return model, output
         

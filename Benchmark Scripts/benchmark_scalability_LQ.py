@@ -280,21 +280,25 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         print(f"    Objective: {pulp_results.get('objective_value', 'N/A')}")
         print(f"    Solve Time (solver only): {pulp_time:.3f}s")
         
-        # Save PuLP results to cache
+        # Save PuLP results to cache in comprehensive benchmark format
         if save_to_cache and cache:
             pulp_cache_result = {
-                'solve_time': pulp_time,
                 'status': pulp_results['status'],
                 'objective_value': pulp_results.get('objective_value'),
-                'normalized_objective': pulp_results.get('normalized_objective'),
+                'solve_time': pulp_time,
+                'solver_time': pulp_time,
+                'success': pulp_results['status'] == 'Optimal',
+                'sample_id': run_number - 1,
+                'n_units': n_farms,
                 'total_area': pulp_results.get('total_area'),
-                'solution': clean_solution_for_json(pulp_results.get('solution', {})),
-                'validation': pulp_results.get('validation', {}),
                 'n_foods': n_foods,
-                'problem_size': problem_size,
-                'n_vars_pulp': n_vars_pulp,
-                'n_constraints_pulp': n_constraints_pulp,
-                'n_synergy_pairs': n_synergy_pairs
+                'n_variables': n_vars_quadratic,
+                'n_constraints': n_constraints_quadratic,
+                'solution_areas': pulp_results.get('areas', {}),
+                'solution_selections': pulp_results.get('selections', {}),
+                'total_covered_area': pulp_results.get('total_area', 0),
+                'solution_summary': pulp_results.get('solution_summary', {}),
+                'validation': pulp_results.get('validation', {})
             }
             cache.save_result('LQ', 'PuLP', n_farms, run_number, pulp_cache_result)
         
@@ -314,29 +318,34 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
             print(f"    Solve Time (solver only): {pyomo_time:.3f}s" if pyomo_time else "    Solve Time: N/A")
             pyomo_objective = pyomo_results.get('objective_value')
         
-        # Save Pyomo results to cache
+        # Save Pyomo results to cache in comprehensive benchmark format
         if save_to_cache and cache:
             pyomo_cache_result = {
-                'solve_time': pyomo_time,
                 'status': pyomo_results.get('status', 'Error'),
                 'objective_value': pyomo_objective,
-                'normalized_objective': pyomo_results.get('normalized_objective'),
-                'total_area': pyomo_results.get('total_area'),
-                'solution': clean_solution_for_json(pyomo_results.get('solution', {})),
-                'validation': pyomo_results.get('validation', {}),
-                'error': pyomo_results.get('error'),
+                'solve_time': pyomo_time,
+                'solver_time': pyomo_time,
+                'success': pyomo_objective is not None and pyomo_results.get('status', '').startswith('optimal'),
+                'sample_id': run_number - 1,
+                'n_units': n_farms,
+                'total_area': pyomo_results.get('total_area', 0),
                 'n_foods': n_foods,
-                'problem_size': problem_size,
-                'n_vars_quadratic': n_vars_quadratic,
-                'n_constraints_quadratic': n_constraints_quadratic,
-                'n_synergy_pairs': n_synergy_pairs
+                'n_variables': n_vars_quadratic,
+                'n_constraints': n_constraints_quadratic,
+                'solver': pyomo_results.get('solver'),
+                'solution_areas': pyomo_results.get('areas', {}),
+                'solution_selections': pyomo_results.get('selections', {}),
+                'total_covered_area': pyomo_results.get('total_area', 0),
+                'solution_summary': pyomo_results.get('solution_summary', {}),
+                'validation': pyomo_results.get('validation', {}),
+                'error': pyomo_results.get('error')
             }
             cache.save_result('LQ', 'Pyomo', n_farms, run_number, pyomo_cache_result)
         
         # Solve with DWave
         print(f"\n  Solving with DWave...")
-        #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
-        token = None
+        token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+        #token = None
         
         dwave_time = None
         qpu_time = None
@@ -345,6 +354,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         dwave_objective = None
         dwave_total_area = None
         dwave_normalized_objective = None
+        sampleset = None
+        feasible_sampleset = None
 
         if not token:
             print(f"    SKIPPED: DWAVE_API_TOKEN not found.")
@@ -360,10 +371,10 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
                     dwave_objective = -best.energy
                     
                     # Calculate total area from the solution
+                    # CQM variables use "A_{farm}_{crop}" prefix (NOT "Area_")
                     dwave_total_area = 0.0
                     for var_name, var_value in best.sample.items():
-                        # Area variables are named like "Area_farm_crop"
-                        if var_name.startswith('Area_') and var_value > 1e-6:
+                        if var_name.startswith('A_') and var_value > 1e-6:
                             dwave_total_area += var_value
                     
                     # Calculate normalized objective
@@ -391,16 +402,78 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
             except Exception as e:
                 print(f"    ERROR: DWave solving failed: {str(e)}")
         
-        # Save DWave results to cache
+        # Save DWave results to cache in comprehensive benchmark format (matching Farm scenario extraction)
         if save_to_cache and cache:
+            # Extract solution variables and run validation if feasible solution found
+            dwave_solution_areas = {}
+            dwave_solution_selections = {}
+            dwave_land_data = {}
+            dwave_validation = {}
+            
+            if dwave_feasible and sampleset:
+                from solver_runner_LQ import validate_solution_constraints, extract_solution_summary
+                
+                # Extract best solution
+                best = feasible_sampleset.first
+                cqm_sample = dict(best.sample)
+                
+                # Calculate total covered area (sum of all A_ variables) - matching comprehensive_benchmark.py
+                total_covered_area = sum(
+                    v for k, v in cqm_sample.items() 
+                    if k.startswith('A_') and isinstance(v, (int, float)) and v > 0
+                )
+                
+                # Build solution dictionary and extract areas/selections
+                # CQM variables are named "A_{farm}_{crop}" and "Y_{farm}_{crop}" (NOT "Area_")
+                solution = {}
+                for var_name, var_value in cqm_sample.items():
+                    if var_name.startswith('A_'):
+                        # A_ variables are already in correct format
+                        solution[var_name] = var_value
+                        # Store in solution_areas dict (full variable name with A_ prefix)
+                        dwave_solution_areas[var_name] = var_value
+                    elif var_name.startswith('Y_'):
+                        # Y variables already have correct prefix
+                        solution[var_name] = var_value
+                        # Store in solution_selections dict (full variable name with Y_ prefix)
+                        dwave_solution_selections[var_name] = var_value
+                
+                # Calculate land usage per farm - use EXACT land_data from config
+                land_availability = config['parameters']['land_availability']
+                for farm in farms:
+                    farm_total = sum(cqm_sample.get(f"A_{farm}_{crop}", 0) for crop in foods)
+                    dwave_land_data[farm] = farm_total
+                
+                # Run validation using exact same approach as comprehensive_benchmark.py Farm scenario
+                dwave_validation = validate_solution_constraints(
+                    solution, farms, foods, food_groups, land_availability, config
+                )
+                
+                # Extract solution summary
+                dwave_solution_summary = extract_solution_summary(solution, farms, foods, land_availability)
+            else:
+                dwave_solution_summary = {}
+                total_covered_area = 0
+            
             dwave_cache_result = {
-                'dwave_time': dwave_time,
+                'status': 'Optimal' if dwave_feasible else 'Infeasible',
+                'objective_value': dwave_objective if dwave_feasible else None,
+                'solve_time': dwave_time,
                 'qpu_time': qpu_time,
                 'hybrid_time': hybrid_time,
-                'feasible': dwave_feasible,
-                'objective_value': dwave_objective,
-                'normalized_objective': dwave_normalized_objective,
-                'total_area': dwave_total_area,
+                'is_feasible': dwave_feasible,
+                'success': dwave_feasible,
+                'sample_id': run_number - 1,
+                'n_units': n_farms,
+                'total_area': sum(config['parameters']['land_availability'].values()) if config else 0,
+                'n_foods': n_foods,
+                'n_variables': n_vars_quadratic,
+                'n_constraints': n_constraints_quadratic,
+                'total_covered_area': total_covered_area,
+                'num_samples': len(feasible_sampleset) if dwave_feasible and feasible_sampleset else 0,
+                'solution_areas': dwave_solution_areas,  # Full variable names with A_ prefix
+                'land_data': dwave_land_data,  # Actual land usage per farm
+                'validation': dwave_validation
             }
             cache.save_result('LQ', 'DWave', n_farms, run_number, dwave_cache_result)
         
@@ -411,39 +484,81 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
             print(f"\n  Solution Comparison:")
             print(f"    PuLP vs Pyomo: {pulp_error:.4f}% (should be ~0% - exact)")
         
+        # Build result in comprehensive_benchmark.py format
         result = {
-            'n_farms': n_farms,
+            'sample_id': run_number - 1,  # 0-indexed
+            'scenario_type': 'lq_farm',
+            'n_units': n_farms,
+            'total_area': sum(config['parameters']['land_availability'].values()),
             'n_foods': n_foods,
-            'n_synergy_pairs': n_synergy_pairs,
-            'n_vars_base': n_vars_base,
-            'n_z_vars_pulp': n_z_vars_pulp,
-            'n_vars_pulp': n_vars_pulp,
-            'n_vars_quadratic': n_vars_quadratic,
-            'n_constraints_pulp': n_constraints_pulp,
-            'n_constraints_quadratic': n_constraints_quadratic,
-            'problem_size': problem_size,
+            'n_variables': n_vars_quadratic,  # Use quadratic count (CQM/Pyomo)
+            'n_constraints': n_constraints_quadratic,
             'cqm_time': cqm_time,
-            'pulp_time': pulp_time,
-            'pulp_status': pulp_results['status'],
-            'pulp_objective': pulp_results.get('objective_value'),
-            'pulp_normalized_objective': pulp_results.get('normalized_objective'),
-            'pulp_total_area': pulp_results.get('total_area'),
-            'pulp_validation': pulp_results.get('validation', {}),
-            'pyomo_time': pyomo_time,
-            'pyomo_status': pyomo_results.get('status', 'Error'),
-            'pyomo_objective': pyomo_objective,
-            'pyomo_normalized_objective': pyomo_results.get('normalized_objective'),
-            'pyomo_total_area': pyomo_results.get('total_area'),
-            'pyomo_validation': pyomo_results.get('validation', {}),
-            'pulp_diff_percent': pulp_error,
-            'dwave_time': dwave_time,
-            'qpu_time': qpu_time,
-            'hybrid_time': hybrid_time,
-            'dwave_objective': dwave_objective,
-            'dwave_normalized_objective': dwave_normalized_objective,
-            'dwave_total_area': dwave_total_area,
-            'dwave_feasible': dwave_feasible,
+            'solvers': {}
         }
+        
+        # Add PuLP results under 'gurobi' key (for consistency with comprehensive_benchmark)
+        result['solvers']['gurobi'] = {
+            'status': pulp_results['status'],
+            'objective_value': pulp_results.get('objective_value'),
+            'solve_time': pulp_time,
+            'solver_time': pulp_time,  # PuLP uses same for both
+            'success': pulp_results['status'] == 'Optimal',
+            'sample_id': run_number - 1,
+            'n_units': n_farms,
+            'total_area': pulp_results.get('total_area', 0),
+            'n_foods': n_foods,
+            'n_variables': n_vars_quadratic,
+            'n_constraints': n_constraints_quadratic,
+            'solution_areas': pulp_results.get('areas', {}),
+            'solution_selections': pulp_results.get('selections', {}),
+            'total_covered_area': pulp_results.get('total_area', 0),
+            'solution_summary': pulp_results.get('solution_summary', {}),
+            'validation': pulp_results.get('validation', {})
+        }
+        
+        # Add Pyomo results under 'pyomo_native' key
+        if pyomo_objective is not None or pyomo_results.get('error'):
+            result['solvers']['pyomo_native'] = {
+                'status': pyomo_results.get('status', 'Error'),
+                'objective_value': pyomo_objective,
+                'solve_time': pyomo_time,
+                'solver_time': pyomo_time,
+                'success': pyomo_objective is not None and pyomo_results.get('status', '').startswith('optimal'),
+                'sample_id': run_number - 1,
+                'n_units': n_farms,
+                'total_area': pyomo_results.get('total_area', 0),
+                'n_foods': n_foods,
+                'n_variables': n_vars_quadratic,
+                'n_constraints': n_constraints_quadratic,
+                'solver': pyomo_results.get('solver'),
+                'solution_areas': pyomo_results.get('areas', {}),
+                'solution_selections': pyomo_results.get('selections', {}),
+                'total_covered_area': pyomo_results.get('total_area', 0),
+                'solution_summary': pyomo_results.get('solution_summary', {}),
+                'validation': pyomo_results.get('validation', {}),
+                'error': pyomo_results.get('error')
+            }
+        
+        # Add DWave results under 'dwave_cqm' key
+        if dwave_time is not None:
+            result['solvers']['dwave_cqm'] = {
+                'status': 'Optimal' if dwave_feasible else 'No Solutions',
+                'objective_value': dwave_objective,
+                'solve_time': dwave_time,
+                'qpu_time': qpu_time,
+                'hybrid_time': hybrid_time,
+                'is_feasible': dwave_feasible,
+                'success': dwave_feasible,
+                'sample_id': run_number - 1,
+                'n_units': n_farms,
+                'total_area': sum(config['parameters']['land_availability'].values()),
+                'n_foods': n_foods,
+                'n_variables': n_vars_quadratic,
+                'n_constraints': n_constraints_quadratic,
+                'total_covered_area': dwave_total_area if dwave_total_area else 0,
+                'num_feasible': 1 if dwave_feasible else 0
+            }
         
         return result
         
@@ -655,70 +770,104 @@ def main():
         existing_pulp_results = cache.get_all_results('LQ', 'PuLP', n_farms)
         config_results = []
         
-        # Convert cached results to the format expected by aggregation
+        # Convert cached results to the NEW format (matching comprehensive_benchmark)
         for cached in existing_pulp_results:
             result_data = cached['result']
             run_num = cached['metadata']['run_number']
             
+            # Build result in new nested format
             run_result = {
-                'n_farms': n_farms,
+                'sample_id': run_num - 1,  # 0-indexed
+                'scenario_type': 'lq_farm',
+                'n_units': n_farms,
+                'total_area': result_data.get('total_area', 0),
                 'n_foods': result_data.get('n_foods', 10),
-                'pulp_time': result_data['solve_time'],
-                'pulp_status': result_data['status'],
-                'pulp_objective': result_data['objective_value'],
-                'problem_size': result_data.get('problem_size', n_farms * 10),
-                'n_synergy_pairs': result_data.get('n_synergy_pairs', 0),
-                'n_vars_base': result_data.get('n_vars_base', 0),
-                'n_z_vars_pulp': result_data.get('n_z_vars_pulp', 0),
-                'n_vars_pulp': result_data.get('n_vars_pulp', 0),
-                'n_vars_quadratic': result_data.get('n_vars_quadratic', 0),
-                'n_constraints_pulp': result_data.get('n_constraints_pulp', 0),
-                'n_constraints_quadratic': result_data.get('n_constraints_quadratic', 0)
+                'n_variables': result_data.get('n_vars_quadratic', 0),
+                'n_constraints': result_data.get('n_constraints_quadratic', 0),
+                'cqm_time': None,  # Will be loaded separately
+                'solvers': {}
+            }
+            
+            # Add PuLP results under 'gurobi' key
+            run_result['solvers']['gurobi'] = {
+                'status': result_data['status'],
+                'objective_value': result_data['objective_value'],
+                'solve_time': result_data['solve_time'],
+                'solver_time': result_data['solve_time'],
+                'success': result_data['status'] == 'Optimal',
+                'sample_id': run_num - 1,
+                'n_units': n_farms,
+                'total_area': result_data.get('total_area', 0),
+                'n_foods': result_data.get('n_foods', 10),
+                'n_variables': result_data.get('n_vars_quadratic', 0),
+                'n_constraints': result_data.get('n_constraints_quadratic', 0),
+                'solution_areas': {},  # Not stored in cache
+                'solution_selections': {},  # Not stored in cache
+                'total_covered_area': result_data.get('total_area', 0),
+                'solution_summary': result_data.get('solution_summary', {}),
+                'validation': result_data.get('validation', {})
             }
             
             # Load corresponding CQM result
             cqm_cached = cache.load_result('LQ', 'CQM', n_farms, run_num)
             if cqm_cached:
                 run_result['cqm_time'] = cqm_cached['result']['cqm_time']
-            else:
-                run_result['cqm_time'] = None
+                run_result['n_variables'] = cqm_cached['result'].get('num_variables', 0)
+                run_result['n_constraints'] = cqm_cached['result'].get('num_constraints', 0)
             
             # Load corresponding Pyomo result
             pyomo_cached = cache.load_result('LQ', 'Pyomo', n_farms, run_num)
             if pyomo_cached and pyomo_cached['result'].get('solve_time'):
-                run_result['pyomo_time'] = pyomo_cached['result']['solve_time']
-                run_result['pyomo_status'] = pyomo_cached['result'].get('status', 'Error')
-                run_result['pyomo_objective'] = pyomo_cached['result'].get('objective_value')
-                
-                # Calculate diff if both objectives exist
-                if run_result['pyomo_objective'] is not None and run_result['pulp_objective'] is not None:
-                    run_result['pulp_diff_percent'] = abs(run_result['pulp_objective'] - run_result['pyomo_objective']) / abs(run_result['pyomo_objective']) * 100
-                else:
-                    run_result['pulp_diff_percent'] = None
-            else:
-                run_result['pyomo_time'] = None
-                run_result['pyomo_status'] = 'Error'
-                run_result['pyomo_objective'] = None
-                run_result['pulp_diff_percent'] = None
+                pyomo_data = pyomo_cached['result']
+                run_result['solvers']['pyomo_native'] = {
+                    'status': pyomo_data.get('status', 'Error'),
+                    'objective_value': pyomo_data.get('objective_value'),
+                    'solve_time': pyomo_data['solve_time'],
+                    'solver_time': pyomo_data['solve_time'],
+                    'success': pyomo_data.get('objective_value') is not None,
+                    'sample_id': run_num - 1,
+                    'n_units': n_farms,
+                    'total_area': pyomo_data.get('total_area', 0),
+                    'n_foods': result_data.get('n_foods', 10),
+                    'n_variables': result_data.get('n_vars_quadratic', 0),
+                    'n_constraints': result_data.get('n_constraints_quadratic', 0),
+                    'solver': pyomo_data.get('solver'),
+                    'solution_areas': {},  # Not stored in cache
+                    'solution_selections': {},  # Not stored in cache
+                    'total_covered_area': pyomo_data.get('total_area', 0),
+                    'solution_summary': pyomo_data.get('solution_summary', {}),
+                    'validation': pyomo_data.get('validation', {}),
+                    'error': pyomo_data.get('error')
+                }
             
             # Load corresponding DWave result
             dwave_cached = cache.load_result('LQ', 'DWave', n_farms, run_num)
             if dwave_cached and dwave_cached['result'].get('dwave_time'):
-                run_result['dwave_time'] = dwave_cached['result']['dwave_time']
-                run_result['qpu_time'] = dwave_cached['result'].get('qpu_time')
-                run_result['hybrid_time'] = dwave_cached['result'].get('hybrid_time')
-                run_result['dwave_feasible'] = dwave_cached['result'].get('feasible', False)
-                run_result['dwave_objective'] = dwave_cached['result'].get('objective_value')
-            else:
-                run_result['dwave_time'] = None
-                run_result['qpu_time'] = None
-                run_result['hybrid_time'] = None
-                run_result['dwave_feasible'] = False
-                run_result['dwave_objective'] = None
+                dwave_data = dwave_cached['result']
+                run_result['solvers']['dwave_cqm'] = {
+                    'status': 'Optimal' if dwave_data.get('feasible', False) else 'No Solutions',
+                    'objective_value': dwave_data.get('objective_value'),
+                    'solve_time': dwave_data['dwave_time'],
+                    'qpu_time': dwave_data.get('qpu_time'),
+                    'hybrid_time': dwave_data.get('hybrid_time'),
+                    'is_feasible': dwave_data.get('feasible', False),
+                    'success': dwave_data.get('feasible', False),
+                    'sample_id': run_num - 1,
+                    'n_units': n_farms,
+                    'total_area': dwave_data.get('total_area', 0),
+                    'n_foods': result_data.get('n_foods', 10),
+                    'n_variables': result_data.get('n_vars_quadratic', 0),
+                    'n_constraints': result_data.get('n_constraints_quadratic', 0),
+                    'total_covered_area': dwave_data.get('total_area', 0),
+                    'num_feasible': 1 if dwave_data.get('feasible', False) else 0
+                }
             
             config_results.append(run_result)
         
         print(f"\n  Loaded {len(config_results)} existing runs from cache")
+        
+        # Add cached results to all_results list
+        all_results.extend(config_results)
         
         # Determine which runs still need to be executed
         # We need to find the union of all missing runs across all solvers
@@ -747,22 +896,29 @@ def main():
         
         # Calculate statistics for this configuration
         if config_results:
-            pulp_times = [r['pulp_time'] for r in config_results if r['pulp_time'] is not None]
-            pyomo_times = [r['pyomo_time'] for r in config_results if r['pyomo_time'] is not None]
-            cqm_times = [r['cqm_time'] for r in config_results if r['cqm_time'] is not None]
-            pulp_diffs = [r['pulp_diff_percent'] for r in config_results if r['pulp_diff_percent'] is not None]
+            # Extract times from the new nested format
+            pulp_times = [r['solvers']['gurobi']['solve_time'] for r in config_results 
+                         if 'gurobi' in r['solvers'] and r['solvers']['gurobi'].get('solve_time') is not None]
+            pyomo_times = [r['solvers']['pyomo_native']['solve_time'] for r in config_results 
+                          if 'pyomo_native' in r['solvers'] and r['solvers']['pyomo_native'].get('solve_time') is not None]
+            cqm_times = [r['cqm_time'] for r in config_results if r.get('cqm_time') is not None]
+            
+            # Calculate solution differences for validation
+            pulp_diffs = []
+            for r in config_results:
+                if 'gurobi' in r['solvers'] and 'pyomo_native' in r['solvers']:
+                    gurobi_obj = r['solvers']['gurobi'].get('objective_value')
+                    pyomo_obj = r['solvers']['pyomo_native'].get('objective_value')
+                    if gurobi_obj is not None and pyomo_obj is not None and pyomo_obj != 0:
+                        diff = abs(gurobi_obj - pyomo_obj) / abs(pyomo_obj) * 100
+                        pulp_diffs.append(diff)
             
             aggregated = {
                 'n_farms': n_farms,
                 'n_foods': config_results[0]['n_foods'],
-                'problem_size': config_results[0]['problem_size'],
-                'n_synergy_pairs': config_results[0]['n_synergy_pairs'],
-                'n_vars_base': config_results[0]['n_vars_base'],
-                'n_z_vars_pulp': config_results[0]['n_z_vars_pulp'],
-                'n_vars_pulp': config_results[0]['n_vars_pulp'],
-                'n_vars_quadratic': config_results[0]['n_vars_quadratic'],
-                'n_constraints_pulp': config_results[0]['n_constraints_pulp'],
-                'n_constraints_quadratic': config_results[0]['n_constraints_quadratic'],
+                'problem_size': n_farms * config_results[0]['n_foods'],
+                'n_variables': config_results[0]['n_variables'],
+                'n_constraints': config_results[0]['n_constraints'],
                 
                 # CQM creation stats
                 'cqm_time_mean': float(np.mean(cqm_times)) if cqm_times else None,
@@ -798,32 +954,19 @@ def main():
             if aggregated['pulp_diff_mean']:
                 print(f"    Solution Diff: {aggregated['pulp_diff_mean']:.4f}% ± {aggregated['pulp_diff_std']:.4f}%")
     
-    # Save results to Benchmarks/LQ folder
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    benchmark_dir = os.path.join(project_root, "Benchmarks", "LQ")
-    os.makedirs(benchmark_dir, exist_ok=True)
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Save all individual runs
-    all_results_file = os.path.join(benchmark_dir, f'benchmark_lq_all_runs_{timestamp}.json')
-    with open(all_results_file, 'w') as f:
-        json.dump(all_results, f, indent=2)
-    
-    # Save aggregated statistics
-    aggregated_file = os.path.join(benchmark_dir, f'benchmark_lq_aggregated_{timestamp}.json')
-    with open(aggregated_file, 'w') as f:
-        json.dump(aggregated_results, f, indent=2)
+    # Results are saved to individual solver directories (PuLP, Pyomo, DWave, CQM)
+    # No aggregated files are created
     
     print(f"\n{'='*80}")
     print(f"BENCHMARK COMPLETE")
     print(f"{'='*80}")
-    print(f"All runs saved to: {all_results_file}")
-    print(f"Aggregated stats saved to: {aggregated_file}")
+    print(f"Results saved to individual solver directories in Benchmarks/LQ/")
     
     # Create plots in Plots folder
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     plots_dir = os.path.join(project_root, "Plots")
     os.makedirs(plots_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     print(f"\nGenerating plots...")
     plot_results(aggregated_results, os.path.join(plots_dir, f'scalability_benchmark_lq_{timestamp}.png'))
