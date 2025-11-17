@@ -26,7 +26,7 @@ Six utility modules were moved from the root directory to `Utils/`:
 ```python
 # OLD
 from patch_sampler import generate_farms
-from farm_sampler import generate_farms
+from Utils.farm_sampler import generate_farms
 from benchmark_cache import BenchmarkCache
 
 # NEW

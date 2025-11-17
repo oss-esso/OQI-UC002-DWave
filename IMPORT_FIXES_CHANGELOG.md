@@ -102,7 +102,7 @@ sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
 All old import patterns have been successfully replaced:
 - ✅ No remaining `from patch_sampler import`
-- ✅ No remaining `from farm_sampler import`
+- ✅ No remaining `from Utils.farm_sampler import`
 - ✅ No remaining `from benchmark_cache import`
 - ✅ No remaining `from constraint_validator import`
 - ✅ No remaining `from enhanced_dwave_solver import`

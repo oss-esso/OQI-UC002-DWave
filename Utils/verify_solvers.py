@@ -9,7 +9,7 @@ import os
 # Add Benchmark Scripts to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 print("=" * 80)
 print("SOLVER VERIFICATION FOR COMPREHENSIVE_BENCHMARK.PY")

@@ -64,7 +64,7 @@ def _load_30farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
 
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Generate a moderate number of farms (between custom=2 and full_family=125)
     L = generate_farms(n_farms=30, seed=123)
@@ -189,7 +189,7 @@ def _load_60farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
 
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Step 1: Sample foods like in full/30farms
     script_dir = _os.path.dirname(_os.path.abspath(__file__))
@@ -316,7 +316,7 @@ def _load_90farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
     _project_root = _os.path.dirname(
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Foods
     script_dir = _os.path.dirname(_os.path.abspath(__file__))
@@ -441,7 +441,7 @@ def _load_250farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
     _project_root = _os.path.dirname(
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Generate fixed number of farms
     L = generate_farms(n_farms=250, seed=250)
@@ -559,7 +559,7 @@ def _load_350farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
     _project_root = _os.path.dirname(
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Farms
     L = generate_farms(n_farms=350, seed=350)
@@ -678,7 +678,7 @@ def _load_1000farms_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, flo
     _project_root = _os.path.dirname(
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Generate 1000 farms
     L = generate_farms(n_farms=1000, seed=1000)
@@ -793,7 +793,7 @@ def _load_500farms_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, floa
     _project_root = _os.path.dirname(
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Generate 500 farms
     L = generate_farms(n_farms=500, seed=500)
@@ -903,7 +903,7 @@ def _load_2000farms_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, flo
     _project_root = _os.path.dirname(
         _os.path.dirname(_os.path.abspath(__file__)))
     _sys.path.insert(0, _project_root)
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Generate 2000 farms
     L = generate_farms(n_farms=2000, seed=2000)
@@ -1467,14 +1467,14 @@ def _load_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict
 
 
 def _load_full_family_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
-    """Load full scenario data with 25 farms from farm_sampler and adjusted minimum areas."""
+    """Load full scenario data with 25 farms from Utils.farm_sampler and adjusted minimum areas."""
     import sys
     import os
     # Add project root to path to import farm_sampler
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.insert(0, project_root)
 
-    from farm_sampler import generate_farms
+    from Utils.farm_sampler import generate_farms
 
     # Generate 15 farms using the sampler
     L = generate_farms(n_farms=125, seed=42)
@@ -1559,7 +1559,7 @@ def _load_full_family_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]
         min_areas[food] = 0.01  # 0.01 ha (100 m²) minimum for all crops
 
     parameters = {
-        'land_availability': L,  # From farm_sampler
+        'land_availability': L,  # from Utils.farm_sampler
         'minimum_planting_area': min_areas,
         'max_percentage_per_crop': {
             food: 0.4 for food in foods

@@ -21,7 +21,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 sys.path.insert(0, os.path.join(project_root, 'Benchmark Scripts'))
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Standard imports
 import pandas as pd
@@ -174,7 +174,7 @@ def create_continuous_scenario(n_farms: int, total_land: float = None) -> Tuple[
     
     Args:
         n_farms: Number of farms (continuous areas)
-        total_land: Total land to distribute (if None, use natural total from farm_sampler)
+        total_land: Total land to distribute (if None, use natural total from Utils.farm_sampler)
         
     Returns:
         Tuple of (farms, land_availability, foods, food_groups, config)

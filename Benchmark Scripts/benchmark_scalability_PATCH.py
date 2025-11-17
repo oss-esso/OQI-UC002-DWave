@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from Utils.patch_sampler import generate_farms as generate_patches
 from src.scenarios import load_food_data

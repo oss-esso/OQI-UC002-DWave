@@ -11,7 +11,7 @@ import json
 from .benchmark_cache import BenchmarkCache
 
 # Import configurations from each benchmark script
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Default configurations (you can override these)
 DEFAULT_CONFIGS = {
