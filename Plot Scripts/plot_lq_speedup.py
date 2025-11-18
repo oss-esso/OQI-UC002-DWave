@@ -107,7 +107,7 @@ def load_benchmark_data(benchmark_dir):
     }
     
     # Configuration files to load (using run_1 for consistency)
-    configs = [5, 19, 72, 279]
+    configs = [10, 15, 25, 50, 279, 1096]
     
     for solver in data.keys():
         solver_dir = lq_dir / solver
@@ -216,7 +216,7 @@ def load_benchmark_data(benchmark_dir):
     }
     
     # Configuration files to load (using run_1 for consistency)
-    configs = [5, 19, 72, 279]
+    configs = [10, 15, 25, 50, 279, 1096]
     
     for solver in data.keys():
         solver_dir = lq_dir / solver
@@ -526,7 +526,7 @@ def print_summary_table(times):
 
 def main():
     # Load data
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent.resolve().parent
     benchmark_dir = project_root / "Benchmarks"
     data = load_benchmark_data(benchmark_dir)
     

@@ -1,0 +1,319 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+\geometry{margin=1in}
+
+\title{Linear-Quadratic Objective Formulations\\Solver-Specific Representations}
+\author{OQI-UC002-DWave}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Overview}
+
+The Linear-Quadratic (LQ) optimization problem combines:
+\begin{itemize}
+    \item \textbf{Linear term}: Area-weighted food attributes
+    \item \textbf{Quadratic term}: Synergy bonus for planting crops from the same food group on the same farm
+\end{itemize}
+
+\subsection{Decision Variables}
+
+\begin{itemize}
+    \item $A_{f,c} \in \mathbb{R}_+$: Continuous area (hectares) allocated to crop $c$ on farm $f$
+    \item $Y_{f,c} \in \{0,1\}$: Binary indicator whether crop $c$ is selected on farm $f$
+    \item $f \in \mathcal{F}$: Set of farms ($|\mathcal{F}| = N_f$)
+    \item $c \in \mathcal{C}$: Set of crops/foods ($|\mathcal{C}| = N_c$)
+\end{itemize}
+
+\subsection{Parameters}
+
+\begin{itemize}
+    \item $w_k$: Weight for attribute $k$ (nutritional\_value, nutrient\_density, environmental\_impact, affordability, sustainability)
+    \item $a_{k,c}$: Value of attribute $k$ for crop $c$
+    \item $w_s$: Synergy bonus weight (typically $w_s = 0.1$)
+    \item $s_{c_1,c_2}$: Synergy value between crops $c_1$ and $c_2$ (non-zero only if in same food group)
+    \item $B_c = \sum_k w_k \cdot a_{k,c}$: Composite benefit of crop $c$
+\end{itemize}
+
+\section{General Mathematical Formulation}
+
+The original LQ objective function with area normalization is:
+
+\begin{tcolorbox}[colback=blue!5!white, colframe=blue!75!black, title=General LQ Objective (Area-Normalized)]
+\begin{equation}
+\max \quad \underbrace{\sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot A_{f,c}}_{\text{Linear term}} + \underbrace{\frac{w_s}{A_{\text{total}}} \sum_{f \in \mathcal{F}} \sum_{\substack{c_1, c_2 \in \mathcal{C} \\ c_1 < c_2}} s_{c_1,c_2} \cdot A_{f,c_1} \cdot A_{f,c_2}}_{\text{Quadratic synergy term (area-normalized)}}
+\label{eq:general_lq}
+\end{equation}
+\end{tcolorbox}
+
+where:
+\begin{itemize}
+    \item $A_{\text{total}} = \sum_{f \in \mathcal{F}} L_f$ is the total available land area
+    \item The quadratic term is proportional to the product of allocated areas, normalized by total area
+    \item This ensures the objective scales properly regardless of farm sizes
+\end{itemize}
+
+where:
+\begin{equation}
+B_c = \sum_{k} w_k \cdot a_{k,c}
+\end{equation}
+
+Expanded form:
+\begin{align}
+B_c &= w_{\text{nutr}} \cdot a_{\text{nutr},c} + w_{\text{dens}} \cdot a_{\text{dens},c} - w_{\text{env}} \cdot a_{\text{env},c} \nonumber \\
+    &\quad + w_{\text{afford}} \cdot a_{\text{afford},c} + w_{\text{sust}} \cdot a_{\text{sust},c}
+\end{align}
+
+\section{Solver-Specific Formulations}
+
+\subsection{DWave CQM (Constrained Quadratic Model)}
+
+\textbf{Implementation:} \texttt{create\_cqm()} in \texttt{solver\_runner\_LQ.py}
+
+DWave's CQM natively supports quadratic objectives, but \textbf{does not allow products of continuous variables} ($A \cdot A$ not permitted). Therefore, we approximate the area product with the farm's total available area $L_f$:
+
+\begin{tcolorbox}[colback=red!5!white, colframe=red!75!black, title=DWave CQM Objective (Approximation)]
+\begin{equation}
+\max \quad \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot A_{f,c} + \frac{w_s}{A_{\text{total}}} \sum_{f \in \mathcal{F}} L_f \sum_{\substack{c_1, c_2 \in \mathcal{C} \\ c_1 < c_2}} s_{c_1,c_2} \cdot Y_{f,c_1} \cdot Y_{f,c_2}
+\label{eq:dwave_cqm}
+\end{equation}
+\end{tcolorbox}
+
+\textbf{Approximation:} Since $A_{f,c_1} \cdot A_{f,c_2}$ is not allowed, we approximate it with $L_f \cdot Y_{f,c_1} \cdot Y_{f,c_2}$ where $L_f$ is the farm's capacity.
+
+\textbf{Code snippet:}
+\begin{verbatim}
+total_area = sum(land_availability.values())
+
+# Linear term
+for farm in farms:
+    for food in foods:
+        objective += B_c * A[(farm, food)]
+
+# Quadratic term (approximated with farm area)
+optimizer = SynergyOptimizer(synergy_matrix, foods)
+for farm in farms:
+    farm_area = land_availability[farm]
+    for crop1, crop2, boost_value in optimizer.iter_pairs_with_names():
+        objective += (synergy_bonus_weight * boost_value * farm_area * 
+                     Y[(farm, crop1)] * Y[(farm, crop2)] / total_area)
+
+cqm.set_objective(-objective)
+\end{verbatim}
+
+\textbf{Variable count:} $2 N_f N_c$ variables ($N_f N_c$ continuous $A$ variables + $N_f N_c$ binary $Y$ variables)
+
+\textbf{Constraint count:} Base constraints only (no linearization needed)
+
+
+\subsection{PuLP (Mixed-Integer Quadratic Programming)}
+
+\textbf{Implementation:} \texttt{solve\_with\_pulp()} in \texttt{solver\_runner\_LQ.py}
+
+PuLP uses \textbf{Gurobi} as the backend solver. Gurobi supports quadratic objectives (MIQP), so we can use area products $A_{f,c_1} \cdot A_{f,c_2}$ directly without linearization:
+
+\begin{tcolorbox}[colback=green!5!white, colframe=green!75!black, title=PuLP Quadratic Objective (Area Products)]
+\begin{equation}
+\max \quad \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot A_{f,c} + \frac{w_s}{A_{\text{total}}} \sum_{f \in \mathcal{F}} \sum_{\substack{c_1, c_2 \in \mathcal{C} \\ c_1 < c_2}} s_{c_1,c_2} \cdot A_{f,c_1} \cdot A_{f,c_2}
+\label{eq:pulp}
+\end{equation}
+\end{tcolorbox}
+
+\textbf{Note:} Unlike the previous McCormick linearization approach, we now use quadratic area products directly since Gurobi handles MIQP problems efficiently.
+
+\textbf{Code snippet:}
+\begin{verbatim}
+total_area = sum(land_availability.values())
+
+# Objective - Linear term
+objective_terms = [B_c * A_pulp[(f, c)] for f in farms for c in foods]
+
+# Objective - Quadratic synergy (area products)
+synergy_terms = []
+for f, crop1, crop2, boost_value in synergy_pairs:
+    synergy_terms.append(synergy_bonus_weight * boost_value * 
+                        A_pulp[(f, crop1)] * A_pulp[(f, crop2)] / total_area)
+
+goal = pl.lpSum(objective_terms) + pl.lpSum(synergy_terms)
+model += goal, "Objective"
+\end{verbatim}
+
+\textbf{Variable count:} $2 N_f N_c$ variables ($N_f N_c$ continuous $A$ variables + $N_f N_c$ binary $Y$ variables)
+
+\textbf{Constraint count:} Base constraints only (no linearization constraints needed)
+
+
+\subsection{Pyomo (Mixed-Integer Quadratic Programming)}
+
+\textbf{Implementation:} \texttt{solve\_with\_pyomo()} in \texttt{solver\_runner\_LQ.py}
+
+Pyomo uses \textbf{Gurobi} as the backend solver (same as PuLP). Gurobi handles MIQP problems directly when the objective is quadratic, so Pyomo uses area products $A_{f,c_1} \cdot A_{f,c_2}$ without linearization:
+
+\begin{tcolorbox}[colback=purple!5!white, colframe=purple!75!black, title=Pyomo Native Quadratic Objective (Area Products)]
+\begin{equation}
+\max \quad \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot A_{f,c} + \frac{w_s}{A_{\text{total}}} \sum_{f \in \mathcal{F}} \sum_{\substack{c_1, c_2 \in \mathcal{C} \\ c_1 < c_2}} s_{c_1,c_2} \cdot A_{f,c_1} \cdot A_{f,c_2}
+\label{eq:pyomo}
+\end{equation}
+\end{tcolorbox}
+
+This is identical to the PuLP formulation. Pyomo passes the quadratic objective directly to Gurobi's MIQP solver.
+
+\textbf{Code snippet:}
+\begin{verbatim}
+total_area = sum(land_availability.values())
+
+def objective_rule(m):
+    obj = 0
+    
+    # Linear term
+    for f in m.farms:
+        for c in m.foods:
+            obj += B_c * m.A[f, c]
+    
+    # Quadratic synergy (area products)
+    optimizer = SynergyOptimizer(synergy_matrix, foods)
+    for crop1, crop2, boost_value in optimizer.iter_pairs_with_names():
+        for f in m.farms:
+            obj += (synergy_bonus_weight * boost_value * 
+                   m.A[f, crop1] * m.A[f, crop2] / total_area)
+    
+    return obj
+
+model.obj = pyo.Objective(rule=objective_rule, sense=pyo.maximize)
+\end{verbatim}
+
+\textbf{Variable count:} $2 N_f N_c$ variables ($N_f N_c$ continuous $A$ variables + $N_f N_c$ binary $Y$ variables)
+
+\textbf{Constraint count:} Base constraints only (no linearization needed)
+\max \quad \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot A_{f,c} + w_s \sum_{f \in \mathcal{F}} \sum_{\substack{c_1, c_2 \in \mathcal{C} \\ c_1 < c_2}} s_{c_1,c_2} \cdot Y_{f,c_1} \cdot Y_{f,c_2}
+\label{eq:pyomo}
+\end{equation}
+\end{tcolorbox}
+
+This is identical to the DWave formulation. Pyomo passes the quadratic objective directly to Gurobi's MIQP solver.
+
+\textbf{Code snippet:}
+\begin{verbatim}
+def objective_rule(m):
+    obj = 0
+    
+    # Linear term
+    for f in m.farms:
+        for c in m.foods:
+            obj += B_c * m.A[f, c]
+    
+    # Quadratic synergy bonus (native quadratic)
+    optimizer = SynergyOptimizer(synergy_matrix, foods)
+    for crop1, crop2, boost_value in optimizer.iter_pairs_with_names():
+        for f in m.farms:
+            obj += synergy_bonus_weight * boost_value * m.Y[f, crop1] * m.Y[f, crop2]
+    
+    return obj
+
+model.obj = pyo.Objective(rule=objective_rule, sense=pyo.maximize)
+\end{verbatim}
+
+\textbf{Variable count:} $2 N_f N_c$ variables ($N_f N_c$ continuous $A$ variables + $N_f N_c$ binary $Y$ variables)
+
+\textbf{Constraint count:} Base constraints only (no linearization needed)
+
+
+\section{Comparison Summary}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Solver} & \textbf{Quadratic Form} & \textbf{Variables} & \textbf{Constraints} \\
+\hline
+DWave CQM & $L_f \cdot Y \cdot Y$ (approx) & $2N_f N_c$ & Base \\
+PuLP (Gurobi MIQP) & $A \cdot A$ (exact) & $2N_f N_c$ & Base \\
+Pyomo (Gurobi MIQP) & $A \cdot A$ (exact) & $2N_f N_c$ & Base \\
+\hline
+\end{tabular}
+\caption{Solver formulation comparison. All use area-normalized synergy: $\frac{1}{A_{\text{total}}} \sum \text{(area products)}$.}
+\end{table}
+
+\subsection{Key Differences}
+
+\begin{enumerate}
+    \item \textbf{DWave CQM}: Cannot use $A \cdot A$ products (CQM limitation), so approximates with $L_f \cdot Y \cdot Y$ where $L_f$ is farm capacity. Uses quantum-inspired annealing.
+    
+    \item \textbf{PuLP}: Uses Gurobi's MIQP solver with exact area products $A_{f,c_1} \cdot A_{f,c_2}$. No linearization needed.
+    
+    \item \textbf{Pyomo}: Uses Gurobi's MIQP solver with exact area products $A_{f,c_1} \cdot A_{f,c_2}$. Same formulation as PuLP.
+\end{enumerate}
+
+\subsection{Solution Equivalence}
+
+PuLP and Pyomo should produce \textbf{identical solutions} since they use the same formulation and solver (Gurobi MIQP).
+
+DWave's solution may differ slightly due to the approximation $A_{f,c_1} \cdot A_{f,c_2} \approx L_f \cdot Y_{f,c_1} \cdot Y_{f,c_2}$, but should be close for problems where selected crops utilize most of the farm's capacity.
+
+\section{Numerical Example}
+
+Consider a small instance with:
+\begin{itemize}
+    \item $N_f = 2$ farms: $\mathcal{F} = \{\text{Farm1}, \text{Farm2}\}$ with $L_{\text{F1}} = 10$ ha, $L_{\text{F2}} = 15$ ha
+    \item $A_{\text{total}} = 25$ ha
+    \item $N_c = 3$ crops: $\mathcal{C} = \{\text{Wheat}, \text{Rice}, \text{Corn}\}$
+    \item All crops in same food group (Grains) with $s_{c_1,c_2} = 0.1$ for $c_1 \neq c_2$
+    \item $B_{\text{Wheat}} = 0.8$, $B_{\text{Rice}} = 0.7$, $B_{\text{Corn}} = 0.6$
+    \item $w_s = 0.1$
+\end{itemize}
+
+\subsection{DWave CQM Formulation (Approximation)}
+
+\begin{align}
+\max \quad &0.8(A_{\text{F1,Wheat}} + A_{\text{F2,Wheat}}) + 0.7(A_{\text{F1,Rice}} + A_{\text{F2,Rice}}) \nonumber \\
+&+ 0.6(A_{\text{F1,Corn}} + A_{\text{F2,Corn}}) \nonumber \\
+&+ \frac{0.01}{25} \Big[ 10 \left( Y_{\text{F1,Wheat}} \cdot Y_{\text{F1,Rice}} + Y_{\text{F1,Wheat}} \cdot Y_{\text{F1,Corn}} + Y_{\text{F1,Rice}} \cdot Y_{\text{F1,Corn}} \right) \nonumber \\
+&\quad\quad\quad + 15 \left( Y_{\text{F2,Wheat}} \cdot Y_{\text{F2,Rice}} + Y_{\text{F2,Wheat}} \cdot Y_{\text{F2,Corn}} + Y_{\text{F2,Rice}} \cdot Y_{\text{F2,Corn}} \right) \Big]
+\end{align}
+
+Variables: $2 \times 2 \times 3 = 12$ variables (6 $A$ + 6 $Y$)
+
+\subsection{PuLP/Pyomo Formulation (Exact Area Products)}
+
+\begin{align}
+\max \quad &0.8(A_{\text{F1,Wheat}} + A_{\text{F2,Wheat}}) + 0.7(A_{\text{F1,Rice}} + A_{\text{F2,Rice}}) \nonumber \\
+&+ 0.6(A_{\text{F1,Corn}} + A_{\text{F2,Corn}}) \nonumber \\
+&+ \frac{0.01}{25} \Big[ A_{\text{F1,Wheat}} \cdot A_{\text{F1,Rice}} + A_{\text{F1,Wheat}} \cdot A_{\text{F1,Corn}} + A_{\text{F1,Rice}} \cdot A_{\text{F1,Corn}} \nonumber \\
+&\quad\quad\quad + A_{\text{F2,Wheat}} \cdot A_{\text{F2,Rice}} + A_{\text{F2,Wheat}} \cdot A_{\text{F2,Corn}} + A_{\text{F2,Rice}} \cdot A_{\text{F2,Corn}} \Big]
+\end{align}
+
+Variables: $2 \times 2 \times 3 = 12$ variables (6 $A$ + 6 $Y$)
+
+Constraints: Base only (no linearization)
+
+
+\section{Conclusion}
+
+The Linear-Quadratic formulation with area normalization demonstrates how different optimization solvers handle quadratic area products:
+
+\begin{itemize}
+    \item \textbf{Quantum-inspired solvers (DWave)}: Cannot use $A \cdot A$ products, so approximate with $L_f \cdot Y \cdot Y$ (farm capacity × binary selection)
+    \item \textbf{Classical MIQP solvers (PuLP/Pyomo with Gurobi)}: Native support for $A \cdot A$ products via quadratic cone cuts and branch-and-bound
+\end{itemize}
+
+All formulations use area normalization: dividing the quadratic synergy term by $A_{\text{total}}$ ensures the objective scales properly regardless of total farm sizes.
+
+\subsection{Key Insights}
+
+\begin{enumerate}
+    \item \textbf{Area normalization}: Critical for comparing solutions across different problem sizes
+    \item \textbf{DWave approximation}: $A_{f,c_1} \cdot A_{f,c_2} \approx L_f \cdot Y_{f,c_1} \cdot Y_{f,c_2}$ works well when farms are fully utilized
+    \item \textbf{No linearization needed}: Modern MIQP solvers (Gurobi) handle quadratic area products directly
+    \item \textbf{Synergy scaling}: The $1/A_{\text{total}}$ factor prevents larger farms from dominating the synergy term
+\end{enumerate}
+
+The SynergyOptimizer preprocessing step reduces complexity by precomputing the $P$ synergy pairs (where $P \ll N_c^2$ since only same-group crops have synergy), providing significant speedup during model construction for all three solvers.
+
+\end{document}

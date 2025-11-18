@@ -30,7 +30,7 @@ def load_benchmark_data(benchmark_dir):
     }
     
     # Configuration files to load (using run_1 for consistency)
-    configs = [5, 19, 72, 279]
+    configs = [10, 15, 25, 50, 279, 1096]
     
     for solver in data.keys():
         solver_dir = lq_dir / solver
@@ -398,7 +398,7 @@ def print_comprehensive_summary(times, objectives, gaps, ttq):
 
 def main():
     # Load data
-    benchmark_dir = Path(__file__).parent / "Benchmarks"
+    benchmark_dir = Path(__file__).parent.resolve().parent / "Benchmarks"
     data = load_benchmark_data(benchmark_dir)
     
     # Extract times and objectives

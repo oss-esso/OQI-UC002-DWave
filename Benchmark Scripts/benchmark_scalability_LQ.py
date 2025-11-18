@@ -48,12 +48,11 @@ def clean_solution_for_json(solution):
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    
-    #10,
-    #15,
+    10,
+    15,
     #25,
-    #50,
-    #279
+    50,
+    279
     1096
 ]
 
@@ -366,8 +365,8 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         
         # Solve with DWave
         print(f"\n  Solving with DWave...")
-        token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
-        #token = None
+        #token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+        token = None
 
         dwave_time = None
         qpu_time = None

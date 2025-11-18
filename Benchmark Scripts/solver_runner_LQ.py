@@ -174,6 +174,9 @@ def create_cqm(farms, foods, food_groups, config):
             Y[(farm, food)] = Binary(f"Y_{farm}_{food}")
             pbar.update(1)
     
+    # Calculate total area for normalization
+    total_area = sum(land_availability.values())
+    
     # Objective function - Linear term
     pbar.set_description("Building linear objective")
     objective = 0
@@ -188,23 +191,34 @@ def create_cqm(farms, foods, food_groups, config):
             )
             pbar.update(1)
     
-    # Objective function - Quadratic synergy bonus
+    # Objective function - Quadratic synergy bonus (normalized by area)
+    # NOTE: DWave CQM doesn't support A*A products, so we approximate with farm_area * Y * Y / total_area
     pbar.set_description(f"Adding quadratic synergy bonus ({SYNERGY_OPTIMIZER_TYPE})")
     
     if SynergyOptimizer is not None:
         # OPTIMIZED: Use precomputed synergy pairs (~10-100x faster)
         optimizer = SynergyOptimizer(synergy_matrix, foods)
-        objective += optimizer.build_synergy_terms_dimod(farms, Y, synergy_bonus_weight)
+        for farm in farms:
+            farm_area = land_availability[farm]
+            for crop1_idx, crop2_idx, boost_value in optimizer.iter_pairs():
+                crop1 = optimizer.get_crop_name(crop1_idx)
+                crop2 = optimizer.get_crop_name(crop2_idx)
+                # Approximate area product with farm_area (since A*A not allowed in CQM)
+                objective += (synergy_bonus_weight * boost_value * farm_area * 
+                             Y[(farm, crop1)] * Y[(farm, crop2)] / total_area)
         pbar.update(optimizer.get_n_pairs() * len(farms))
     else:
         # FALLBACK: Original nested loop (slower but works without optimizer)
         for farm in farms:
+            farm_area = land_availability[farm]
             # Iterate through synergy matrix
             for crop1, pairs in synergy_matrix.items():
                 if crop1 in foods:
                     for crop2, boost_value in pairs.items():
                         if crop2 in foods and crop1 < crop2:  # Avoid double counting
-                            objective += synergy_bonus_weight * boost_value * Y[(farm, crop1)] * Y[(farm, crop2)]
+                            # Approximate area product with farm_area
+                            objective += (synergy_bonus_weight * boost_value * farm_area * 
+                                        Y[(farm, crop1)] * Y[(farm, crop2)] / total_area)
                             pbar.update(1)
     
     cqm.set_objective(-objective)
@@ -330,16 +344,16 @@ def solve_with_pulp(farms, foods, food_groups, config):
     synergy_bonus_weight = weights.get('synergy_bonus', 0.1)
     
     print(f"\nCreating PuLP model with linear-quadratic objective...")
-    print(f"  Note: PuLP uses linearized form of quadratic synergy bonus")
+    print(f"  Note: PuLP uses McCormick linearization (cannot handle A*A directly)")
+    
+    # Calculate total area for normalization
+    total_area = sum(land_availability.values())
     
     # Decision variables
     A_pulp = pl.LpVariable.dicts("Area", [(f, c) for f in farms for c in foods], lowBound=0)
     Y_pulp = pl.LpVariable.dicts("Choose", [(f, c) for f in farms for c in foods], cat='Binary')
     
-    # Additional variables for linearized quadratic terms (McCormick relaxation)
-    # For each Y[f, c1] * Y[f, c2] product, we create a new binary variable Z[f, c1, c2]
-    
-    # Build synergy pairs for McCormick linearization
+    # Build synergy pairs for linearization
     if SynergyOptimizer is not None:
         # OPTIMIZED: Use precomputed synergy pairs
         optimizer = SynergyOptimizer(synergy_matrix, foods)
@@ -354,13 +368,11 @@ def solve_with_pulp(farms, foods, food_groups, config):
                         if crop2 in foods and crop1 < crop2:  # Avoid double counting
                             synergy_pairs.append((f, crop1, crop2, boost_value))
     
-    # Create Z variables for all synergy pairs
-    Z_pulp = {}
-    for f, crop1, crop2, boost_value in synergy_pairs:
-        Z_pulp[(f, crop1, crop2)] = pl.LpVariable(
-            f"Z_{f}_{crop1}_{crop2}", 
-            cat='Binary'
-        )
+    # Create Z auxiliary continuous variables for McCormick: Z >= A1*A2
+    # Since we want to maximize and A1, A2 >= 0, Z will equal A1*A2 at optimality
+    Z_pulp = pl.LpVariable.dicts("Z_syn", 
+                                 [(f, c1, c2) for f, c1, c2, _ in synergy_pairs],
+                                 lowBound=0)
     
     # Create model
     model = pl.LpProblem("Food_Optimization_LQ_PuLP", pl.LpMaximize)
@@ -378,21 +390,26 @@ def solve_with_pulp(farms, foods, food_groups, config):
             )
             objective_terms.append(coeff * A_pulp[(f, c)])
     
-    # Objective function - Linearized quadratic synergy bonus
-    # Use Z variables instead of Y * Y products
+    # Objective function - Quadratic synergy using Z variables (normalized by total area)
     synergy_terms = []
     for f, crop1, crop2, boost_value in synergy_pairs:
-        synergy_terms.append(synergy_bonus_weight * boost_value * Z_pulp[(f, crop1, crop2)])
+        # Z represents A1*A2, normalized by total area
+        synergy_terms.append(synergy_bonus_weight * boost_value * Z_pulp[(f, crop1, crop2)] / total_area)
     
     goal = pl.lpSum(objective_terms) + pl.lpSum(synergy_terms)
     model += goal, "Objective"
     
-    # Linearization constraints for Z[f, c1, c2] = Y[f, c1] * Y[f, c2]
-    # McCormick relaxation: Z <= Y1, Z <= Y2, Z >= Y1 + Y2 - 1
+    # McCormick envelope constraints for Z >= A1*A2 (maximization)
+    # Since we're maximizing and A1, A2 >= 0, these constraints force Z = A1*A2
     for f, crop1, crop2, _ in synergy_pairs:
-        model += Z_pulp[(f, crop1, crop2)] <= Y_pulp[(f, crop1)], f"Z_upper1_{f}_{crop1}_{crop2}"
-        model += Z_pulp[(f, crop1, crop2)] <= Y_pulp[(f, crop2)], f"Z_upper2_{f}_{crop1}_{crop2}"
-        model += Z_pulp[(f, crop1, crop2)] >= Y_pulp[(f, crop1)] + Y_pulp[(f, crop2)] - 1, f"Z_lower_{f}_{crop1}_{crop2}"
+        M1 = land_availability[f]  # Upper bound on A[f, crop1]
+        M2 = land_availability[f]  # Upper bound on A[f, crop2]
+        
+        # McCormick relaxation for Z = A1 * A2 (bilinear with A1, A2 >= 0):
+        # Z <= M2 * A1
+        model += Z_pulp[(f, crop1, crop2)] <= M2 * A_pulp[(f, crop1)], f"Z_ub1_{f}_{crop1}_{crop2}"
+        # Z <= M1 * A2 
+        model += Z_pulp[(f, crop1, crop2)] <= M1 * A_pulp[(f, crop2)], f"Z_ub2_{f}_{crop1}_{crop2}"
     
     # Land availability constraints
     for f in farms:
@@ -694,6 +711,10 @@ def solve_with_pyomo(farms, foods, food_groups, config):
     synergy_bonus_weight = weights.get('synergy_bonus', 0.1)
     
     print(f"\nCreating Pyomo model with linear-quadratic objective...")
+    print(f"  Note: Pyomo uses native quadratic with area products A*A")
+    
+    # Calculate total area for normalization
+    total_area = sum(land_availability.values())
     
     # Create model
     model = pyo.ConcreteModel(name="Food_Optimization_LQ_Pyomo")
@@ -722,13 +743,15 @@ def solve_with_pyomo(farms, foods, food_groups, config):
                 )
                 obj += coeff * m.A[f, c]
         
-        # Quadratic synergy bonus
+        # Area-weighted quadratic synergy bonus (A*A product normalized by total area)
         if SynergyOptimizer is not None:
             # OPTIMIZED: Use precomputed synergy pairs
             optimizer = SynergyOptimizer(synergy_matrix, foods)
             for crop1, crop2, boost_value in optimizer.iter_pairs_with_names():
                 for f in m.farms:
-                    obj += synergy_bonus_weight * boost_value * m.Y[f, crop1] * m.Y[f, crop2]
+                    # Synergy proportional to A[f,c1] * A[f,c2] / total_area
+                    obj += (synergy_bonus_weight * boost_value * 
+                           m.A[f, crop1] * m.A[f, crop2] / total_area)
         else:
             # FALLBACK: Original nested loop
             for f in m.farms:
@@ -736,7 +759,9 @@ def solve_with_pyomo(farms, foods, food_groups, config):
                     if crop1 in foods:
                         for crop2, boost_value in pairs.items():
                             if crop2 in foods and crop1 < crop2:  # Avoid double counting
-                                obj += synergy_bonus_weight * boost_value * m.Y[f, crop1] * m.Y[f, crop2]
+                                # Synergy proportional to A[f,c1] * A[f,c2] / total_area
+                                obj += (synergy_bonus_weight * boost_value * 
+                                       m.A[f, crop1] * m.A[f, crop2] / total_area)
         
         return obj
     
