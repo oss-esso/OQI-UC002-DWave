@@ -33,6 +33,18 @@ from dwave.system import LeapHybridCQMSampler
 import pulp as pl
 from tqdm import tqdm
 
+# Try to import synergy optimizer (Cython first, then pure Python)
+try:
+    from synergy_optimizer import SynergyOptimizer
+    SYNERGY_OPTIMIZER_TYPE = "Cython"
+except ImportError:
+    try:
+        from src.synergy_optimizer_pure import SynergyOptimizer
+        SYNERGY_OPTIMIZER_TYPE = "NumPy"
+    except ImportError:
+        SynergyOptimizer = None
+        SYNERGY_OPTIMIZER_TYPE = "Original"
+
 # Try to import Pyomo for solving
 try:
     import pyomo.environ as pyo
@@ -177,15 +189,23 @@ def create_cqm(farms, foods, food_groups, config):
             pbar.update(1)
     
     # Objective function - Quadratic synergy bonus
-    pbar.set_description("Adding quadratic synergy bonus")
-    for farm in farms:
-        # Iterate through synergy matrix
-        for crop1, pairs in synergy_matrix.items():
-            if crop1 in foods:
-                for crop2, boost_value in pairs.items():
-                    if crop2 in foods and crop1 < crop2:  # Avoid double counting
-                        objective += synergy_bonus_weight * boost_value * Y[(farm, crop1)] * Y[(farm, crop2)]
-                        pbar.update(1)
+    pbar.set_description(f"Adding quadratic synergy bonus ({SYNERGY_OPTIMIZER_TYPE})")
+    
+    if SynergyOptimizer is not None:
+        # OPTIMIZED: Use precomputed synergy pairs (~10-100x faster)
+        optimizer = SynergyOptimizer(synergy_matrix, foods)
+        objective += optimizer.build_synergy_terms_dimod(farms, Y, synergy_bonus_weight)
+        pbar.update(optimizer.get_n_pairs() * len(farms))
+    else:
+        # FALLBACK: Original nested loop (slower but works without optimizer)
+        for farm in farms:
+            # Iterate through synergy matrix
+            for crop1, pairs in synergy_matrix.items():
+                if crop1 in foods:
+                    for crop2, boost_value in pairs.items():
+                        if crop2 in foods and crop1 < crop2:  # Avoid double counting
+                            objective += synergy_bonus_weight * boost_value * Y[(farm, crop1)] * Y[(farm, crop2)]
+                            pbar.update(1)
     
     cqm.set_objective(-objective)
     
@@ -220,7 +240,7 @@ def create_cqm(farms, foods, food_groups, config):
             # CRITICAL FIX: If no minimum area is specified, use small epsilon (0.001 ha)
             # This prevents Y=1 when A=0 (which would incorrectly claim synergy bonuses)
             if A_min == 0:
-                A_min = 0.001  # 0.001 hectares = 10 square meters minimum
+                A_min = 0.0001  # 0.0001 hectares = 1 square meter minimum
             
             cqm.add_constraint(
                 A[(farm, food)] - A_min * Y[(farm, food)] >= 0,
@@ -318,18 +338,29 @@ def solve_with_pulp(farms, foods, food_groups, config):
     
     # Additional variables for linearized quadratic terms (McCormick relaxation)
     # For each Y[f, c1] * Y[f, c2] product, we create a new binary variable Z[f, c1, c2]
+    
+    # Build synergy pairs for McCormick linearization
+    if SynergyOptimizer is not None:
+        # OPTIMIZED: Use precomputed synergy pairs
+        optimizer = SynergyOptimizer(synergy_matrix, foods)
+        synergy_pairs = optimizer.build_synergy_pairs_list(farms)
+    else:
+        # FALLBACK: Original nested loop
+        synergy_pairs = []
+        for f in farms:
+            for crop1, pairs in synergy_matrix.items():
+                if crop1 in foods:
+                    for crop2, boost_value in pairs.items():
+                        if crop2 in foods and crop1 < crop2:  # Avoid double counting
+                            synergy_pairs.append((f, crop1, crop2, boost_value))
+    
+    # Create Z variables for all synergy pairs
     Z_pulp = {}
-    synergy_pairs = []
-    for f in farms:
-        for crop1, pairs in synergy_matrix.items():
-            if crop1 in foods:
-                for crop2, boost_value in pairs.items():
-                    if crop2 in foods and crop1 < crop2:  # Avoid double counting
-                        Z_pulp[(f, crop1, crop2)] = pl.LpVariable(
-                            f"Z_{f}_{crop1}_{crop2}", 
-                            cat='Binary'
-                        )
-                        synergy_pairs.append((f, crop1, crop2, boost_value))
+    for f, crop1, crop2, boost_value in synergy_pairs:
+        Z_pulp[(f, crop1, crop2)] = pl.LpVariable(
+            f"Z_{f}_{crop1}_{crop2}", 
+            cat='Binary'
+        )
     
     # Create model
     model = pl.LpProblem("Food_Optimization_LQ_PuLP", pl.LpMaximize)
@@ -692,12 +723,20 @@ def solve_with_pyomo(farms, foods, food_groups, config):
                 obj += coeff * m.A[f, c]
         
         # Quadratic synergy bonus
-        for f in m.farms:
-            for crop1, pairs in synergy_matrix.items():
-                if crop1 in foods:
-                    for crop2, boost_value in pairs.items():
-                        if crop2 in foods and crop1 < crop2:  # Avoid double counting
-                            obj += synergy_bonus_weight * boost_value * m.Y[f, crop1] * m.Y[f, crop2]
+        if SynergyOptimizer is not None:
+            # OPTIMIZED: Use precomputed synergy pairs
+            optimizer = SynergyOptimizer(synergy_matrix, foods)
+            for crop1, crop2, boost_value in optimizer.iter_pairs_with_names():
+                for f in m.farms:
+                    obj += synergy_bonus_weight * boost_value * m.Y[f, crop1] * m.Y[f, crop2]
+        else:
+            # FALLBACK: Original nested loop
+            for f in m.farms:
+                for crop1, pairs in synergy_matrix.items():
+                    if crop1 in foods:
+                        for crop2, boost_value in pairs.items():
+                            if crop2 in foods and crop1 < crop2:  # Avoid double counting
+                                obj += synergy_bonus_weight * boost_value * m.Y[f, crop1] * m.Y[f, crop2]
         
         return obj
     

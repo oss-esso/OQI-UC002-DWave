@@ -48,25 +48,40 @@ def clean_solution_for_json(solution):
 # 6 points logarithmically scaled from 5 to 1535 farms
 # Reduced from 30 points for faster testing with multiple runs
 BENCHMARK_CONFIGS = [
-    10,
+    
+    #10,
     #15,
     #25,
     #50,
-    #279#, 1096, 1535
+    #279
+    1096
 ]
 
 # Number of runs per configuration for statistical analysis
 NUM_RUNS = 1
 
-def load_full_family_with_n_farms(n_farms, seed=42):
+def load_full_family_with_n_farms(n_farms, seed=42, fixed_total_land=None):
     """
     Load full_family scenario with specified number of farms.
     Uses the same logic as the scaling analysis but with synergy matrix.
+    
+    Args:
+        n_farms: Number of farms to generate
+        seed: Random seed for reproducibility
+        fixed_total_land: If provided, scale farms to this total land area (in ha).
+                         If None, use generated farm sizes as-is.
     """
     import pandas as pd
     
     # Generate farms
     L = generate_farms(n_farms=n_farms, seed=seed)
+    
+    # Scale to fixed total land if specified
+    if fixed_total_land is not None:
+        total_generated = sum(L.values())
+        scale_factor = fixed_total_land / total_generated if total_generated > 0 else 0
+        L = {farm: area * scale_factor for farm, area in L.items()}
+    
     farms = list(L.keys())
     
     # Load food data from Excel or use fallback
@@ -196,7 +211,7 @@ def load_full_family_with_n_farms(n_farms, seed=42):
     
     return farms, foods, food_groups, config
 
-def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache=True):
+def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache=True, fixed_total_land=None):
     """
     Run a single benchmark test with full_family scenario using LQ solver.
     Returns timing results and problem size metrics for all three solvers.
@@ -207,14 +222,17 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         total_runs: Total number of runs (for display)
         cache: BenchmarkCache instance for saving results
         save_to_cache: Whether to save results to cache (default: True)
+        fixed_total_land: If provided, scale farms to this total land area (in ha)
     """
     print(f"\n{'='*80}")
     print(f"BENCHMARK: full_family scenario with {n_farms} Farms (Run {run_number}/{total_runs})")
+    if fixed_total_land:
+        print(f"Fixed Total Land: {fixed_total_land} ha")
     print(f"{'='*80}")
     
     try:
         # Load full_family scenario with specified number of farms
-        farms, foods, food_groups, config = load_full_family_with_n_farms(n_farms, seed=42 + run_number)
+        farms, foods, food_groups, config = load_full_family_with_n_farms(n_farms, seed=42 + run_number, fixed_total_land=fixed_total_land)
         
         n_foods = len(foods)
         # For LQ solver, we don't have lambda variables (simpler than NLN)
@@ -238,7 +256,11 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         
         problem_size = n_farms * n_foods  # n = farms × foods
         
+        # Verify total land area
+        total_land_area = sum(config['parameters']['land_availability'].values())
+        
         print(f"  Foods: {n_foods}")
+        print(f"  Total Land Area: {total_land_area:.2f} ha")
         print(f"  Synergy Pairs: {n_synergy_pairs}")
         print(f"  Base Variables (A+Y): {n_vars_base}")
         print(f"  PuLP Variables (A+Y+Z): {n_vars_pulp}")
@@ -346,7 +368,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         print(f"\n  Solving with DWave...")
         token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
         #token = None
-        
+
         dwave_time = None
         qpu_time = None
         hybrid_time = None
@@ -736,6 +758,7 @@ def main():
     """
     Run all benchmarks with multiple runs and calculate statistics.
     Uses intelligent caching to avoid redundant runs.
+    All benchmarks use fixed 100 ha total land area for comparability.
     """
     # Initialize cache
     cache = BenchmarkCache()
@@ -747,12 +770,16 @@ def main():
     print(f"Runs per configuration: {NUM_RUNS}")
     print(f"Total benchmarks: {len(BENCHMARK_CONFIGS) * NUM_RUNS}")
     print(f"Objective: Linear area + Quadratic synergy bonus")
+    print(f"Fixed Total Land: 100 ha (for all configurations)")
     print("="*80)
     
     # Check cache status
     print("\n" + "="*80)
     print("CHECKING CACHE STATUS")
     print("="*80)
+    print("⚠️  NOTE: Any existing cached results used unbounded farms.")
+    print("    This benchmark now uses fixed 100 ha total land.")
+    print("    Cache may need to be cleared for accurate comparisons.")
     cache.print_cache_status('LQ', BENCHMARK_CONFIGS, NUM_RUNS)
     
     all_results = []
@@ -760,139 +787,35 @@ def main():
     
     for n_farms in BENCHMARK_CONFIGS:
         print(f"\n" + "="*80)
-        print(f"TESTING CONFIGURATION: {n_farms} Farms")
+        print(f"TESTING CONFIGURATION: {n_farms} Farms (Fixed 100 ha)")
         print("="*80)
         
         # Check which runs are needed
         runs_needed = cache.get_runs_needed('LQ', n_farms, NUM_RUNS)
         
-        # Load existing results from cache for PuLP (our primary solver)
-        existing_pulp_results = cache.get_all_results('LQ', 'PuLP', n_farms)
+        # NOTE: Skip loading existing cached results since they were generated 
+        # with unbounded farms. We need fresh runs with fixed 100 ha total land.
+        print(f"\n  Skipping cached results (incompatible with fixed 100 ha approach)")
         config_results = []
         
-        # Convert cached results to the NEW format (matching comprehensive_benchmark)
-        for cached in existing_pulp_results:
-            result_data = cached['result']
-            run_num = cached['metadata']['run_number']
-            
-            # Build result in new nested format
-            run_result = {
-                'sample_id': run_num - 1,  # 0-indexed
-                'scenario_type': 'lq_farm',
-                'n_units': n_farms,
-                'total_area': result_data.get('total_area', 0),
-                'n_foods': result_data.get('n_foods', 10),
-                'n_variables': result_data.get('n_vars_quadratic', 0),
-                'n_constraints': result_data.get('n_constraints_quadratic', 0),
-                'cqm_time': None,  # Will be loaded separately
-                'solvers': {}
-            }
-            
-            # Add PuLP results under 'gurobi' key
-            run_result['solvers']['gurobi'] = {
-                'status': result_data['status'],
-                'objective_value': result_data['objective_value'],
-                'solve_time': result_data['solve_time'],
-                'solver_time': result_data['solve_time'],
-                'success': result_data['status'] == 'Optimal',
-                'sample_id': run_num - 1,
-                'n_units': n_farms,
-                'total_area': result_data.get('total_area', 0),
-                'n_foods': result_data.get('n_foods', 10),
-                'n_variables': result_data.get('n_vars_quadratic', 0),
-                'n_constraints': result_data.get('n_constraints_quadratic', 0),
-                'solution_areas': {},  # Not stored in cache
-                'solution_selections': {},  # Not stored in cache
-                'total_covered_area': result_data.get('total_area', 0),
-                'solution_summary': result_data.get('solution_summary', {}),
-                'validation': result_data.get('validation', {})
-            }
-            
-            # Load corresponding CQM result
-            cqm_cached = cache.load_result('LQ', 'CQM', n_farms, run_num)
-            if cqm_cached:
-                run_result['cqm_time'] = cqm_cached['result']['cqm_time']
-                run_result['n_variables'] = cqm_cached['result'].get('num_variables', 0)
-                run_result['n_constraints'] = cqm_cached['result'].get('num_constraints', 0)
-            
-            # Load corresponding Pyomo result
-            pyomo_cached = cache.load_result('LQ', 'Pyomo', n_farms, run_num)
-            if pyomo_cached and pyomo_cached['result'].get('solve_time'):
-                pyomo_data = pyomo_cached['result']
-                run_result['solvers']['pyomo_native'] = {
-                    'status': pyomo_data.get('status', 'Error'),
-                    'objective_value': pyomo_data.get('objective_value'),
-                    'solve_time': pyomo_data['solve_time'],
-                    'solver_time': pyomo_data['solve_time'],
-                    'success': pyomo_data.get('objective_value') is not None,
-                    'sample_id': run_num - 1,
-                    'n_units': n_farms,
-                    'total_area': pyomo_data.get('total_area', 0),
-                    'n_foods': result_data.get('n_foods', 10),
-                    'n_variables': result_data.get('n_vars_quadratic', 0),
-                    'n_constraints': result_data.get('n_constraints_quadratic', 0),
-                    'solver': pyomo_data.get('solver'),
-                    'solution_areas': {},  # Not stored in cache
-                    'solution_selections': {},  # Not stored in cache
-                    'total_covered_area': pyomo_data.get('total_area', 0),
-                    'solution_summary': pyomo_data.get('solution_summary', {}),
-                    'validation': pyomo_data.get('validation', {}),
-                    'error': pyomo_data.get('error')
-                }
-            
-            # Load corresponding DWave result
-            dwave_cached = cache.load_result('LQ', 'DWave', n_farms, run_num)
-            if dwave_cached and dwave_cached['result'].get('dwave_time'):
-                dwave_data = dwave_cached['result']
-                run_result['solvers']['dwave_cqm'] = {
-                    'status': 'Optimal' if dwave_data.get('feasible', False) else 'No Solutions',
-                    'objective_value': dwave_data.get('objective_value'),
-                    'solve_time': dwave_data['dwave_time'],
-                    'qpu_time': dwave_data.get('qpu_time'),
-                    'hybrid_time': dwave_data.get('hybrid_time'),
-                    'is_feasible': dwave_data.get('feasible', False),
-                    'success': dwave_data.get('feasible', False),
-                    'sample_id': run_num - 1,
-                    'n_units': n_farms,
-                    'total_area': dwave_data.get('total_area', 0),
-                    'n_foods': result_data.get('n_foods', 10),
-                    'n_variables': result_data.get('n_vars_quadratic', 0),
-                    'n_constraints': result_data.get('n_constraints_quadratic', 0),
-                    'total_covered_area': dwave_data.get('total_area', 0),
-                    'num_feasible': 1 if dwave_data.get('feasible', False) else 0
-                }
-            
-            config_results.append(run_result)
-        
-        print(f"\n  Loaded {len(config_results)} existing runs from cache")
-        
-        # Add cached results to all_results list
+        # Add cached results to all_results list (none in this case)
         all_results.extend(config_results)
         
-        # Determine which runs still need to be executed
-        # We need to find the union of all missing runs across all solvers
-        all_missing_runs = set()
-        for solver, missing in runs_needed.items():
-            all_missing_runs.update(missing)
-        
-        all_missing_runs = sorted(all_missing_runs)
+        # Force all runs to be executed with fixed land
+        all_missing_runs = list(range(1, NUM_RUNS + 1))
         
         if all_missing_runs:
-            print(f"  Need to run: {all_missing_runs}")
-            print(f"  Details by solver:")
-            for solver, missing in runs_needed.items():
-                if missing:
-                    print(f"    {solver:12s}: missing runs {missing}")
+            print(f"  Running {len(all_missing_runs)} benchmarks with fixed 100 ha total land")
             
-            # Run the missing benchmarks
+            # Run the missing benchmarks with fixed 100 ha total land
             for run_num in all_missing_runs:
                 result = run_benchmark(n_farms, run_number=run_num, total_runs=NUM_RUNS, 
-                                     cache=cache, save_to_cache=True)
+                                     cache=cache, save_to_cache=True, fixed_total_land=100.0)
                 if result:
                     config_results.append(result)
                     all_results.append(result)
         else:
-            print(f"  ✓ All {NUM_RUNS} runs already completed for all solvers!")
+            print(f"  ✅ All {NUM_RUNS} runs already completed!")
         
         # Calculate statistics for this configuration
         if config_results:
