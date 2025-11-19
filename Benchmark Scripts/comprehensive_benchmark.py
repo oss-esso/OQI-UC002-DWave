@@ -1169,8 +1169,8 @@ Examples:
         if args.token:
             dwave_token = args.token
         else:
-            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
-            #dwave_token = None
+            #dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            dwave_token = None
         
         if not dwave_token:
             print("Warning: D-Wave enabled but no token found. Set DWAVE_API_TOKEN environment variable or use --token")

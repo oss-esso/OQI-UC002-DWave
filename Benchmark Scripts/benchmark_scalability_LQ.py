@@ -52,7 +52,7 @@ BENCHMARK_CONFIGS = [
     15,
     #25,
     50,
-    279
+    279,
     1096
 ]
 
@@ -181,7 +181,7 @@ def load_full_family_with_n_farms(n_farms, seed=42, fixed_total_land=None):
     n_food_groups = len(food_groups)
     # Each farm must plant at least 1 crop from each food group
     # Reserve some margin for safety
-    min_area_per_crop = (smallest_farm / n_food_groups) * 0.9  # 90% safety margin
+    min_area_per_crop = 0.001 
     
     min_areas = {food: min_area_per_crop for food in foods.keys()}
     

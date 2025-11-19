@@ -31,9 +31,10 @@ from tqdm import tqdm
 
 def calculate_original_objective(solution, farms, foods, land_availability, weights, idle_penalty=None):
     """
-    Calculate the original CQM objective from a solution.
+    Calculate the original objective from a solution, matching the continuous formulation.
     
-    This reconstructs the objective: sum_{p,c} B_c * s_p * X_{p,c}
+    Objective structure (matching continuous solver):
+      goal = sum_w [ w * sum_p,c(value_c * s_p * X_{p,c}) / total_area ]
     
     Args:
         solution: Dictionary with variable assignments (X_{plot}_{crop})
@@ -44,32 +45,62 @@ def calculate_original_objective(solution, farms, foods, land_availability, weig
         idle_penalty: Unused (kept for compatibility)
         
     Returns:
-        float: The original objective value (to be maximized)
+        float: The objective value (to be maximized)
     """
-    objective = 0.0
     total_land_area = sum(land_availability.values())
     
-    # Streamlined binary formulation: X_{plot}_{crop} = 1 if plot assigned to crop
+    # Compute each weighted term separately, matching continuous formulation structure
+    objective = 0.0
+    
+    # Nutritional value
+    nutri_sum = 0.0
     for plot in farms:
-        farm_area = land_availability[plot]  # Area of plot p
         for crop in foods:
-            # Get X_{p,c} value from solution
             var_name = f"X_{plot}_{crop}"
             x_pc = solution.get(var_name, 0)
-            
-            if x_pc > 0:  # Only count if assigned
-                # Calculate B_c: weighted benefit per unit area
-                area_weighted_value = farm_area * (
-                    weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                    weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                    weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                    weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
-                    weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
-                )
-                objective += area_weighted_value * x_pc
+            if x_pc > 0:
+                nutri_sum += foods[crop].get('nutritional_value', 0) * land_availability[plot] * x_pc
+    objective += weights.get('nutritional_value', 0) * nutri_sum / total_land_area
     
-    # Normalize by total land area to make objectives comparable
-    objective = objective / total_land_area if total_land_area > 0 else 0
+    # Nutrient density
+    nutrient_sum = 0.0
+    for plot in farms:
+        for crop in foods:
+            var_name = f"X_{plot}_{crop}"
+            x_pc = solution.get(var_name, 0)
+            if x_pc > 0:
+                nutrient_sum += foods[crop].get('nutrient_density', 0) * land_availability[plot] * x_pc
+    objective += weights.get('nutrient_density', 0) * nutrient_sum / total_land_area
+    
+    # Environmental impact (subtracted)
+    env_sum = 0.0
+    for plot in farms:
+        for crop in foods:
+            var_name = f"X_{plot}_{crop}"
+            x_pc = solution.get(var_name, 0)
+            if x_pc > 0:
+                env_sum += foods[crop].get('environmental_impact', 0) * land_availability[plot] * x_pc
+    objective -= weights.get('environmental_impact', 0) * env_sum / total_land_area
+    
+    # Affordability
+    afford_sum = 0.0
+    for plot in farms:
+        for crop in foods:
+            var_name = f"X_{plot}_{crop}"
+            x_pc = solution.get(var_name, 0)
+            if x_pc > 0:
+                afford_sum += foods[crop].get('affordability', 0) * land_availability[plot] * x_pc
+    objective += weights.get('affordability', 0) * afford_sum / total_land_area
+    
+    # Sustainability
+    sustain_sum = 0.0
+    for plot in farms:
+        for crop in foods:
+            var_name = f"X_{plot}_{crop}"
+            x_pc = solution.get(var_name, 0)
+            if x_pc > 0:
+                sustain_sum += foods[crop].get('sustainability', 0) * land_availability[plot] * x_pc
+    objective += weights.get('sustainability', 0) * sustain_sum / total_land_area
     
     return objective
 
@@ -459,24 +490,18 @@ def solve_with_pulp(farms, foods, food_groups, config):
     
     model = pl.LpProblem("Food_Optimization_Binary_Streamlined", pl.LpMaximize)
     
-    # Objective: Maximize sum_{p,c} B_c * s_p * X_{p,c} / total_land
-    # NOTE: Normalized by total_land to match continuous formulation's per-hectare metric
-    objective = 0
-    for plot in farms:
-        farm_area = land_availability[plot]  # Area of plot p
-        for crop in foods:
-            # Calculate B_c: weighted benefit per unit area
-            area_weighted_value = farm_area * (
-                weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
-                weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
-                weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
-                weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
-                weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
-            )
-            objective += area_weighted_value * X_pulp[(plot, crop)]
-    
-    # Normalize by total land area
-    objective = objective / total_land
+    # Objective: Maximize sum of weighted objectives, normalized per total land
+    # This matches the continuous formulation:
+    #   Continuous: goal = sum_w [ w * sum_c(value_c * A_{f,c}) / total_area ]
+    #   Patch:      goal = sum_w [ w * sum_p,c(value_c * s_p * X_{p,c}) / total_area ]
+    # To match the continuous formulation structure, compute each weighted term separately:
+    objective = (
+        weights.get('nutritional_value', 0) * pl.lpSum([(foods[crop].get('nutritional_value', 0) * land_availability[plot] * X_pulp[(plot, crop)]) for plot in farms for crop in foods]) / total_land +
+        weights.get('nutrient_density', 0) * pl.lpSum([(foods[crop].get('nutrient_density', 0) * land_availability[plot] * X_pulp[(plot, crop)]) for plot in farms for crop in foods]) / total_land -
+        weights.get('environmental_impact', 0) * pl.lpSum([(foods[crop].get('environmental_impact', 0) * land_availability[plot] * X_pulp[(plot, crop)]) for plot in farms for crop in foods]) / total_land +
+        weights.get('affordability', 0) * pl.lpSum([(foods[crop].get('affordability', 0) * land_availability[plot] * X_pulp[(plot, crop)]) for plot in farms for crop in foods]) / total_land +
+        weights.get('sustainability', 0) * pl.lpSum([(foods[crop].get('sustainability', 0) * land_availability[plot] * X_pulp[(plot, crop)]) for plot in farms for crop in foods]) / total_land
+    )
     
     model += objective, "Objective"
     
