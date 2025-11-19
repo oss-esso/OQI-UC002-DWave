@@ -1,0 +1,372 @@
+% Chapter 2: Mathematical Problem Formulation
+
+\chapter{Mathematical Problem Formulation}
+
+This chapter provides a rigorous mathematical formulation of the agricultural resource allocation optimization problem. We present both the continuous (farm-based) and binary (patch-based) formulations, detail the constraint structures, and specify the multi-objective function.
+
+\section{Problem Statement}
+
+\subsection{Overview}
+
+Given a set of agricultural units (farms or patches) with specified land areas and a set of potential crops with associated characteristics, determine the optimal allocation of crops to land units such that:
+
+\begin{itemize}
+    \item All land availability constraints are satisfied
+    \item Minimum planting area requirements are met
+    \item Food group diversity constraints are enforced
+    \item The multi-objective utility function is maximized
+\end{itemize}
+
+\subsection{Notation and Variable Definitions}
+
+\begin{table}[H]
+\centering
+\caption{Problem Notation and Definitions}
+\label{tab:notation}
+\begin{tabular}{ll}
+\toprule
+\textbf{Symbol} & \textbf{Description} \\
+\midrule
+$\mathcal{F}$ & Set of farms/patches, $|\mathcal{F}| = 25$ \\
+$\mathcal{C}$ & Set of crops, $|\mathcal{C}| = 27$ \\
+$\mathcal{G}$ & Set of food groups \\
+$L_f$ & Land availability for farm $f \in \mathcal{F}$ (hectares) \\
+$M_c$ & Minimum planting area for crop $c \in \mathcal{C}$ (hectares) \\
+$G(c)$ & Food group assignment function: $\mathcal{C} \rightarrow \mathcal{G}$ \\
+$N_c$ & Nutritional value of crop $c$ (score) \\
+$D_c$ & Nutrient density of crop $c$ (score) \\
+$E_c$ & Environmental impact of crop $c$ (negative score) \\
+$\$_c$ & Affordability of crop $c$ (score) \\
+$S_c$ & Sustainability of crop $c$ (score) \\
+$w_1, \ldots, w_5$ & Objective function weights \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Continuous Formulation (Farm Scenario)}
+
+\subsection{Decision Variables}
+
+For the continuous formulation with farms, we define:
+
+\begin{itemize}
+    \item $A_{f,c} \in \mathbb{R}_{\geq 0}$: Area (hectares) of crop $c$ planted on farm $f$
+    \item $Y_{f,c} \in \{0,1\}$: Binary indicator whether crop $c$ is planted on farm $f$
+\end{itemize}
+
+The total number of variables is:
+\begin{equation}
+|\text{Vars}| = |\mathcal{F}| \times |\mathcal{C}| \times 2 = 25 \times 27 \times 2 = 1350 \text{ variables}
+\end{equation}
+
+comprising 675 continuous variables ($A_{f,c}$) and 675 binary variables ($Y_{f,c}$).
+
+\subsection{Constraints}
+
+\subsubsection{Land Availability Constraints}
+
+For each farm $f \in \mathcal{F}$, the total allocated land cannot exceed available land:
+
+\begin{equation}
+\sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall f \in \mathcal{F}
+\label{eq:land_availability}
+\end{equation}
+
+This yields 25 constraints (one per farm).
+
+\subsubsection{Minimum Planting Area Constraints}
+
+If crop $c$ is planted on farm $f$ (i.e., $Y_{f,c} = 1$), the planted area must exceed the minimum:
+
+\begin{equation}
+A_{f,c} \geq M_c \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, \forall c \in \mathcal{C}
+\label{eq:min_planting}
+\end{equation}
+
+This yields $25 \times 27 = 675$ constraints.
+
+\subsubsection{Linking Constraints}
+
+The binary indicators must be consistent with area allocations. If $A_{f,c} > 0$, then $Y_{f,c} = 1$:
+
+\begin{equation}
+A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, \forall c \in \mathcal{C}
+\label{eq:linking}
+\end{equation}
+
+This yields another 675 constraints, ensuring that $Y_{f,c} = 0 \implies A_{f,c} = 0$.
+
+\subsubsection{Food Group Constraints}
+
+For each food group $g \in \mathcal{G}$, we enforce diversity and nutritional requirements:
+
+\begin{equation}
+\sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}: G(c) = g} A_{f,c} \geq \alpha_g \cdot \sum_{f \in \mathcal{F}} L_f
+\label{eq:food_group}
+\end{equation}
+
+where $\alpha_g$ is the minimum fraction of total land that must be allocated to food group $g$.
+
+The number of food group constraints depends on $|\mathcal{G}|$ (typically 5-8 major groups: grains, vegetables, fruits, proteins, dairy, etc.).
+
+\subsection{Objective Function}
+
+The multi-objective function maximizes weighted benefits:
+
+\begin{equation}
+\begin{aligned}
+\text{maximize} \quad & \frac{1}{\sum_{f} L_f} \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} A_{f,c} \cdot B_c \\
+\text{where} \quad B_c = & \, w_1 N_c + w_2 D_c - w_3 E_c + w_4 \$_c + w_5 S_c
+\end{aligned}
+\label{eq:objective_continuous}
+\end{equation}
+
+The normalization by total land ($\sum_f L_f = 100$ hectares) ensures scale-independent objective values.
+
+\subsection{Complete Continuous Formulation}
+
+The complete mixed-integer nonlinear program (MINLP) is:
+
+\begin{equation}
+\begin{aligned}
+\max \quad & \frac{1}{100} \sum_{f=1}^{25} \sum_{c=1}^{27} A_{f,c} \cdot B_c \\
+\text{s.t.} \quad & \sum_{c=1}^{27} A_{f,c} \leq L_f & \forall f \in \{1, \ldots, 25\} \\
+& A_{f,c} \geq M_c \cdot Y_{f,c} & \forall f,c \\
+& A_{f,c} \leq L_f \cdot Y_{f,c} & \forall f,c \\
+& \sum_{f,c: G(c)=g} A_{f,c} \geq \alpha_g \cdot 100 & \forall g \in \mathcal{G} \\
+& A_{f,c} \geq 0 & \forall f,c \\
+& Y_{f,c} \in \{0,1\} & \forall f,c
+\end{aligned}
+\label{eq:minlp_complete}
+\end{equation}
+
+\section{Binary Formulation (Patch Scenario)}
+
+\subsection{Decision Variables}
+
+For the binary formulation with patches, we use only binary selection variables:
+
+\begin{equation}
+Y_{p,c} \in \{0,1\} \quad \text{indicates whether crop $c$ is planted on patch $p$}
+\end{equation}
+
+The total number of variables is:
+\begin{equation}
+|\text{Vars}| = |\mathcal{P}| \times |\mathcal{C}| = 25 \times 27 = 675 \text{ binary variables}
+\end{equation}
+
+Each patch has a fixed area $s_p$, and if crop $c$ is selected for patch $p$, the entire patch area is allocated to that crop.
+
+\subsection{Constraints}
+
+\subsubsection{One-Crop-Per-Patch Constraint}
+
+Each patch can be allocated to at most one crop:
+
+\begin{equation}
+\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p \in \mathcal{P}
+\label{eq:one_crop}
+\end{equation}
+
+This yields 25 constraints (one per patch).
+
+\subsubsection{Food Group Constraints}
+
+Similar to the continuous case, but using patch areas:
+
+\begin{equation}
+\sum_{p \in \mathcal{P}} \sum_{c: G(c)=g} s_p \cdot Y_{p,c} \geq \alpha_g \cdot \sum_{p} s_p
+\label{eq:food_group_binary}
+\end{equation}
+
+\subsection{Objective Function}
+
+The binary objective maximizes total benefit across all patches:
+
+\begin{equation}
+\text{maximize} \quad \frac{1}{\sum_p s_p} \sum_{p \in \mathcal{P}} \sum_{c \in \mathcal{C}} s_p \cdot Y_{p,c} \cdot B_c
+\label{eq:objective_binary}
+\end{equation}
+
+\subsection{Complete Binary Formulation}
+
+The complete binary integer program (BIP) is:
+
+\begin{equation}
+\begin{aligned}
+\max \quad & \frac{1}{100} \sum_{p=1}^{25} \sum_{c=1}^{27} s_p \cdot Y_{p,c} \cdot B_c \\
+\text{s.t.} \quad & \sum_{c=1}^{27} Y_{p,c} \leq 1 & \forall p \in \{1, \ldots, 25\} \\
+& \sum_{p,c: G(c)=g} s_p \cdot Y_{p,c} \geq \alpha_g \cdot 100 & \forall g \in \mathcal{G} \\
+& Y_{p,c} \in \{0,1\} & \forall p,c
+\end{aligned}
+\label{eq:bip_complete}
+\end{equation}
+
+\section{Constrained Quadratic Model (CQM) Representation}
+
+Both formulations are encoded as Constrained Quadratic Models (CQMs) for submission to D-Wave solvers.
+
+\subsection{CQM Variable Types}
+
+The D-Wave CQM framework supports:
+
+\begin{itemize}
+    \item \texttt{Real} variables: $A_{f,c} \in [0, L_f]$
+    \item \texttt{Binary} variables: $Y_{f,c} \in \{0,1\}$
+\end{itemize}
+
+\subsection{CQM Constraint Encoding}
+
+Constraints are encoded with symbolic labels and sense specifications:
+
+\begin{lstlisting}[caption={CQM Constraint Encoding Example},label={lst:cqm_constraints}]
+from dimod import ConstrainedQuadraticModel, Real, Binary
+
+cqm = ConstrainedQuadraticModel()
+
+# Land availability constraint for farm f
+constraint_expr = sum(A[f,c] for c in crops) <= L[f]
+cqm.add_constraint(constraint_expr, 
+                   label=f"land_avail_farm_{f}")
+
+# Minimum planting constraint
+constraint_expr = A[f,c] >= M[c] * Y[f,c]
+cqm.add_constraint(constraint_expr,
+                   label=f"min_plant_f{f}_c{c}")
+\end{lstlisting}
+
+\subsection{CQM to BQM Conversion}
+
+For quantum annealing on D-Wave QPUs, CQMs must be converted to Binary Quadratic Models (BQMs):
+
+\begin{definition}[Binary Quadratic Model]
+A BQM is defined by:
+\begin{equation}
+E(\mathbf{x}) = \sum_{i} h_i x_i + \sum_{i<j} J_{ij} x_i x_j + c
+\end{equation}
+where $x_i \in \{0,1\}$, $h_i$ are linear coefficients, $J_{ij}$ are quadratic coefficients, and $c$ is an offset constant.
+\end{definition}
+
+The conversion process involves:
+
+\begin{enumerate}
+    \item \textbf{Discretization}: Real variables are discretized into binary representations
+    \item \textbf{Constraint Relaxation}: Hard constraints are converted to penalty terms
+    \item \textbf{Quadratization}: Higher-order terms are reduced to quadratic form
+    \item \textbf{Penalty Tuning}: Penalty coefficients are scaled to ensure constraint satisfaction
+\end{enumerate}
+
+The conversion is performed automatically via:
+
+\begin{lstlisting}[caption={CQM to BQM Conversion},label={lst:cqm_to_bqm}]
+from dimod import cqm_to_bqm
+
+bqm, invert = cqm_to_bqm(cqm)
+# bqm: BinaryQuadraticModel for quantum annealing
+# invert: Function to map BQM solution back to CQM space
+\end{lstlisting}
+
+\section{Problem Complexity Analysis}
+
+\subsection{Continuous Formulation Complexity}
+
+The continuous MINLP has:
+
+\begin{itemize}
+    \item \textbf{Variables}: 1350 (675 continuous + 675 binary)
+    \item \textbf{Constraints}: $\approx$ 1375 (25 land + 675 min planting + 675 linking + food groups)
+    \item \textbf{Complexity Class}: NP-hard (due to binary variables)
+    \item \textbf{Solver Type}: Mixed-integer nonlinear programming (MINLP)
+\end{itemize}
+
+\subsection{Binary Formulation Complexity}
+
+The binary BIP has:
+
+\begin{itemize}
+    \item \textbf{Variables}: 675 binary
+    \item \textbf{Constraints}: $\approx$ 30-35 (25 one-crop-per-patch + food groups)
+    \item \textbf{Complexity Class}: NP-hard (binary integer programming)
+    \item \textbf{Solver Type}: Binary integer programming (BIP) / QUBO
+\end{itemize}
+
+\subsection{Solution Space Size}
+
+The theoretical solution space sizes are:
+
+\begin{equation}
+\begin{aligned}
+\text{Continuous:} \quad & |\Omega| \approx 2^{675} \times \mathbb{R}^{675} \\
+\text{Binary:} \quad & |\Omega| = 2^{675} \approx 10^{203}
+\end{aligned}
+\end{equation}
+
+Exhaustive enumeration is computationally intractable, necessitating advanced optimization techniques.
+
+\section{Multi-Objective Optimization Framework}
+
+\subsection{Objective Components}
+
+The composite objective function balances five criteria:
+
+\begin{table}[H]
+\centering
+\caption{Multi-Objective Components}
+\label{tab:objectives}
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Symbol} & \textbf{Interpretation} \\
+\midrule
+Nutritional Value & $N_c$ & Caloric and macronutrient content \\
+Nutrient Density & $D_c$ & Micronutrient concentration \\
+Environmental Impact & $E_c$ & Carbon footprint, water usage (minimize) \\
+Affordability & $\$_c$ & Economic accessibility \\
+Sustainability & $S_c$ & Long-term viability \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Weight Configuration}
+
+Default weight configuration for the full\_family scenario:
+
+\begin{equation}
+\mathbf{w} = [w_1, w_2, w_3, w_4, w_5]^T
+\end{equation}
+
+Weights are normalized such that $\sum_{i=1}^5 w_i = 1.0$ and are configured based on policy priorities.
+
+\subsection{Pareto Optimality}
+
+The weighted sum approach yields a single solution on the Pareto frontier. Alternative weight configurations explore different trade-offs:
+
+\begin{definition}[Pareto Optimal Solution]
+A solution $\mathbf{x}^*$ is Pareto optimal if there exists no other feasible solution $\mathbf{x}$ such that $O_i(\mathbf{x}) \geq O_i(\mathbf{x}^*)$ for all $i$ and $O_j(\mathbf{x}) > O_j(\mathbf{x}^*)$ for at least one $j$.
+\end{definition}
+
+\section{Constraint Satisfaction Verification}
+
+\subsection{Feasibility Checking}
+
+A solution is feasible if and only if all constraints are satisfied within numerical tolerance $\epsilon = 10^{-6}$:
+
+\begin{equation}
+\begin{aligned}
+\text{Feasible} \iff & \sum_c A_{f,c} \leq L_f + \epsilon \quad \forall f \\
+& A_{f,c} \geq M_c \cdot Y_{f,c} - \epsilon \quad \forall f,c \\
+& A_{f,c} \leq L_f \cdot Y_{f,c} + \epsilon \quad \forall f,c \\
+& \sum_{f,c: G(c)=g} A_{f,c} \geq \alpha_g \cdot 100 - \epsilon \quad \forall g
+\end{aligned}
+\end{equation}
+
+\subsection{Constraint Violation Metrics}
+
+For infeasible solutions, we measure violation magnitude:
+
+\begin{equation}
+V(\mathbf{x}) = \sum_{i \in \mathcal{I}} \max(0, g_i(\mathbf{x})) + \sum_{j \in \mathcal{E}} |h_j(\mathbf{x})|
+\end{equation}
+
+where $g_i$ are inequality constraints and $h_j$ are equality constraints.
+
+\end{document}

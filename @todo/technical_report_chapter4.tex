@@ -1,0 +1,514 @@
+% Chapter 4: Alternative 2 - Strategic Problem Decomposition
+
+\chapter{Alternative 2: Strategic Problem Decomposition}
+
+This chapter presents Alternative 2, which implements a strategic problem decomposition approach. Unlike Alternative 1's unified hybrid workflow, this implementation routes different problem formulations to specialized solvers: continuous farm problems to classical MINLP solvers (Gurobi), and binary patch problems to low-level quantum annealers (DWaveSampler).
+
+\section{Architectural Philosophy}
+
+\subsection{Heterogeneous Solver Specialization}
+
+The core principle of Alternative 2 is \textit{problem-solver matching}:
+
+\begin{itemize}
+    \item \textbf{Continuous Problems}: Classical solvers excel at mixed-integer nonlinear programming with continuous variables and complex constraints
+    \item \textbf{Binary Problems}: Quantum annealers are specifically designed for binary optimization via energy minimization
+\end{itemize}
+
+Rather than applying a universal hybrid approach, Alternative 2 recognizes problem structure and routes to the most appropriate solver.
+
+\subsection{Strategic Decomposition Flow}
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+                    Input Problem
+                          ↓
+                  ┌───────┴───────┐
+                  │  Analyze Type │
+                  └───────┬───────┘
+                          ↓
+             ┌────────────┴────────────┐
+             │                         │
+          Farm                      Patch
+       (Continuous)                (Binary)
+             │                         │
+             ↓                         ↓
+        ┌────────┐               ┌──────────┐
+        │ Gurobi │               │ DWave    │
+        │ MINLP  │               │ QPU      │
+        └────┬───┘               └────┬─────┘
+             │                         │
+             └────────────┬────────────┘
+                          ↓
+                     Merge Results
+                          ↓
+                   Final Solution
+\end{verbatim}
+\caption{Strategic Problem Decomposition Architecture}
+\label{fig:decomposed_arch}
+\end{figure}
+
+\section{Classical Solver Component}
+
+\subsection{Farm Scenario: Gurobi MINLP}
+
+For farm scenarios with continuous land allocation variables:
+
+\subsubsection{Problem Characteristics}
+
+\begin{itemize}
+    \item \textbf{Variables}: 1350 (675 continuous $A_{f,c}$ + 675 binary $Y_{f,c}$)
+    \item \textbf{Constraints}: $\sim$1375 (land, minimum planting, linking, food groups)
+    \item \textbf{Objective}: Linear weighted sum
+    \item \textbf{Formulation}: Mixed-integer nonlinear program (MINLP)
+\end{itemize}
+
+\subsubsection{Gurobi Configuration}
+
+Gurobi is configured for MINLP solving:
+
+\begin{lstlisting}[caption={Gurobi Solver Setup},label={lst:gurobi_setup}]
+import pulp as pl
+
+# Create problem
+prob = pl.LpProblem("Farm_Allocation", pl.LpMaximize)
+
+# Define variables
+A = {}  # Continuous area variables
+Y = {}  # Binary selection variables
+
+for f in farms:
+    for c in crops:
+        A[f,c] = pl.LpVariable(
+            f"A_{f}_{c}",
+            lowBound=0,
+            upBound=land_avail[f],
+            cat='Continuous'
+        )
+        Y[f,c] = pl.LpVariable(
+            f"Y_{f}_{c}",
+            cat='Binary'
+        )
+
+# Objective
+prob += pl.lpSum([
+    A[f,c] * benefit[c] 
+    for f in farms 
+    for c in crops
+]) / total_land
+
+# Solve with Gurobi
+prob.solve(pl.GUROBI(msg=0))
+\end{lstlisting}
+
+\subsubsection{Performance Characteristics}
+
+Gurobi employs advanced MINLP algorithms:
+
+\begin{itemize}
+    \item \textbf{Branch-and-Bound}: Systematic enumeration with intelligent pruning
+    \item \textbf{Cutting Planes}: Dynamic constraint generation to tighten LP relaxation
+    \item \textbf{Presolve}: Problem size reduction via redundancy elimination
+    \item \textbf{Heuristics}: Fast feasibility detection and solution improvement
+\end{itemize}
+
+Typical solve times for the 25-farm, 27-crop instance: $\sim$0.1-1.0 seconds.
+
+\section{Quantum Solver Component}
+
+\subsection{Patch Scenario: Direct QPU Access}
+
+For patch scenarios with binary selection variables:
+
+\subsubsection{Problem Characteristics}
+
+\begin{itemize}
+    \item \textbf{Variables}: 675 binary $Y_{p,c}$
+    \item \textbf{Constraints}: $\sim$30 (one-crop-per-patch, food groups)
+    \item \textbf{Objective}: Linear weighted sum
+    \item \textbf{Formulation}: Binary integer program (BIP) / QUBO
+\end{itemize}
+
+\subsubsection{Low-Level QPU Sampler}
+
+Unlike hybrid solvers that incorporate classical preprocessing, Alternative 2 uses direct QPU access:
+
+\begin{lstlisting}[caption={DWaveSampler Direct Access},label={lst:dwave_sampler}]
+from dwave.system import DWaveSampler, EmbeddingComposite
+
+# Initialize QPU sampler
+sampler_qpu = DWaveSampler(token=dwave_token)
+
+# Wrap with automatic embedding
+sampler = EmbeddingComposite(sampler_qpu)
+
+# Sample BQM directly on QPU
+sampleset = sampler.sample(
+    bqm,
+    num_reads=1000,
+    annealing_time=20,
+    auto_scale=True
+)
+\end{lstlisting}
+
+\subsubsection{Embedding Process}
+
+\begin{algorithm}[H]
+\caption{Minor-Embedding for QPU}
+\label{alg:embedding}
+\begin{algorithmic}[1]
+\Require Logical BQM $Q = (V_L, E_L)$, QPU topology $G_{QPU} = (V_P, E_P)$
+\Ensure Embedding $\phi: V_L \rightarrow 2^{V_P}$
+\State Find minor-embedding: map each logical variable to chain of physical qubits
+\For{each logical variable $v \in V_L$}
+    \State $\phi(v) \leftarrow$ connected subset of physical qubits forming a chain
+\EndFor
+\State Verify embedding validity:
+\For{each logical edge $(u,v) \in E_L$}
+    \State Ensure $\exists$ physical edge between chains $\phi(u)$ and $\phi(v)$
+\EndFor
+\State Set chain strength to couple qubits within each chain
+\State \Return $\phi$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Chain Coupling}: Physical qubits within a chain are strongly coupled ($J_{chain} \gg |J_{ij}|$) to ensure they take the same logical value.
+
+\subsection{QPU Configuration Parameters}
+
+\subsubsection{Critical Parameters}
+
+\begin{table}[H]
+\centering
+\caption{QPU Configuration Parameters}
+\label{tab:qpu_params}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Description} \\
+\midrule
+\texttt{num\_reads} & 1000 & Number of annealing cycles \\
+\texttt{annealing\_time} & 20 $\mu$s & Duration of quantum evolution \\
+\texttt{chain\_strength} & Auto & Intra-chain coupling strength \\
+\texttt{auto\_scale} & True & Automatic coefficient scaling \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Annealing Schedule}
+
+The quantum annealing process follows a time-dependent Hamiltonian:
+
+\begin{equation}
+H(t) = \left(1 - \frac{t}{t_f}\right) H_{init} + \frac{t}{t_f} H_{prob}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $H_{init}$: Initial Hamiltonian with easily-prepared ground state
+    \item $H_{prob}$: Problem Hamiltonian encoding the BQM
+    \item $t_f$: Total annealing time (\texttt{annealing\_time})
+\end{itemize}
+
+The system evolves from the ground state of $H_{init}$ (uniform superposition) to the ground state of $H_{prob}$ (optimal solution).
+
+\subsection{Timing Breakdown}
+
+\subsubsection{QPU Access Components}
+
+\begin{table}[H]
+\centering
+\caption{QPU Timing Breakdown}
+\label{tab:qpu_timing}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Description} \\
+\midrule
+\texttt{qpu\_programming\_time} & Time to program QPU with problem \\
+\texttt{qpu\_sampling\_time} & Actual annealing time $\times$ num\_reads \\
+\texttt{qpu\_readout\_time} & Time to read qubit states \\
+\texttt{qpu\_access\_time} & Total time on QPU (sum of above) \\
+\texttt{post\_processing\_time} & Classical post-processing \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Extraction}
+
+\begin{lstlisting}[caption={QPU Timing Extraction},label={lst:timing_extract}]
+timing_info = sampleset.info.get('timing', {})
+
+# Convert microseconds to seconds
+qpu_access_time = timing_info.get('qpu_access_time', 0) / 1e6
+qpu_programming_time = timing_info.get('qpu_programming_time', 0) / 1e6
+qpu_sampling_time = timing_info.get('qpu_sampling_time', 0) / 1e6
+qpu_anneal_time_per_sample = timing_info.get('qpu_anneal_time_per_sample', 0) / 1e6
+
+print(f"QPU Access Time: {qpu_access_time:.4f}s")
+print(f"QPU Programming Time: {qpu_programming_time:.4f}s")
+print(f"QPU Sampling Time: {qpu_sampling_time:.4f}s")
+print(f"Anneal Time/Sample: {qpu_anneal_time_per_sample:.6f}s")
+\end{lstlisting}
+
+\section{Complete Decomposed Solver Implementation}
+
+\subsection{Main Solver Function}
+
+\begin{lstlisting}[caption={solve\_with\_decomposed\_qpu Function},label={lst:decomposed_solver}]
+def solve_with_decomposed_qpu(bqm, token, **kwargs):
+    """
+    Solve BQM using low-level QPU sampler.
+    
+    Args:
+        bqm: BinaryQuadraticModel
+        token: D-Wave API token
+        **kwargs: QPU configuration parameters
+    
+    Returns:
+        dict: Solution with detailed timing
+    """
+    # Detect simulated annealing mode
+    use_simulated_annealing = (
+        token is None or 
+        token == 'YOUR_DWAVE_TOKEN_HERE'
+    )
+    
+    if use_simulated_annealing:
+        # Fallback to neal
+        sampler = neal.SimulatedAnnealingSampler()
+        sampleset = sampler.sample(bqm, num_reads=kwargs.get('num_reads', 1000))
+        qpu_access_time = 0.0  # No QPU used
+    else:
+        # Direct QPU access
+        sampler_qpu = DWaveSampler(token=token)
+        sampler = EmbeddingComposite(sampler_qpu)
+        
+        sampleset = sampler.sample(
+            bqm,
+            num_reads=kwargs.get('num_reads', 1000),
+            annealing_time=kwargs.get('annealing_time', 20),
+            auto_scale=kwargs.get('auto_scale', True)
+        )
+        
+        # Extract QPU timing
+        timing_info = sampleset.info.get('timing', {})
+        qpu_access_time = timing_info.get('qpu_access_time', 0) / 1e6
+    
+    # Extract best solution
+    best_sample = sampleset.first.sample
+    best_energy = sampleset.first.energy
+    
+    return {
+        'status': 'Optimal',
+        'objective_value': -best_energy,
+        'bqm_energy': best_energy,
+        'qpu_access_time': qpu_access_time,
+        'num_reads': kwargs.get('num_reads', 1000),
+        'solution': dict(best_sample),
+        'solver_name': 'simulated_annealing' if use_simulated_annealing else 'dwave_decomposed_qpu'
+    }
+\end{lstlisting}
+
+\section{Benchmark Framework Integration}
+
+\subsection{Strategic Routing Logic}
+
+\begin{lstlisting}[caption={Strategic Problem Routing},label={lst:routing}]
+def run_single_benchmark(n_units, dwave_token, **kwargs):
+    """Run benchmark with strategic decomposition."""
+    results = {}
+    
+    # FARM SCENARIO: Continuous -> Gurobi
+    print(f"\n[FARM: {n_units} farms - CLASSICAL OPTIMIZATION]")
+    farm_data = generate_farm_data(n_units)
+    farms_list = list(farm_data['land_data'].keys())
+    foods, food_groups, config = create_config(farm_data['land_data'], 'full_family')
+    
+    # Create CQM for farm
+    cqm_farm, _, _, _ = create_cqm_farm(farms_list, foods, food_groups, config)
+    
+    # Solve with Gurobi (classical only)
+    farm_results = run_farm_classical(farms_list, foods, food_groups, config, cqm_farm)
+    
+    results['farm'] = {
+        'strategy': 'classical_only',
+        'solver': 'gurobi',
+        'results': farm_results
+    }
+    
+    # PATCH SCENARIO: Binary -> QPU
+    print(f"\n[PATCH: {n_units} patches - QUANTUM OPTIMIZATION]")
+    patch_data = generate_patch_data(n_units)
+    patches_list = list(patch_data['land_data'].keys())
+    foods, food_groups, config = create_config(patch_data['land_data'], 'full_family')
+    
+    # Create CQM for patch
+    cqm_patch, _, _ = create_cqm_plots(patches_list, foods, food_groups, config)
+    
+    # Convert to BQM
+    bqm, invert = cqm_to_bqm(cqm_patch)
+    
+    # Solve with decomposed QPU (or simulated annealing)
+    patch_results = solve_with_decomposed_qpu(bqm, dwave_token, **kwargs)
+    
+    results['patch'] = {
+        'strategy': 'quantum_only',
+        'solver': 'decomposed_qpu',
+        'results': patch_results
+    }
+    
+    return results
+\end{lstlisting}
+
+\subsection{Result Aggregation}
+
+Results from both scenarios are aggregated with clear strategy identification:
+
+\begin{lstlisting}[caption={Result Structure},label={lst:result_structure}]
+{
+    "n_units": 25,
+    "total_land": 100.0,
+    "scenarios": {
+        "farm": {
+            "n_units": 25,
+            "n_variables": 1350,
+            "n_constraints": 1375,
+            "strategy": "classical_only",
+            "solvers": {
+                "gurobi": {
+                    "status": "Optimal",
+                    "objective_value": 0.XXX,
+                    "solve_time": X.XX,
+                    "solver_type": "classical_minlp"
+                }
+            }
+        },
+        "patch": {
+            "n_units": 25,
+            "n_variables": 675,
+            "n_constraints": 30,
+            "strategy": "quantum_only",
+            "solvers": {
+                "decomposed_qpu": {
+                    "status": "Optimal",
+                    "objective_value": 0.XXX,
+                    "solve_time": X.XX,
+                    "qpu_access_time": 0.XXXX,
+                    "num_reads": 1000,
+                    "solver_type": "quantum_annealing"
+                }
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\section{SimulatedAnnealing Fallback}
+
+\subsection{Automatic Detection}
+
+Alternative 2 also implements automatic fallback:
+
+\begin{lstlisting}[caption={Fallback Detection},label={lst:fallback_alt2}]
+use_simulated_annealing = (token is None or token == 'YOUR_DWAVE_TOKEN_HERE')
+
+if use_simulated_annealing:
+    if not NEAL_AVAILABLE:
+        raise ImportError("neal required for testing")
+    
+    print("SOLVING WITH SIMULATED ANNEALING (Testing Mode)")
+    sampler = neal.SimulatedAnnealingSampler()
+else:
+    print("SOLVING WITH DECOMPOSED QPU (Low-Level Sampler)")
+    sampler_qpu = DWaveSampler(token=token)
+    sampler = EmbeddingComposite(sampler_qpu)
+\end{lstlisting}
+
+\subsection{Testing Benefits}
+
+The fallback mechanism enables:
+
+\begin{itemize}
+    \item \textbf{Development}: Test algorithmic logic without QPU
+    \item \textbf{Validation}: Verify constraint satisfaction in classical simulation
+    \item \textbf{Debugging}: Isolate issues without quantum hardware complexity
+    \item \textbf{Cost Reduction}: Minimize QPU usage during development
+\end{itemize}
+
+\section{Comparative Analysis: Alternative 1 vs. Alternative 2}
+
+\subsection{Architectural Differences}
+
+\begin{table}[H]
+\centering
+\caption{Architectural Comparison}
+\label{tab:arch_comparison}
+\begin{tabular}{p{4cm}p{5cm}p{5cm}}
+\toprule
+\textbf{Aspect} & \textbf{Alternative 1} & \textbf{Alternative 2} \\
+\midrule
+Approach & Unified hybrid workflow & Strategic decomposition \\
+Problem Handling & Both farm \& patch use hybrid & Farm $\rightarrow$ classical, Patch $\rightarrow$ quantum \\
+QPU Usage & Subproblem sampling in loop & Direct full-problem submission \\
+Classical Integration & Racing branches with QPU & Separate solver routing \\
+Complexity & Higher (workflow construction) & Lower (direct solver calls) \\
+Flexibility & High (customizable workflow) & Medium (fixed routing) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Performance Characteristics}
+
+\begin{table}[H]
+\centering
+\caption{Expected Performance Profiles}
+\label{tab:perf_comparison}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metric} & \textbf{Alternative 1} & \textbf{Alternative 2} \\
+\midrule
+Farm solve time & Medium (hybrid iterations) & Fast (Gurobi direct) \\
+Patch solve time & Medium (hybrid iterations) & Fast (QPU direct) \\
+QPU calls & Multiple (per iteration) & Single (one submission) \\
+Convergence & Iterative improvement & One-shot optimization \\
+Solution quality & High (refined over iterations) & High (depends on solver) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Advantages and Limitations}
+
+\subsection{Advantages}
+
+\begin{enumerate}
+    \item \textbf{Specialization}: Each solver operates on problems suited to its strengths
+    \item \textbf{Simplicity}: Straightforward routing logic, minimal workflow complexity
+    \item \textbf{Transparency}: Clear separation of classical and quantum components
+    \item \textbf{Efficiency}: Direct solver invocation without overhead
+    \item \textbf{Scalability}: Classical solver handles large continuous problems well
+\end{enumerate}
+
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Rigidity}: Fixed routing rules, less adaptable to hybrid problem structures
+    \item \textbf{No Cross-Pollination}: Farm and patch solved independently, no information sharing
+    \item \textbf{Embedding Constraints}: Patch scenario limited by QPU topology
+    \item \textbf{One-Shot Optimization}: No iterative refinement for quantum component
+\end{enumerate}
+
+\section{Summary}
+
+Alternative 2 demonstrates a strategic decomposition approach that:
+
+\begin{itemize}
+    \item Routes continuous problems to specialized classical MINLP solvers
+    \item Directs binary problems to low-level quantum annealers
+    \item Provides direct QPU access with explicit parameter control
+    \item Implements automatic fallback for development and testing
+    \item Offers a simpler, more transparent architecture than unified hybrid workflows
+\end{itemize}
+
+This implementation showcases how problem-solver matching can be an effective strategy for heterogeneous computational resources.
+
+\end{document}

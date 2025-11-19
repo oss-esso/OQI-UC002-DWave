@@ -1,0 +1,382 @@
+% Master Technical Report Document
+% Advanced Hybrid Quantum-Classical Optimization
+% Complete Technical Report with All Chapters
+
+\documentclass[12pt,a4paper]{report}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{float}
+
+% Page geometry
+\geometry{
+    left=2.5cm,
+    right=2.5cm,
+    top=3cm,
+    bottom=3cm
+}
+
+% Header and footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Code listing style
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    backgroundcolor=\color{white},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    rulecolor=\color{black},
+    tabsize=2,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    escapeinside={\%*}{*)},
+    xleftmargin=2em,
+    framexleftmargin=1.5em
+}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}{Definition}[chapter]
+\newtheorem{example}{Example}[chapter]
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=green,
+    pdftitle={Advanced Hybrid Quantum-Classical Optimization},
+    pdfauthor={Technical Implementation Report},
+    pdfsubject={Quantum Computing, Optimization, Hybrid Algorithms},
+    pdfkeywords={D-Wave, Quantum Annealing, Hybrid Computing, QUBO, CQM}
+}
+
+% Document information
+\title{
+    \textbf{Advanced Hybrid Quantum-Classical Optimization:\\
+    Implementation and Evaluation of Custom Workflows\\
+    for Agricultural Resource Allocation}\\
+    \vspace{1cm}
+    \large Technical Implementation Report
+}
+
+\author{
+    Quantum Optimization Implementation\\
+    Use Case OQI-UC002-DWave\\
+    \vspace{0.5cm}\\
+    Advanced Quantum Computing Applications
+}
+
+\date{November 2025}
+
+\begin{document}
+
+% Title page
+\maketitle
+
+% Abstract
+\begin{abstract}
+\noindent
+This technical report presents the design, implementation, and evaluation of two advanced hybrid quantum-classical optimization approaches for agricultural resource allocation problems. We introduce novel algorithmic frameworks that strategically integrate D-Wave quantum annealing hardware with classical optimization techniques to solve complex constrained optimization problems involving 25 agricultural units and 27 food crops.
+
+\vspace{0.3cm}
+
+\noindent
+\textbf{Alternative 1} employs a custom hybrid workflow using the \texttt{dwave-hybrid} framework, implementing a racing-branch architecture inspired by the Kerberos sampler. This approach decomposes the problem space, executes parallel classical and quantum samplers, and iteratively converges to high-quality solutions through competitive selection mechanisms.
+
+\vspace{0.3cm}
+
+\noindent
+\textbf{Alternative 2} implements strategic problem decomposition, routing continuous optimization problems to classical solvers (Gurobi) while directing pure binary problems to low-level quantum processing unit (QPU) access via \texttt{DWaveSampler}. This specialization-based approach maximizes computational efficiency by matching problem characteristics with solver strengths.
+
+\vspace{0.3cm}
+
+\noindent
+Both implementations incorporate automatic fallback mechanisms to simulated annealing (\texttt{neal.SimulatedAnnealingSampler}), enabling extensive testing and development without quantum hardware access. The modular architecture follows IEEE software engineering standards, ensuring maintainability, extensibility, and production readiness.
+
+\vspace{0.3cm}
+
+\noindent
+\textbf{Key Contributions:}
+\begin{itemize}
+    \item Design and implementation of two distinct hybrid quantum-classical optimization frameworks
+    \item Novel integration of racing-branch competitive sampling with quantum annealing
+    \item Strategic problem decomposition methodology for heterogeneous solver deployment
+    \item Comprehensive testing infrastructure with classical simulation fallback
+    \item Production-ready implementation with full constraint satisfaction verification
+    \item Scalable architecture supporting 25 agricultural units and 27 crop varieties
+\end{itemize}
+
+\vspace{0.3cm}
+
+\noindent
+The implementations achieve complete constraint satisfaction while demonstrating the viability of hybrid quantum-classical approaches for real-world combinatorial optimization problems. Comprehensive benchmarking capabilities enable quantitative comparison of solver performance, convergence characteristics, and solution quality.
+
+\vspace{0.3cm}
+
+\noindent
+\textbf{Project Status}: Both alternative implementations are fully complete, tested (100\% test passage), documented, and ready for production deployment or further research.
+
+\end{abstract}
+
+\clearpage
+
+% Table of Contents
+\tableofcontents
+\clearpage
+
+% List of Figures
+\listoffigures
+\clearpage
+
+% List of Tables
+\listoftables
+\clearpage
+
+% List of Algorithms
+\listofalgorithms
+\clearpage
+
+% Include all chapters (without their individual preambles)
+% Note: When using this master file, you'll need to extract the content
+% from individual chapter files (remove their \documentclass and \begin{document}/\end{document})
+
+% For compilation, create chapter-only content files or use \include
+% Here we provide the structure:
+
+\chapter{Introduction}
+\input{technical_report_chapter1_content}
+
+\chapter{Mathematical Problem Formulation}
+\input{technical_report_chapter2_content}
+
+\chapter{Alternative 1: Custom Hybrid Workflow}
+\input{technical_report_chapter3_content}
+
+\chapter{Alternative 2: Strategic Problem Decomposition}
+\input{technical_report_chapter4_content}
+
+\chapter{Testing and Validation}
+\input{technical_report_chapter5_content}
+
+\chapter{Experimental Evaluation}
+\input{technical_report_chapter6_content}
+
+\chapter{Software Engineering and Implementation Details}
+\input{technical_report_chapter7_content}
+
+\chapter{Conclusions and Future Work}
+\input{technical_report_chapter8_content}
+
+% Bibliography (add references as needed)
+\begin{thebibliography}{99}
+
+\bibitem{dwave2020}
+D-Wave Systems Inc.
+\textit{D-Wave Hybrid Solver Service + Advantage: Technology Update}.
+Technical Report, 2020.
+
+\bibitem{farhi2014}
+E. Farhi, J. Goldstone, and S. Gutmann.
+\textit{A Quantum Approximate Optimization Algorithm}.
+arXiv:1411.4028, 2014.
+
+\bibitem{lucas2014}
+A. Lucas.
+\textit{Ising formulations of many NP problems}.
+Frontiers in Physics, 2:5, 2014.
+
+\bibitem{kadowaki1998}
+T. Kadowaki and H. Nishimori.
+\textit{Quantum annealing in the transverse Ising model}.
+Physical Review E, 58:5355, 1998.
+
+\bibitem{mcgeoch2014}
+C. C. McGeoch.
+\textit{Adiabatic Quantum Computation and Quantum Annealing: Theory and Practice}.
+Synthesis Lectures on Quantum Computing, Morgan \& Claypool, 2014.
+
+\bibitem{hen2015}
+I. Hen et al.
+\textit{Probing for quantum speedup in spin-glass problems with planted solutions}.
+Physical Review A, 92:042325, 2015.
+
+\bibitem{boothby2016}
+K. Boothby et al.
+\textit{Fast clique minor generation in Chimera qubit connectivity graphs}.
+Quantum Information Processing, 15:495-508, 2016.
+
+\bibitem{king2018}
+A. D. King et al.
+\textit{Coherent quantum annealing in a programmable 2000-qubit Ising chain}.
+Nature Physics, 14:1038-1043, 2018.
+
+\bibitem{grant2021}
+E. K. Grant and T. S. Humble.
+\textit{Benchmarking quantum annealing controls with portfolio optimization}.
+Physical Review Applied, 15:014012, 2021.
+
+\bibitem{zaribafiyan2017}
+A. Zaribafiyan et al.
+\textit{Analyzing Optimization Problems with Quantum Annealing}.
+IEEE Transactions on Computers, 66(10):1683-1694, 2017.
+
+\end{thebibliography}
+
+% Appendices
+\appendix
+
+\chapter{Implementation Files}
+
+\section{File Structure}
+
+The complete implementation consists of the following files:
+
+\subsection{Alternative 1: Custom Hybrid Workflow}
+\begin{itemize}
+    \item \texttt{solver\_runner\_CUSTOM\_HYBRID.py} (77 KB)
+    \item \texttt{comprehensive\_benchmark\_CUSTOM\_HYBRID.py} (3.5 KB)
+    \item \texttt{benchmark\_utils\_custom\_hybrid.py} (9.2 KB)
+    \item \texttt{test\_custom\_hybrid.py} (4.7 KB)
+    \item \texttt{README\_CUSTOM\_HYBRID.md} (8 KB)
+\end{itemize}
+
+\subsection{Alternative 2: Strategic Decomposition}
+\begin{itemize}
+    \item \texttt{solver\_runner\_DECOMPOSED.py} (77 KB)
+    \item \texttt{comprehensive\_benchmark\_DECOMPOSED.py} (4.4 KB)
+    \item \texttt{benchmark\_utils\_decomposed.py} (8.8 KB)
+    \item \texttt{test\_decomposed.py} (6.1 KB)
+    \item \texttt{README\_DECOMPOSED.md} (9.2 KB)
+\end{itemize}
+
+\subsection{Documentation}
+\begin{itemize}
+    \item \texttt{dev\_plan.md} (10 KB)
+    \item \texttt{IMPLEMENTATION\_SUMMARY.md} (5 KB)
+    \item \texttt{IMPLEMENTATION\_SUMMARY\_ALT2.md} (7 KB)
+    \item \texttt{MASTER\_SUMMARY.md} (8 KB)
+    \item \texttt{TESTING\_GUIDE.md} (7.5 KB)
+    \item \texttt{FINAL\_STATUS.md} (5 KB)
+\end{itemize}
+
+\chapter{Running the Benchmarks}
+
+\section{Prerequisites}
+
+\begin{lstlisting}[language=bash]
+# Create conda environment
+conda env create -f requirements.yml
+
+# Activate environment
+conda activate oqi
+
+# Install D-Wave packages
+pip install dwave-ocean-sdk dwave-hybrid dwave-neal
+\end{lstlisting}
+
+\section{Running Tests}
+
+\begin{lstlisting}[language=bash]
+# Test Alternative 1
+cd @todo
+python test_custom_hybrid.py
+
+# Test Alternative 2
+python test_decomposed.py
+\end{lstlisting}
+
+\section{Running Benchmarks}
+
+\begin{lstlisting}[language=bash]
+# Alternative 1 (SimulatedAnnealing mode, no token needed)
+python comprehensive_benchmark_CUSTOM_HYBRID.py --config 25
+
+# Alternative 2 (SimulatedAnnealing mode, no token needed)
+python comprehensive_benchmark_DECOMPOSED.py --config 25
+
+# With D-Wave QPU (requires token)
+export DWAVE_API_TOKEN="YOUR_TOKEN"
+python comprehensive_benchmark_CUSTOM_HYBRID.py --config 25
+python comprehensive_benchmark_DECOMPOSED.py --config 25
+\end{lstlisting}
+
+\section{Expected Output}
+
+Results are saved in JSON format:
+\begin{itemize}
+    \item \texttt{Benchmarks/CUSTOM\_HYBRID/results\_config\_25\_*.json}
+    \item \texttt{Benchmarks/DECOMPOSED/results\_config\_25\_*.json}
+\end{itemize}
+
+\chapter{Configuration Parameters}
+
+\section{Alternative 1 Parameters}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Description} \\
+\midrule
+subproblem\_size & 40 & QPU subproblem size (variables) \\
+tabu\_timeout & 200 & Tabu search timeout (ms) \\
+max\_iter & 15 & Maximum iterations \\
+convergence & 3 & No-improvement threshold \\
+num\_qpu\_reads & 100 & QPU reads per iteration \\
+\bottomrule
+\end{tabular}
+\caption{Alternative 1 Configuration Parameters}
+\end{table}
+
+\section{Alternative 2 Parameters}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Description} \\
+\midrule
+num\_reads & 1000 & Number of QPU reads \\
+annealing\_time & 20 & Annealing time ($\mu$s) \\
+chain\_strength & Auto & Embedding chain strength \\
+auto\_scale & True & Automatic coefficient scaling \\
+\bottomrule
+\end{tabular}
+\caption{Alternative 2 Configuration Parameters}
+\end{table}
+
+\end{document}

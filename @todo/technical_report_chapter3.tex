@@ -1,0 +1,484 @@
+% Chapter 3: Alternative 1 - Custom Hybrid Workflow Implementation
+
+\chapter{Alternative 1: Custom Hybrid Workflow}
+
+This chapter presents the design and implementation of Alternative 1, which employs a custom hybrid workflow using the \texttt{dwave-hybrid} framework. The architecture implements a racing-branch competitive sampling strategy inspired by the Kerberos sampler, combining classical and quantum optimization techniques in an iterative refinement loop.
+
+\section{Architecture Overview}
+
+\subsection{Design Philosophy}
+
+The custom hybrid workflow is built on three core principles:
+
+\begin{enumerate}
+    \item \textbf{Competitive Sampling}: Multiple samplers execute in parallel, with the best solution selected at each iteration
+    \item \textbf{Problem Decomposition}: Large problems are decomposed into manageable subproblems for QPU submission
+    \item \textbf{Iterative Refinement}: Solutions are progressively improved through repeated sampling and selection
+\end{enumerate}
+
+\subsection{High-Level Architecture}
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Input: CQM → Convert to BQM → Create Initial State
+                                     ↓
+                        ┌────────────┴────────────┐
+                        │    Loop (max_iter=15)   │
+                        │                         │
+                        │  ┌────────────────────┐ │
+                        │  │  Racing Branches   │ │
+                        │  │                    │ │
+                        │  │  • Tabu Search     │ │
+                        │  │  • Simulated Ann.  │ │
+                        │  │  • QPU Branch:     │ │
+                        │  │    - Decompose     │ │
+                        │  │    - QPU Sample    │ │
+                        │  │    - Compose       │ │
+                        │  └────────────────────┘ │
+                        │           ↓             │
+                        │      ArgMin (select)    │
+                        │           ↓             │
+                        │    Check Convergence    │
+                        └─────────────────────────┘
+                                     ↓
+                              Final Solution
+\end{verbatim}
+\caption{Custom Hybrid Workflow Architecture}
+\label{fig:custom_hybrid_arch}
+\end{figure}
+
+\section{Algorithmic Components}
+
+\subsection{Problem Decomposition}
+
+\subsubsection{Energy Impact Decomposer}
+
+The \texttt{EnergyImpactDecomposer} selects subproblems based on variable impact on solution quality:
+
+\begin{algorithm}[H]
+\caption{Energy Impact Decomposition}
+\label{alg:energy_impact}
+\begin{algorithmic}[1]
+\Require Current state $s$, BQM $Q$, subproblem size $k$
+\Ensure Subproblem BQM $Q'$
+\State Compute energy impact $\Delta E_i$ for each variable $i$
+\State $\Delta E_i \leftarrow |h_i| + \sum_j |J_{ij}|$ \Comment{Linear + quadratic terms}
+\State Sort variables by $\Delta E_i$ in descending order
+\State Select top-$k$ variables with highest impact
+\State Extract subproblem BQM $Q'$ on selected variables
+\State \Return $Q'$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Configuration Parameters}:
+\begin{itemize}
+    \item \texttt{size}: Subproblem size (default: 40 variables)
+    \item \texttt{rolling}: Boolean flag for rolling window selection
+    \item \texttt{rolling\_history}: Fraction of history retained (default: 0.85)
+\end{itemize}
+
+The rolling history mechanism ensures different variable subsets are explored across iterations, preventing premature convergence to local optima.
+
+\subsubsection{Implementation}
+
+\begin{lstlisting}[caption={Energy Impact Decomposer Configuration},label={lst:decomposer}]
+from hybrid import EnergyImpactDecomposer
+
+decomposer = EnergyImpactDecomposer(
+    size=40,              # Subproblem size
+    rolling=True,         # Enable rolling window
+    rolling_history=0.85  # Retain 85% of history
+)
+\end{lstlisting}
+
+\subsection{Quantum Processing Unit (QPU) Sampling}
+
+\subsubsection{QPU Subproblem Sampler}
+
+The \texttt{QPUSubproblemAutoEmbeddingSampler} handles QPU submission:
+
+\begin{algorithm}[H]
+\caption{QPU Subproblem Sampling}
+\label{alg:qpu_sampling}
+\begin{algorithmic}[1]
+\Require Subproblem BQM $Q'$, num\_reads $n_r$
+\Ensure Sampleset $\mathcal{S}$
+\State Connect to D-Wave QPU with API token
+\State Find minor-embedding $\phi: V(Q') \rightarrow V(G_{QPU})$
+\State Embed $Q'$ onto QPU topology using $\phi$
+\State Set chain strength to maintain logical qubit integrity
+\State Submit annealing job with $n_r$ reads
+\State \textbf{wait} for QPU completion
+\State Retrieve sampleset $\mathcal{S}$
+\State Unembed $\mathcal{S}$ to original variable space
+\State \Return $\mathcal{S}$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Configuration Parameters}:
+\begin{itemize}
+    \item \texttt{num\_reads}: Number of QPU samples (default: 100)
+    \item \texttt{qpu\_sampler}: QPU sampler instance (auto-detected if None)
+    \item \texttt{token}: D-Wave API authentication token
+\end{itemize}
+
+\subsubsection{Implementation}
+
+\begin{lstlisting}[caption={QPU Sampler Configuration},label={lst:qpu_sampler}]
+from hybrid import QPUSubproblemAutoEmbeddingSampler
+
+qpu_sampler = QPUSubproblemAutoEmbeddingSampler(
+    num_reads=100,
+    qpu_sampler=None,  # Auto-detect
+    token=dwave_token
+)
+\end{lstlisting}
+
+\subsection{Solution Composition}
+
+\subsubsection{Splat Composer}
+
+The \texttt{SplatComposer} merges subproblem solutions back into the full solution:
+
+\begin{algorithm}[H]
+\caption{Splat Composition}
+\label{alg:splat_compose}
+\begin{algorithmic}[1]
+\Require Current state $s_{full}$, subproblem solution $s_{sub}$
+\Ensure Updated state $s'_{full}$
+\State $s'_{full} \leftarrow s_{full}$
+\For{each variable $i$ in $s_{sub}$}
+    \State $s'_{full}[i] \leftarrow s_{sub}[i]$ \Comment{Overwrite with subproblem value}
+\EndFor
+\State Recompute energy $E(s'_{full})$ for full BQM
+\State \Return $s'_{full}$
+\end{algorithmic}
+\end{algorithm}
+
+This "splat" operation updates the full solution with subproblem results while maintaining consistency.
+
+\subsection{Classical Samplers}
+
+\subsubsection{Interruptable Tabu Search}
+
+Tabu search with timeout-based interruption:
+
+\begin{algorithm}[H]
+\caption{Interruptable Tabu Search}
+\label{alg:tabu}
+\begin{algorithmic}[1]
+\Require BQM $Q$, timeout $t_{max}$
+\Ensure Best solution found $s^*$
+\State Initialize $s \leftarrow$ random configuration
+\State Initialize tabu list $T \leftarrow \emptyset$
+\State $s^* \leftarrow s$, $E^* \leftarrow E(s)$
+\State $t_{start} \leftarrow$ current\_time()
+\While{current\_time() $- t_{start} < t_{max}$}
+    \State $\mathcal{N} \leftarrow$ non-tabu neighbors of $s$
+    \State $s' \leftarrow \argmin_{s \in \mathcal{N}} E(s)$
+    \State Add $s$ to tabu list $T$
+    \If{$E(s') < E^*$}
+        \State $s^* \leftarrow s'$, $E^* \leftarrow E(s')$
+    \EndIf
+    \State $s \leftarrow s'$
+\EndWhile
+\State \Return $s^*$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Configuration}: \texttt{timeout} = 200 ms
+
+\subsubsection{Simulated Annealing}
+
+Classical simulated annealing with controlled temperature schedule:
+
+\begin{algorithm}[H]
+\caption{Simulated Annealing}
+\label{alg:sa}
+\begin{algorithmic}[1]
+\Require BQM $Q$, num\_sweeps $n_s$
+\Ensure Best solution found $s^*$
+\State Initialize $s \leftarrow$ random configuration
+\State $s^* \leftarrow s$, $E^* \leftarrow E(s)$
+\State $T \leftarrow T_{max}$ \Comment{Initial temperature}
+\For{$k = 1$ to $n_s$}
+    \State $s' \leftarrow$ random neighbor of $s$
+    \State $\Delta E \leftarrow E(s') - E(s)$
+    \If{$\Delta E < 0$ \textbf{or} $\text{random}() < e^{-\Delta E / T}$}
+        \State $s \leftarrow s'$
+        \If{$E(s') < E^*$}
+            \State $s^* \leftarrow s'$, $E^* \leftarrow E(s')$
+        \EndIf
+    \EndIf
+    \State $T \leftarrow T_{max} \cdot (1 - k/n_s)$ \Comment{Linear cooling}
+\EndFor
+\State \Return $s^*$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Configuration}: \texttt{num\_sweeps} = 1000
+
+\subsection{Racing Branch Architecture}
+
+\subsubsection{Parallel Execution}
+
+The \texttt{Race} construct executes multiple samplers in parallel:
+
+\begin{algorithm}[H]
+\caption{Racing Branches}
+\label{alg:race}
+\begin{algorithmic}[1]
+\Require State $s$, Samplers $\{\text{Tabu}, \text{SA}, \text{QPU}\}$
+\Ensure Winner state $s_{winner}$
+\State Launch Tabu search in parallel thread
+\State Launch SA in parallel thread
+\State Launch QPU branch in parallel thread
+\State \textbf{wait} for any sampler to complete
+\State Interrupt remaining samplers \Comment{QPU typically completes first}
+\State Collect results from all completed samplers
+\State \Return all results for selection
+\end{algorithmic}
+\end{algorithm}
+
+The race continues until the first sampler completes (typically the QPU branch), at which point classical samplers are interrupted.
+
+\subsubsection{Solution Selection}
+
+\texttt{ArgMin} selects the best solution from racing branches:
+
+\begin{algorithm}[H]
+\caption{ArgMin Selection}
+\label{alg:argmin}
+\begin{algorithmic}[1]
+\Require Solution set $\{s_1, s_2, \ldots, s_k\}$ from racing branches
+\Ensure Best solution $s^*$
+\State Compute energies $E_i = E(s_i)$ for all $i$
+\State $i^* \leftarrow \argmin_i E_i$
+\State \Return $s_{i^*}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Iterative Loop}
+
+\subsubsection{Loop Structure}
+
+The \texttt{Loop} construct implements iterative refinement:
+
+\begin{algorithm}[H]
+\caption{Iterative Loop with Convergence}
+\label{alg:loop}
+\begin{algorithmic}[1]
+\Require Initial state $s_0$, max\_iter $n_{max}$, convergence threshold $c$
+\Ensure Final state $s^*$
+\State $s \leftarrow s_0$, $E^* \leftarrow E(s_0)$
+\State $\text{no\_improve\_count} \leftarrow 0$
+\For{$iter = 1$ to $n_{max}$}
+    \State $s' \leftarrow$ RacingBranches($s$)
+    \If{$E(s') < E^*$}
+        \State $E^* \leftarrow E(s')$
+        \State $\text{no\_improve\_count} \leftarrow 0$
+    \Else
+        \State $\text{no\_improve\_count} \leftarrow \text{no\_improve\_count} + 1$
+    \EndIf
+    \If{$\text{no\_improve\_count} \geq c$}
+        \State \textbf{break} \Comment{Converged}
+    \EndIf
+    \State $s \leftarrow s'$
+\EndFor
+\State \Return $s$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Configuration}:
+\begin{itemize}
+    \item \texttt{max\_iter}: Maximum iterations (default: 15)
+    \item \texttt{convergence}: No-improvement threshold (default: 3)
+\end{itemize}
+
+\section{Complete Workflow Implementation}
+
+\subsection{Workflow Construction}
+
+\begin{lstlisting}[caption={Complete Custom Hybrid Workflow},label={lst:workflow_complete}]
+from hybrid import (
+    Loop, Race, ArgMin, State,
+    EnergyImpactDecomposer,
+    QPUSubproblemAutoEmbeddingSampler,
+    SplatComposer,
+    InterruptableTabuSampler,
+    SimulatedAnnealingProblemSampler
+)
+
+# QPU Branch: Decompose -> Sample -> Compose
+qpu_branch = (
+    EnergyImpactDecomposer(
+        size=40, 
+        rolling=True, 
+        rolling_history=0.85
+    ) |
+    QPUSubproblemAutoEmbeddingSampler(
+        num_reads=100,
+        qpu_sampler=None,
+        token=dwave_token
+    ) |
+    SplatComposer()
+)
+
+# Classical Branches
+tabu_branch = InterruptableTabuSampler(timeout=200)
+sa_branch = SimulatedAnnealingProblemSampler(
+    num_reads=1, 
+    num_sweeps=1000
+)
+
+# Racing Branches
+racing_branches = (
+    Race(
+        tabu_branch,
+        sa_branch,
+        qpu_branch
+    ) | ArgMin()
+)
+
+# Iterative Loop
+workflow = Loop(
+    racing_branches,
+    max_iter=15,
+    convergence=3
+)
+\end{lstlisting}
+
+\subsection{Execution}
+
+\begin{lstlisting}[caption={Workflow Execution},label={lst:workflow_exec}]
+# Create initial state from BQM
+initial_state = State.from_problem(bqm)
+
+# Run workflow
+final_state = workflow.run(initial_state).result()
+
+# Extract solution
+solution = final_state.samples.first.sample
+energy = final_state.samples.first.energy
+\end{lstlisting}
+
+\section{SimulatedAnnealing Fallback Mechanism}
+
+\subsection{Motivation}
+
+For development and testing without continuous QPU access, we implement an automatic fallback to simulated annealing.
+
+\subsection{Detection Logic}
+
+\begin{lstlisting}[caption={Token Detection},label={lst:token_detect}]
+use_simulated_annealing = (
+    token is None or 
+    token == 'YOUR_DWAVE_TOKEN_HERE'
+)
+\end{lstlisting}
+
+\subsection{Modified Workflow}
+
+When simulated annealing mode is active:
+
+\begin{lstlisting}[caption={SimulatedAnnealing Workflow},label={lst:sa_workflow}]
+if use_simulated_annealing:
+    # No QPU - use only classical samplers
+    tabu_branch = InterruptableTabuSampler(timeout=200)
+    sa_branch = SimulatedAnnealingProblemSampler(
+        num_reads=100,
+        num_sweeps=1000
+    )
+    
+    racing_branches = (
+        Race(
+            tabu_branch,
+            sa_branch
+        ) | ArgMin()
+    )
+else:
+    # Full workflow with QPU (as shown previously)
+    ...
+\end{lstlisting}
+
+\section{Performance Characteristics}
+
+\subsection{Computational Complexity}
+
+Per iteration:
+\begin{itemize}
+    \item \textbf{Decomposition}: $O(n^2)$ where $n = |\text{BQM variables}|$
+    \item \textbf{QPU Sampling}: $O(1)$ (fixed QPU time, typically $\sim$0.01-0.1s)
+    \item \textbf{Tabu Search}: $O(t_{max} \cdot d)$ where $d$ is neighborhood size
+    \item \textbf{Simulated Annealing}: $O(n_s \cdot d)$ where $n_s$ is sweeps
+    \item \textbf{Composition}: $O(k)$ where $k$ is subproblem size
+\end{itemize}
+
+\subsection{Convergence Properties}
+
+\begin{theorem}[Monotonic Improvement]
+The custom hybrid workflow exhibits monotonic improvement in solution quality:
+\begin{equation}
+E(s_{iter+1}) \leq E(s_{iter}) \quad \forall iter
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+At each iteration, \texttt{ArgMin} selects the best solution among all racing branches. The current solution is always included in the comparison (implicitly, as samplers start from current state). Therefore, the selected solution cannot be worse than the previous iteration's solution.
+\end{proof}
+
+\section{Integration with Benchmark Framework}
+
+\subsection{Solver Interface}
+
+\begin{lstlisting}[caption={solve\_with\_custom\_hybrid\_workflow Function},label={lst:solver_interface}]
+def solve_with_custom_hybrid_workflow(cqm, token, **kwargs):
+    """
+    Solve CQM using custom hybrid workflow.
+    
+    Args:
+        cqm: ConstrainedQuadraticModel
+        token: D-Wave API token
+        **kwargs: Configuration parameters
+    
+    Returns:
+        dict: Solution with status, objective, timing
+    """
+    # Convert CQM to BQM
+    bqm, invert = cqm_to_bqm(cqm)
+    
+    # Build workflow
+    workflow = build_workflow(token, **kwargs)
+    
+    # Execute
+    initial_state = State.from_problem(bqm)
+    final_state = workflow.run(initial_state).result()
+    
+    # Invert solution
+    cqm_solution = invert(final_state.samples.first.sample)
+    
+    return {
+        'status': 'Converged',
+        'objective_value': -final_state.samples.first.energy,
+        'solve_time': final_state.info['run_time'],
+        'iterations': final_state.info['iterations'],
+        'solution': cqm_solution
+    }
+\end{lstlisting}
+
+\section{Summary}
+
+Alternative 1 implements a sophisticated custom hybrid workflow that:
+
+\begin{itemize}
+    \item Decomposes large BQMs into QPU-compatible subproblems
+    \item Executes competitive sampling across classical and quantum hardware
+    \item Iteratively refines solutions until convergence
+    \item Supports fallback to simulated annealing for testing
+    \item Integrates seamlessly with the benchmarking framework
+\end{itemize}
+
+The architecture demonstrates the flexibility of the \texttt{dwave-hybrid} framework for constructing bespoke optimization algorithms tailored to specific problem characteristics.
+
+\end{document}

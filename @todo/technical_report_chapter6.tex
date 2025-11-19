@@ -1,0 +1,495 @@
+% Chapter 6: Experimental Evaluation
+
+\chapter{Experimental Evaluation}
+
+This chapter presents the experimental evaluation framework and anticipated performance characteristics for both alternative implementations. We discuss evaluation metrics, expected results, comparative analysis methodology, and performance profiles.
+
+\section{Evaluation Framework}
+
+\subsection{Experimental Setup}
+
+\subsubsection{Hardware Configuration}
+
+\begin{table}[H]
+\centering
+\caption{Experimental Hardware Configuration}
+\label{tab:hardware_config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+\textbf{Classical Computing} & \\
+\quad Processor & Intel/AMD x64 multi-core \\
+\quad Memory & $\geq$ 16 GB RAM \\
+\quad OS & Windows/Linux/macOS \\
+\quad Solver & Gurobi 10.x (academic license) \\
+\midrule
+\textbf{Quantum Computing} & \\
+\quad QPU & D-Wave Advantage system \\
+\quad Qubits & $\sim$5000 active qubits \\
+\quad Topology & Pegasus graph \\
+\quad Connectivity & 15-way qubit connectivity \\
+\quad Annealing Time & Configurable (default: 20 $\mu$s) \\
+\midrule
+\textbf{Simulated Annealing} & \\
+\quad Sampler & neal.SimulatedAnnealingSampler \\
+\quad Sweeps & 1000 per run \\
+\quad Temperature Schedule & Linear cooling \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Software Environment}
+
+\begin{itemize}
+    \item \textbf{Python}: 3.10+
+    \item \textbf{D-Wave Ocean SDK}: Latest stable version
+    \item \textbf{dwave-hybrid}: 0.6.x
+    \item \textbf{dwave-neal}: 0.6.x
+    \item \textbf{Gurobi Python API}: gurobipy 10.x
+    \item \textbf{PuLP}: Latest stable version
+\end{itemize}
+
+\subsection{Problem Configurations}
+
+\subsubsection{Benchmark Instances}
+
+\begin{table}[H]
+\centering
+\caption{Benchmark Problem Instances}
+\label{tab:benchmark_instances}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Instance} & \textbf{Units} & \textbf{Crops} & \textbf{Total Land} & \textbf{Scenario} \\
+\midrule
+Small & 5 & 27 & 100 ha & full\_family \\
+Medium & 10 & 27 & 100 ha & full\_family \\
+Standard & 25 & 27 & 100 ha & full\_family \\
+Large & 50 & 27 & 100 ha & full\_family \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For the standard 25-unit configuration:
+\begin{itemize}
+    \item \textbf{Farm scenario}: 1350 variables, 1375 constraints
+    \item \textbf{Patch scenario}: 675 variables, 30 constraints
+\end{itemize}
+
+\section{Evaluation Metrics}
+
+\subsection{Solution Quality Metrics}
+
+\subsubsection{Objective Value}
+
+Primary metric: Multi-objective weighted benefit function
+\begin{equation}
+\text{Quality} = \frac{1}{100} \sum_{f,c} A_{f,c} \cdot B_c
+\end{equation}
+
+\subsubsection{Optimality Gap}
+
+For comparison with known optimal solutions or bounds:
+\begin{equation}
+\text{Gap} = \frac{|f_{found} - f_{optimal}|}{|f_{optimal}|} \times 100\%
+\end{equation}
+
+\subsubsection{Feasibility Rate}
+
+Percentage of solutions satisfying all constraints:
+\begin{equation}
+\text{Feasibility Rate} = \frac{\text{Feasible Solutions}}{\text{Total Solutions}} \times 100\%
+\end{equation}
+
+\subsection{Performance Metrics}
+
+\subsubsection{Solve Time}
+
+Total wall-clock time from problem submission to solution receipt:
+\begin{itemize}
+    \item \textbf{CQM Construction}: Time to build constraint model
+    \item \textbf{Conversion Time}: CQM $\rightarrow$ BQM conversion (if applicable)
+    \item \textbf{Solver Time}: Core optimization time
+    \item \textbf{Total Time}: End-to-end execution
+\end{itemize}
+
+\subsubsection{QPU Utilization (Alternative 1 \& 2 with QPU)}
+
+\begin{table}[H]
+\centering
+\caption{QPU Timing Breakdown Metrics}
+\label{tab:qpu_metrics}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Description} \\
+\midrule
+QPU Access Time & Total time on QPU hardware \\
+QPU Programming Time & Time to configure QPU \\
+QPU Sampling Time & Actual annealing time \\
+Anneal Time/Sample & Per-sample annealing duration \\
+Post-Processing Time & Classical result processing \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Iteration Count (Alternative 1)}
+
+For iterative hybrid workflow:
+\begin{itemize}
+    \item \textbf{Total Iterations}: Number of refinement cycles
+    \item \textbf{Convergence Iteration}: When improvement stopped
+    \item \textbf{Improvement per Iteration}: $\Delta E$ per cycle
+\end{itemize}
+
+\subsection{Scalability Metrics}
+
+\subsubsection{Time Complexity}
+
+Empirical scaling analysis:
+\begin{equation}
+T(n) = a \cdot n^b + c
+\end{equation}
+
+where $n$ is problem size (number of units) and $b$ is the empirical scaling exponent.
+
+\subsubsection{Memory Usage}
+
+Peak memory consumption during:
+\begin{itemize}
+    \item CQM/BQM construction
+    \item Solver execution
+    \item Solution storage
+\end{itemize}
+
+\section{Expected Results}
+
+\subsection{Alternative 1: Custom Hybrid Workflow}
+
+\subsubsection{Expected Performance Profile}
+
+\begin{table}[H]
+\centering
+\caption{Expected Performance - Alternative 1 (Standard Config: 25 units)}
+\label{tab:expected_alt1}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metric} & \textbf{Farm Scenario} & \textbf{Patch Scenario} \\
+\midrule
+\multicolumn{3}{l}{\textit{With SimulatedAnnealing (Testing Mode)}} \\
+Solve Time & 2-5 seconds & 1-3 seconds \\
+Iterations & 5-10 & 5-10 \\
+Convergence & Typical & Typical \\
+Solution Quality & High & High \\
+\midrule
+\multicolumn{3}{l}{\textit{With QPU (Production Mode)}} \\
+Solve Time & 1-3 seconds & 0.5-2 seconds \\
+QPU Access Time & 0.05-0.15s & 0.03-0.10s \\
+Iterations & 5-10 & 5-10 \\
+QPU Calls & 5-10 & 5-10 \\
+Solution Quality & High & High \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Convergence Behavior}
+
+Expected energy minimization trajectory:
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Energy
+  │
+  │  ●
+  │   ●
+  │    ●─●
+  │       ●──●──●  ← Convergence
+  │              ●───●───●
+  └────────────────────────────────> Iteration
+     1  2  3  4  5  6  7  8  9  10
+\end{verbatim}
+\caption{Expected Convergence Pattern - Alternative 1}
+\label{fig:convergence_alt1}
+\end{figure}
+
+Characteristics:
+\begin{itemize}
+    \item \textbf{Initial Improvement}: Rapid energy decrease in first 2-3 iterations
+    \item \textbf{Refinement Phase}: Gradual improvement in iterations 4-7
+    \item \textbf{Convergence}: Stable energy after iteration 7-8
+    \item \textbf{Early Stopping}: Typically triggers after 3 iterations without improvement
+\end{itemize}
+
+\subsection{Alternative 2: Strategic Decomposition}
+
+\subsubsection{Expected Performance Profile}
+
+\begin{table}[H]
+\centering
+\caption{Expected Performance - Alternative 2 (Standard Config: 25 units)}
+\label{tab:expected_alt2}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metric} & \textbf{Farm Scenario} & \textbf{Patch Scenario} \\
+\midrule
+\multicolumn{3}{l}{\textit{With SimulatedAnnealing (Testing Mode)}} \\
+Solver & Gurobi (Classical) & neal (Classical) \\
+Solve Time & 0.1-1.0 seconds & 1-3 seconds \\
+QPU Access Time & N/A & 0.0s (no QPU) \\
+Solution Quality & Optimal/Near-Optimal & High \\
+\midrule
+\multicolumn{3}{l}{\textit{With QPU (Production Mode)}} \\
+Solver & Gurobi (Classical) & DWaveSampler (QPU) \\
+Solve Time & 0.1-1.0 seconds & 0.3-1.0 seconds \\
+QPU Access Time & N/A & 0.02-0.05s \\
+Num Reads & N/A & 1000 \\
+Solution Quality & Optimal/Near-Optimal & High \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Specialization Benefits}
+
+Expected advantages from problem-solver matching:
+
+\begin{itemize}
+    \item \textbf{Farm (Classical)}: Gurobi handles continuous variables natively, achieving proven optimal solutions
+    \item \textbf{Patch (Quantum)}: Pure binary problem maps directly to QUBO, maximizing QPU efficiency
+    \item \textbf{No Iteration Overhead}: One-shot optimization without iterative refinement
+    \item \textbf{Transparency}: Clear separation enables targeted debugging and optimization
+\end{itemize}
+
+\section{Comparative Analysis}
+
+\subsection{Solution Quality Comparison}
+
+\subsubsection{Expected Objective Values}
+
+For standard 25-unit configuration with full\_family scenario:
+
+\begin{table}[H]
+\centering
+\caption{Expected Solution Quality Comparison}
+\label{tab:quality_comparison}
+\begin{tabular}{lll}
+\toprule
+\textbf{Solver} & \textbf{Farm Scenario} & \textbf{Patch Scenario} \\
+\midrule
+Gurobi (Optimal) & $O_{ref}$ (baseline) & $O_{ref}$ (baseline) \\
+Alternative 1 (Hybrid) & $\geq 95\% \cdot O_{ref}$ & $\geq 95\% \cdot O_{ref}$ \\
+Alternative 2 (Farm) & $= O_{ref}$ (Gurobi) & $= O_{ref}$ (Gurobi) \\
+Alternative 2 (Patch QPU) & N/A & $\geq 90\% \cdot O_{ref}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretation}:
+\begin{itemize}
+    \item Alternative 1 expected to achieve $\geq$95\% of optimal through iterative refinement
+    \item Alternative 2 farm scenario achieves optimality via Gurobi
+    \item Alternative 2 patch scenario via QPU may have slightly lower solution quality but demonstrates quantum capability
+\end{itemize}
+
+\subsection{Performance Comparison}
+
+\subsubsection{Total Solve Time}
+
+Expected total execution time (SimulatedAnnealing mode):
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Solve Time (seconds)
+    │
+  5 ├─────────────────────  Alt 1 Farm (SA)
+    │        ●
+  4 ├────────┼───────────
+    │        │
+  3 ├────────┼──────●────  Alt 2 Patch (SA), Alt 1 Patch (SA)
+    │        │      │
+  2 ├────────┼──────┼────
+    │        │      │
+  1 ├────●───┼──────┼────  Gurobi Farm, Gurobi Patch
+    │    │   │      │
+  0 └────┴───┴──────┴────
+      Gurobi Alt1  Alt2
+\end{verbatim}
+\caption{Expected Solve Time Comparison}
+\label{fig:time_comparison}
+\end{figure}
+
+\subsection{Scalability Comparison}
+
+\subsubsection{Scaling with Problem Size}
+
+Expected scaling behavior:
+
+\begin{table}[H]
+\centering
+\caption{Expected Scalability (Solve Time in Seconds)}
+\label{tab:scalability_expected}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Units} & \textbf{Gurobi} & \textbf{Alt 1 (SA)} & \textbf{Alt 2 Farm} & \textbf{Alt 2 Patch (SA)} \\
+\midrule
+5 & 0.05 & 0.5 & 0.05 & 0.5 \\
+10 & 0.1 & 1.5 & 0.1 & 1.0 \\
+25 & 0.5 & 4.0 & 0.5 & 2.5 \\
+50 & 2.0 & 10.0 & 2.0 & 5.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Scaling Characteristics}:
+\begin{itemize}
+    \item \textbf{Gurobi}: Near-linear to quadratic scaling (efficient branch-and-bound)
+    \item \textbf{Alternative 1}: Linear to super-linear due to iteration count increase
+    \item \textbf{Alternative 2}: Inherits Gurobi scaling for farm, linear scaling for patch
+\end{itemize}
+
+\section{Benchmarking Procedure}
+
+\subsection{Benchmark Execution Protocol}
+
+\begin{algorithm}[H]
+\caption{Comprehensive Benchmark Protocol}
+\label{alg:benchmark_protocol}
+\begin{algorithmic}[1]
+\Require Configuration $n \in \{5, 10, 25, 50\}$, Solver alternatives
+\Ensure Performance metrics and results
+\For{each configuration $n$}
+    \State Generate farm data with $n$ units
+    \State Generate patch data with $n$ units
+    \For{each scenario (farm, patch)}
+        \State Create CQM with full\_family scenario (27 crops)
+        \For{each solver (Gurobi, Alternative 1, Alternative 2)}
+            \State Record start time $t_{start}$
+            \State Execute solver
+            \State Record end time $t_{end}$
+            \State Extract solution and objective value
+            \State Validate constraints
+            \State Compute solve time: $t_{solve} = t_{end} - t_{start}$
+            \State Store results: \{status, objective, time, constraints, solution\}
+        \EndFor
+    \EndFor
+    \State Save results to JSON file
+\EndFor
+\State Generate comparative analysis report
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Statistical Analysis}
+
+\subsubsection{Multiple Run Analysis}
+
+For stochastic solvers (SimulatedAnnealing, QPU), perform multiple runs:
+
+\begin{itemize}
+    \item \textbf{Runs per Configuration}: $r = 10$
+    \item \textbf{Metrics Collected}: Mean, standard deviation, min, max, median
+    \item \textbf{Confidence Intervals}: 95\% confidence intervals for mean solve time
+\end{itemize}
+
+\subsubsection{Statistical Tests}
+
+\begin{itemize}
+    \item \textbf{Normality Test}: Shapiro-Wilk test on solve time distributions
+    \item \textbf{Comparison Test}: Mann-Whitney U test (non-parametric) or t-test (parametric)
+    \item \textbf{Significance Level}: $\alpha = 0.05$
+\end{itemize}
+
+\section{Result Interpretation Guidelines}
+
+\subsection{Solution Quality Assessment}
+
+\begin{table}[H]
+\centering
+\caption{Solution Quality Classification}
+\label{tab:quality_classification}
+\begin{tabular}{ll}
+\toprule
+\textbf{Optimality Gap} & \textbf{Classification} \\
+\midrule
+$< 1\%$ & Optimal/Near-Optimal \\
+$1\% - 5\%$ & High Quality \\
+$5\% - 10\%$ & Acceptable \\
+$> 10\%$ & Needs Investigation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Performance Assessment}
+
+\begin{table}[H]
+\centering
+\caption{Solve Time Classification (Standard 25-unit Config)}
+\label{tab:time_classification}
+\begin{tabular}{ll}
+\toprule
+\textbf{Solve Time} & \textbf{Classification} \\
+\midrule
+$< 1$ second & Excellent \\
+$1 - 5$ seconds & Good \\
+$5 - 30$ seconds & Acceptable \\
+$> 30$ seconds & Needs Optimization \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Visualization and Reporting}
+
+\subsection{Performance Plots}
+
+Recommended visualizations:
+
+\begin{enumerate}
+    \item \textbf{Solve Time vs. Problem Size}: Log-log plot showing scaling
+    \item \textbf{Objective Value Comparison}: Bar chart comparing solution quality
+    \item \textbf{Convergence Plots}: Energy vs. iteration for Alternative 1
+    \item \textbf{QPU Timing Breakdown}: Stacked bar chart of QPU time components
+\end{enumerate}
+
+\subsection{Summary Tables}
+
+Generate comprehensive summary tables:
+
+\begin{lstlisting}[caption={Benchmark Summary Table Generation},label={lst:summary_table}]
+def generate_summary_table(results):
+    """Generate performance summary table."""
+    summary = []
+    for config in [5, 10, 25, 50]:
+        for scenario in ['farm', 'patch']:
+            for solver in ['gurobi', 'alt1', 'alt2']:
+                row = {
+                    'config': config,
+                    'scenario': scenario,
+                    'solver': solver,
+                    'solve_time': results[config][scenario][solver]['solve_time'],
+                    'objective': results[config][scenario][solver]['objective'],
+                    'status': results[config][scenario][solver]['status']
+                }
+                summary.append(row)
+    
+    df = pd.DataFrame(summary)
+    return df.pivot_table(
+        values='solve_time',
+        index=['config', 'scenario'],
+        columns='solver'
+    )
+\end{lstlisting}
+
+\section{Summary}
+
+This chapter establishes the experimental evaluation framework for both alternative implementations, including:
+
+\begin{itemize}
+    \item Comprehensive evaluation metrics (solution quality, performance, scalability)
+    \item Expected performance profiles for both alternatives
+    \item Comparative analysis methodology
+    \item Benchmarking protocols and statistical analysis procedures
+    \item Result interpretation guidelines
+\end{itemize}
+
+The framework enables rigorous quantitative comparison of the two hybrid quantum-classical approaches, supporting evidence-based assessment of their relative strengths and limitations.
+
+\end{document}
