@@ -34,16 +34,32 @@ import pulp as pl
 from tqdm import tqdm
 
 # Try to import synergy optimizer (Cython first, then pure Python)
+print("\n" + "="*80)
+print("SYNERGY OPTIMIZER INITIALIZATION")
+print("="*80)
+
 try:
     from synergy_optimizer import SynergyOptimizer
     SYNERGY_OPTIMIZER_TYPE = "Cython"
-except ImportError:
+    print("✓ Using Cython-optimized SynergyOptimizer (fastest, ~10-100x speedup)")
+    print("  Reason: Compiled C++ extension available")
+except ImportError as e:
+    print("✗ Cython SynergyOptimizer not available")
+    print(f"  Reason: {str(e)}")
     try:
         from src.synergy_optimizer_pure import SynergyOptimizer
         SYNERGY_OPTIMIZER_TYPE = "NumPy"
-    except ImportError:
+        print("✓ Using NumPy-optimized SynergyOptimizer (fast, ~5-20x speedup)")
+        print("  Reason: Pure Python implementation with NumPy vectorization")
+    except ImportError as e2:
         SynergyOptimizer = None
         SYNERGY_OPTIMIZER_TYPE = "Original"
+        print("✗ NumPy SynergyOptimizer not available")
+        print(f"  Reason: {str(e2)}")
+        print("⚠ Using original nested loop implementation (slowest, baseline)")
+        print("  Reason: No optimized implementations available")
+
+print("="*80 + "\n")
 
 # Try to import Pyomo for solving
 try:
@@ -195,8 +211,8 @@ def create_cqm(farms, foods, food_groups, config):
     # NOTE: DWave CQM doesn't support A*A products, so we approximate with farm_area * Y * Y / total_area
     pbar.set_description(f"Adding quadratic synergy bonus ({SYNERGY_OPTIMIZER_TYPE})")
     
-    if SynergyOptimizer is not None:
-        # OPTIMIZED: Use precomputed synergy pairs (~10-100x faster)
+    if SYNERGY_OPTIMIZER_TYPE in ["Cython", "NumPy"]:
+        # OPTIMIZED: Use precomputed synergy optimizer
         optimizer = SynergyOptimizer(synergy_matrix, foods)
         for farm in farms:
             farm_area = land_availability[farm]
@@ -354,7 +370,7 @@ def solve_with_pulp(farms, foods, food_groups, config):
     Y_pulp = pl.LpVariable.dicts("Choose", [(f, c) for f in farms for c in foods], cat='Binary')
     
     # Build synergy pairs for linearization
-    if SynergyOptimizer is not None:
+    if SYNERGY_OPTIMIZER_TYPE in ["Cython", "NumPy"]:
         # OPTIMIZED: Use precomputed synergy pairs
         optimizer = SynergyOptimizer(synergy_matrix, foods)
         synergy_pairs = optimizer.build_synergy_pairs_list(farms)

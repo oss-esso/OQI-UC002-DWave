@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from Utils.farm_sampler import generate_farms
 from src.scenarios import load_food_data
-from solver_runner_LQ import create_cqm, solve_with_pulp, solve_with_pyomo, solve_with_dwave
+from solver_runner_LQ import create_cqm, solve_with_pulp, solve_with_pyomo, solve_with_dwave, SYNERGY_OPTIMIZER_TYPE
 from Utils.benchmark_cache import BenchmarkCache, serialize_cqm
 import pulp as pl
 
@@ -227,6 +227,7 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
     print(f"BENCHMARK: full_family scenario with {n_farms} Farms (Run {run_number}/{total_runs})")
     if fixed_total_land:
         print(f"Fixed Total Land: {fixed_total_land} ha")
+    print(f"Synergy Optimizer: {SYNERGY_OPTIMIZER_TYPE}")
     print(f"{'='*80}")
     
     try:
