@@ -321,6 +321,7 @@ def create_cqm_farm(farms, foods, food_groups, config):
     land_availability = params['land_availability']
     weights = params['weights']
     min_planting_area = params.get('minimum_planting_area', {})
+    max_planting_area = params.get('maximum_planting_area', {})
     food_group_constraints = params.get('food_group_constraints', {})
 
     # Define variables
@@ -370,11 +371,11 @@ def create_cqm_farm(farms, foods, food_groups, config):
             'max_land': land_availability[farm]
         }
 
-    # Linking constraints
+    # Linking constraints - minimum and maximum area if selected
     for farm in tqdm(farms, desc="Adding linking constraints"):
         for food in foods:
+            # Minimum area if selected
             A_min = min_planting_area.get(food, 0)
-
             cqm.add_constraint(
                 A[(farm, food)] - A_min * Y[(farm, food)] >= 0,
                 label=f"Min_Area_If_Selected_{farm}_{food}"
@@ -386,46 +387,53 @@ def create_cqm_farm(farms, foods, food_groups, config):
                 'min_area': A_min
             }
 
+            # Maximum area if selected (either explicit max or farm capacity)
+            if food in max_planting_area:
+                A_max = max_planting_area[food]
+            else:
+                A_max = land_availability[farm]
+                
             cqm.add_constraint(
-                A[(farm, food)] - land_availability[farm] * Y[(farm, food)] <= 0,
+                A[(farm, food)] - A_max * Y[(farm, food)] <= 0,
                 label=f"Max_Area_If_Selected_{farm}_{food}"
             )
             constraint_metadata['max_area_if_selected'][(farm, food)] = {
                 'type': 'max_area_if_selected',
                 'farm': farm,
                 'food': food,
-                'max_land': land_availability[farm]
+                'max_area': A_max
             }
 
-    # Food group constraints - GLOBAL across all farms
+    # Food group constraints - GLOBAL across all farms (use COUNT of Y, not area A)
     if food_group_constraints:
         for group, constraints in tqdm(food_group_constraints.items(), desc="Adding food group constraints"):
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                # Global minimum: across ALL farms, at least min_foods from this group
+                # Normalize group name for labels
+                group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
+                
+                # Global minimum COUNT: across ALL farms, at least min_foods selections
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
-                        constraints['min_foods'] >= 0,
-                        label=f"Food_Group_Min_{group}_Global"
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['min_foods'] >= 0,
+                        label=f"Food_Group_Min_{group_label}_Global"
                     )
                     constraint_metadata['food_group_min'][group] = {
-                        'type': 'food_group_min_global',
+                        'type': 'food_group_min_count_global',
                         'group': group,
                         'min_foods': constraints['min_foods'],
                         'foods_in_group': foods_in_group,
                         'scope': 'global'
                     }
 
-                # Global maximum: across ALL farms, at most max_foods from this group
+                # Global maximum COUNT: across ALL farms, at most max_foods selections
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
-                        constraints['max_foods'] <= 0,
-                        label=f"Food_Group_Max_{group}_Global"
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['max_foods'] <= 0,
+                        label=f"Food_Group_Max_{group_label}_Global"
                     )
                     constraint_metadata['food_group_max'][group] = {
-                        'type': 'food_group_max_global',
+                        'type': 'food_group_max_count_global',
                         'group': group,
                         'max_foods': constraints['max_foods'],
                         'foods_in_group': foods_in_group,
@@ -1276,7 +1284,11 @@ def solve_with_decomposed_qpu(bqm, token, **kwargs):
         Exception: If QPU sampling fails
     """
     # Check if we should use simulated annealing (no token provided)
-    use_simulated_annealing = (token is None or token == 'YOUR_DWAVE_TOKEN_HERE')
+    use_simulated_annealing = (
+        token is None or 
+        token == 'YOUR_DWAVE_TOKEN_HERE' or
+        (isinstance(token, str) and token.strip() == '')
+    )
     
     if use_simulated_annealing:
         if not NEAL_AVAILABLE:
@@ -1469,6 +1481,241 @@ def solve_with_decomposed_qpu(bqm, token, **kwargs):
     else:
         print(f"\n  ❌ No samples returned from QPU")
         raise ValueError("QPU returned empty sampleset")
+
+
+def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, token, **kwargs):
+    """
+    Hybrid decomposition approach for FARM scenario (continuous + binary variables).
+    
+    Strategy:
+    1. Solve continuous relaxation (A continuous, Y relaxed to [0,1]) with Gurobi
+    2. Extract optimal A* values from relaxation
+    3. Fix A* and create binary subproblem for Y variables only
+    4. Convert Y subproblem to BQM
+    5. Solve Y subproblem on QPU
+    6. Combine results: final solution uses A* (from Gurobi) and Y** (from QPU)
+    
+    This leverages:
+    - Gurobi's strength: Continuous optimization for area allocation (A)
+    - QPU's strength: Binary decision making for crop selection (Y)
+    
+    Args:
+        farms: List of farm names
+        foods: Dictionary of food data
+        food_groups: Dictionary of food group mappings
+        config: Configuration dictionary with parameters
+        token: D-Wave API token
+        **kwargs: Additional QPU parameters (num_reads, annealing_time, etc.)
+    
+    Returns:
+        dict: Solution with combined A* and Y** values
+    """
+    print("\n" + "="*80)
+    print("FARM SCENARIO: HYBRID DECOMPOSITION (Gurobi + QPU)")
+    print("="*80)
+    print("Strategy:")
+    print("  1. Solve continuous relaxation with Gurobi (A + relaxed Y)")
+    print("  2. Extract A* (continuous area allocations)")
+    print("  3. Create binary subproblem for Y only")
+    print("  4. Solve Y subproblem on QPU")
+    print("  5. Combine A* (Gurobi) + Y** (QPU)")
+    print("="*80)
+    
+    params = config['parameters']
+    land_availability = params['land_availability']
+    weights = params['weights']
+    min_planting_area = params.get('minimum_planting_area', {})
+    max_planting_area = params.get('maximum_planting_area', {})
+    food_group_constraints = params.get('food_group_constraints', {})
+    total_area = sum(land_availability.values())
+    
+    # STEP 1: Solve continuous relaxation with Gurobi
+    print("\n[STEP 1: Continuous Relaxation]")
+    print("  Building PuLP model with relaxed Y variables...")
+    
+    # Create relaxed problem (Y in [0, 1] instead of {0, 1})
+    prob_relaxed = pl.LpProblem("Farm_Relaxation", pl.LpMaximize)
+    
+    # Variables: A (continuous), Y (relaxed to [0, 1])
+    A_pulp = pl.LpVariable.dicts("Area", [(f, c) for f in farms for c in foods], lowBound=0)
+    Y_pulp = pl.LpVariable.dicts("Choose", [(f, c) for f in farms for c in foods], lowBound=0, upBound=1)
+    
+    # Objective (same as original)
+    objective_relaxed = pl.lpSum(
+        (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
+         weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
+         weights.get('environmental_impact', 0) * foods[c].get('environmental_impact', 0) +
+         weights.get('affordability', 0) * foods[c].get('affordability', 0) +
+         weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_pulp[(f, c)]
+        for f in farms for c in foods
+    )
+    prob_relaxed += objective_relaxed
+    
+    # Constraints (same as original farm problem)
+    # Land availability
+    for f in farms:
+        prob_relaxed += pl.lpSum(A_pulp[(f, c)] for c in foods) <= land_availability[f], f"Land_{f}"
+    
+    # Linking constraints with min and max area
+    for f in farms:
+        for c in foods:
+            A_min = min_planting_area.get(c, 0)
+            prob_relaxed += A_pulp[(f, c)] >= A_min * Y_pulp[(f, c)], f"Min_{f}_{c}"
+            
+            if c in max_planting_area:
+                A_max = max_planting_area[c]
+            else:
+                A_max = land_availability[f]
+            prob_relaxed += A_pulp[(f, c)] <= A_max * Y_pulp[(f, c)], f"Max_{f}_{c}"
+    
+    # Food group constraints (count-based, using Y variables)
+    if food_group_constraints:
+        for group, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group, [])
+            if foods_in_group:
+                group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
+                if 'min_foods' in constraints:
+                    prob_relaxed += pl.lpSum(Y_pulp[(f, c)] for f in farms for c in foods_in_group) >= constraints['min_foods'], f"FoodGroupMin_{group_label}"
+                if 'max_foods' in constraints:
+                    prob_relaxed += pl.lpSum(Y_pulp[(f, c)] for f in farms for c in foods_in_group) <= constraints['max_foods'], f"FoodGroupMax_{group_label}"
+    
+    # Solve relaxation
+    print("  Solving with Gurobi...")
+    start_gurobi = time.time()
+    prob_relaxed.solve(pl.GUROBI(msg=0))
+    gurobi_time = time.time() - start_gurobi
+    
+    if prob_relaxed.status != pl.LpStatusOptimal:
+        print(f"  ❌ Relaxation failed: {pl.LpStatus[prob_relaxed.status]}")
+        raise ValueError("Continuous relaxation failed")
+    
+    print(f"  ✓ Relaxation solved in {gurobi_time:.2f}s")
+    print(f"  Relaxation objective: {pl.value(prob_relaxed.objective):.4f}")
+    
+    # STEP 2: Extract A* values
+    print("\n[STEP 2: Extract Continuous Values]")
+    A_star = {}
+    Y_relaxed = {}
+    for f in farms:
+        for c in foods:
+            A_star[(f, c)] = A_pulp[(f, c)].varValue or 0.0
+            Y_relaxed[(f, c)] = Y_pulp[(f, c)].varValue or 0.0
+    
+    n_selected = sum(1 for y in Y_relaxed.values() if y > 0.5)
+    print(f"  ✓ Extracted {len(A_star)} A* values")
+    print(f"  Crops likely selected (Y > 0.5): {n_selected}")
+    
+    # STEP 3: Create binary subproblem for Y
+    print("\n[STEP 3: Create Binary Subproblem for Y]")
+    print("  Building CQM with only binary Y variables...")
+    
+    # Create new CQM with ONLY Y variables (A is fixed)
+    cqm_binary = ConstrainedQuadraticModel()
+    Y_binary = {}
+    for f in farms:
+        for c in foods:
+            Y_binary[(f, c)] = Binary(f"Y_{f}_{c}")
+    
+    # Objective: Use fixed A* values
+    # Objective = sum (B_c * A*_{f,c}) for Y_{f,c} = 1
+    # This simplifies to: maximize sum (B_c * A*_{f,c} * Y_{f,c})
+    objective_binary = sum(
+        (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
+         weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
+         weights.get('environmental_impact', 0) * foods[c].get('environmental_impact', 0) +
+         weights.get('affordability', 0) * foods[c].get('affordability', 0) +
+         weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_star[(f, c)] * Y_binary[(f, c)]
+        for f in farms for c in foods
+    )
+    cqm_binary.set_objective(-objective_binary)  # Negative because CQM minimizes
+    
+    # Binary constraints (only Y-based constraints, A is fixed)
+    # Food group constraints use COUNT (not area)
+    if food_group_constraints:
+        for group, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group, [])
+            if foods_in_group:
+                group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
+                if 'min_foods' in constraints:
+                    cqm_binary.add_constraint(
+                        sum(Y_binary[(f, c)] for f in farms for c in foods_in_group) - constraints['min_foods'] >= 0,
+                        label=f"FoodGroupMin_{group_label}_Binary"
+                    )
+                if 'max_foods' in constraints:
+                    cqm_binary.add_constraint(
+                        sum(Y_binary[(f, c)] for f in farms for c in foods_in_group) - constraints['max_foods'] <= 0,
+                        label=f"FoodGroupMax_{group_label}_Binary"
+                    )
+    
+    print(f"  ✓ Binary CQM created: {len(Y_binary)} Y variables, {len(cqm_binary.constraints)} constraints")
+    
+    # STEP 4: Convert to BQM
+    print("\n[STEP 4: Convert to BQM]")
+    print("  Converting CQM to BQM...")
+    try:
+        bqm, invert = cqm_to_bqm(cqm_binary)
+        print(f"  ✓ BQM conversion complete")
+        print(f"  BQM variables: {len(bqm.variables)}")
+        print(f"  BQM quadratic terms: {len(bqm.quadratic)}")
+    except Exception as e:
+        print(f"  ❌ BQM conversion failed: {e}")
+        raise
+    
+    # STEP 5: Solve on QPU
+    print("\n[STEP 5: Solve Binary Subproblem on QPU]")
+    qpu_result = solve_with_decomposed_qpu(bqm, token, **kwargs)
+    
+    # Invert BQM solution to get Y values
+    y_solution_raw = qpu_result['solution']
+    y_solution_cqm = invert(y_solution_raw)
+    
+    # STEP 6: Combine results
+    print("\n[STEP 6: Combine Results]")
+    print("  Combining A* (from Gurobi) and Y** (from QPU)...")
+    
+    # Create final solution with both A and Y
+    final_solution = {}
+    for f in farms:
+        for c in foods:
+            # Add A* values (from Gurobi)
+            final_solution[f"A_{f}_{c}"] = A_star[(f, c)]
+            # Add Y** values (from QPU)
+            y_var_name = f"Y_{f}_{c}"
+            final_solution[y_var_name] = y_solution_cqm.get(y_var_name, 0)
+    
+    # Calculate final objective using both A* and Y**
+    final_objective = sum(
+        (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
+         weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
+         weights.get('environmental_impact', 0) * foods[c].get('environmental_impact', 0) +
+         weights.get('affordability', 0) * foods[c].get('affordability', 0) +
+         weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_star[(f, c)] * final_solution[f"Y_{f}_{c}"]
+        for f in farms for c in foods
+    )
+    
+    print(f"  ✓ Final objective: {final_objective:.4f}")
+    print(f"  Decomposition benefit: Gurobi handled {len(A_star)} continuous vars, QPU handled {len(Y_binary)} binary vars")
+    
+    result = {
+        'status': 'Optimal',
+        'objective_value': final_objective,
+        'solve_time': gurobi_time + qpu_result['solve_time'],
+        'gurobi_time': gurobi_time,
+        'qpu_time': qpu_result['solve_time'],
+        'qpu_access_time': qpu_result.get('qpu_access_time', 0),
+        'relaxation_objective': pl.value(prob_relaxed.objective),
+        'final_objective': final_objective,
+        'solver_name': 'hybrid_decomposition_gurobi_qpu',
+        'solution': final_solution,
+        'A_star': A_star,
+        'Y_star': {f"Y_{f}_{c}": final_solution[f"Y_{f}_{c}"] for f in farms for c in foods}
+    }
+    
+    print("\n" + "="*80)
+    print("HYBRID DECOMPOSITION COMPLETE")
+    print("="*80)
+    
+    return result
 
 
 def main(scenario='simple', land_method='even_grid', n_units=None, total_land=100.0):

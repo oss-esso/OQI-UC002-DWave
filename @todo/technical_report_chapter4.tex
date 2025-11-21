@@ -6,16 +6,16 @@ This chapter presents Alternative 2, which implements a strategic problem decomp
 
 \section{Architectural Philosophy}
 
-\subsection{Heterogeneous Solver Specialization}
+\subsection{Hybrid Decomposition Strategy}
 
-The core principle of Alternative 2 is \textit{problem-solver matching}:
+The core principle of Alternative 2 is \textit{strategic hybrid decomposition}:
 
 \begin{itemize}
-    \item \textbf{Continuous Problems}: Classical solvers excel at mixed-integer nonlinear programming with continuous variables and complex constraints
-    \item \textbf{Binary Problems}: Quantum annealers are specifically designed for binary optimization via energy minimization
+    \item \textbf{Farm Scenarios (MINLP)}: Hybrid decomposition combining Gurobi for continuous variables and QPU for binary variables
+    \item \textbf{Patch Scenarios (BIP)}: Pure quantum annealing for binary optimization
 \end{itemize}
 
-Rather than applying a universal hybrid approach, Alternative 2 recognizes problem structure and routes to the most appropriate solver.
+Rather than routing entire problems to single solvers, Alternative 2 decomposes farm problems to leverage the complementary strengths of classical and quantum computing.
 
 \subsection{Strategic Decomposition Flow}
 
@@ -51,69 +51,100 @@ Rather than applying a universal hybrid approach, Alternative 2 recognizes probl
 
 \section{Classical Solver Component}
 
-\subsection{Farm Scenario: Gurobi MINLP}
+\subsection{Farm Scenario: Hybrid Decomposition (Gurobi + QPU)}
 
-For farm scenarios with continuous land allocation variables:
+For farm scenarios with mixed continuous-binary variables, Alternative 2 implements a novel hybrid decomposition approach that splits the problem between classical and quantum processors.
 
 \subsubsection{Problem Characteristics}
 
 \begin{itemize}
     \item \textbf{Variables}: 1350 (675 continuous $A_{f,c}$ + 675 binary $Y_{f,c}$)
-    \item \textbf{Constraints}: $\sim$1375 (land, minimum planting, linking, food groups)
-    \item \textbf{Objective}: Linear weighted sum
-    \item \textbf{Formulation}: Mixed-integer nonlinear program (MINLP)
+    \item \textbf{Constraints}: $\sim$1375 (land, min/max area, food groups)
+    \item \textbf{Formulation}: Hybrid decomposition (continuous relaxation + binary subproblem)
 \end{itemize}
 
-\subsubsection{Gurobi Configuration}
+\subsubsection{Decomposition Strategy}
 
-Gurobi is configured for MINLP solving:
+The algorithm decomposes the MINLP into coupled subproblems:
 
-\begin{lstlisting}[caption={Gurobi Solver Setup},label={lst:gurobi_setup}]
+\begin{enumerate}
+    \item \textbf{Continuous Relaxation (Gurobi)}: Solve for optimal area allocations $A^*$ with binary variables $Y$ relaxed to $[0,1]$
+    \item \textbf{Binary Subproblem (QPU)}: Fix $A = A^*$ and solve for optimal binary selections $Y^{**}$ on quantum hardware
+    \item \textbf{Solution Combination}: Merge $A^*$ and $Y^{**}$ for final solution
+\end{enumerate}
+
+\subsubsection{Phase 1: Continuous Relaxation}
+
+\begin{lstlisting}[caption={Continuous Relaxation with Gurobi},label={lst:gurobi_relax}]
 import pulp as pl
 
-# Create problem
-prob = pl.LpProblem("Farm_Allocation", pl.LpMaximize)
+# Create relaxed problem
+prob = pl.LpProblem("Farm_Relaxation", pl.LpMaximize)
 
-# Define variables
-A = {}  # Continuous area variables
-Y = {}  # Binary selection variables
+# Variables: A continuous, Y relaxed to [0,1]
+A = pl.LpVariable.dicts("Area", 
+    [(f,c) for f in farms for c in crops], lowBound=0)
+Y = pl.LpVariable.dicts("Choose", 
+    [(f,c) for f in farms for c in crops], 
+    lowBound=0, upBound=1)  # Relaxed!
 
-for f in farms:
-    for c in crops:
-        A[f,c] = pl.LpVariable(
-            f"A_{f}_{c}",
-            lowBound=0,
-            upBound=land_avail[f],
-            cat='Continuous'
-        )
-        Y[f,c] = pl.LpVariable(
-            f"Y_{f}_{c}",
-            cat='Binary'
-        )
+# Constraints (same as original)
+# ... land availability, min/max area, food groups ...
 
-# Objective
-prob += pl.lpSum([
-    A[f,c] * benefit[c] 
-    for f in farms 
-    for c in crops
-]) / total_land
-
-# Solve with Gurobi
+# Solve relaxation
 prob.solve(pl.GUROBI(msg=0))
+
+# Extract A* values
+A_star = {(f,c): A[f,c].varValue for f in farms for c in crops}
+\end{lstlisting}
+
+\subsubsection{Phase 2: Binary Subproblem on QPU}
+
+\begin{lstlisting}[caption={Binary Subproblem for Quantum Annealing},label={lst:binary_subproblem}]
+from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm
+
+# Create CQM with only binary Y variables
+cqm = ConstrainedQuadraticModel()
+Y_binary = {(f,c): Binary(f"Y_{f}_{c}") 
+            for f in farms for c in crops}
+
+# Objective: maximize benefit using FIXED A* values
+objective = sum(
+    benefit[c] * A_star[f,c] * Y_binary[f,c]
+    for f in farms for c in crops
+)
+cqm.set_objective(-objective)  # Minimize negative
+
+# Add food group constraints (count-based)
+for group in food_groups:
+    cqm.add_constraint(
+        sum(Y_binary[f,c] for f in farms 
+            for c in foods_in_group[group]) >= min_count[group]
+    )
+    
+# Convert to BQM and solve on QPU
+bqm, invert = cqm_to_bqm(cqm)
+result = solve_with_decomposed_qpu(bqm, token)
+Y_star = invert(result['solution'])
 \end{lstlisting}
 
 \subsubsection{Performance Characteristics}
 
-Gurobi employs advanced MINLP algorithms:
+Expected performance profile for 25 farms, 27 crops:
 
 \begin{itemize}
-    \item \textbf{Branch-and-Bound}: Systematic enumeration with intelligent pruning
-    \item \textbf{Cutting Planes}: Dynamic constraint generation to tighten LP relaxation
-    \item \textbf{Presolve}: Problem size reduction via redundancy elimination
-    \item \textbf{Heuristics}: Fast feasibility detection and solution improvement
+    \item \textbf{Phase 1 (Gurobi)}: $\sim$0.1-0.5 seconds
+    \item \textbf{BQM Conversion}: $\sim$0.01-0.05 seconds  
+    \item \textbf{Phase 2 (QPU)}: $\sim$0.1-1.0 seconds
+    \item \textbf{Total}: $\sim$0.2-1.5 seconds
 \end{itemize}
 
-Typical solve times for the 25-farm, 27-crop instance: $\sim$0.1-1.0 seconds.
+\textbf{Advantages}:
+\begin{itemize}
+    \item Leverages Gurobi for continuous optimization
+    \item Leverages QPU for binary combinatorics
+    \item Smaller binary subproblem fits better on QPU
+\end{itemize}
 
 \section{Quantum Solver Component}
 
@@ -511,4 +542,4 @@ Alternative 2 demonstrates a strategic decomposition approach that:
 
 This implementation showcases how problem-solver matching can be an effective strategy for heterogeneous computational resources.
 
-\end{document}
+

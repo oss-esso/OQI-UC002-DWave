@@ -32,6 +32,7 @@ $\mathcal{C}$ & Set of crops, $|\mathcal{C}| = 27$ \\
 $\mathcal{G}$ & Set of food groups \\
 $L_f$ & Land availability for farm $f \in \mathcal{F}$ (hectares) \\
 $M_c$ & Minimum planting area for crop $c \in \mathcal{C}$ (hectares) \\
+$M^{\text{max}}_c$ & Maximum planting area for crop $c \in \mathcal{C}$ (hectares) \\
 $G(c)$ & Food group assignment function: $\mathcal{C} \rightarrow \mathcal{G}$ \\
 $N_c$ & Nutritional value of crop $c$ (score) \\
 $D_c$ & Nutrient density of crop $c$ (score) \\
@@ -85,29 +86,49 @@ A_{f,c} \geq M_c \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, \forall c \in \m
 
 This yields $25 \times 27 = 675$ constraints.
 
-\subsubsection{Linking Constraints}
+\subsubsection{Food Group Diversity Constraints}
 
-The binary indicators must be consistent with area allocations. If $A_{f,c} > 0$, then $Y_{f,c} = 1$:
+For each food group $g \in \mathcal{G}$, enforce minimum and maximum diversity requirements based on \textbf{selection counts} (not area):
 
 \begin{equation}
-A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, \forall c \in \mathcal{C}
+\alpha^{\text{min}}_g \leq \sum_{f \in \mathcal{F}} \sum_{c \in G^{-1}(g)} Y_{f,c} \leq \alpha^{\text{max}}_g \quad \forall g \in \mathcal{G}
+\label{eq:food_group_farm}
+\end{equation}
+
+where $G^{-1}(g)$ denotes crops in food group $g$, and $\alpha^{\text{min}}_g$, $\alpha^{\text{max}}_g$ specify minimum and maximum number of different foods from group $g$.
+
+\textbf{Important}: These constraints count \textit{selections} ($Y$ variables), not total area allocated. This ensures diversity in crop variety selection.
+
+With 5 food groups and 2 constraints per group (min and max), this yields 10 constraints.
+
+\subsubsection{Maximum Planting Area Constraints}
+
+If crop $c$ is planted on farm $f$, the planted area cannot exceed an explicit maximum (when specified):
+
+\begin{equation}
+A_{f,c} \leq M^{\text{max}}_c \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, \forall c \in \mathcal{C} \quad \text{(when } M^{\text{max}}_c \text{ defined)}
+\label{eq:max_planting}
+\end{equation}
+
+For crops without an explicit maximum, the farm capacity provides the upper bound:
+
+\begin{equation}
+A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, \forall c \in \mathcal{C} \quad \text{(when } M^{\text{max}}_c \text{ undefined)}
 \label{eq:linking}
 \end{equation}
 
-This yields another 675 constraints, ensuring that $Y_{f,c} = 0 \implies A_{f,c} = 0$.
+These linking and maximum constraints total $25 \times 27 = 675$ constraints and ensure that $Y_{f,c} = 0 \implies A_{f,c} = 0$.
 
-\subsubsection{Food Group Constraints}
+\subsubsection{(Revised) Food Group Constraints}
 
-For each food group $g \in \mathcal{G}$, we enforce diversity and nutritional requirements:
+In the corrected formulation we enforce food-group diversity by counting crop \emph{selections} rather than area. For each food group $g \in \mathcal{G}$ we require:
 
 \begin{equation}
-\sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}: G(c) = g} A_{f,c} \geq \alpha_g \cdot \sum_{f \in \mathcal{F}} L_f
-\label{eq:food_group}
+\alpha^{\text{min}}_g \leq \sum_{f \in \mathcal{F}} \sum_{c \in G^{-1}(g)} Y_{f,c} \leq \alpha^{\text{max}}_g \quad \forall g \in \mathcal{G}
+\label{eq:food_group_count}
 \end{equation}
 
-where $\alpha_g$ is the minimum fraction of total land that must be allocated to food group $g$.
-
-The number of food group constraints depends on $|\mathcal{G}|$ (typically 5-8 major groups: grains, vegetables, fruits, proteins, dairy, etc.).
+Here $G^{-1}(g)$ denotes the set of crops in food group $g$, and $\alpha^{\text{min}}_g$, $\alpha^{\text{max}}_g$ are integer bounds on the number of different foods from group $g$ to be selected across all farms. Counting selections (binary variables) enforces variety without constraining area allocation directly.
 
 \subsection{Objective Function}
 
@@ -133,7 +154,7 @@ The complete mixed-integer nonlinear program (MINLP) is:
 \text{s.t.} \quad & \sum_{c=1}^{27} A_{f,c} \leq L_f & \forall f \in \{1, \ldots, 25\} \\
 & A_{f,c} \geq M_c \cdot Y_{f,c} & \forall f,c \\
 & A_{f,c} \leq L_f \cdot Y_{f,c} & \forall f,c \\
-& \sum_{f,c: G(c)=g} A_{f,c} \geq \alpha_g \cdot 100 & \forall g \in \mathcal{G} \\
+& \alpha^{\text{min}}_g \leq \sum_{f,c: G(c)=g} Y_{f,c} \leq \alpha^{\text{max}}_g & \forall g \in \mathcal{G} \\
 & A_{f,c} \geq 0 & \forall f,c \\
 & Y_{f,c} \in \{0,1\} & \forall f,c
 \end{aligned}
@@ -172,10 +193,10 @@ This yields 25 constraints (one per patch).
 
 \subsubsection{Food Group Constraints}
 
-Similar to the continuous case, but using patch areas:
+Food group diversity in the patch scenario is enforced via selection counts (not aggregate area):
 
 \begin{equation}
-\sum_{p \in \mathcal{P}} \sum_{c: G(c)=g} s_p \cdot Y_{p,c} \geq \alpha_g \cdot \sum_{p} s_p
+\alpha^{\text{min}}_g \leq \sum_{p \in \mathcal{P}} \sum_{c: G(c)=g} Y_{p,c} \leq \alpha^{\text{max}}_g \quad \forall g \in \mathcal{G}
 \label{eq:food_group_binary}
 \end{equation}
 
@@ -196,7 +217,7 @@ The complete binary integer program (BIP) is:
 \begin{aligned}
 \max \quad & \frac{1}{100} \sum_{p=1}^{25} \sum_{c=1}^{27} s_p \cdot Y_{p,c} \cdot B_c \\
 \text{s.t.} \quad & \sum_{c=1}^{27} Y_{p,c} \leq 1 & \forall p \in \{1, \ldots, 25\} \\
-& \sum_{p,c: G(c)=g} s_p \cdot Y_{p,c} \geq \alpha_g \cdot 100 & \forall g \in \mathcal{G} \\
+& \alpha^{\text{min}}_g \leq \sum_{p,c: G(c)=g} Y_{p,c} \leq \alpha^{\text{max}}_g & \forall g \in \mathcal{G} \\
 & Y_{p,c} \in \{0,1\} & \forall p,c
 \end{aligned}
 \label{eq:bip_complete}
@@ -274,7 +295,7 @@ The continuous MINLP has:
 
 \begin{itemize}
     \item \textbf{Variables}: 1350 (675 continuous + 675 binary)
-    \item \textbf{Constraints}: $\approx$ 1375 (25 land + 675 min planting + 675 linking + food groups)
+    \item \textbf{Constraints}: $\approx$ 1385 (25 land + 675 min planting + 675 max/linking + 10 food group bounds)
     \item \textbf{Complexity Class}: NP-hard (due to binary variables)
     \item \textbf{Solver Type}: Mixed-integer nonlinear programming (MINLP)
 \end{itemize}
@@ -355,7 +376,8 @@ A solution is feasible if and only if all constraints are satisfied within numer
 \text{Feasible} \iff & \sum_c A_{f,c} \leq L_f + \epsilon \quad \forall f \\
 & A_{f,c} \geq M_c \cdot Y_{f,c} - \epsilon \quad \forall f,c \\
 & A_{f,c} \leq L_f \cdot Y_{f,c} + \epsilon \quad \forall f,c \\
-& \sum_{f,c: G(c)=g} A_{f,c} \geq \alpha_g \cdot 100 - \epsilon \quad \forall g
+& \sum_{f,c: G(c)=g} Y_{f,c} \geq \alpha^{\text{min}}_g - \epsilon \quad \forall g \\
+& \sum_{f,c: G(c)=g} Y_{f,c} \leq \alpha^{\text{max}}_g + \epsilon \quad \forall g
 \end{aligned}
 \end{equation}
 
@@ -368,5 +390,3 @@ V(\mathbf{x}) = \sum_{i \in \mathcal{I}} \max(0, g_i(\mathbf{x})) + \sum_{j \in 
 \end{equation}
 
 where $g_i$ are inequality constraints and $h_j$ are equality constraints.
-
-\end{document}

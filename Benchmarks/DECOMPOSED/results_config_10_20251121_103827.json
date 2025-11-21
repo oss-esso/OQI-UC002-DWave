@@ -1,0 +1,40 @@
+{
+  "n_units": 10,
+  "total_land": 100.0,
+  "scenarios": {
+    "farm": {
+      "n_units": 10,
+      "n_variables": 540,
+      "n_constraints": 560,
+      "strategy": "hybrid_decomposition",
+      "solvers": {
+        "hybrid_decomposition": {
+          "solver": "hybrid_decomposition",
+          "status": "Failed",
+          "error": "Continuous relaxation failed",
+          "success": false
+        }
+      }
+    },
+    "patch": {
+      "n_units": 10,
+      "n_variables": 270,
+      "n_constraints": 74,
+      "strategy": "quantum_only",
+      "solvers": {
+        "decomposed_qpu": {
+          "solver": "decomposed_qpu",
+          "status": "Skipped",
+          "success": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "timestamp": "20251121_103827",
+    "config": 10,
+    "dwave_enabled": false,
+    "num_reads": 1000,
+    "annealing_time": 20
+  }
+}

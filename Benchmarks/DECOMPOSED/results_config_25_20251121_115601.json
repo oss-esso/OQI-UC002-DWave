@@ -1,0 +1,47 @@
+{
+  "n_units": 25,
+  "total_land": 100.0,
+  "scenarios": {
+    "farm": {
+      "n_units": 25,
+      "n_variables": 1350,
+      "n_constraints": 1385,
+      "strategy": "hybrid_decomposition",
+      "solvers": {
+        "hybrid_decomposition": {
+          "solver": "hybrid_decomposition",
+          "status": "Optimal",
+          "objective_value": 1.6448173654457292,
+          "solve_time": 61.01495814323425,
+          "gurobi_time": 0.04645800590515137,
+          "qpu_time": 60.9685001373291,
+          "qpu_access_time": 0.0,
+          "relaxation_objective": 42.98099530528772,
+          "final_objective": 1.6448173654457292,
+          "success": true,
+          "solver_type": "hybrid_decomposition_gurobi_qpu"
+        }
+      }
+    },
+    "patch": {
+      "n_units": 25,
+      "n_variables": 675,
+      "n_constraints": 89,
+      "strategy": "quantum_only",
+      "solvers": {
+        "decomposed_qpu": {
+          "solver": "decomposed_qpu",
+          "status": "Skipped",
+          "success": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "timestamp": "20251121_115601",
+    "config": 25,
+    "dwave_enabled": false,
+    "num_reads": 1000,
+    "annealing_time": 20
+  }
+}

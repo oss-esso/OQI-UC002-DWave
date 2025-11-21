@@ -2,7 +2,7 @@
 Utility functions for Decomposed QPU Benchmark
 
 Modular design implementing strategic problem decomposition:
-- Farm scenarios: Classical-only (Gurobi)
+- Farm scenarios: HYBRID DECOMPOSITION (Gurobi + QPU)
 - Patch scenarios: Quantum-only (low-level QPU)
 """
 
@@ -20,7 +20,8 @@ from solver_runner_DECOMPOSED import (
     create_cqm_plots,
     solve_with_pulp_farm,
     solve_with_pulp_plots,
-    solve_with_decomposed_qpu
+    solve_with_decomposed_qpu,
+    solve_farm_with_hybrid_decomposition
 )
 
 
@@ -55,10 +56,16 @@ def create_config(land_data: Dict, scenario_type: str = 'full_family'):
     """Create configuration for solver (uses full_family scenario with all 27 foods)."""
     _, foods, food_groups, base_config = load_food_data(scenario_type)
     
+    # Convert max_percentage_per_crop to maximum_planting_area (absolute values)
+    max_percentage = base_config['parameters'].get('max_percentage_per_crop', {})
+    total_land = sum(land_data.values())
+    maximum_planting_area = {crop: max_pct * total_land for crop, max_pct in max_percentage.items()}
+    
     config = {
         'parameters': {
             'land_availability': land_data,
             'minimum_planting_area': base_config['parameters'].get('minimum_planting_area', {}),
+            'maximum_planting_area': maximum_planting_area,
             'food_group_constraints': base_config['parameters'].get('food_group_constraints', {}),
             'weights': base_config['parameters'].get('weights', {}),
         }
@@ -67,38 +74,39 @@ def create_config(land_data: Dict, scenario_type: str = 'full_family'):
     return foods, food_groups, config
 
 
-def run_farm_classical(farms_list, foods, food_groups, config, cqm) -> Dict:
-    """Run farm scenario with classical solver only (Gurobi)."""
-    print(f"    [gurobi]", end=" ", flush=True)
+def run_farm_hybrid(farms_list, foods, food_groups, config, cqm, dwave_token: Optional[str] = None, **qpu_kwargs) -> Dict:
+    """Run farm scenario with HYBRID DECOMPOSITION (Gurobi + QPU)."""
+    print(f"    [hybrid_decomposition]", end=" ", flush=True)
     
     try:
-        start = time.time()
-        _, result = solve_with_pulp_farm(farms_list, foods, food_groups, config)
-        solve_time = time.time() - start
+        result = solve_farm_with_hybrid_decomposition(
+            farms_list, foods, food_groups, config, dwave_token, **qpu_kwargs
+        )
         
         print(f"✓")
         
         return {
-            'solver': 'gurobi',
+            'solver': 'hybrid_decomposition',
             'status': result['status'],
             'objective_value': result.get('objective_value'),
-            'solve_time': solve_time,
+            'solve_time': result['solve_time'],
+            'gurobi_time': result.get('gurobi_time'),
+            'qpu_time': result.get('qpu_time'),
+            'qpu_access_time': result.get('qpu_access_time'),
+            'relaxation_objective': result.get('relaxation_objective'),
+            'final_objective': result.get('final_objective'),
             'success': result['status'] == 'Optimal',
-            'solver_type': 'classical_minlp'
+            'solver_type': 'hybrid_decomposition_gurobi_qpu'
         }
         
     except Exception as e:
         print(f"❌")
-        return {'solver': 'gurobi', 'status': 'Failed', 'error': str(e), 'success': False}
+        return {'solver': 'hybrid_decomposition', 'status': 'Failed', 'error': str(e), 'success': False}
 
 
 def run_patch_quantum(patches_list, foods, food_groups, config, cqm, dwave_token: Optional[str] = None, **qpu_kwargs) -> Dict:
-    """Run patch scenario with quantum solver only (low-level QPU)."""
+    """Run patch scenario with quantum solver (or SimulatedAnnealing fallback)."""
     print(f"    [decomposed_qpu]", end=" ", flush=True)
-    
-    if not dwave_token:
-        print(f"⊘ (no token)")
-        return {'solver': 'decomposed_qpu', 'status': 'Skipped', 'success': False}
     
     try:
         # Convert CQM to BQM
@@ -138,7 +146,7 @@ def run_single_benchmark(n_units: int, dwave_token: Optional[str] = None, total_
     Run complete benchmark for a single configuration.
     
     Strategic Decomposition:
-    - Farm scenario: Classical-only (Gurobi MINLP)
+    - Farm scenario: HYBRID DECOMPOSITION (Gurobi continuous + QPU binary)
     - Patch scenario: Quantum-only (DWaveSampler QPU)
     
     Args:
@@ -156,8 +164,8 @@ def run_single_benchmark(n_units: int, dwave_token: Optional[str] = None, total_
         'scenarios': {}
     }
     
-    # Farm scenario - CLASSICAL ONLY
-    print(f"\n[FARM SCENARIO: {n_units} farms - CLASSICAL OPTIMIZATION]")
+    # Farm scenario - HYBRID DECOMPOSITION
+    print(f"\n[FARM SCENARIO: {n_units} farms - HYBRID DECOMPOSITION (Gurobi + QPU)]")
     farm_data = generate_farm_data(n_units, total_land)
     farms_list = list(farm_data['land_data'].keys())
     foods, food_groups, config = create_config(farm_data['land_data'], 'full_family')
@@ -168,13 +176,15 @@ def run_single_benchmark(n_units: int, dwave_token: Optional[str] = None, total_
     
     print("  Running solvers:")
     farm_results = {}
-    farm_results['gurobi'] = run_farm_classical(farms_list, foods, food_groups, config, cqm_farm)
+    farm_results['hybrid_decomposition'] = run_farm_hybrid(
+        farms_list, foods, food_groups, config, cqm_farm, dwave_token, **qpu_kwargs
+    )
     
     results['scenarios']['farm'] = {
         'n_units': n_units,
         'n_variables': len(cqm_farm.variables),
         'n_constraints': len(cqm_farm.constraints),
-        'strategy': 'classical_only',
+        'strategy': 'hybrid_decomposition',
         'solvers': farm_results
     }
     

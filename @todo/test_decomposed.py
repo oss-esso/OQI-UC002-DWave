@@ -160,7 +160,7 @@ def run_all_tests():
         print("\nReady to run benchmark:")
         print("  python comprehensive_benchmark_DECOMPOSED.py --config 10")
         print("\nStrategic Decomposition Approach:")
-        print("  - Farm scenarios: Classical-only (Gurobi)")
+        print("  - Farm scenarios: HYBRID DECOMPOSITION (Gurobi continuous + QPU binary)")
         print("  - Patch scenarios: Quantum-only (low-level QPU)")
         
         return True

@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "n_units": 5,
+    "n_foods": 27,
+    "total_area": 99.99999999999999,
+    "timestamp": "2025-11-21T13:06:49.050283",
+    "max_iterations": 5,
+    "time_limit": 30.0
+  },
+  "strategies": {
+    "benders": {
+      "name": "benders",
+      "modes": {
+        "classical": {
+          "status": "Optimal",
+          "objective": 100.0,
+          "time": 0.022205114364624023,
+          "iterations": 5,
+          "feasible": true,
+          "success": true
+        }
+      }
+    },
+    "dantzig_wolfe": {
+      "name": "dantzig_wolfe",
+      "modes": {
+        "classical": {
+          "status": "Optimal",
+          "objective": 68.99598393574297,
+          "time": 0.011765003204345703,
+          "iterations": 1,
+          "feasible": true,
+          "success": true
+        }
+      }
+    },
+    "admm": {
+      "name": "admm",
+      "modes": {
+        "classical": {
+          "status": "Optimal",
+          "objective": 10.000000000423586,
+          "time": 0.027791261672973633,
+          "iterations": 3,
+          "feasible": true,
+          "success": true
+        }
+      }
+    },
+    "benders_qpu": {
+      "name": "benders_qpu",
+      "modes": {
+        "classical": {
+          "status": "Optimal",
+          "objective": 100.0,
+          "time": 0.0339813232421875,
+          "iterations": 5,
+          "feasible": true,
+          "success": true
+        },
+        "simulated_annealing": {
+          "status": "Failed",
+          "error": "Invalid token or access denied",
+          "success": false
+        }
+      }
+    },
+    "dantzig_wolfe_qpu": {
+      "name": "dantzig_wolfe_qpu",
+      "modes": {
+        "classical": {
+          "status": "Optimal",
+          "objective": 68.99598393574297,
+          "time": 0.012222051620483398,
+          "iterations": 1,
+          "feasible": true,
+          "success": true
+        },
+        "simulated_annealing": {
+          "status": "Failed",
+          "error": "Invalid token or access denied",
+          "success": false
+        }
+      }
+    },
+    "admm_qpu": {
+      "name": "admm_qpu",
+      "modes": {
+        "classical": {
+          "status": "Failed",
+          "error": "format_admm_result() missing 1 required positional argument: 'admm_iterations'",
+          "success": false
+        },
+        "simulated_annealing": {
+          "status": "Failed",
+          "error": "Invalid token or access denied",
+          "success": false
+        }
+      }
+    }
+  }
+}

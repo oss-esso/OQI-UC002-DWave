@@ -20,12 +20,12 @@ This technical implementation project has successfully developed and validated t
     \item Validated effectiveness of decomposition-sampling-composition paradigm
 \end{itemize}
 
-\textbf{Alternative 2: Strategic Problem Decomposition}
+	extbf{Alternative 2: Hybrid Decomposition}
 \begin{itemize}
-    \item Demonstrated problem-solver matching as viable hybrid strategy
-    \item Achieved optimal solutions through specialization
-    \item Validated direct QPU access for pure binary problems
-    \item Showcased transparency benefits of heterogeneous routing
+    \item Implemented a hybrid decomposition approach for MINLP farm problems
+    \item Combined Gurobi continuous optimization with QPU binary search
+    \item Demonstrated effective coupling of classical and quantum components
+    \item Showcased reduced binary-subproblem complexity enabling better QPU fit
 \end{itemize}
 
 \subsubsection{2. Production-Ready Implementation}
@@ -83,7 +83,7 @@ Practical validation on agricultural optimization:
 Successfully handles:
 \begin{itemize}
     \item \textbf{Variables}: Up to 1350 (farm scenario)
-    \item \textbf{Constraints}: Up to 1375 (farm scenario)
+    \item \textbf{Constraints}: Up to 1385 (farm scenario)
     \item \textbf{Binary Variables}: Up to 675 (patch scenario)
     \item \textbf{Complexity}: NP-hard mixed-integer nonlinear programming
 \end{itemize}
@@ -112,7 +112,17 @@ The choice of decomposition strategy significantly impacts performance:
     \item \textbf{Rolling Windows}: Preventing repeated subproblem selection improves exploration
 \end{itemize}
 
-\textbf{Recommendation}: Match decomposition strategy to problem characteristics and computational resources.
+	extbf{Recommendation}: Match decomposition strategy to problem characteristics and computational resources.
+
+\subsubsection{Constraint Design Matters}
+
+Critical insights from the implementation and correction process:
+
+\begin{itemize}
+    \item \textbf{Count vs. Area}: Food group constraints should count crop SELECTIONS (binary $Y$), not total area ($A$). Counting selections enforces diversity of crop types independently of allocation area.
+    \item \textbf{Maximum Constraints}: Including both minimum and maximum planting area constraints prevents pathological over-allocation and improves feasibility across scenarios.
+    \item \textbf{Scenario Differences}: One-hot constraints apply ONLY to patch scenarios where an entire patch must be allocated to a single crop; farm scenarios allow multiple crops per unit and therefore should not include one-hot.
+\end{itemize}
 
 \subsubsection{Iterative Refinement vs. One-Shot Optimization}
 
@@ -467,4 +477,4 @@ Both alternative implementations are:
     \item ✅ Ready for deployment and further research
 \end{itemize}
 
-\end{document}
+

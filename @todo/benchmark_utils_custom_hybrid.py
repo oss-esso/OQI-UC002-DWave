@@ -52,10 +52,16 @@ def create_config(land_data: Dict, scenario_type: str = 'full_family'):
     """Create configuration for solver (uses full_family scenario with all 27 foods)."""
     _, foods, food_groups, base_config = load_food_data(scenario_type)
     
+    # Convert max_percentage_per_crop to maximum_planting_area (absolute values)
+    max_percentage = base_config['parameters'].get('max_percentage_per_crop', {})
+    total_land = sum(land_data.values())
+    maximum_planting_area = {crop: max_pct * total_land for crop, max_pct in max_percentage.items()}
+    
     config = {
         'parameters': {
             'land_availability': land_data,
             'minimum_planting_area': base_config['parameters'].get('minimum_planting_area', {}),
+            'maximum_planting_area': maximum_planting_area,
             'food_group_constraints': base_config['parameters'].get('food_group_constraints', {}),
             'weights': base_config['parameters'].get('weights', {}),
         }

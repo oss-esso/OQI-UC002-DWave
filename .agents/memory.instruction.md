@@ -10,15 +10,24 @@ applyTo: '**'
 - **Solver Configuration**: Use Gurobi for PuLP (with GPU acceleration), IPOPT for Pyomo (native quadratic handling)
 - **Timing Measurements**: Always use internal solver timing (solver.solve() only) to exclude Python overhead and model setup
 - **Solution Validation**: Always validate solutions against constraints and include results in JSON output
+- **Decomposition Strategies**: Factory pattern for multiple algorithms (Benders, ADMM, Dantzig-Wolfe)
+- **Infeasibility Handling**: Use Gurobi IIS computation for diagnostic reporting
 
 # Project Architecture
 - **Domain**: Agricultural land allocation optimization using quantum annealing
 - **Main Scripts**: `comprehensive_benchmark.py`, `solver_runner_BINARY.py`, `solver_runner_LQ.py`
+- **Decomposition Strategies** (NEW):
+  - `@todo/decomposition_strategies.py`: Factory pattern for all strategies
+  - `@todo/decomposition_benders.py`: Benders decomposition (master/subproblem)
+  - `@todo/decomposition_admm.py`: ADMM with consensus (best convergence)
+  - `@todo/decomposition_dantzig_wolfe.py`: Column generation
+  - `@todo/benchmark_all_strategies.py`: Unified benchmarking tool
 - **Results Structure**: 
   - JSON files contain detailed solution metadata including validation results
   - CSV files contain flattened sampleset data (multiple solutions per run)
 - **Key Directories**: 
   - `Benchmarks/COMPREHENSIVE/Farm_DWave/` - DWave results
+  - `Benchmarks/ALL_STRATEGIES/` - Decomposition strategy comparisons
   - `Benchmark Scripts/` - Solver implementations
 - **Formulation Types**:
   - Binary (BQUBO): Pure linear objective with binary plot assignment
@@ -34,6 +43,21 @@ applyTo: '**'
      - `sum(Y[f,c] for all f, c in group) >= min_foods` (global)
      - `sum(Y[f,c] for all f, c in group) <= max_foods` (global)
   5. `min_area = 0.0001` for all crops (to prevent zero allocation when selected)
+- **Food Groups Data Structure** (CRITICAL):
+  - `food_groups = {group_name: [list_of_foods]}`  ← Lists only
+  - `food_group_constraints = {group_name: {'min_foods': X, 'max_foods': Y}}`  ← Constraint params
+  - `load_food_data()` returns: `(scenario_data, foods, food_groups, config)`
+  - Access pattern: `foods_in_group = food_groups.get(group_name, [])`
+  - Constraints: `constraints = config['parameters']['food_group_constraints'][group_name]`
+- **Decomposition Strategies Implemented**:
+  - **ADMM**: Best performance, converges in 6 iterations (config 10)
+  - **Benders**: Functional, needs cut refinement for better convergence
+  - **Dantzig-Wolfe**: Implemented, column generation approach
+  - All use factory pattern: `DecompositionFactory.get_strategy(name)`
+- **Infeasibility Detection**:
+  - Use `detect_infeasibility()` for IIS computation
+  - Track constraint names manually (can't access `constr.ConstrName` before update)
+  - Provides automated relaxation suggestions by constraint type
 - **Solution Validation Pattern**:
   - Function: `validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config)`
   - Returns: Dictionary with `is_feasible`, `n_violations`, `violations` list, `constraint_checks`, `summary`

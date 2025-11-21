@@ -53,7 +53,7 @@ def main():
     dwave_token = args.token or os.getenv('DWAVE_API_TOKEN', DWAVE_TOKEN_PLACEHOLDER)
     
     if dwave_token == DWAVE_TOKEN_PLACEHOLDER:
-        print("\n⚠️  WARNING: No D-Wave token configured!")
+        print("\nWARNING: No D-Wave token configured!")
         print("   Set DWAVE_API_TOKEN environment variable or use --token")
         print("   Running Gurobi-only benchmarks.\n")
         dwave_token = None

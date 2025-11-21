@@ -324,6 +324,7 @@ def create_cqm_farm(farms, foods, food_groups, config):
     land_availability = params['land_availability']
     weights = params['weights']
     min_planting_area = params.get('minimum_planting_area', {})
+    max_planting_area = params.get('maximum_planting_area', {})
     food_group_constraints = params.get('food_group_constraints', {})
 
     # Define variables
@@ -373,11 +374,11 @@ def create_cqm_farm(farms, foods, food_groups, config):
             'max_land': land_availability[farm]
         }
 
-    # Linking constraints
+    # Linking constraints - minimum and maximum area if selected
     for farm in tqdm(farms, desc="Adding linking constraints"):
         for food in foods:
+            # Minimum area if selected
             A_min = min_planting_area.get(food, 0)
-
             cqm.add_constraint(
                 A[(farm, food)] - A_min * Y[(farm, food)] >= 0,
                 label=f"Min_Area_If_Selected_{farm}_{food}"
@@ -389,46 +390,53 @@ def create_cqm_farm(farms, foods, food_groups, config):
                 'min_area': A_min
             }
 
+            # Maximum area if selected (either explicit max or farm capacity)
+            if food in max_planting_area:
+                A_max = max_planting_area[food]
+            else:
+                A_max = land_availability[farm]
+                
             cqm.add_constraint(
-                A[(farm, food)] - land_availability[farm] * Y[(farm, food)] <= 0,
+                A[(farm, food)] - A_max * Y[(farm, food)] <= 0,
                 label=f"Max_Area_If_Selected_{farm}_{food}"
             )
             constraint_metadata['max_area_if_selected'][(farm, food)] = {
                 'type': 'max_area_if_selected',
                 'farm': farm,
                 'food': food,
-                'max_land': land_availability[farm]
+                'max_area': A_max
             }
 
-    # Food group constraints - GLOBAL across all farms
+    # Food group constraints - GLOBAL across all farms (use COUNT of Y, not area A)
     if food_group_constraints:
         for group, constraints in tqdm(food_group_constraints.items(), desc="Adding food group constraints"):
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                # Global minimum: across ALL farms, at least min_foods from this group
+                # Normalize group name for labels
+                group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
+                
+                # Global minimum COUNT: across ALL farms, at least min_foods selections
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
-                        constraints['min_foods'] >= 0,
-                        label=f"Food_Group_Min_{group}_Global"
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['min_foods'] >= 0,
+                        label=f"Food_Group_Min_{group_label}_Global"
                     )
                     constraint_metadata['food_group_min'][group] = {
-                        'type': 'food_group_min_global',
+                        'type': 'food_group_min_count_global',
                         'group': group,
                         'min_foods': constraints['min_foods'],
                         'foods_in_group': foods_in_group,
                         'scope': 'global'
                     }
 
-                # Global maximum: across ALL farms, at most max_foods from this group
+                # Global maximum COUNT: across ALL farms, at most max_foods selections
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
-                        constraints['max_foods'] <= 0,
-                        label=f"Food_Group_Max_{group}_Global"
+                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['max_foods'] <= 0,
+                        label=f"Food_Group_Max_{group_label}_Global"
                     )
                     constraint_metadata['food_group_max'][group] = {
-                        'type': 'food_group_max_global',
+                        'type': 'food_group_max_count_global',
                         'group': group,
                         'max_foods': constraints['max_foods'],
                         'foods_in_group': foods_in_group,
