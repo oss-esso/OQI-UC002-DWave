@@ -126,7 +126,7 @@ def solve_with_admm(
     
     # Format result
     result = format_admm_result(
-        admm_iterations=admm_iterations,
+        iterations=admm_iterations,
         final_solution=final_solution,
         objective_value=final_obj,
         total_time=total_time,
@@ -138,7 +138,8 @@ def solve_with_admm(
         validation_results=validation,
         num_variables=2 * len(farms) * len(foods),
         num_constraints=len(farms) + len(food_groups) * 2,
-        rho=rho
+        rho=rho,
+        tolerance=tolerance
     )
     
     return result

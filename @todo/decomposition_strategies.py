@@ -12,6 +12,7 @@ All strategies implement a common interface for easy benchmarking.
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 from enum import Enum
+from result_format_compat import convert_to_old_format
 
 
 class DecompositionStrategy(str, Enum):
@@ -100,7 +101,7 @@ class BendersStrategy(BaseDecompositionStrategy):
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from decomposition_benders import solve_with_benders
         
-        return solve_with_benders(
+        result = solve_with_benders(
             farms=farms,
             foods=foods,
             food_groups=food_groups,
@@ -109,6 +110,7 @@ class BendersStrategy(BaseDecompositionStrategy):
             gap_tolerance=kwargs.get('gap_tolerance', 1e-4),
             time_limit=kwargs.get('time_limit', 300.0)
         )
+        return convert_to_old_format(result)
 
 
 class BendersQPUStrategy(BaseDecompositionStrategy):
@@ -123,17 +125,18 @@ class BendersQPUStrategy(BaseDecompositionStrategy):
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from decomposition_benders_qpu import solve_with_benders_qpu
         
-        return solve_with_benders_qpu(
+        result = solve_with_benders_qpu(
             farms=farms,
             foods=foods,
             food_groups=food_groups,
             config=config,
-            dwave_token=kwargs.get('dwave_token'),
+            dwave_token=kwargs.get('dwave_token', None),
             max_iterations=kwargs.get('max_iterations', 50),
             gap_tolerance=kwargs.get('gap_tolerance', 1e-4),
             time_limit=kwargs.get('time_limit', 300.0),
             use_qpu_for_master=kwargs.get('use_qpu_for_master', True)
         )
+        return convert_to_old_format(result)
 
 
 class DantzigWolfeStrategy(BaseDecompositionStrategy):
@@ -148,7 +151,7 @@ class DantzigWolfeStrategy(BaseDecompositionStrategy):
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from decomposition_dantzig_wolfe import solve_with_dantzig_wolfe
         
-        return solve_with_dantzig_wolfe(
+        result = solve_with_dantzig_wolfe(
             farms=farms,
             foods=foods,
             food_groups=food_groups,
@@ -156,6 +159,7 @@ class DantzigWolfeStrategy(BaseDecompositionStrategy):
             max_iterations=kwargs.get('max_iterations', 50),
             time_limit=kwargs.get('time_limit', 300.0)
         )
+        return convert_to_old_format(result)
 
 
 class DantzigWolfeQPUStrategy(BaseDecompositionStrategy):
@@ -170,16 +174,17 @@ class DantzigWolfeQPUStrategy(BaseDecompositionStrategy):
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from decomposition_dantzig_wolfe_qpu import solve_with_dantzig_wolfe_qpu
         
-        return solve_with_dantzig_wolfe_qpu(
+        result = solve_with_dantzig_wolfe_qpu(
             farms=farms,
             foods=foods,
             food_groups=food_groups,
             config=config,
-            dwave_token=kwargs.get('dwave_token'),
+            dwave_token=kwargs.get('dwave_token', None),
             max_iterations=kwargs.get('max_iterations', 50),
             time_limit=kwargs.get('time_limit', 300.0),
             use_qpu_for_pricing=kwargs.get('use_qpu_for_pricing', True)
         )
+        return convert_to_old_format(result)
 
 
 class ADMMStrategy(BaseDecompositionStrategy):
@@ -194,7 +199,7 @@ class ADMMStrategy(BaseDecompositionStrategy):
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from decomposition_admm import solve_with_admm
         
-        return solve_with_admm(
+        result = solve_with_admm(
             farms=farms,
             foods=foods,
             food_groups=food_groups,
@@ -204,6 +209,7 @@ class ADMMStrategy(BaseDecompositionStrategy):
             tolerance=kwargs.get('tolerance', 1e-3),
             time_limit=kwargs.get('time_limit', 300.0)
         )
+        return convert_to_old_format(result)
 
 
 class ADMMQPUStrategy(BaseDecompositionStrategy):
@@ -218,17 +224,18 @@ class ADMMQPUStrategy(BaseDecompositionStrategy):
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from decomposition_admm_qpu import solve_with_admm_qpu
         
-        return solve_with_admm_qpu(
+        result = solve_with_admm_qpu(
             farms=farms,
             foods=foods,
             food_groups=food_groups,
             config=config,
-            dwave_token=kwargs.get('dwave_token'),
+            dwave_token=kwargs.get('dwave_token', None),
             max_iterations=kwargs.get('max_iterations', 50),
             rho=kwargs.get('rho', 1.0),
             tolerance=kwargs.get('tolerance', 1e-4),
             use_qpu_for_y=kwargs.get('use_qpu_for_y', True)
         )
+        return convert_to_old_format(result)
 
 
 class DecompositionFactory:

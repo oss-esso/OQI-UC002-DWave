@@ -22,85 +22,87 @@ def format_decomposition_result(
     validation_results: Optional[Dict] = None,
     num_variables: int = 0,
     num_constraints: int = 0,
+    run_number: int = 1,
     **kwargs
 ) -> Dict:
     """
-    Format decomposition strategy results into standardized JSON structure.
+    Format decomposition strategy results to match Pyomo template exactly.
     
-    Args:
-        strategy_name: Name of decomposition strategy (e.g., 'benders', 'admm')
-        scenario_type: 'farm' or 'patch'
-        n_units: Number of farms/patches
-        n_foods: Number of food types
-        total_area: Total available land area
-        objective_value: Final objective function value
-        solution: Dictionary of variable assignments
-        solve_time: Total solution time in seconds
-        num_iterations: Number of iterations for iterative methods
-        is_feasible: Whether solution is feasible
-        validation_results: Constraint validation results
-        num_variables: Total number of decision variables
-        num_constraints: Total number of constraints
-        **kwargs: Additional strategy-specific metadata
-    
-    Returns:
-        Formatted result dictionary matching reference JSON structure
+    Template: Benchmarks/LQ/Pyomo/config_10_run_1.json
     """
+    from datetime import datetime
     
-    # Extract Y variables (binary selection indicators)
-    solution_plantations = {}
-    total_covered_area = 0.0
+    # Extract solution areas and selections
+    solution_areas = {}
+    solution_selections = {}
     
     for var_name, value in solution.items():
-        if var_name.startswith('Y_') or var_name.startswith('Y['):
-            # Parse variable name to extract farm/patch and food
-            solution_plantations[var_name] = value
-            
-        # Calculate total covered area from A variables
-        if var_name.startswith('A_') or var_name.startswith('A['):
-            total_covered_area += value
+        if var_name.startswith('A_') or var_name.startswith('Area'):
+            # Convert to Farm#_Food format
+            clean_name = var_name.replace('Area_', '').replace('A_', '')
+            solution_areas[clean_name] = value
+        elif var_name.startswith('Y_') or var_name.startswith('Choose'):
+            # Convert to Farm#_Food format
+            clean_name = var_name.replace('Choose_', '').replace('Y_', '')
+            solution_selections[clean_name] = value
     
-    # Build validation section
-    validation_section = validation_results or {
-        'is_feasible': is_feasible,
-        'n_violations': 0,
-        'violations': [],
-        'constraint_checks': {},
-        'summary': 'No validation performed' if validation_results is None else 'Validation complete'
-    }
+    # Calculate total covered area
+    total_covered_area = sum(solution_areas.values())
     
-    # Build result dictionary
+    # Build validation (use provided or create default)
+    if validation_results is None:
+        validation_results = {
+            'is_feasible': is_feasible,
+            'n_violations': 0,
+            'violations': [],
+            'constraint_checks': {},
+            'summary': {
+                'total_checks': 0,
+                'total_passed': 0,
+                'total_failed': 0,
+                'pass_rate': 1.0
+            }
+        }
+    
+    # Match exact template structure
     result = {
         'metadata': {
-            'decomposition_strategy': strategy_name,
-            'scenario_type': scenario_type,
-            'n_units': n_units,
-            'n_foods': n_foods,
-            'timestamp': kwargs.get('timestamp', None)
+            'benchmark_type': 'DECOMPOSITION',
+            'solver': strategy_name.upper(),
+            'n_farms': n_units,
+            'run_number': run_number,
+            'timestamp': kwargs.get('timestamp', datetime.now().isoformat())
         },
-        'problem_info': {
+        'result': {
+            'status': kwargs.get('status', 'ok (optimal)' if is_feasible else 'failed'),
+            'objective_value': objective_value,
+            'solve_time': solve_time,
+            'solver_time': solve_time,
+            'success': is_feasible,
+            'sample_id': 0,
+            'n_units': n_units,
+            'total_area': total_area,
+            'n_foods': n_foods,
             'n_variables': num_variables,
             'n_constraints': num_constraints,
-            'total_area': total_area,
-            'problem_size': n_units * n_foods
-        },
-        'solver_info': {
-            'strategy': strategy_name,
-            'num_iterations': num_iterations,
-            'solve_time': solve_time,
-            'success': is_feasible,
-            'status': 'Optimal' if is_feasible else 'Infeasible'
-        },
-        'solution': {
-            'objective_value': objective_value,
-            'is_feasible': is_feasible,
+            'solver': kwargs.get('solver_engine', 'gurobi'),
+            'solution_areas': solution_areas,
+            'solution_selections': solution_selections,
             'total_covered_area': total_covered_area,
-            'solution_plantations': solution_plantations,
-            'full_solution': solution
-        },
-        'validation': validation_section,
-        'additional_info': {k: v for k, v in kwargs.items() if k != 'timestamp'}
+            'solution_summary': {
+                'total_allocated': total_covered_area,
+                'total_available': total_area,
+                'idle_area': total_area - total_covered_area,
+                'utilization': total_covered_area / total_area if total_area > 0 else 0.0
+            },
+            'validation': validation_results,
+            'error': None
+        }
     }
+    
+    # Add decomposition-specific info if provided
+    if 'decomposition_specific' in kwargs:
+        result['decomposition_specific'] = kwargs['decomposition_specific']
     
     return result
 
@@ -114,21 +116,24 @@ def format_benders_result(
 ) -> Dict:
     """Format Benders decomposition specific results."""
     
+    # Prepare decomposition-specific details
+    decomposition_specific = {
+        'iterations_detail': master_iterations,
+        'cuts_added': sum(1 for it in master_iterations if it.get('cut_added', False)),
+        'final_gap': master_iterations[-1].get('gap', 0.0) if master_iterations else 0.0,
+        'lower_bound': master_iterations[-1].get('lower_bound', 0.0) if master_iterations else 0.0,
+        'upper_bound': master_iterations[-1].get('upper_bound', 0.0) if master_iterations else 0.0
+    }
+    
     base_result = format_decomposition_result(
         strategy_name='benders',
         objective_value=objective_value,
         solution=final_solution,
         solve_time=total_time,
         num_iterations=len(master_iterations),
+        decomposition_specific=decomposition_specific,
         **kwargs
     )
-    
-    # Add Benders-specific information
-    base_result['benders_info'] = {
-        'master_iterations': master_iterations,
-        'num_cuts_added': sum(1 for it in master_iterations if 'cut_added' in it),
-        'convergence_gap': master_iterations[-1].get('gap', 0.0) if master_iterations else 0.0
-    }
     
     return base_result
 
@@ -142,27 +147,30 @@ def format_dantzig_wolfe_result(
 ) -> Dict:
     """Format Dantzig-Wolfe decomposition specific results."""
     
+    # Prepare decomposition-specific details
+    decomposition_specific = {
+        'iterations_detail': columns_generated,
+        'columns_generated': len(columns_generated),
+        'final_reduced_cost': columns_generated[-1].get('reduced_cost', 0.0) if columns_generated else 0.0,
+        'active_columns': kwargs.get('active_columns', len(columns_generated)),
+        'total_columns': kwargs.get('total_columns', len(columns_generated))
+    }
+    
     base_result = format_decomposition_result(
         strategy_name='dantzig_wolfe',
         objective_value=objective_value,
         solution=final_solution,
         solve_time=total_time,
         num_iterations=len(columns_generated),
+        decomposition_specific=decomposition_specific,
         **kwargs
     )
-    
-    # Add Dantzig-Wolfe-specific information
-    base_result['dantzig_wolfe_info'] = {
-        'columns_generated': len(columns_generated),
-        'column_details': columns_generated,
-        'reduced_cost_final': columns_generated[-1].get('reduced_cost', 0.0) if columns_generated else 0.0
-    }
     
     return base_result
 
 
 def format_admm_result(
-    admm_iterations: List[Dict],
+    iterations: List[Dict],
     final_solution: Dict[str, float],
     objective_value: float,
     total_time: float,
@@ -170,22 +178,35 @@ def format_admm_result(
 ) -> Dict:
     """Format ADMM decomposition specific results."""
     
+    # Prepare convergence metrics
+    final_iter = iterations[-1] if iterations else {}
+    convergence = {
+        'primal_residual': final_iter.get('primal_residual', 0.0),
+        'dual_residual': final_iter.get('dual_residual', 0.0),
+        'converged': final_iter.get('primal_residual', 1.0) < kwargs.get('tolerance', 1e-4)
+    }
+    
+    # Prepare decomposition-specific details
+    decomposition_specific = {
+        'iterations_detail': iterations,
+        'rho': kwargs.get('rho', 1.0),
+        'tolerance': kwargs.get('tolerance', 1e-4),
+        'primal_residual_history': [it.get('primal_residual', 0.0) for it in iterations],
+        'dual_residual_history': [it.get('dual_residual', 0.0) for it in iterations],
+        'qpu_time_total': kwargs.get('qpu_time_total', 0.0),
+        'used_qpu': kwargs.get('used_qpu', False)
+    }
+    
     base_result = format_decomposition_result(
         strategy_name='admm',
         objective_value=objective_value,
         solution=final_solution,
         solve_time=total_time,
-        num_iterations=len(admm_iterations),
+        num_iterations=len(iterations),
+        convergence=convergence,
+        decomposition_specific=decomposition_specific,
         **kwargs
     )
-    
-    # Add ADMM-specific information
-    base_result['admm_info'] = {
-        'iterations': admm_iterations,
-        'primal_residual': admm_iterations[-1].get('primal_residual', 0.0) if admm_iterations else 0.0,
-        'dual_residual': admm_iterations[-1].get('dual_residual', 0.0) if admm_iterations else 0.0,
-        'rho': kwargs.get('rho', 1.0)
-    }
     
     return base_result
 
