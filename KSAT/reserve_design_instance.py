@@ -6,6 +6,8 @@ import numpy as np
 from typing import List, Tuple, Set, Optional
 from dataclasses import dataclass, field
 
+from KSAT.prsonal_test import compute_site_costs
+
 
 @dataclass
 class ReserveDesignInstance:
