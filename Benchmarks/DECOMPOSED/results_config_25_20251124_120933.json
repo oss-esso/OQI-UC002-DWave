@@ -1,0 +1,56 @@
+{
+  "n_units": 25,
+  "total_land": 100.0,
+  "scenarios": {
+    "farm": {
+      "n_units": 25,
+      "n_variables": 1350,
+      "n_constraints": 1385,
+      "strategy": "hybrid_decomposition",
+      "solvers": {
+        "hybrid_decomposition": {
+          "solver": "hybrid_decomposition",
+          "status": "Optimal",
+          "objective_value": 0.00689623476015617,
+          "solve_time": 169.83491492271423,
+          "gurobi_time": 0.09877681732177734,
+          "qpu_time": 169.73613810539246,
+          "qpu_access_time": 0.0,
+          "relaxation_objective": 0.4298099530528773,
+          "final_objective": 0.00689623476015617,
+          "success": true,
+          "solver_type": "hybrid_decomposition_gurobi_qpu"
+        }
+      }
+    },
+    "patch": {
+      "n_units": 25,
+      "n_variables": 675,
+      "n_constraints": 737,
+      "strategy": "quantum_only",
+      "solvers": {
+        "decomposed_qpu": {
+          "solver": "decomposed_qpu",
+          "status": "Optimal",
+          "objective_value": -0.0903279247086175,
+          "solve_time": 106.14523506164551,
+          "qpu_access_time": 0.0,
+          "qpu_programming_time": 0.0,
+          "qpu_sampling_time": 0.0,
+          "num_reads": 1000,
+          "num_occurrences": "1",
+          "success": true,
+          "solver_type": "quantum_annealing",
+          "qpu_config": {}
+        }
+      }
+    }
+  },
+  "metadata": {
+    "timestamp": "20251124_120933",
+    "config": 25,
+    "dwave_enabled": false,
+    "num_reads": 1000,
+    "annealing_time": 20
+  }
+}

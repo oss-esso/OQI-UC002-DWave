@@ -489,7 +489,7 @@ def create_cqm_plots(farms, foods, food_groups, config):
         n_farms * n_foods +       # Binary variables only (Y)
         n_farms * n_foods +       # Objective terms
         n_farms +                 # Land availability constraints
-        n_crops_with_min +        # Minimum plot constraints per crop
+        n_crops_with_min * n_farms +  # Conditional minimum plot constraints (per farm per crop)
         n_crops_with_max +        # Maximum plot constraints per crop
         n_farms * n_food_groups * 2  # Food group constraints (min and max)
     )
@@ -555,31 +555,35 @@ def create_cqm_plots(farms, foods, food_groups, config):
         }
         pbar.update(1)
     
-    # Minimum plots per crop constraints
-    # If a crop requires minimum area, convert to minimum number of plots
-    pbar.set_description("Adding minimum plot constraints")
-    import math
+    # CONDITIONAL Minimum/Maximum plot constraints
+    # These constraints only apply when a crop is actually planted
+    # If crop is not planted anywhere: sum(Y) = 0 (automatically satisfied)
+    # If crop is planted: min_plots <= sum(Y) <= max_plots
+    
+    pbar.set_description("Adding conditional min/max plot constraints")
     for food in foods:
+        # Conditional minimum: IF planted, must use at least min_plots
         if food in min_planting_area and min_planting_area[food] > 0:
             min_plots = math.ceil(min_planting_area[food] / plot_area)
-            # If crop is planted anywhere, it must be planted on at least min_plots
-            cqm.add_constraint(
-                sum(Y[(farm, food)] for farm in farms) >= min_plots,
-                label=f"Min_Plots_{food}"
-            )
+            total_assignments = sum(Y[(farm, food)] for farm in farms)
+            
+            # If Y_{farm,food} = 1, then sum(Y_{*,food}) >= min_plots
+            for farm in farms:
+                cqm.add_constraint(
+                    total_assignments - min_plots * Y[(farm, food)] >= 0,
+                    label=f"Min_Plots_If_Selected_{farm}_{food}"
+                )
+            
             constraint_metadata['min_plots_per_crop'][food] = {
-                'type': 'min_plots_per_crop',
+                'type': 'conditional_min_plots_per_crop',
                 'food': food,
                 'min_area_ha': min_planting_area[food],
                 'plot_area_ha': plot_area,
                 'min_plots': min_plots
             }
             pbar.update(1)
-    
-    # Maximum plots per crop constraints
-    # If a crop has maximum area, convert to maximum number of plots
-    pbar.set_description("Adding maximum plot constraints")
-    for food in foods:
+        
+        # Conditional maximum: always enforced (if not planted, sum=0 satisfies max)
         if food in max_planting_area:
             max_plots = math.floor(max_planting_area[food] / plot_area)
             cqm.add_constraint(
@@ -794,12 +798,17 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
     for f in farms:
         model += pl.lpSum([X_pulp[(f, c)] for c in foods]) <= 1, f"Max_Assignment_{f}"
     
-    # Constraint 2: Minimum plots per crop
+    # Constraint 2: CONDITIONAL Minimum plots per crop
+    # If a crop is planted anywhere (any X > 0), it must use at least min_plots
     import math
     for crop in foods:
         if crop in min_planting_area and min_planting_area[crop] > 0:
             min_plots = math.ceil(min_planting_area[crop] / plot_area)
-            model += pl.lpSum([X_pulp[(f, crop)] for f in farms]) >= min_plots, f"Min_Plots_{crop}"
+            total_crop_assignments = pl.lpSum([X_pulp[(f, crop)] for f in farms])
+            
+            # For each farm: if X_{f,crop}=1, then total >= min_plots
+            for f in farms:
+                model += total_crop_assignments >= min_plots * X_pulp[(f, crop)], f"Min_Plots_If_{f}_{crop}"
     
     # Constraint 3: Maximum plots per crop
     for crop in foods:
@@ -1435,13 +1444,15 @@ def solve_with_decomposed_qpu(bqm, token, **kwargs):
         print(f"    Best Sample Occurrences: {num_occurrences}/{num_reads}")
         print(f"    Total Samples Returned: {len(sampleset)}")
         
-        # Calculate objective value (negative energy for maximization)
+        # Calculate objective value
+        # NOTE: BQM energy is the NEGATIVE of the actual objective (because we minimize -objective)
+        # So the true objective value is -energy
         objective_value = -best_energy
         
         result = {
             'status': 'Optimal',  # Sampler always returns best found
-            'objective_value': objective_value,
-            'bqm_energy': best_energy,
+            'objective_value': objective_value,  # Actual objective (negative of BQM energy)
+            'bqm_energy': best_energy,  # Raw BQM energy for debugging,
             'solve_time': solve_time,
             'qpu_access_time': qpu_access_time,
             'qpu_programming_time': qpu_programming_time,
@@ -1540,7 +1551,7 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
     A_pulp = pl.LpVariable.dicts("Area", [(f, c) for f in farms for c in foods], lowBound=0)
     Y_pulp = pl.LpVariable.dicts("Choose", [(f, c) for f in farms for c in foods], lowBound=0, upBound=1)
     
-    # Objective (same as original)
+    # Objective (same as original, normalized by total_area)
     objective_relaxed = pl.lpSum(
         (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
          weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
@@ -1548,7 +1559,7 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
          weights.get('affordability', 0) * foods[c].get('affordability', 0) +
          weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_pulp[(f, c)]
         for f in farms for c in foods
-    )
+    ) / total_area  # Normalize to match baseline formulation
     prob_relaxed += objective_relaxed
     
     # Constraints (same as original farm problem)
@@ -1616,9 +1627,9 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
         for c in foods:
             Y_binary[(f, c)] = Binary(f"Y_{f}_{c}")
     
-    # Objective: Use fixed A* values
+    # Objective: Use fixed A* values, normalized by total_area
     # Objective = sum (B_c * A*_{f,c}) for Y_{f,c} = 1
-    # This simplifies to: maximize sum (B_c * A*_{f,c} * Y_{f,c})
+    # This simplifies to: maximize sum (B_c * A*_{f,c} * Y_{f,c}) / total_area
     objective_binary = sum(
         (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
          weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
@@ -1626,7 +1637,7 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
          weights.get('affordability', 0) * foods[c].get('affordability', 0) +
          weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_star[(f, c)] * Y_binary[(f, c)]
         for f in farms for c in foods
-    )
+    ) / total_area  # Normalize to match baseline formulation
     cqm_binary.set_objective(-objective_binary)  # Negative because CQM minimizes
     
     # Binary constraints (only Y-based constraints, A is fixed)
@@ -1684,6 +1695,8 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
             final_solution[y_var_name] = y_solution_cqm.get(y_var_name, 0)
     
     # Calculate final objective using both A* and Y**
+    # IMPORTANT: Don't use BQM energy! Evaluate the ORIGINAL objective function.
+    # BQM energy includes penalties from constraints and is not comparable.
     final_objective = sum(
         (weights.get('nutritional_value', 0) * foods[c].get('nutritional_value', 0) +
          weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
@@ -1691,9 +1704,11 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
          weights.get('affordability', 0) * foods[c].get('affordability', 0) +
          weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_star[(f, c)] * final_solution[f"Y_{f}_{c}"]
         for f in farms for c in foods
-    )
+    ) / total_area  # Normalize to match baseline formulation
     
-    print(f"  ✓ Final objective: {final_objective:.4f}")
+    # Count how many Y variables are selected
+    n_selected = sum(1 for f in farms for c in foods if final_solution[f"Y_{f}_{c}"] > 0.5)
+    print(f"  ✓ Final objective: {final_objective:.6f} ({n_selected} crops selected)")
     print(f"  Decomposition benefit: Gurobi handled {len(A_star)} continuous vars, QPU handled {len(Y_binary)} binary vars")
     
     result = {
@@ -1707,7 +1722,7 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
         'final_objective': final_objective,
         'solver_name': 'hybrid_decomposition_gurobi_qpu',
         'solution': final_solution,
-        'A_star': A_star,
+        'A_star': {f"A_{f}_{c}": A_star[(f, c)] for f, c in A_star},  # Convert tuple keys to strings
         'Y_star': {f"Y_{f}_{c}": final_solution[f"Y_{f}_{c}"] for f in farms for c in foods}
     }
     

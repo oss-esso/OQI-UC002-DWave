@@ -15,8 +15,9 @@ import os
 import sys
 import json
 import argparse
+import numpy as np
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 
 # Add project paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -26,6 +27,132 @@ from decomposition_strategies import DecompositionFactory, solve_with_strategy
 from benchmark_utils_decomposed import generate_farm_data, create_config
 from infeasibility_detection import detect_infeasibility, check_config_feasibility
 from src.scenarios import load_food_data
+from standardized_result_formatter import format_standard_result, extract_solution_from_decomp_result
+
+
+def convert_to_standard_format(result: Dict, strategy_name: str, farms: Dict, foods: List[str]) -> Dict:
+    """Convert decomposition result to standardized PuLP-compatible format."""
+    
+    # Extract core information
+    if 'solution' in result:
+        solution_dict = result['solution']
+        objective_value = solution_dict.get('objective_value', 0.0)
+        is_feasible = solution_dict.get('is_feasible', False)
+        full_solution = solution_dict.get('full_solution', solution_dict)
+    elif 'result' in result:
+        result_dict = result['result']
+        objective_value = result_dict.get('objective_value', 0.0)
+        is_feasible = result_dict.get('success', False)
+        full_solution = result_dict.get('solution', {})
+    else:
+        objective_value = 0.0
+        is_feasible = False
+        full_solution = {}
+    
+    # Extract A and Y from full_solution
+    A_dict = {}
+    Y_dict = {}
+    
+    # First pass: look for A_ and Y_ prefixed variables
+    for var_name, value in full_solution.items():
+        if var_name.startswith('A_'):
+            key = var_name[2:]  # Remove 'A_'
+            parts = key.split('_', 1)
+            if len(parts) == 2:
+                A_dict[(parts[0], parts[1])] = value
+        elif var_name.startswith('Y_'):
+            key = var_name[2:]  # Remove 'Y_'
+            parts = key.split('_', 1)
+            if len(parts) == 2:
+                Y_dict[(parts[0], parts[1])] = value
+    
+    # If no prefixed variables found, assume non-prefixed are Y variables (binary selections)
+    # This handles old format from some decomposition solvers
+    if len(A_dict) == 0 and len(Y_dict) == 0:
+        for var_name, value in full_solution.items():
+            if not var_name.startswith('A_') and not var_name.startswith('Y_'):
+                parts = var_name.split('_', 1)
+                if len(parts) == 2:
+                    farm, food = parts
+                    Y_dict[(farm, food)] = value
+                    # Assume full land allocation if crop is selected
+                    # (This is a simplification for solvers that only return Y variables)
+                    if value > 0.5:
+                        # Need to get land availability for this farm
+                        A_dict[(farm, food)] = farms.get(farm, 0.0)
+    
+    # RECALCULATE OBJECTIVE FROM ACTUAL SOLUTION
+    # Don't trust the objective passed from decomposition algorithms!
+    total_area = sum(farms.values())
+    
+    # Get benefits from config
+    _, _, _, base_config = load_food_data('full_family')
+    weights = base_config.get('parameters', {}).get('weights', {
+        'nutrition': 0.4,
+        'ghg': 0.3,
+        'water': 0.2,
+        'sustainability': 0.1
+    })
+    
+    benefits = {}
+    for food in foods:
+        benefit = sum(
+            base_config.get('nutrients', {}).get(food, {}).get(attr, 0) * weight
+            for attr, weight in weights.items()
+        )
+        benefits[food] = benefit if benefit > 0 else 100.0
+    
+    # Calculate actual objective from solution
+    actual_objective = 0.0
+    for (farm, food), area in A_dict.items():
+        y_val = Y_dict.get((farm, food), 0.0)
+        if y_val > 0.5:  # Food is selected
+            actual_objective += area * benefits.get(food, 100.0)
+    
+    # Normalize by total area
+    actual_objective = actual_objective / total_area if total_area > 0 else 0.0
+    
+    print(f"  ⚠️  Objective recalculated: {objective_value:.6f} → {actual_objective:.6f}")
+    
+    # Get timing and metadata
+    if 'solver_info' in result:
+        solve_time = result['solver_info'].get('solve_time', 0.0)
+        num_iterations = result['solver_info'].get('num_iterations', 1)
+        status_str = result['solver_info'].get('status', 'Unknown')
+    elif 'metadata' in result:
+        solve_time = result.get('solve_time', 0.0)
+        num_iterations = 1
+        status_str = 'Unknown'
+    else:
+        solve_time = 0.0
+        num_iterations = 1
+        status_str = 'Unknown'
+    
+    # Create standard format result
+    standard_result = format_standard_result(
+        farms=farms,
+        foods=foods,
+        solution_A=A_dict,
+        solution_Y=Y_dict,
+        objective_value=actual_objective,  # Use recalculated objective
+        solve_time=solve_time,
+        solver_name=strategy_name,
+        status="Optimal" if is_feasible else "Infeasible",
+        success=is_feasible,
+        num_variables=len(farms) * len(foods) * 2,
+        num_constraints=result.get('metadata', {}).get('n_constraints', 0),
+        num_iterations=num_iterations,
+        validation=result.get('validation', {}),
+        decomposition_info={
+            'strategy': strategy_name,
+            'original_status': status_str,
+            'original_objective': objective_value,  # Keep original for debugging
+            'recalculated_objective': actual_objective,
+            'feasibility_check': result.get('feasibility_check', {})
+        }
+    )
+    
+    return standard_result
 
 
 def run_strategy_benchmark(
@@ -98,6 +225,10 @@ def run_strategy_benchmark(
         )
         
         result['feasibility_check'] = feasibility_check
+        
+        # Convert to standard format
+        result = convert_to_standard_format(result, strategy_name, farms, foods)
+        
         return result
         
     except Exception as e:
@@ -173,6 +304,43 @@ def run_all_strategies(
         results[strategy_name] = result
     
     return results
+
+
+def find_tuple_keys(obj, path="root"):
+    """Recursively find dictionaries with tuple keys for debugging."""
+    problematic_paths = []
+    
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if isinstance(key, tuple):
+                problematic_paths.append(f"{path}.{key}")
+            problematic_paths.extend(find_tuple_keys(value, f"{path}.{key}"))
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            problematic_paths.extend(find_tuple_keys(item, f"{path}[{i}]"))
+    
+    return problematic_paths
+
+
+def sanitize_dict_for_json(obj):
+    """Convert tuple keys to strings and numpy types to native Python types recursively."""
+    if isinstance(obj, dict):
+        return {
+            (f"{k[0]}_{k[1]}" if isinstance(k, tuple) else str(k)): sanitize_dict_for_json(v)
+            for k, v in obj.items()
+        }
+    elif isinstance(obj, list):
+        return [sanitize_dict_for_json(item) for item in obj]
+    elif isinstance(obj, (np.integer, np.int8, np.int16, np.int32, np.int64)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float16, np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return sanitize_dict_for_json(obj.tolist())
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    else:
+        return obj
 
 
 def print_comparison_table(results: dict):
@@ -283,6 +451,17 @@ def main():
             output_dir,
             f'all_strategies_config_{args.config}_{timestamp}.json'
         )
+        
+        # Check for tuple keys before saving
+        tuple_key_paths = find_tuple_keys(benchmark_results)
+        if tuple_key_paths:
+            print(f"\n⚠️  Found {len(tuple_key_paths)} tuple keys in results:")
+            for path in tuple_key_paths[:10]:  # Show first 10
+                print(f"   • {path}")
+        
+        # Always sanitize to handle both tuple keys and numpy types
+        print("\nSanitizing results for JSON compatibility...")
+        benchmark_results = sanitize_dict_for_json(benchmark_results)
         
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(benchmark_results, f, indent=2, ensure_ascii=False)

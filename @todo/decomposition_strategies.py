@@ -77,10 +77,9 @@ class CurrentHybridStrategy(BaseDecompositionStrategy):
         farms_list = list(farms.keys())
         
         result = solve_farm_with_hybrid_decomposition(
-            farms_list=farms_list,
+            farms=farms_list,
             foods=foods,
             food_groups=food_groups,
-            land_availability=farms,
             config=config,
             token=kwargs.get('dwave_token'),
             **kwargs

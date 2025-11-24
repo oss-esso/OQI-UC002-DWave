@@ -108,7 +108,12 @@ def solve_with_admm_qpu(
         
         # Calculate residuals
         primal_residual = np.sqrt(sum((A[key] - Y[key])**2 for key in A))
-        dual_residual = np.sqrt(sum((rho * (Y[key] - iterations[-1]['Y'][key]))**2 for key in Y)) if iterations else 0.0
+        if iterations:
+            # Calculate dual residual using previous Y
+            Y_prev = iterations[-1]['Y_raw']  # Store raw for residual calculation
+            dual_residual = np.sqrt(sum((rho * (Y[key] - Y_prev[key]))**2 for key in Y))
+        else:
+            dual_residual = 0.0
         
         # Calculate objective (benefit per hectare, normalized by total area)
         total_area = sum(farms.values())
@@ -120,14 +125,20 @@ def solve_with_admm_qpu(
         if qpu_time > 0:
             print(f"  QPU Time: {qpu_time:.3f}s")
         
+        # Convert tuple keys to strings for JSON serialization
+        A_str = {f"{f}_{c}": v for (f, c), v in A.items()}
+        Y_str = {f"{f}_{c}": v for (f, c), v in Y.items()}
+        U_str = {f"{f}_{c}": v for (f, c), v in U.items()}
+        
         iterations.append({
             'iteration': iteration,
             'objective': obj,
             'primal_residual': primal_residual,
             'dual_residual': dual_residual,
-            'A': A.copy(),
-            'Y': Y.copy(),
-            'U': U.copy(),
+            'A': A_str,
+            'Y': Y_str,
+            'U': U_str,
+            'Y_raw': Y.copy(),  # Keep for residual calculation (not serialized to JSON)
             'a_time': a_time,
             'y_time': y_time,
             'qpu_time': qpu_time
@@ -161,9 +172,15 @@ def solve_with_admm_qpu(
         final_solution, farms, foods, food_groups, farms, config, 'farm'
     )
     
+    # Remove Y_raw from iterations before serialization (it has tuple keys)
+    iterations_clean = []
+    for it in iterations:
+        it_clean = {k: v for k, v in it.items() if k != 'Y_raw'}
+        iterations_clean.append(it_clean)
+    
     # Format result
     result = format_admm_result(
-        iterations=iterations,
+        iterations=iterations_clean,
         final_solution=final_solution,
         objective_value=obj,
         total_time=total_time,

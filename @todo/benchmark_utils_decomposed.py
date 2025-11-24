@@ -119,12 +119,38 @@ def run_patch_quantum(patches_list, foods, food_groups, config, cqm, dwave_token
         # Invert solution back to CQM space
         cqm_sample = invert(result['solution'])
         
+        # CRITICAL: Evaluate the ORIGINAL CQM objective, not BQM energy!
+        # BQM energy includes penalty terms and is not the actual objective
+        params = config['parameters']
+        land_availability = params['land_availability']
+        weights = params['weights']
+        total_land_area = sum(land_availability.values())
+        
+        # Calculate actual objective from Y variables
+        actual_objective = 0.0
+        for patch in patches_list:
+            patch_area = land_availability[patch]
+            for crop in foods:
+                y_val = cqm_sample.get(f"Y_{patch}_{crop}", 0)
+                if y_val > 0.5:  # Binary: 1 if selected
+                    crop_value = (
+                        weights.get('nutritional_value', 0) * foods[crop].get('nutritional_value', 0) +
+                        weights.get('nutrient_density', 0) * foods[crop].get('nutrient_density', 0) -
+                        weights.get('environmental_impact', 0) * foods[crop].get('environmental_impact', 0) +
+                        weights.get('affordability', 0) * foods[crop].get('affordability', 0) +
+                        weights.get('sustainability', 0) * foods[crop].get('sustainability', 0)
+                    )
+                    actual_objective += patch_area * crop_value
+        
+        actual_objective /= total_land_area  # Normalize
+        
         print(f"✓")
         
         return {
             'solver': 'decomposed_qpu',
             'status': result['status'],
-            'objective_value': result.get('objective_value'),
+            'objective_value': actual_objective,  # Use ACTUAL objective, not BQM energy
+            'bqm_energy': result.get('bqm_energy'),  # Keep BQM energy for debugging
             'solve_time': result['solve_time'],
             'qpu_access_time': result.get('qpu_access_time'),
             'qpu_programming_time': result.get('qpu_programming_time'),

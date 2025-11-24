@@ -492,7 +492,7 @@ def create_cqm_plots(farms, foods, food_groups, config):
         n_farms * n_foods +       # Binary variables only (Y)
         n_farms * n_foods +       # Objective terms
         n_farms +                 # Land availability constraints
-        n_crops_with_min +        # Minimum plot constraints per crop
+        n_crops_with_min * n_farms +  # Conditional minimum plot constraints (per farm per crop)
         n_crops_with_max +        # Maximum plot constraints per crop
         n_farms * n_food_groups * 2  # Food group constraints (min and max)
     )
@@ -558,31 +558,42 @@ def create_cqm_plots(farms, foods, food_groups, config):
         }
         pbar.update(1)
     
-    # Minimum plots per crop constraints
-    # If a crop requires minimum area, convert to minimum number of plots
-    pbar.set_description("Adding minimum plot constraints")
-    import math
+    # CONDITIONAL Minimum/Maximum plot constraints
+    # These constraints only apply when a crop is actually planted
+    # If crop is not planted anywhere: sum(Y) = 0 (automatically satisfied)
+    # If crop is planted: min_plots <= sum(Y) <= max_plots
+    
+    pbar.set_description("Adding conditional min/max plot constraints")
     for food in foods:
+        # Conditional minimum: IF planted, must use at least min_plots
         if food in min_planting_area and min_planting_area[food] > 0:
             min_plots = math.ceil(min_planting_area[food] / plot_area)
-            # If crop is planted anywhere, it must be planted on at least min_plots
-            cqm.add_constraint(
-                sum(Y[(farm, food)] for farm in farms) >= min_plots,
-                label=f"Min_Plots_{food}"
-            )
+            total_assignments = sum(Y[(farm, food)] for farm in farms)
+            
+            # If sum(Y) > 0, then sum(Y) >= min_plots
+            # We can't directly encode "if-then" in CQM, so we use:
+            # For each farm where Y=1, the total must be >= min_plots
+            # This is implicitly enforced by: if any Y_{farm,food}=1, then sum >= min_plots
+            # We implement this by ensuring: sum(Y) = 0 OR sum(Y) >= min_plots
+            # Using: sum(Y) * (min_plots - sum(Y)) <= 0 would be quadratic
+            # Better approach: use indicator per farm
+            for farm in farms:
+                # If Y_{farm,food} = 1, then sum(Y_{*,food}) >= min_plots
+                cqm.add_constraint(
+                    total_assignments - min_plots * Y[(farm, food)] >= 0,
+                    label=f"Min_Plots_If_Selected_{farm}_{food}"
+                )
+            
             constraint_metadata['min_plots_per_crop'][food] = {
-                'type': 'min_plots_per_crop',
+                'type': 'conditional_min_plots_per_crop',
                 'food': food,
                 'min_area_ha': min_planting_area[food],
                 'plot_area_ha': plot_area,
                 'min_plots': min_plots
             }
             pbar.update(1)
-    
-    # Maximum plots per crop constraints
-    # If a crop has maximum area, convert to maximum number of plots
-    pbar.set_description("Adding maximum plot constraints")
-    for food in foods:
+        
+        # Conditional maximum: always enforced (if not planted, sum=0 satisfies max)
         if food in max_planting_area:
             max_plots = math.floor(max_planting_area[food] / plot_area)
             cqm.add_constraint(
@@ -797,12 +808,17 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
     for f in farms:
         model += pl.lpSum([X_pulp[(f, c)] for c in foods]) <= 1, f"Max_Assignment_{f}"
     
-    # Constraint 2: Minimum plots per crop
+    # Constraint 2: CONDITIONAL Minimum plots per crop
+    # If a crop is planted anywhere (any X > 0), it must use at least min_plots
     import math
     for crop in foods:
         if crop in min_planting_area and min_planting_area[crop] > 0:
             min_plots = math.ceil(min_planting_area[crop] / plot_area)
-            model += pl.lpSum([X_pulp[(f, crop)] for f in farms]) >= min_plots, f"Min_Plots_{crop}"
+            total_crop_assignments = pl.lpSum([X_pulp[(f, crop)] for f in farms])
+            
+            # For each farm: if X_{f,crop}=1, then total >= min_plots
+            for f in farms:
+                model += total_crop_assignments >= min_plots * X_pulp[(f, crop)], f"Min_Plots_If_{f}_{crop}"
     
     # Constraint 3: Maximum plots per crop
     for crop in foods:
