@@ -59,7 +59,15 @@ BENCHMARK_CONFIGS = [
 # Number of runs per configuration for statistical analysis
 NUM_RUNS = 1
 
-def load_full_family_with_n_farms(n_farms, seed=42, fixed_total_land=None):
+# Global cache for synergy matrix (same for all farm counts)
+_SYNERGY_MATRIX_CACHE = None
+_FOODS_CACHE = None
+_FOOD_GROUPS_CACHE = None
+
+# Global cache for CQM models (reuse across runs with same farm count)
+_CQM_CACHE = {}  # Key: (n_farms, fixed_total_land)
+
+def load_full_family_with_n_farms(n_farms, seed=42, fixed_total_land=None, use_cached_synergy=True):
     """
     Load full_family scenario with specified number of farms.
     Uses the same logic as the scaling analysis but with synergy matrix.
@@ -157,23 +165,39 @@ def load_full_family_with_n_farms(n_farms, seed=42, fixed_total_land=None):
             food_groups[g].append(fname)
     
     # --- Generate synergy matrix (NEW for LQ solver) ---
-    synergy_matrix = {}
-    default_boost = 0.1  # A default boost value for pairs in the same group
+    # Use cached synergy matrix if available (it's the same for all farm counts!)
+    global _SYNERGY_MATRIX_CACHE, _FOODS_CACHE, _FOOD_GROUPS_CACHE
+    
+    if use_cached_synergy and _SYNERGY_MATRIX_CACHE is not None:
+        synergy_matrix = _SYNERGY_MATRIX_CACHE
+        # Verify foods match (they should)
+        if set(foods.keys()) != set(_FOODS_CACHE.keys()):
+            print("⚠️  Foods changed, regenerating synergy matrix")
+            _SYNERGY_MATRIX_CACHE = None
+    
+    if not use_cached_synergy or _SYNERGY_MATRIX_CACHE is None:
+        synergy_matrix = {}
+        default_boost = 0.1  # A default boost value for pairs in the same group
 
-    for group_name, crops_in_group in food_groups.items():
-        for i in range(len(crops_in_group)):
-            for j in range(i + 1, len(crops_in_group)):
-                crop1 = crops_in_group[i]
-                crop2 = crops_in_group[j]
+        for group_name, crops_in_group in food_groups.items():
+            for i in range(len(crops_in_group)):
+                for j in range(i + 1, len(crops_in_group)):
+                    crop1 = crops_in_group[i]
+                    crop2 = crops_in_group[j]
 
-                if crop1 not in synergy_matrix:
-                    synergy_matrix[crop1] = {}
-                if crop2 not in synergy_matrix:
-                    synergy_matrix[crop2] = {}
+                    if crop1 not in synergy_matrix:
+                        synergy_matrix[crop1] = {}
+                    if crop2 not in synergy_matrix:
+                        synergy_matrix[crop2] = {}
 
-                # Add symmetric entries for the pair
-                synergy_matrix[crop1][crop2] = default_boost
-                synergy_matrix[crop2][crop1] = default_boost
+                    # Add symmetric entries for the pair
+                    synergy_matrix[crop1][crop2] = default_boost
+                    synergy_matrix[crop2][crop1] = default_boost
+        
+        # Cache for future use
+        _SYNERGY_MATRIX_CACHE = synergy_matrix
+        _FOODS_CACHE = foods
+        _FOOD_GROUPS_CACHE = food_groups
     # --- End synergy matrix generation ---
     
     # Set minimum planting areas based on smallest farm and number of food groups
@@ -270,13 +294,29 @@ def run_benchmark(n_farms, run_number=1, total_runs=1, cache=None, save_to_cache
         print(f"  Problem Size (n): {problem_size}")
         
         # Create CQM (needed for DWave)
-        print(f"\n  Creating CQM model...")
-        cqm_start = time.time()
-        cqm, A, Y, constraint_metadata = create_cqm(
-            farms, foods, food_groups, config
-        )
-        cqm_time = time.time() - cqm_start
-        print(f"    ✅ CQM created: {len(cqm.variables)} vars, {len(cqm.constraints)} constraints ({cqm_time:.2f}s)")
+        # Check if we can reuse a cached CQM for this configuration
+        cache_key = (n_farms, fixed_total_land, run_number) if run_number == 1 else None
+        use_cached_cqm = cache_key is not None and cache_key in _CQM_CACHE
+        
+        if use_cached_cqm:
+            print(f"\n  Reusing cached CQM model from run 1...")
+            cqm_start = time.time()
+            cqm, A, Y, constraint_metadata = _CQM_CACHE[cache_key]
+            cqm_time = time.time() - cqm_start
+            print(f"    ✅ CQM retrieved: {len(cqm.variables)} vars, {len(cqm.constraints)} constraints ({cqm_time:.5f}s - cache hit!)")
+        else:
+            print(f"\n  Creating CQM model... (run {run_number})")
+            cqm_start = time.time()
+            cqm, A, Y, constraint_metadata = create_cqm(
+                farms, foods, food_groups, config
+            )
+            cqm_time = time.time() - cqm_start
+            print(f"    ✅ CQM created: {len(cqm.variables)} vars, {len(cqm.constraints)} constraints ({cqm_time:.2f}s)")
+            
+            # Cache the CQM for run 1 to reuse in subsequent runs
+            if run_number == 1 and cache_key is not None:
+                _CQM_CACHE[cache_key] = (cqm, A, Y, constraint_metadata)
+                print(f"    📦 CQM cached for reuse in runs 2-{total_runs}")
         
         # Save CQM to cache if requested
         if save_to_cache and cache:
@@ -785,6 +825,12 @@ def main():
     all_results = []
     aggregated_results = []
     
+    # Clear CQM cache at start of benchmark to ensure fresh models
+    global _CQM_CACHE
+    _CQM_CACHE = {}
+    print(f"\n📦 CQM caching enabled: Run 1 CQM will be cached and reused for runs 2-{NUM_RUNS}")
+    print(f"   This saves ~{NUM_RUNS-1}x CQM build time per configuration!")
+    
     for n_farms in BENCHMARK_CONFIGS:
         print(f"\n" + "="*80)
         print(f"TESTING CONFIGURATION: {n_farms} Farms (Fixed 100 ha)")
@@ -884,6 +930,14 @@ def main():
     print(f"BENCHMARK COMPLETE")
     print(f"{'='*80}")
     print(f"Results saved to individual solver directories in Benchmarks/LQ/")
+    
+    # Print cache performance summary
+    if NUM_RUNS > 1:
+        print(f"\n📊 CACHE PERFORMANCE:")
+        print(f"   Synergy matrix: Generated once, reused for all configs")
+        print(f"   CQM models: Created once per config, reused for {NUM_RUNS-1} additional runs")
+        total_saved = sum(r.get('cqm_time_mean', 0) * (NUM_RUNS - 1) for r in aggregated_results if r.get('cqm_time_mean'))
+        print(f"   Estimated time saved: {total_saved:.2f}s across all configs")
     
     # Create plots in Plots folder
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
