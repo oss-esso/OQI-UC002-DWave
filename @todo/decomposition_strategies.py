@@ -109,7 +109,7 @@ class BendersStrategy(BaseDecompositionStrategy):
             gap_tolerance=kwargs.get('gap_tolerance', 1e-4),
             time_limit=kwargs.get('time_limit', 300.0)
         )
-        return convert_to_old_format(result)
+        return result  # Return new format directly
 
 
 class BendersQPUStrategy(BaseDecompositionStrategy):
@@ -135,7 +135,7 @@ class BendersQPUStrategy(BaseDecompositionStrategy):
             time_limit=kwargs.get('time_limit', 300.0),
             use_qpu_for_master=kwargs.get('use_qpu_for_master', True)
         )
-        return convert_to_old_format(result)
+        return result  # Return new format directly
 
 
 class DantzigWolfeStrategy(BaseDecompositionStrategy):
@@ -158,7 +158,7 @@ class DantzigWolfeStrategy(BaseDecompositionStrategy):
             max_iterations=kwargs.get('max_iterations', 50),
             time_limit=kwargs.get('time_limit', 300.0)
         )
-        return convert_to_old_format(result)
+        return result  # Return new format directly
 
 
 class DantzigWolfeQPUStrategy(BaseDecompositionStrategy):
@@ -183,7 +183,7 @@ class DantzigWolfeQPUStrategy(BaseDecompositionStrategy):
             time_limit=kwargs.get('time_limit', 300.0),
             use_qpu_for_pricing=kwargs.get('use_qpu_for_pricing', True)
         )
-        return convert_to_old_format(result)
+        return result  # Return new format directly
 
 
 class ADMMStrategy(BaseDecompositionStrategy):
@@ -208,7 +208,7 @@ class ADMMStrategy(BaseDecompositionStrategy):
             tolerance=kwargs.get('tolerance', 1e-3),
             time_limit=kwargs.get('time_limit', 300.0)
         )
-        return convert_to_old_format(result)
+        return result  # Return new format directly
 
 
 class ADMMQPUStrategy(BaseDecompositionStrategy):
@@ -234,7 +234,7 @@ class ADMMQPUStrategy(BaseDecompositionStrategy):
             tolerance=kwargs.get('tolerance', 1e-4),
             use_qpu_for_y=kwargs.get('use_qpu_for_y', True)
         )
-        return convert_to_old_format(result)
+        return result  # Return new format directly
 
 
 class DecompositionFactory:

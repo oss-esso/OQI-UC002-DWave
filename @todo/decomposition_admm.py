@@ -116,6 +116,19 @@ def solve_with_admm(
         **{f"Y_{f}_{c}": 1.0 if Y[(f, c)] > 0.5 else 0.0 for f, c in Y}
     }
     
+    # PROJECT TO FEASIBLE SPACE
+    for farm in farms:
+        farm_total = sum(A.get((farm, c), 0.0) for c in foods)
+        farm_capacity = farms[farm]
+        
+        if farm_total > farm_capacity + 1e-6:
+            scale_factor = farm_capacity / farm_total
+            for c in foods:
+                key = f"A_{farm}_{c}"
+                if key in final_solution:
+                    final_solution[key] *= scale_factor
+            print(f"  ⚠️  Projected {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
+    
     total_area = sum(farms.values())
     final_obj = sum(A[(f, c)] * benefits.get(c, 1.0) for f in farms for c in foods) / total_area
     

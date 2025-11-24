@@ -64,9 +64,10 @@ def solve_with_benders(
         for food in foods:
             Y[(farm, food)] = master.addVar(vtype=GRB.BINARY, name=f"Y_{farm}_{food}")
     
-    # Eta represents the objective value, give it a reasonable upper bound
-    max_possible_benefit = sum(benefits.values()) * sum(farms.values()) / 100.0
-    eta = master.addVar(lb=-GRB.INFINITY, ub=max_possible_benefit, name="eta", vtype=GRB.CONTINUOUS)
+    # Eta represents the objective value (area-normalized, so typically 0-1 range)
+    # Upper bound: if all area allocated to best food: max(benefits) * total_area / total_area = max(benefits)
+    max_benefit = max(benefits.values()) if benefits else 1.0
+    eta = master.addVar(lb=-GRB.INFINITY, ub=max_benefit, name="eta", vtype=GRB.CONTINUOUS)
     
     # Master constraints: Food group constraints on Y
     food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})
@@ -170,6 +171,34 @@ def solve_with_benders(
                        **{f"Y_{f}_{c}": Y_star.get((f, c), 0.0) for f in farms for c in foods}}
     
     total_time = time.time() - start_time
+    
+    # PROJECT FINAL SOLUTION TO FEASIBLE SPACE (ensure no area overflow)
+    A_dict_final = {(f, c): best_solution.get(f"A_{f}_{c}", 0.0) for f in farms for c in foods}
+    total_allocated = 0.0
+    projections_made = 0
+    for farm in farms:
+        farm_total = sum(A_dict_final.get((farm, c), 0.0) for c in foods)
+        total_allocated += farm_total
+        farm_capacity = farms[farm]
+        
+        if farm_total > farm_capacity + 1e-6:
+            scale_factor = farm_capacity / farm_total
+            projections_made += 1
+            for c in foods:
+                key = f"A_{farm}_{c}"
+                if key in best_solution:
+                    best_solution[key] *= scale_factor
+            print(f"  ⚠️  Projected {farm}: {farm_total:.4f} -> {farm_capacity:.4f} ha (scale={scale_factor:.6f})")
+    
+    if projections_made > 0:
+        print(f"  ⚠️  Total projections: {projections_made} farms scaled down")
+    print(f"  Total allocated before projection: {total_allocated:.2f} ha / {sum(farms.values()):.2f} ha available")
+    
+    # DEBUG: Check solution before formatting
+    nonzero_A = {k: v for k, v in best_solution.items() if k.startswith('A_') and v > 0.01}
+    print(f"  DEBUG (before formatting): best_solution has {len(nonzero_A)} nonzero A variables")
+    if len(nonzero_A) > 0:
+        print(f"  DEBUG: Sample: {list(nonzero_A.items())[:3]}")
     
     # Validate solution
     validation = validate_solution_constraints(
@@ -280,6 +309,17 @@ def solve_subproblem(
     # Extract solution and duals
     A_solution = {key: var.X for key, var in A.items()}
     obj_value = sub.ObjVal
+    
+    # Verify land constraints are satisfied
+    for farm in farms:
+        farm_total = sum(A_solution.get((farm, c), 0.0) for c in foods)
+        if farm_total > farms[farm] + 1e-6:
+            print(f"  ⚠️  Subproblem violation: {farm} uses {farm_total:.4f} > {farms[farm]:.4f} ha")
+            # This shouldn't happen if constraints are correct, but scale if it does
+            scale = farms[farm] / farm_total
+            for c in foods:
+                if (farm, c) in A_solution:
+                    A_solution[(farm, c)] *= scale
     
     # Extract dual variables (shadow prices)
     duals = {}

@@ -31,128 +31,100 @@ from standardized_result_formatter import format_standard_result, extract_soluti
 
 
 def convert_to_standard_format(result: Dict, strategy_name: str, farms: Dict, foods: List[str]) -> Dict:
-    """Convert decomposition result to standardized PuLP-compatible format."""
+    """Recalculate objective for decomposition result (already in standard format)."""
     
-    # Extract core information
-    if 'solution' in result:
-        solution_dict = result['solution']
-        objective_value = solution_dict.get('objective_value', 0.0)
-        is_feasible = solution_dict.get('is_feasible', False)
-        full_solution = solution_dict.get('full_solution', solution_dict)
-    elif 'result' in result:
-        result_dict = result['result']
-        objective_value = result_dict.get('objective_value', 0.0)
-        is_feasible = result_dict.get('success', False)
-        full_solution = result_dict.get('solution', {})
+    # The result from format_decomposition_result has NESTED structure: result['result'][...]
+    # We need to extract from the right level
+    if 'result' in result:
+        # Nested structure from format_decomposition_result
+        result_data = result['result']
+        objective_value = result_data.get('objective_value', 0.0)
+        solution_areas = result_data.get('solution_areas', {})
+        solution_selections = result_data.get('solution_selections', {})
+        print(f"  DEBUG (convert): Extracted from nested result['result'], got {len(solution_areas)} solution_areas")
     else:
-        objective_value = 0.0
-        is_feasible = False
-        full_solution = {}
+        # Flat structure (shouldn't happen but handle it)
+        objective_value = result.get('objective_value', 0.0)
+        solution_areas = result.get('solution_areas', {})
+        solution_selections = result.get('solution_selections', {})
+        print(f"  DEBUG (convert): Extracted from flat result, got {len(solution_areas)} solution_areas")
     
-    # Extract A and Y from full_solution
+    # Build A_dict and Y_dict from the standardized format
     A_dict = {}
     Y_dict = {}
     
-    # First pass: look for A_ and Y_ prefixed variables
-    for var_name, value in full_solution.items():
-        if var_name.startswith('A_'):
-            key = var_name[2:]  # Remove 'A_'
-            parts = key.split('_', 1)
-            if len(parts) == 2:
-                A_dict[(parts[0], parts[1])] = value
-        elif var_name.startswith('Y_'):
-            key = var_name[2:]  # Remove 'Y_'
-            parts = key.split('_', 1)
-            if len(parts) == 2:
-                Y_dict[(parts[0], parts[1])] = value
+    for farm in farms:
+        for food in foods:
+            key = f"{farm}_{food}"
+            A_dict[(farm, food)] = solution_areas.get(key, 0.0)
+            Y_dict[(farm, food)] = 1.0 if solution_selections.get(key, 0.0) > 0.5 else 0.0
     
-    # If no prefixed variables found, assume non-prefixed are Y variables (binary selections)
-    # This handles old format from some decomposition solvers
-    if len(A_dict) == 0 and len(Y_dict) == 0:
-        for var_name, value in full_solution.items():
-            if not var_name.startswith('A_') and not var_name.startswith('Y_'):
-                parts = var_name.split('_', 1)
-                if len(parts) == 2:
-                    farm, food = parts
-                    Y_dict[(farm, food)] = value
-                    # Assume full land allocation if crop is selected
-                    # (This is a simplification for solvers that only return Y variables)
-                    if value > 0.5:
-                        # Need to get land availability for this farm
-                        A_dict[(farm, food)] = farms.get(farm, 0.0)
+    total_from_solution = sum(A_dict.values())
+    print(f"  DEBUG: Solution has {sum(1 for v in A_dict.values() if v > 0.01)} nonzero allocations, total {total_from_solution:.2f} ha")
     
     # RECALCULATE OBJECTIVE FROM ACTUAL SOLUTION
-    # Don't trust the objective passed from decomposition algorithms!
     total_area = sum(farms.values())
     
-    # Get benefits from config
-    _, _, _, base_config = load_food_data('full_family')
+    # Get benefits using correct formula
+    _, foods_dict, _, base_config = load_food_data('full_family')
     weights = base_config.get('parameters', {}).get('weights', {
-        'nutrition': 0.4,
-        'ghg': 0.3,
-        'water': 0.2,
-        'sustainability': 0.1
+        'nutritional_value': 0.25,
+        'nutrient_density': 0.2,
+        'environmental_impact': 0.25,
+        'affordability': 0.15,
+        'sustainability': 0.15
     })
     
     benefits = {}
     for food in foods:
-        benefit = sum(
-            base_config.get('nutrients', {}).get(food, {}).get(attr, 0) * weight
-            for attr, weight in weights.items()
+        food_attrs = foods_dict.get(food, {})
+        benefit = (
+            food_attrs.get('nutritional_value', 0) * weights.get('nutritional_value', 0) +
+            food_attrs.get('nutrient_density', 0) * weights.get('nutrient_density', 0) -
+            food_attrs.get('environmental_impact', 0) * weights.get('environmental_impact', 0) +
+            food_attrs.get('affordability', 0) * weights.get('affordability', 0) +
+            food_attrs.get('sustainability', 0) * weights.get('sustainability', 0)
         )
-        benefits[food] = benefit if benefit > 0 else 100.0
+        benefits[food] = benefit if benefit != 0 else 0.5
     
     # Calculate actual objective from solution
     actual_objective = 0.0
     for (farm, food), area in A_dict.items():
         y_val = Y_dict.get((farm, food), 0.0)
         if y_val > 0.5:  # Food is selected
-            actual_objective += area * benefits.get(food, 100.0)
+            actual_objective += area * benefits.get(food, 0.5)
     
     # Normalize by total area
     actual_objective = actual_objective / total_area if total_area > 0 else 0.0
     
-    print(f"  ⚠️  Objective recalculated: {objective_value:.6f} → {actual_objective:.6f}")
+    # Warn if mismatch
+    if abs(actual_objective - objective_value) > 0.01:
+        print(f"  ⚠️  Objective mismatch: reported={objective_value:.6f}, recalculated={actual_objective:.6f}")
     
-    # Get timing and metadata
-    if 'solver_info' in result:
-        solve_time = result['solver_info'].get('solve_time', 0.0)
-        num_iterations = result['solver_info'].get('num_iterations', 1)
-        status_str = result['solver_info'].get('status', 'Unknown')
-    elif 'metadata' in result:
-        solve_time = result.get('solve_time', 0.0)
-        num_iterations = 1
-        status_str = 'Unknown'
+    # UPDATE objective in the NESTED result structure
+    if 'result' in result:
+        result['result']['objective_value'] = actual_objective
+        # Add decomposition info
+        if 'decomposition_info' not in result['result']:
+            result['result']['decomposition_info'] = {}
+        result['result']['decomposition_info']['original_objective'] = objective_value
+        result['result']['decomposition_info']['recalculated_objective'] = actual_objective
     else:
-        solve_time = 0.0
-        num_iterations = 1
-        status_str = 'Unknown'
+        result['objective_value'] = actual_objective
+        if 'decomposition_info' not in result:
+            result['decomposition_info'] = {}
+        result['decomposition_info']['original_objective'] = objective_value
+        result['decomposition_info']['recalculated_objective'] = actual_objective
     
-    # Create standard format result
-    standard_result = format_standard_result(
-        farms=farms,
-        foods=foods,
-        solution_A=A_dict,
-        solution_Y=Y_dict,
-        objective_value=actual_objective,  # Use recalculated objective
-        solve_time=solve_time,
-        solver_name=strategy_name,
-        status="Optimal" if is_feasible else "Infeasible",
-        success=is_feasible,
-        num_variables=len(farms) * len(foods) * 2,
-        num_constraints=result.get('metadata', {}).get('n_constraints', 0),
-        num_iterations=num_iterations,
-        validation=result.get('validation', {}),
-        decomposition_info={
-            'strategy': strategy_name,
-            'original_status': status_str,
-            'original_objective': objective_value,  # Keep original for debugging
-            'recalculated_objective': actual_objective,
-            'feasibility_check': result.get('feasibility_check', {})
-        }
-    )
+    # FLATTEN the result to match PuLP format (move result['result'] to top level)
+    if 'result' in result:
+        flattened = result['result'].copy()
+        flattened['metadata'] = result.get('metadata', {})
+        if 'decomposition_specific' in result:
+            flattened['decomposition_specific'] = result['decomposition_specific']
+        return flattened
     
-    return standard_result
+    return result
 
 
 def run_strategy_benchmark(
@@ -185,18 +157,24 @@ def run_strategy_benchmark(
     
     # Load benefits from food data
     from src.scenarios import load_food_data
-    _, _, _, base_config = load_food_data('full_family')
+    _, foods_dict, _, base_config = load_food_data('full_family')
     
     # Add benefits to config
     config_dict['benefits'] = {}
     for food in foods:
         # Use composite benefit score (weighted attributes)
         weights = config_dict.get('parameters', {}).get('weights', {})
-        benefit = sum(
-            base_config.get('nutrients', {}).get(food, {}).get(attr, 0) * weight
-            for attr, weight in weights.items()
+        # Use foods_dict (2nd return value) which contains the actual food attributes
+        food_attrs = foods_dict.get(food, {})
+        # Match PuLP formula: + nutrition + nutrient_density - environmental_impact + affordability + sustainability
+        benefit = (
+            food_attrs.get('nutritional_value', 0) * weights.get('nutritional_value', 0) +
+            food_attrs.get('nutrient_density', 0) * weights.get('nutrient_density', 0) -
+            food_attrs.get('environmental_impact', 0) * weights.get('environmental_impact', 0) +
+            food_attrs.get('affordability', 0) * weights.get('affordability', 0) +
+            food_attrs.get('sustainability', 0) * weights.get('sustainability', 0)
         )
-        config_dict['benefits'][food] = benefit if benefit > 0 else 100.0  # Default benefit
+        config_dict['benefits'][food] = benefit if benefit != 0 else 0.5  # Default benefit if all zero
     
     config_dict['food_groups'] = food_groups
     config_dict['foods'] = foods
@@ -344,27 +322,86 @@ def sanitize_dict_for_json(obj):
 
 
 def print_comparison_table(results: dict):
-    """Print comparison table of all strategies."""
+    """Print comparison table of all strategies with validation info."""
     print(f"\n{'='*80}")
     print("STRATEGY COMPARISON")
     print(f"{'='*80}")
     
-    print(f"\n{'Strategy':<25} {'Status':<12} {'Time (s)':<10} {'Objective':<12} {'Iterations':<12}")
-    print("-" * 80)
+    print(f"\n{'Strategy':<25} {'Status':<12} {'Time (s)':<10} {'Objective':<12} {'Valid':<8} {'Area Used':<15}")
+    print("-" * 105)
     
     for strategy_name, result in results.items():
-        solver_info = result.get('solver_info', {})
-        status = solver_info.get('status', 'Unknown')
-        solve_time = solver_info.get('solve_time', 0.0)
+        # Results are now in standardized format from format_standard_result
+        status = result.get('status', 'Unknown')
+        solve_time = result.get('solve_time', 0.0)
+        objective = result.get('objective_value', 0.0)
         
-        solution = result.get('solution', {})
-        objective = solution.get('objective_value', 0.0)
+        # Get validation info
+        validation = result.get('validation', {})
+        is_valid = validation.get('is_feasible', True)
+        n_violations = validation.get('n_violations', 0)
         
-        iterations = solver_info.get('num_iterations', '-')
+        # Check total area used
+        total_area = result.get('total_area', 100.0)
+        total_covered = result.get('total_covered_area', 0.0)
+        area_str = f"{total_covered:.1f}/{total_area:.1f}"
         
-        print(f"{strategy_name:<25} {status:<12} {solve_time:<10.3f} {objective:<12.4f} {iterations!s:<12}")
+        # Mark invalid if area overflow
+        if total_covered > total_area + 0.01:
+            is_valid = False
+            area_str += " ⚠️"
+        
+        valid_str = '✅' if is_valid else '❌'
+        
+        print(f"{strategy_name:<25} {status:<12} {solve_time:<10.3f} {objective:<12.4f} {valid_str:<8} {area_str:<15}")
     
-    print("-" * 80)
+    print("-" * 105)
+    
+    # Print detailed violation info for any invalid solutions
+    print("\n" + "="*80)
+    print("VALIDATION DETAILS")
+    print("="*80)
+    
+    has_issues = False
+    for strategy_name, result in results.items():
+        issues = []
+        
+        # Check area overflow
+        total_area = result.get('total_area', 100.0)
+        total_covered = result.get('total_covered_area', 0.0)
+        if total_covered > total_area + 0.01:
+            overflow = total_covered - total_area
+            overflow_pct = 100.0 * overflow / total_area
+            issues.append(f"AREA OVERFLOW: {overflow:.2f} ha ({overflow_pct:.1f}% over limit)")
+            issues.append("  -> This violates global land availability constraint!")
+            issues.append(f"  -> Objective {result.get('objective_value', 0):.4f} is INVALID (exceeds physical constraints)")
+        
+        # Check constraint violations from validation
+        validation = result.get('validation', {})
+        violations = validation.get('violations', [])
+        
+        if violations:
+            # Group violations by type
+            violation_types = {}
+            for v in violations:
+                v_type = v.get('type', 'unknown')
+                violation_types.setdefault(v_type, []).append(v)
+            
+            for v_type, v_list in violation_types.items():
+                issues.append(f"{v_type}: {len(v_list)} violations")
+        
+        if issues:
+            has_issues = True
+            print(f"\n❌ {strategy_name.upper()}:")
+            for issue in issues:
+                print(f"  {issue}")
+    
+    if not has_issues:
+        print("\n✅ All strategies produced valid solutions")
+        print("   - No constraint violations")
+        print("   - No area overflow")
+    
+    print("="*80)
 
 
 def main():

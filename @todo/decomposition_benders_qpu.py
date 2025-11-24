@@ -169,6 +169,20 @@ def solve_with_benders_qpu(
     
     total_time = time.time() - start_time
     
+    # PROJECT FINAL SOLUTION TO FEASIBLE SPACE
+    A_dict_final = {(f, c): best_solution.get(f"A_{f}_{c}", 0.0) for f in farms for c in foods}
+    for farm in farms:
+        farm_total = sum(A_dict_final.get((farm, c), 0.0) for c in foods)
+        farm_capacity = farms[farm]
+        
+        if farm_total > farm_capacity + 1e-6:
+            scale_factor = farm_capacity / farm_total
+            for c in foods:
+                key = f"A_{farm}_{c}"
+                if key in best_solution:
+                    best_solution[key] *= scale_factor
+            print(f"  ⚠️  Final projection {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
+    
     print(f"\n{'='*80}")
     print(f"Benders Decomposition Complete")
     print(f"{'='*80}")
@@ -234,8 +248,10 @@ def solve_master_classical(
             Y[(farm, food)] = master.addVar(vtype=GRB.BINARY, name=f"Y_{farm}_{food}")
     
     # Eta with reasonable bounds
-    max_possible_benefit = sum(benefits.values()) * sum(farms.values()) / 100.0
-    eta = master.addVar(lb=-GRB.INFINITY, ub=max_possible_benefit, name="eta", vtype=GRB.CONTINUOUS)
+    # Eta represents the objective value (area-normalized, so typically 0-1 range)
+    # Upper bound: if all area allocated to best food: max(benefits) * total_area / total_area = max(benefits)
+    max_benefit = max(benefits.values()) if benefits else 1.0
+    eta = master.addVar(lb=-GRB.INFINITY, ub=max_benefit, name="eta", vtype=GRB.CONTINUOUS)
     
     # Food group constraints
     food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})

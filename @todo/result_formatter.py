@@ -46,6 +46,10 @@ def format_decomposition_result(
             clean_name = var_name.replace('Choose_', '').replace('Y_', '')
             solution_selections[clean_name] = value
     
+    print(f"  DEBUG (in format_decomposition_result): Extracted {len(solution_areas)} solution_areas from {len(solution)} solution vars")
+    nonzero_areas = {k:v for k,v in solution_areas.items() if v > 0.01}
+    print(f"  DEBUG: {len(nonzero_areas)} nonzero areas, total = {sum(solution_areas.values()):.2f}")
+    
     # Calculate total covered area
     total_covered_area = sum(solution_areas.values())
     

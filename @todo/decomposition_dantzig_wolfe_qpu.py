@@ -263,6 +263,17 @@ def solve_with_dantzig_wolfe_qpu(
                 for key, value in col['selection'].items():
                     Y_solution[key] = max(Y_solution[key], value * weight)
         
+        # PROJECT SOLUTION TO FEASIBLE SPACE (fix area overflow)
+        for farm in farms:
+            farm_total = sum(A_solution.get((farm, c), 0.0) for c in foods)
+            farm_capacity = farms[farm]
+            
+            if farm_total > farm_capacity + 1e-6:
+                scale_factor = farm_capacity / farm_total
+                for c in foods:
+                    A_solution[(farm, c)] *= scale_factor
+                print(f"  ⚠️  Projected {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
+        
         # Build full solution dictionary
         full_solution = {
             **{f"A_{f}_{c}": A_solution[(f, c)] for f, c in A_solution},

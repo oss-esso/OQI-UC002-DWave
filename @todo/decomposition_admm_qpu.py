@@ -167,6 +167,19 @@ def solve_with_admm_qpu(
         **{f"Y_{f}_{c}": Y[(f, c)] for f, c in Y}
     }
     
+    # PROJECT TO FEASIBLE SPACE
+    for farm in farms:
+        farm_total = sum(A.get((farm, c), 0.0) for c in foods)
+        farm_capacity = farms[farm]
+        
+        if farm_total > farm_capacity + 1e-6:
+            scale_factor = farm_capacity / farm_total
+            for c in foods:
+                key = f"A_{farm}_{c}"
+                if key in final_solution:
+                    final_solution[key] *= scale_factor
+            print(f"  ⚠️  Projected {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
+    
     # Validate
     validation = validate_solution_constraints(
         final_solution, farms, foods, food_groups, farms, config, 'farm'
