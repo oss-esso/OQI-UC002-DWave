@@ -311,6 +311,11 @@ def create_cqm_farm(farms, foods, food_groups, config):
             A[(farm, food)] = Real(
                 f"A_{farm}_{food}", lower_bound=0, upper_bound=land_availability[farm])
             Y[(farm, food)] = Binary(f"Y_{farm}_{food}")
+    
+    # U variables for UNIQUE food selection (U[food] = 1 if food planted on ANY farm)
+    U = {}
+    for food in foods:
+        U[food] = Binary(f"U_{food}")
 
     # Objective function
     total_area = sum(land_availability[farm] for farm in farms)
@@ -376,39 +381,54 @@ def create_cqm_farm(farms, foods, food_groups, config):
                 'max_land': land_availability[farm]
             }
 
-    # Food group constraints - GLOBAL across all farms
+    # Food group constraints - Count UNIQUE foods selected globally
+    # U[food] = 1 iff food is planted on ANY farm
     if food_group_constraints:
+        # First, add linking constraints: Y[f,c] <= U[c] for all farms
+        for food in foods:
+            for farm in farms:
+                cqm.add_constraint(
+                    Y[(farm, food)] - U[food] <= 0,
+                    label=f"U_Link_{farm}_{food}"
+                )
+            # Also: U[c] <= sum(Y[f,c]) ensures U[c]=0 if no Y[f,c]=1
+            cqm.add_constraint(
+                U[food] - sum(Y[(farm, food)] for farm in farms) <= 0,
+                label=f"U_Bound_{food}"
+            )
+        
+        # Now add food group constraints using U (unique foods)
         for group, constraints in tqdm(food_group_constraints.items(), desc="Adding food group constraints"):
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                # Global minimum: across ALL farms, at least min_foods from this group
+                # Global minimum: at least min_foods UNIQUE foods from this group
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        sum(U[food] for food in foods_in_group) -
                         constraints['min_foods'] >= 0,
                         label=f"Food_Group_Min_{group}_Global"
                     )
                     constraint_metadata['food_group_min'][group] = {
-                        'type': 'food_group_min_global',
+                        'type': 'food_group_min_unique',
                         'group': group,
                         'min_foods': constraints['min_foods'],
                         'foods_in_group': foods_in_group,
-                        'scope': 'global'
+                        'scope': 'global_unique'
                     }
 
-                # Global maximum: across ALL farms, at most max_foods from this group
+                # Global maximum: at most max_foods UNIQUE foods from this group
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) -
+                        sum(U[food] for food in foods_in_group) -
                         constraints['max_foods'] <= 0,
                         label=f"Food_Group_Max_{group}_Global"
                     )
                     constraint_metadata['food_group_max'][group] = {
-                        'type': 'food_group_max_global',
+                        'type': 'food_group_max_unique',
                         'group': group,
                         'max_foods': constraints['max_foods'],
                         'foods_in_group': foods_in_group,
-                        'scope': 'global'
+                        'scope': 'global_unique'
                     }
 
     return cqm, A, Y, constraint_metadata
@@ -475,6 +495,11 @@ def create_cqm_plots(farms, foods, food_groups, config):
         for food in foods:
             Y[(farm, food)] = Binary(f"Y_{farm}_{food}")
             pbar.update(1)
+    
+    # U variables for UNIQUE food selection (U[food] = 1 if food planted on ANY farm)
+    U = {}
+    for food in foods:
+        U[food] = Binary(f"U_{food}")
     
     # Objective function - each selected crop contributes its area-weighted value
     pbar.set_description("Building objective")
@@ -566,44 +591,56 @@ def create_cqm_plots(farms, foods, food_groups, config):
             }
             pbar.update(1)
     
-    # Food group constraints - GLOBAL across all plots
-    # Fixed: Was incorrectly applying per-plot, which created infeasible problems
-    # Now applies globally: "across all plots, we need at least min_foods from each group"
-    pbar.set_description("Adding food group constraints")
+    # Food group constraints - Count UNIQUE foods selected globally
+    pbar.set_description("Adding food group constraints (unique foods)")
     if food_group_constraints:
+        # First, add linking constraints: Y[f,c] <= U[c] for all farms
+        for food in foods:
+            for farm in farms:
+                cqm.add_constraint(
+                    Y[(farm, food)] - U[food] <= 0,
+                    label=f"U_Link_{farm}_{food}"
+                )
+            # Also: U[c] <= sum(Y[f,c]) ensures U[c]=0 if no Y[f,c]=1
+            cqm.add_constraint(
+                U[food] - sum(Y[(farm, food)] for farm in farms) <= 0,
+                label=f"U_Bound_{food}"
+            )
+        
+        # Now add food group constraints using U (unique foods)
         for group, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(group, [])
             if foods_in_group:
-                # Normalize group name for constraint labels (replace spaces and special chars with underscores)
+                # Normalize group name for constraint labels
                 group_label = group.replace(' ', '_').replace(',', '').replace('-', '_')
                 
-                # Global minimum: across ALL plots, at least min_foods from this group
+                # Global minimum: at least min_foods UNIQUE foods from this group
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['min_foods'] >= 0,
-                        label=f"MinFoodGroup_Global_{group_label}"
+                        sum(U[food] for food in foods_in_group) - constraints['min_foods'] >= 0,
+                        label=f"MinFoodGroup_Unique_{group_label}"
                     )
                     constraint_metadata['food_group_min'][group] = {
-                        'type': 'food_group_min_global',
+                        'type': 'food_group_min_unique',
                         'group': group,
                         'min_foods': constraints['min_foods'],
                         'foods_in_group': foods_in_group,
-                        'scope': 'global'
+                        'scope': 'global_unique'
                     }
                     pbar.update(1)
                 
-                # Global maximum: across ALL plots, at most max_foods from this group
+                # Global maximum: at most max_foods UNIQUE foods from this group
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(Y[(farm, food)] for farm in farms for food in foods_in_group) - constraints['max_foods'] <= 0,
-                        label=f"MaxFoodGroup_Global_{group_label}"
+                        sum(U[food] for food in foods_in_group) - constraints['max_foods'] <= 0,
+                        label=f"MaxFoodGroup_Unique_{group_label}"
                     )
                     constraint_metadata['food_group_max'][group] = {
-                        'type': 'food_group_max_global',
+                        'type': 'food_group_max_unique',
                         'group': group,
                         'max_foods': constraints['max_foods'],
                         'foods_in_group': foods_in_group,
-                        'scope': 'global'
+                        'scope': 'global_unique'
                     }
                     pbar.update(1)
     
@@ -625,6 +662,8 @@ def solve_with_pulp_farm(farms, foods, food_groups, config):
         "Area", [(f, c) for f in farms for c in foods], lowBound=0)
     Y_pulp = pl.LpVariable.dicts(
         "Choose", [(f, c) for f in farms for c in foods], cat='Binary')
+    # U variables for UNIQUE food selection
+    U_pulp = pl.LpVariable.dicts("Unique", list(foods.keys()), cat='Binary')
 
     total_area = sum(land_availability[f] for f in farms)
 
@@ -651,17 +690,23 @@ def solve_with_pulp_farm(farms, foods, food_groups, config):
             model += A_pulp[(f, c)] <= land_availability[f] * \
                 Y_pulp[(f, c)], f"MaxArea_{f}_{c}"
 
+    # U-Y linking constraints for unique food tracking
+    for c in foods:
+        for f in farms:
+            model += Y_pulp[(f, c)] <= U_pulp[c], f"U_Link_{f}_{c}"
+        model += U_pulp[c] <= pl.lpSum([Y_pulp[(f, c)] for f in farms]), f"U_Bound_{c}"
+
+    # Food group constraints - count UNIQUE foods
     if food_group_constraints:
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                # Global constraints: across ALL farms
                 if 'min_foods' in constraints:
-                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
-                                      ) >= constraints['min_foods'], f"MinFoodGroup_Global_{g}"
+                    model += pl.lpSum([U_pulp[c] for c in foods_in_group]
+                                      ) >= constraints['min_foods'], f"MinFoodGroup_Unique_{g}"
                 if 'max_foods' in constraints:
-                    model += pl.lpSum([Y_pulp[(f, c)] for f in farms for c in foods_in_group]
-                                      ) <= constraints['max_foods'], f"MaxFoodGroup_Global_{g}"
+                    model += pl.lpSum([U_pulp[c] for c in foods_in_group]
+                                      ) <= constraints['max_foods'], f"MaxFoodGroup_Unique_{g}"
 
     model += goal, "Objective"
 
@@ -739,6 +784,8 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
     
     # Binary variables - each represents assignment of a crop to a land unit
     X_pulp = pl.LpVariable.dicts("X", [(f, c) for f in farms for c in foods], cat='Binary')
+    # U variables for UNIQUE food selection
+    U_pulp = pl.LpVariable.dicts("Unique", list(foods.keys()), cat='Binary')
     
     total_land_area = sum(land_availability.values())
     
@@ -778,19 +825,23 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
             max_plots = math.floor(max_planting_area[crop] / plot_area)
             model += pl.lpSum([X_pulp[(f, crop)] for f in farms]) <= max_plots, f"Max_Plots_{crop}"
     
-    ## Constraint 4: Food group constraints - GLOBAL across all plots
+    ## Constraint 4: U-X linking for unique food tracking
+    for c in foods:
+        for f in farms:
+            model += X_pulp[(f, c)] <= U_pulp[c], f"U_Link_{f}_{c}"
+        model += U_pulp[c] <= pl.lpSum([X_pulp[(f, c)] for f in farms]), f"U_Bound_{c}"
+    
+    ## Constraint 5: Food group constraints - count UNIQUE foods
     if food_group_constraints:
         for g, constraints in food_group_constraints.items():
             foods_in_group = food_groups.get(g, [])
             if foods_in_group:
-                # Normalize group name for constraint labels
                 group_label = g.replace(' ', '_').replace(',', '').replace('-', '_')
                 
-                # Global constraints: across ALL plots
                 if 'min_foods' in constraints:
-                    model += pl.lpSum([X_pulp[(f, c)] for f in farms for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_Global_{group_label}"
+                    model += pl.lpSum([U_pulp[c] for c in foods_in_group]) >= constraints['min_foods'], f"MinFoodGroup_Unique_{group_label}"
                 if 'max_foods' in constraints:
-                    model += pl.lpSum([X_pulp[(f, c)] for f in farms for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_Global_{group_label}"
+                    model += pl.lpSum([U_pulp[c] for c in foods_in_group]) <= constraints['max_foods'], f"MaxFoodGroup_Unique_{group_label}"
     
     model += goal, "Objective"
     

@@ -1,0 +1,34 @@
+Sanitizing results for JSON compatibility...
+
+================================================================================
+STRATEGY COMPARISON
+================================================================================
+
+Strategy                  Status       Time (s)   Objective    Valid    Area Used      
+---------------------------------------------------------------------------------------------------------
+current_hybrid            Optimal      140.328    0.0000       ✅        0.0/100.0      
+benders                   ok (optimal) 1.325      0.1353       ✅        45.5/100.0     
+benders_qpu               ok (optimal) 309.836    0.2102       ✅        84.4/100.0     
+dantzig_wolfe             failed       0.168      0.1728       ❌        57.7/100.0     
+dantzig_wolfe_qpu         failed       2.829      0.1728       ❌        57.7/100.0     
+admm                      ok (optimal) 5.695      0.0129       ✅        6.2/100.0      
+admm_qpu                  failed       688.462    0.0151       ❌        9.5/100.0      
+---------------------------------------------------------------------------------------------------------
+
+================================================================================
+VALIDATION DETAILS
+================================================================================
+
+❌ DANTZIG_WOLFE:
+  food_group_min_violation: 5 violations
+
+❌ DANTZIG_WOLFE_QPU:
+  food_group_min_violation: 5 violations
+
+❌ ADMM_QPU:
+  min_area_violation: 2 violations
+================================================================================
+
+✅ Benchmark complete!
+   Results saved: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/Benchmarks/ALL_STRATEGIES/all_strategies_config_25_20251125_160909.json
+(oqi) edoardospigarolo@simonecampanambpro @todo % 
