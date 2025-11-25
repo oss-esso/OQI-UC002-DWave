@@ -23,7 +23,7 @@ def solve_with_admm_qpu(
     food_groups: Dict,
     config: Dict,
     dwave_token: Optional[str] = None,
-    max_iterations: int = 50,
+    max_iterations: int = 10,
     rho: float = 1.0,
     tolerance: float = 1e-4,
     use_qpu_for_y: bool = True
@@ -171,6 +171,50 @@ def solve_with_admm_qpu(
     # Build solution with proper linking constraint enforcement
     # First, binarize Y values
     Y_binary = {key: 1.0 if val > 0.5 else 0.0 for key, val in Y.items()}
+    
+    # ENFORCE FOOD GROUP MINIMUM CONSTRAINTS (SA/QPU may not satisfy these)
+    # NOTE: min_foods constraint counts UNIQUE foods selected (across all farms)
+    food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})
+    if food_group_constraints:
+        for group_name, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            min_foods = constraints.get('min_foods', 0)
+            
+            if min_foods > 0:
+                # Count UNIQUE foods selected (a food counts if selected on ANY farm)
+                unique_foods_selected = set()
+                for c in foods_in_group:
+                    if any(Y_binary.get((f, c), 0) > 0.5 for f in farms):
+                        unique_foods_selected.add(c)
+                
+                current_count = len(unique_foods_selected)
+                
+                if current_count < min_foods:
+                    # Need to add NEW unique foods to meet minimum
+                    shortfall = min_foods - current_count
+                    print(f"  ⚠️  Food group {group_name}: {current_count}/{min_foods} unique foods, adding {shortfall}")
+                    
+                    # Find foods in group NOT yet selected anywhere
+                    unselected_foods = [c for c in foods_in_group if c not in unique_foods_selected]
+                    
+                    # Sort by benefit (descending)
+                    unselected_foods.sort(key=lambda c: benefits.get(c, 1.0), reverse=True)
+                    
+                    # For each missing food, select it on the farm with most remaining capacity
+                    for c in unselected_foods[:shortfall]:
+                        # Find farm with most remaining capacity
+                        farm_capacities = []
+                        for f in farms:
+                            current_usage = sum(A.get((f, food), 0.0) for food in foods)
+                            remaining = farms[f] - current_usage
+                            farm_capacities.append((f, remaining))
+                        farm_capacities.sort(key=lambda x: x[1], reverse=True)
+                        
+                        best_farm = farm_capacities[0][0]
+                        Y_binary[(best_farm, c)] = 1.0
+                        min_area = min_planting_area.get(c, 0.0001)
+                        A[(best_farm, c)] = max(A[(best_farm, c)], min_area)
+                        print(f"    + Added Y_{best_farm}_{c} with A={A[(best_farm, c)]:.4f}")
     
     # ENFORCE LINKING CONSTRAINTS (critical for feasibility)
     # If Y=0, force A=0; if Y=1, ensure A >= min_area

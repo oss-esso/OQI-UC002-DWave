@@ -271,6 +271,63 @@ def solve_with_dantzig_wolfe_qpu(
                 for key, value in col['selection'].items():
                     Y_solution[key] = max(Y_solution[key], value * weight)
         
+        # Binarize Y values
+        Y_binary = {key: 1.0 if val > 0.5 else 0.0 for key, val in Y_solution.items()}
+        
+        # ENFORCE FOOD GROUP MINIMUM CONSTRAINTS (column solution may not satisfy these)
+        # NOTE: min_foods constraint counts UNIQUE foods selected (across all farms)
+        food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})
+        if food_group_constraints:
+            for group_name, constraints in food_group_constraints.items():
+                foods_in_group = food_groups.get(group_name, [])
+                min_foods = constraints.get('min_foods', 0)
+                
+                if min_foods > 0:
+                    # Count UNIQUE foods selected (a food counts if selected on ANY farm)
+                    unique_foods_selected = set()
+                    for c in foods_in_group:
+                        if any(Y_binary.get((f, c), 0) > 0.5 for f in farms):
+                            unique_foods_selected.add(c)
+                    
+                    current_count = len(unique_foods_selected)
+                    
+                    if current_count < min_foods:
+                        # Need to add NEW unique foods to meet minimum
+                        shortfall = min_foods - current_count
+                        print(f"  ⚠️  Food group {group_name}: {current_count}/{min_foods} unique foods, adding {shortfall}")
+                        
+                        # Find foods in group NOT yet selected anywhere
+                        unselected_foods = [c for c in foods_in_group if c not in unique_foods_selected]
+                        
+                        # Sort by benefit (descending)
+                        unselected_foods.sort(key=lambda c: benefits.get(c, 1.0), reverse=True)
+                        
+                        # For each missing food, select it on the farm with most remaining capacity
+                        for c in unselected_foods[:shortfall]:
+                            # Find farm with most remaining capacity
+                            farm_capacities = []
+                            for f in farms:
+                                current_usage = sum(A_solution.get((f, food), 0.0) for food in foods)
+                                remaining = farms[f] - current_usage
+                                farm_capacities.append((f, remaining))
+                            farm_capacities.sort(key=lambda x: x[1], reverse=True)
+                            
+                            best_farm = farm_capacities[0][0]
+                            Y_binary[(best_farm, c)] = 1.0
+                            min_area = min_planting_area.get(c, 0.0001)
+                            A_solution[(best_farm, c)] = max(A_solution[(best_farm, c)], min_area)
+                            print(f"    + Added Y_{best_farm}_{c} with A={A_solution[(best_farm, c)]:.4f}")
+        
+        # Enforce linking constraints: If Y=0, force A=0; if Y=1, ensure A >= min_area
+        for key in A_solution:
+            farm, food = key
+            y_val = Y_binary.get(key, 0.0)
+            if y_val < 0.5:
+                A_solution[key] = 0.0
+            else:
+                min_area = min_planting_area.get(food, 0.0001)
+                A_solution[key] = max(A_solution[key], min_area)
+        
         # PROJECT SOLUTION TO FEASIBLE SPACE (fix area overflow)
         for farm in farms:
             farm_total = sum(A_solution.get((farm, c), 0.0) for c in foods)
@@ -285,7 +342,7 @@ def solve_with_dantzig_wolfe_qpu(
         # Build full solution dictionary
         full_solution = {
             **{f"A_{f}_{c}": A_solution[(f, c)] for f, c in A_solution},
-            **{f"Y_{f}_{c}": 1.0 if Y_solution[(f, c)] > 0.5 else 0.0 for f, c in Y_solution}
+            **{f"Y_{f}_{c}": Y_binary[(f, c)] for f, c in Y_binary}
         }
     
     # Validate solution

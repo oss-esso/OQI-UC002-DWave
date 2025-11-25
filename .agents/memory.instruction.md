@@ -60,6 +60,11 @@ applyTo: '**'
   - Binarize Y values: `Y_binary = {key: 1.0 if val > 0.5 else 0.0 for ...}`
   - Force A=0 when Y=0, enforce A >= min_area when Y=1
   - Without this, ADMM solutions violate min_area and linking constraints
+- **Food Group Constraint Fix (2025-11-25)**:
+  - Food group min_foods counts UNIQUE foods selected (across all farms)
+  - A food counts as selected if Y=1 on ANY farm
+  - Post-processing must add NEW unique foods, not just more farm selections
+  - Default ADMM iterations reduced to 10 for faster problem resolution
 - **Infeasibility Detection**:
   - Use `detect_infeasibility()` for IIS computation
   - Track constraint names manually (can't access `constr.ConstrName` before update)
