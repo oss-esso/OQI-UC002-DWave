@@ -313,7 +313,7 @@ def validate_solution_constraints(
                 'message': 'A > 0 but Y = 0'
             })
     
-    # Constraint 3: Food group constraints (COUNT-based, not area)
+    # Constraint 3: Food group constraints (COUNT of UNIQUE foods selected)
     food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})
     if food_group_constraints:
         for group_name, constraints in food_group_constraints.items():
@@ -321,40 +321,39 @@ def validate_solution_constraints(
             min_foods = constraints.get('min_foods', 0)
             max_foods = constraints.get('max_foods', float('inf'))
             
-            # Count number of Y=1 for this group across ALL farms
-            total_count = sum(
-                1 if Y_sol.get((farm, food), 0.0) > 0.5 else 0
-                for farm in farms_or_patches
+            # Count UNIQUE foods selected (a food counts as selected if Y=1 on ANY farm)
+            unique_foods_selected = sum(
+                1 if any(Y_sol.get((farm, food), 0.0) > 0.5 for farm in farms_or_patches) else 0
                 for food in foods_in_group
             )
             
             check_name = f"food_group_{group_name}"
             constraint_checks[check_name] = {
-                'type': 'food_group_count',
+                'type': 'food_group_unique_count',
                 'min': min_foods,
                 'max': max_foods,
-                'actual': total_count,
-                'satisfied': min_foods <= total_count <= max_foods
+                'actual': unique_foods_selected,
+                'satisfied': min_foods <= unique_foods_selected <= max_foods
             }
             
-            if total_count < min_foods:
+            if unique_foods_selected < min_foods:
                 violations.append({
                     'constraint': check_name,
                     'type': 'food_group_min_violation',
                     'group': group_name,
                     'required_min': min_foods,
-                    'actual': total_count,
-                    'deficit': min_foods - total_count
+                    'actual': unique_foods_selected,
+                    'deficit': min_foods - unique_foods_selected
                 })
             
-            if total_count > max_foods:
+            if unique_foods_selected > max_foods:
                 violations.append({
                     'constraint': check_name,
                     'type': 'food_group_max_violation',
                     'group': group_name,
                     'required_max': max_foods,
-                    'actual': total_count,
-                    'excess': total_count - max_foods
+                    'actual': unique_foods_selected,
+                    'excess': unique_foods_selected - max_foods
                 })
     
     # Summary

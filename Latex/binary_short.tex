@@ -1,0 +1,156 @@
+\subsubsection{Overview}
+The benchmark will be comprehensive of two formulations:
+
+\begin{enumerate}
+    \item \textbf{Binary Formulation} (Even Grid): Used when land is divided into equal-sized plots
+    \item \textbf{Continuous Formulation} (Uneven Distribution): Used when farms have varying sizes
+\end{enumerate}
+
+
+The script solves the optimization problem using three different methods:
+\begin{itemize}
+    \item PuLP with Gurobi solver (classical optimization)
+    \item D-Wave Hybrid CQM Sampler (quantum-classical hybrid)
+    \item D-Wave Hybrid BQM Sampler (quantum-enabled via CQM→BQM conversion)
+\end{itemize}
+
+
+
+\subsubsection{Objective Functions}
+
+\paragraph{Continuous Formulation Objective}
+
+The objective function maximizes the weighted sum of agricultural value metrics, normalized by total available land:
+
+$$\max \quad Z = \frac{1}{\sum_{f \in F} L_f} \sum_{f \in F} \sum_{c \in C} B_c \cdot A_{f,c}$$
+
+where the composite value $v_c$ for crop $c$ is defined as:
+
+$$B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}$$
+
+\textbf{Note:} This is equivalent to \ref{eq:linear_obj} after appropriate renormalization.
+
+\paragraph{Binary Formulation Objective}
+
+For the binary formulation, the objective accounts for the fixed area $a_p$ of each plot:
+
+$$\max \quad Z = \frac{1}{\sum_{p \in F} a_p} \sum_{p \in F} \sum_{c \in C} a_p \cdot B_c \cdot Y_{p,c}$$
+
+where $B_c$ is defined identically as in the continuous formulation.
+
+\textbf{Interpretation:} Each selected assignment contributes the plot's area multiplied by the crop's value density.
+
+\subsubsection{Constraints}
+
+\paragraph{Continuous Formulation Constraints}
+
+\subparagraph{Land Availability Constraints}
+
+Each farm cannot allocate more land than available:
+
+$$\sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall f \in \mathcal{F}$$
+
+\textbf{Label:} \texttt{Land\_Availability\_\{farm\}}
+
+\subparagraph{Minimum Planting Area Constraints}
+
+If a crop is selected on a farm, it must occupy at least the minimum required area:
+
+$$A_{f,c} \geq A_{min,c} \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, c \in C$$
+
+
+\textbf{Logical Interpretation:}
+\begin{itemize}
+    \item If $Y_{f,c} = 1$: $A_{f,c} \geq A_{min,c}$ (enforces minimum area)
+    \item If $Y_{f,c} = 0$: $A_{f,c} \geq 0$ (no planting, so area can be zero)
+\end{itemize}
+
+\textbf{Label:} \texttt{Min\_Area\_If\_Selected\_\{farm\}\_\{crop\}}
+
+\subparagraph{Maximum Planting Area Constraints}
+
+If a crop is not selected, its allocated area must be zero:
+
+$$A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, c \in C$$
+
+
+\textbf{Logical Interpretation:}
+\begin{itemize}
+    \item If $Y_{f,c} = 1$: $A_{f,c} \leq L_f$ (area can be up to farm size)
+    \item If $Y_{f,c} = 0$: $A_{f,c} \leq 0$ (forces area to zero)
+\end{itemize}
+
+\textbf{Label:} \texttt{Max\_Area\_If\_Selected\_\{farm\}\_\{crop\}}
+
+\subparagraph{Food Group Minimum Constraints}
+
+At least a minimum number of different crops from specified food groups must be cultivated:
+
+$$\sum_{f \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{f,c} \geq N_{min,g} \quad \forall g \in \mathcal{G} \text{ where } N_{min,g} \text{ is defined}$$
+
+\textbf{Label:} \texttt{Food\_Group\_Min\_\{group\}}
+
+\subparagraph{Food Group Maximum Constraints}
+
+A maximum number of different crops from specified food groups must not be exceeded:
+
+$$\sum_{f \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{f,c} \leq N_{max,g} \quad \forall g \in \mathcal{G} \text{ where } N_{max,g} \text{ is defined}$$
+
+\textbf{Label:} \texttt{Food\_Group\_Max\_\{group\}}
+
+\paragraph{Binary Formulation Constraints}
+
+\subparagraph{Plot Assignment Constraints}
+
+Each plot can be assigned to at most one crop (or remain idle):
+
+$$\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p \in \mathcal{F}$$
+
+
+
+\textbf{Interpretation:}
+\begin{itemize}
+    \item $\sum_{c \in C} Y_{p,c} = 0$: Plot remains idle
+    \item $\sum_{c \in C} Y_{p,c} = 1$: Plot is assigned to exactly one crop
+\end{itemize}
+
+\textbf{Label:} \texttt{Max\_Assignment\_\{plot\}}
+
+\subparagraph{Minimum Plots Per Crop Constraints}
+
+For crops with minimum planting area requirements, the constraint is converted to a minimum number of plots:
+
+$$\sum_{p \in \mathcal{F}} Y_{p,c} \geq \left\lceil \frac{A_{min,c}}{a_p} \right\rceil \quad \forall c \in \mathcal{F} \text{ where } A_{min,c} > 0$$
+
+where $a_p$ is the area of each plot (assumed equal in even grid).
+
+
+
+\textbf{Interpretation:} If a crop $c$ requires minimum area $A_{min,c}$, it must be planted on at least $\lceil A_{min,c} / a_p \rceil$ plots.
+
+\textbf{Label:} \texttt{Min\_Plots\_\{crop\}}
+
+\subparagraph{Maximum Plots Per Crop Constraints}
+
+For crops with maximum planting area limits, the constraint is converted to a maximum number of plots:
+
+$$\sum_{p \in \mathcal{F}} Y_{p,c} \leq \left\lfloor \frac{A_{max,c}}{a_p} \right\rfloor \quad \forall c \in \mathcal{C} \text{ where } A_{max,c} \text{ is defined}$$
+
+
+
+\textbf{Interpretation:} If a crop $c$ has maximum area $A_{max,c}$, it can be planted on at most $\lfloor A_{max,c} / a_p \rfloor$ plots.
+
+
+\textbf{Label:} \texttt{Max\_Plots\_\{crop\}}
+
+
+
+
+\subparagraph{Food Group Constraints}
+
+The same food group minimum and maximum constraints apply as in the continuous formulation:
+
+$$\sum_{p \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{p,c} \geq N_{min,g} \quad \forall g \in \mathcal{G}$$
+$$\sum_{p \in \mathcal{F}}\sum_{c \in \mathcal{G}} Y_{p,c} \leq N_{max,g} \quad \forall g \in \mathcal{G}$$
+
+\textbf{Labels:} \texttt{Food\_Group\_Min\_\{group\}}, \texttt{Food\_Group\_Max\_\{group\}}

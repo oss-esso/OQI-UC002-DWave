@@ -204,7 +204,7 @@ class ADMMStrategy(BaseDecompositionStrategy):
             food_groups=food_groups,
             config=config,
             max_iterations=kwargs.get('max_iterations', 100),
-            rho=kwargs.get('rho', 1.0),
+            rho=kwargs.get('rho', 10.0),  # Higher penalty for better A-Y consensus
             tolerance=kwargs.get('tolerance', 1e-3),
             time_limit=kwargs.get('time_limit', 300.0)
         )
@@ -230,7 +230,7 @@ class ADMMQPUStrategy(BaseDecompositionStrategy):
             config=config,
             dwave_token=kwargs.get('dwave_token', None),
             max_iterations=kwargs.get('max_iterations', 50),
-            rho=kwargs.get('rho', 1.0),
+            rho=kwargs.get('rho', 10.0),  # Higher penalty for better A-Y consensus
             tolerance=kwargs.get('tolerance', 1e-4),
             use_qpu_for_y=kwargs.get('use_qpu_for_y', True)
         )

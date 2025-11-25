@@ -12,6 +12,7 @@ import numpy as np
 
 from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm
 from dwave.system import LeapHybridBQMSampler
+import neal  # SimulatedAnnealing fallback
 
 from result_formatter import format_admm_result, validate_solution_constraints
 
@@ -53,9 +54,9 @@ def solve_with_admm_qpu(
     
     # Check QPU availability
     has_qpu = dwave_token is not None and dwave_token != 'YOUR_DWAVE_TOKEN_HERE'
-    if use_qpu_for_y and not has_qpu:
-        print("⚠️  QPU requested but no token provided - using classical solver")
-        use_qpu_for_y = False
+    use_simulated_annealing = use_qpu_for_y and not has_qpu
+    if use_simulated_annealing:
+        print("⚠️  QPU requested but no token provided - using SimulatedAnnealing fallback")
     
     # Extract parameters
     params = config.get('parameters', {})
@@ -91,11 +92,17 @@ def solve_with_admm_qpu(
         )
         
         # Step 2: Y-subproblem (QPU or classical)
-        if use_qpu_for_y and has_qpu:
+        if has_qpu and use_qpu_for_y:
             Y, y_time, qpu_time = solve_y_subproblem_qpu(
                 farms, foods, food_groups, config, A, U, rho, dwave_token
             )
             qpu_time_total += qpu_time
+        elif use_simulated_annealing:
+            Y, y_time, sa_time = solve_y_subproblem_sa(
+                farms, foods, food_groups, config, A, U, rho
+            )
+            qpu_time_total += sa_time
+            qpu_time = sa_time
         else:
             Y, y_time = solve_y_subproblem_classical(
                 farms, foods, food_groups, config, A, U, rho
@@ -161,15 +168,34 @@ def solve_with_admm_qpu(
         print(f"Total QPU time: {qpu_time_total:.3f}s")
     print(f"{'='*80}\n")
     
-    # Build solution
+    # Build solution with proper linking constraint enforcement
+    # First, binarize Y values
+    Y_binary = {key: 1.0 if val > 0.5 else 0.0 for key, val in Y.items()}
+    
+    # ENFORCE LINKING CONSTRAINTS (critical for feasibility)
+    # If Y=0, force A=0; if Y=1, ensure A >= min_area
+    A_linked = {}
+    for key in A:
+        farm, food = key
+        y_val = Y_binary[key]
+        a_val = A[key]
+        
+        if y_val < 0.5:
+            # Y=0, force A=0
+            A_linked[key] = 0.0
+        else:
+            # Y=1, ensure A >= min_area
+            min_area = min_planting_area.get(food, 0.0001)
+            A_linked[key] = max(a_val, min_area)
+    
     final_solution = {
-        **{f"A_{f}_{c}": A[(f, c)] for f, c in A},
-        **{f"Y_{f}_{c}": Y[(f, c)] for f, c in Y}
+        **{f"A_{f}_{c}": A_linked[(f, c)] for f, c in A_linked},
+        **{f"Y_{f}_{c}": Y_binary[(f, c)] for f, c in Y_binary}
     }
     
-    # PROJECT TO FEASIBLE SPACE
+    # PROJECT TO FEASIBLE SPACE (land capacity)
     for farm in farms:
-        farm_total = sum(A.get((farm, c), 0.0) for c in foods)
+        farm_total = sum(A_linked.get((farm, c), 0.0) for c in foods)
         farm_capacity = farms[farm]
         
         if farm_total > farm_capacity + 1e-6:
@@ -178,7 +204,12 @@ def solve_with_admm_qpu(
                 key = f"A_{farm}_{c}"
                 if key in final_solution:
                     final_solution[key] *= scale_factor
+                    A_linked[(farm, c)] *= scale_factor
             print(f"  ⚠️  Projected {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
+    
+    # Recalculate objective with corrected A values
+    total_area = sum(farms.values())
+    final_obj = sum(A_linked[(f, c)] * benefits.get(c, 1.0) for f in farms for c in foods) / total_area
     
     # Validate
     validation = validate_solution_constraints(
@@ -195,7 +226,7 @@ def solve_with_admm_qpu(
     result = format_admm_result(
         iterations=iterations_clean,
         final_solution=final_solution,
-        objective_value=obj,
+        objective_value=final_obj,
         total_time=total_time,
         scenario_type='farm',
         n_units=len(farms),
@@ -333,6 +364,72 @@ def solve_y_subproblem_classical(
         Y_solution = {key: 0.0 for key in Y_vars}
     
     return Y_solution, y_time
+
+
+def solve_y_subproblem_sa(
+    farms: Dict,
+    foods: List[str],
+    food_groups: Dict,
+    config: Dict,
+    A: Dict,
+    U: Dict,
+    rho: float
+) -> Tuple[Dict, float, float]:
+    """Solve Y-subproblem using SimulatedAnnealing (fallback)."""
+    y_start = time.time()
+    
+    # Build CQM
+    cqm = ConstrainedQuadraticModel()
+    
+    # Variables
+    Y_vars = {}
+    for farm in farms:
+        for food in foods:
+            var_name = f"Y_{farm}_{food}"
+            Y_vars[(farm, food)] = Binary(var_name)
+            cqm.add_variable('BINARY', var_name)
+    
+    # Objective: ADMM penalty
+    objective = sum(
+        (A[key] - Y_vars[key] + U[key])**2 for key in Y_vars
+    )
+    cqm.set_objective(objective)  # Minimize penalty
+    
+    # Food group constraints
+    food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})
+    if food_group_constraints:
+        for group_name, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            min_foods = constraints.get('min_foods', 0)
+            max_foods = constraints.get('max_foods', len(foods_in_group) * len(farms))
+            
+            total = sum(Y_vars[(f, c)] for f in farms for c in foods_in_group)
+            
+            if min_foods > 0:
+                cqm.add_constraint(total >= min_foods, label=f"FG_Min_{group_name}")
+            if max_foods < float('inf'):
+                cqm.add_constraint(total <= max_foods, label=f"FG_Max_{group_name}")
+    
+    # Solve with SimulatedAnnealing
+    bqm, invert = cqm_to_bqm(cqm)
+    
+    sampler = neal.SimulatedAnnealingSampler()
+    
+    sa_start = time.time()
+    sampleset = sampler.sample(bqm, num_reads=100, num_sweeps=1000)
+    sa_time = time.time() - sa_start
+    
+    # Extract solution
+    best_sample = sampleset.first.sample
+    
+    Y_solution = {}
+    for (farm, food), var in Y_vars.items():
+        var_name = f"Y_{farm}_{food}"
+        Y_solution[(farm, food)] = best_sample.get(var_name, 0.0)
+    
+    total_time = time.time() - y_start
+    
+    return Y_solution, total_time, sa_time
 
 
 def solve_y_subproblem_qpu(

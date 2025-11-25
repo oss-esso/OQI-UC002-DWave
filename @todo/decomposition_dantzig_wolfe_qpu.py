@@ -16,6 +16,7 @@ import numpy as np
 
 from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm
 from dwave.system import LeapHybridBQMSampler
+import neal  # SimulatedAnnealing fallback
 
 from result_formatter import format_dantzig_wolfe_result, validate_solution_constraints
 
@@ -55,9 +56,9 @@ def solve_with_dantzig_wolfe_qpu(
     
     # Check if QPU is available
     has_qpu = dwave_token is not None and dwave_token != 'YOUR_DWAVE_TOKEN_HERE'
-    if use_qpu_for_pricing and not has_qpu:
-        print("⚠️  QPU requested but no token provided - using classical solver only")
-        use_qpu_for_pricing = False
+    use_simulated_annealing = use_qpu_for_pricing and not has_qpu
+    if use_simulated_annealing:
+        print("⚠️  QPU requested but no token provided - using SimulatedAnnealing fallback")
     
     # Extract parameters
     params = config.get('parameters', {})
@@ -182,12 +183,19 @@ def solve_with_dantzig_wolfe_qpu(
         print(f"  RMP: obj = {rmp_obj:.4f}, active columns = {active_columns}/{len(columns)} (time: {rmp_time:.3f}s)")
         
         # Solve Pricing Subproblem
-        if use_qpu_for_pricing and has_qpu:
+        if has_qpu and use_qpu_for_pricing:
             new_column, reduced_cost, pricing_time, qpu_time = solve_pricing_qpu(
                 farms, foods, duals, benefits, min_planting_area, max_planting_area, dwave_token
             )
             qpu_time_total += qpu_time
             print(f"  Pricing (QPU): reduced cost = {reduced_cost:.6f} (time: {pricing_time:.3f}s, QPU: {qpu_time:.3f}s)")
+        elif use_simulated_annealing:
+            new_column, reduced_cost, pricing_time, sa_time = solve_pricing_sa(
+                farms, foods, duals, benefits, min_planting_area, max_planting_area
+            )
+            qpu_time_total += sa_time
+            qpu_time = sa_time
+            print(f"  Pricing (SA): reduced cost = {reduced_cost:.6f} (time: {pricing_time:.3f}s, SA: {sa_time:.3f}s)")
         else:
             new_column, reduced_cost, pricing_time = solve_pricing_classical(
                 farms, foods, duals, benefits, min_planting_area, max_planting_area
@@ -472,6 +480,94 @@ def solve_pricing_classical(
     reduced_cost = model.ObjVal - duals.get('Convexity', 0.0)
     
     return new_column, reduced_cost, solve_time
+
+
+def solve_pricing_sa(
+    farms: Dict,
+    foods: List[str],
+    duals: Dict,
+    benefits: Dict,
+    min_planting_area: Dict,
+    max_planting_area: Dict
+) -> Tuple[Dict, float, float, float]:
+    """
+    Solve Pricing Subproblem using SimulatedAnnealing (fallback).
+    
+    Returns:
+        (new_column, reduced_cost, total_time, sa_time)
+    """
+    pricing_start = time.time()
+    
+    # Build CQM for pricing problem
+    cqm = ConstrainedQuadraticModel()
+    
+    # Variables
+    Y = {}
+    for farm in farms:
+        for food in foods:
+            var_name = f"Y_{farm}_{food}"
+            Y[(farm, food)] = Binary(var_name)
+            cqm.add_variable('BINARY', var_name)
+    
+    # Objective: maximize benefit (encoded as minimize negative)
+    objective = sum(
+        Y[(f, c)] * benefits.get(c, 1.0)
+        for f in farms for c in foods
+    )
+    cqm.set_objective(-objective)  # Minimize negative = maximize
+    
+    # Constraints: At most one crop per farm (simplified)
+    for farm in farms:
+        cqm.add_constraint(
+            sum(Y[(farm, food)] for food in foods) <= 1,
+            label=f"OnePerFarm_{farm}"
+        )
+    
+    # Solve with SimulatedAnnealing
+    bqm, invert = cqm_to_bqm(cqm)
+    
+    sampler = neal.SimulatedAnnealingSampler()
+    
+    sa_start = time.time()
+    sampleset = sampler.sample(bqm, num_reads=100, num_sweeps=1000)
+    sa_time = time.time() - sa_start
+    
+    # Extract best sample
+    best_sample = sampleset.first.sample
+    
+    # Build column from sample
+    allocation = {}
+    selection = {}
+    
+    for (farm, food), var in Y.items():
+        var_name = f"Y_{farm}_{food}"
+        y_val = best_sample.get(var_name, 0.0)
+        
+        if y_val > 0.5:
+            selection[(farm, food)] = 1.0
+            # Assign minimum area for selected crops
+            min_area = min_planting_area.get(food, 0.0001)
+            allocation[(farm, food)] = min_area
+    
+    # Calculate column objective
+    total_area = sum(farms.values())
+    column_obj = sum(
+        allocation.get(key, 0.0) * benefits.get(key[1], 1.0)
+        for key in allocation
+    ) / total_area if total_area > 0 else 0.0
+    
+    new_column = {
+        'allocation': allocation,
+        'selection': selection,
+        'objective': column_obj
+    }
+    
+    # Simplified reduced cost
+    reduced_cost = column_obj - duals.get('Convexity', 0.0)
+    
+    total_time = time.time() - pricing_start
+    
+    return new_column, reduced_cost, total_time, sa_time
 
 
 def solve_pricing_qpu(

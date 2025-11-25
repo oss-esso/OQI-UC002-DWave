@@ -50,10 +50,16 @@ applyTo: '**'
   - Access pattern: `foods_in_group = food_groups.get(group_name, [])`
   - Constraints: `constraints = config['parameters']['food_group_constraints'][group_name]`
 - **Decomposition Strategies Implemented**:
-  - **ADMM**: Best performance, converges in 6 iterations (config 10)
-  - **Benders**: Functional, needs cut refinement for better convergence
-  - **Dantzig-Wolfe**: Implemented, column generation approach
+  - **Benders**: Best performance, highest objective (0.30+), 93%+ land usage
+  - **Dantzig-Wolfe**: Good performance, column generation approach
+  - **ADMM**: Requires post-processing to enforce linking constraints; use rho=10.0 for better convergence
   - All use factory pattern: `DecompositionFactory.get_strategy(name)`
+  - QPU versions now fall back to `neal.SimulatedAnnealingSampler` when no D-Wave token
+- **ADMM Critical Fix (2025-11-25)**:
+  - ADMM must post-process to enforce linking constraints after convergence
+  - Binarize Y values: `Y_binary = {key: 1.0 if val > 0.5 else 0.0 for ...}`
+  - Force A=0 when Y=0, enforce A >= min_area when Y=1
+  - Without this, ADMM solutions violate min_area and linking constraints
 - **Infeasibility Detection**:
   - Use `detect_infeasibility()` for IIS computation
   - Track constraint names manually (can't access `constr.ConstrName` before update)

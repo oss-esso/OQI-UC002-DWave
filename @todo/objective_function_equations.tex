@@ -1,0 +1,382 @@
+% =============================================================================
+% OBJECTIVE FUNCTION FORMULATIONS
+% Decomposition Strategies for Agricultural Land Allocation
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Mathematical Formulations of Objective Functions\\
+\large Decomposition Strategies for Agricultural Land Allocation}
+\author{OQI-UC002 D-Wave Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Problem Definition}
+% =============================================================================
+
+\subsection{Decision Variables}
+
+\begin{align}
+    A_{f,c} &\in \mathbb{R}_{\geq 0} && \text{Area (ha) allocated to food } c \text{ on farm } f \\
+    Y_{f,c} &\in \{0, 1\} && \text{Binary: 1 if food } c \text{ is planted on farm } f
+\end{align}
+
+\subsection{Parameters}
+
+\begin{align}
+    b_c &= \text{Benefit score for food } c \\
+    T &= \sum_{f \in \mathcal{F}} L_f \quad \text{(total available land)} \\
+    L_f &= \text{Land capacity of farm } f \\
+    a^{min}_c &= \text{Minimum planting area for food } c \\
+    a^{max}_c &= \text{Maximum planting area for food } c
+\end{align}
+
+\subsection{Benefit Calculation}
+
+The benefit score $b_c$ is computed as a weighted sum of food attributes:
+
+\begin{equation}
+    b_c = \sum_{i=1}^{5} w_i \cdot s_{c,i}
+\end{equation}
+
+where $s_{c,i}$ represents score $i$ for food $c$:
+\begin{itemize}
+    \item $s_{c,1}$: Nutritional value
+    \item $s_{c,2}$: Nutrient density
+    \item $s_{c,3}$: Environmental impact (higher = better)
+    \item $s_{c,4}$: Affordability
+    \item $s_{c,5}$: Sustainability
+\end{itemize}
+
+Default weights: $w_1 = 0.25$, $w_2 = 0.20$, $w_3 = 0.25$, $w_4 = 0.15$, $w_5 = 0.15$.
+
+\subsection{Base Objective Function}
+
+All strategies optimize the same fundamental objective:
+
+\begin{equation}
+    \boxed{Z = \frac{1}{T} \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} b_c \cdot A_{f,c}}
+\end{equation}
+
+This represents the \textbf{average benefit per hectare} across all farms.
+
+% =============================================================================
+\section{Common Constraints}
+% =============================================================================
+
+\subsection{Land Availability}
+
+Each farm's total allocation cannot exceed its capacity:
+
+\begin{equation}
+    \sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall f \in \mathcal{F}
+\end{equation}
+
+\subsection{Linking Constraints}
+
+The continuous variables $A$ are linked to binary variables $Y$:
+
+\begin{align}
+    A_{f,c} &\geq a^{min}_c \cdot Y_{f,c} && \text{(minimum area if selected)} \\
+    A_{f,c} &\leq L_f \cdot Y_{f,c} && \text{(zero if not selected)}
+\end{align}
+
+\subsection{Food Group Constraints}
+
+Global count constraints on food group selections:
+
+\begin{equation}
+    n^{min}_g \leq \sum_{f \in \mathcal{F}} \sum_{c \in G_g} Y_{f,c} \leq n^{max}_g \quad \forall g \in \mathcal{G}
+\end{equation}
+
+where $G_g$ is the set of foods in group $g$.
+
+% =============================================================================
+\section{Benders Decomposition}
+% =============================================================================
+
+\subsection{Master Problem}
+
+The master problem optimizes binary selections with an objective proxy:
+
+\begin{align}
+    \max \quad & \eta \\
+    \text{s.t.} \quad & \eta \leq z^{(k)} \quad \forall k \in \{1, \ldots, K\} \tag{Benders cuts} \\
+    & \text{Food group constraints on } Y \\
+    & Y_{f,c} \in \{0, 1\}
+\end{align}
+
+where $z^{(k)}$ is the subproblem objective at iteration $k$.
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# Master objective
+master.setObjective(eta, GRB.MAXIMIZE)
+
+# Add Benders cut from iteration k
+master.addConstr(eta <= subproblem_obj, name=f"Benders_Cut_{k}")
+\end{verbatim}
+
+\subsection{Subproblem}
+
+Given fixed $Y^*$ from master, solve for continuous allocations:
+
+\begin{align}
+    Z_{sub}(Y^*) = \max \quad & \frac{1}{T} \sum_{f,c} b_c \cdot A_{f,c} \\
+    \text{s.t.} \quad & A_{f,c} = 0 \quad \text{if } Y^*_{f,c} = 0 \\
+    & A_{f,c} \geq a^{min}_c \quad \text{if } Y^*_{f,c} = 1 \\
+    & \sum_c A_{f,c} \leq L_f \quad \forall f
+\end{align}
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# Subproblem objective (normalized)
+total_area = sum(farms.values())
+obj_expr = gp.quicksum(
+    A[(farm, food)] * benefits.get(food, 1.0)
+    for farm in farms for food in foods
+) / total_area
+sub.setObjective(obj_expr, GRB.MAXIMIZE)
+\end{verbatim}
+
+% =============================================================================
+\section{Dantzig-Wolfe Decomposition}
+% =============================================================================
+
+\subsection{Restricted Master Problem (RMP)}
+
+Select from a pool of columns (allocation patterns):
+
+\begin{align}
+    \max \quad & \sum_{k \in \mathcal{K}} \lambda_k \cdot c_k \\
+    \text{s.t.} \quad & \sum_{k} \lambda_k \leq |\mathcal{F}| \tag{convexity} \\
+    & \sum_k \lambda_k \cdot A^{(k)}_{f,\cdot} \leq L_f \quad \forall f \tag{resource} \\
+    & \text{Food group constraints} \\
+    & \lambda_k \geq 0
+\end{align}
+
+where the column objective is:
+\begin{equation}
+    c_k = \frac{1}{T} \sum_{(f,c) \in \text{col}_k} b_c \cdot A^{(k)}_{f,c}
+\end{equation}
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# RMP objective
+obj_expr = gp.quicksum(
+    lambda_vars[k] * col['objective'] 
+    for k, col in enumerate(columns)
+)
+model.setObjective(obj_expr, GRB.MAXIMIZE)
+\end{verbatim}
+
+\subsection{Pricing Subproblem}
+
+Generate new columns by maximizing reduced cost:
+
+\begin{equation}
+    \bar{c} = \frac{1}{T} \sum_{f,c} b_c \cdot A_{f,c} - \sum_f \pi_f
+\end{equation}
+
+where $\pi_f$ are dual prices from land constraints.
+
+If $\bar{c} < 0$, the column improves the RMP objective.
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# Pricing objective
+obj_expr = gp.quicksum(
+    A[(f, c)] * benefits.get(c, 1.0) for f in farms for c in foods
+) / total_area
+
+# Subtract dual contributions
+land_duals = sum(duals.get(f"Land_{f}", 0.0) for f in farms)
+obj_expr -= land_duals
+model.setObjective(obj_expr, GRB.MAXIMIZE)
+\end{verbatim}
+
+% =============================================================================
+\section{ADMM Decomposition}
+% =============================================================================
+
+\subsection{Overview}
+
+ADMM (Alternating Direction Method of Multipliers) splits the problem into:
+\begin{itemize}
+    \item \textbf{A-subproblem}: Continuous allocations
+    \item \textbf{Y-subproblem}: Binary selections
+    \item \textbf{Dual update}: Enforce consensus
+\end{itemize}
+
+\subsection{A-Subproblem}
+
+Optimize continuous allocations with augmented Lagrangian penalty:
+
+\begin{equation}
+    \max_A \quad \frac{1}{T} \sum_{f,c} b_c \cdot A_{f,c} - \frac{\rho}{2} \|A - Y + U\|_2^2
+\end{equation}
+
+Expanded form:
+\begin{equation}
+    \mathcal{L}_A = \frac{1}{T} \sum_{f,c} b_c \cdot A_{f,c} 
+                    - \sum_{f,c} U_{f,c} (A_{f,c} - Y_{f,c})
+                    - \frac{\rho}{2} \sum_{f,c} (A_{f,c} - Y_{f,c})^2
+\end{equation}
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# A-subproblem objective
+obj_expr = gp.quicksum(
+    A_vars[key] * benefits.get(key[1], 1.0) for key in A_vars
+) / total_area
+
+# ADMM penalty: (rho/2) ||A - Y + U||^2
+penalty = gp.quicksum(
+    (rho / 2) * (A_vars[key] - Y[key] + U[key])**2 for key in A_vars
+)
+
+model.setObjective(obj_expr - penalty, GRB.MAXIMIZE)
+\end{verbatim}
+
+\subsection{Y-Subproblem}
+
+Optimize binary selections to minimize consensus violation:
+
+\begin{equation}
+    \min_Y \quad \frac{\rho}{2} \sum_{f,c} (A_{f,c} - Y_{f,c} + U_{f,c})^2
+\end{equation}
+
+or equivalently:
+\begin{equation}
+    \min_Y \quad \frac{\rho}{2} \|A - Y + U\|_2^2 \quad \text{s.t. } Y \in \{0,1\}^{n}
+\end{equation}
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# Y-subproblem objective (minimize penalty)
+penalty = gp.quicksum(
+    (rho / 2) * (A[key] - Y_vars[key] + U[key])**2 for key in Y_vars
+)
+model.setObjective(penalty, GRB.MINIMIZE)
+\end{verbatim}
+
+\subsection{Dual Update}
+
+Update scaled dual variables:
+
+\begin{equation}
+    U^{(k+1)}_{f,c} = U^{(k)}_{f,c} + \rho (A^{(k+1)}_{f,c} - Y^{(k+1)}_{f,c})
+\end{equation}
+
+\textbf{Python implementation:}
+\begin{verbatim}
+# Dual update
+for key in U:
+    U[key] += rho * (A[key] - Y[key])
+\end{verbatim}
+
+\subsection{Convergence Criteria}
+
+ADMM converges when both residuals are small:
+
+\begin{align}
+    r^{(k)} &= \|A^{(k)} - Y^{(k)}\|_2 && \text{(primal residual)} \\
+    s^{(k)} &= \rho \|Y^{(k)} - Y^{(k-1)}\|_2 && \text{(dual residual)}
+\end{align}
+
+Convergence when $r^{(k)} < \epsilon$ and $s^{(k)} < \epsilon$.
+
+\textbf{Python implementation:}
+\begin{verbatim}
+primal_residual = np.sqrt(sum((A[key] - Y[key])**2 for key in A))
+dual_residual = np.sqrt(sum((rho * (Y[key] - Y_prev[key]))**2 for key in Y))
+
+if primal_residual < tolerance and dual_residual < tolerance:
+    print("ADMM Converged")
+    break
+\end{verbatim}
+
+% =============================================================================
+\section{Current Hybrid Strategy}
+% =============================================================================
+
+Two-phase approach combining classical LP with quantum sampling:
+
+\subsection{Phase 1: LP Relaxation}
+
+Solve continuous relaxation with Gurobi:
+
+\begin{align}
+    \max \quad & \frac{1}{T} \sum_{f,c} b_c \cdot A_{f,c} \\
+    \text{s.t.} \quad & 0 \leq A_{f,c} \leq L_f \cdot Y_{f,c} \\
+    & Y_{f,c} \in [0, 1] \tag{relaxed} \\
+    & \text{All other constraints}
+\end{align}
+
+\subsection{Phase 2: Binary Rounding/Sampling}
+
+Use QPU or simulated annealing to solve:
+
+\begin{equation}
+    Y^* = \arg\min_{Y \in \{0,1\}^n} \text{QUBO}(Y; A^{\text{LP}})
+\end{equation}
+
+Final objective:
+\begin{equation}
+    Z = \frac{1}{T} \sum_{f,c} b_c \cdot A^*_{f,c}
+\end{equation}
+
+% =============================================================================
+\section{Strategy Comparison}
+% =============================================================================
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Strategy} & \textbf{Master/Main Objective} & \textbf{Subproblem Objective} \\
+\midrule
+Benders & $\max \eta$ & $\max \frac{1}{T}\sum b_c A_{f,c}$ \\
+Dantzig-Wolfe & $\max \sum \lambda_k c_k$ & $\max (\frac{1}{T}\sum b_c A_{f,c} - \pi)$ \\
+ADMM & $\max \frac{b \cdot A}{T} - \text{penalty}$ & $\min \frac{\rho}{2}\|A - Y + U\|^2$ \\
+Hybrid & LP: $\max \frac{1}{T}\sum b_c A_{f,c}$ & QPU: $\min \text{QUBO}(Y)$ \\
+\bottomrule
+\end{tabular}
+\caption{Summary of objective functions across decomposition strategies}
+\end{table}
+
+% =============================================================================
+\section{Unified Objective Evaluation}
+% =============================================================================
+
+For comparing solutions across strategies, use the canonical objective:
+
+\begin{equation}
+    \boxed{Z_{\text{final}} = \frac{1}{T} \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} b_c \cdot A_{f,c}}
+\end{equation}
+
+\textbf{Python implementation:}
+\begin{verbatim}
+def evaluate_objective(solution, farms, foods, benefits):
+    total_area = sum(farms.values())
+    obj = sum(
+        solution.get(f"A_{farm}_{food}", 0.0) * benefits.get(food, 1.0)
+        for farm in farms for food in foods
+    )
+    return obj / total_area if total_area > 0 else 0.0
+\end{verbatim}
+
+\end{document}

@@ -111,14 +111,33 @@ def solve_with_admm(
     total_time = time.time() - start_time
     
     # Build final solution (use Y for binary, A for continuous)
+    # First, binarize Y values
+    Y_binary = {key: 1.0 if val > 0.5 else 0.0 for key, val in Y.items()}
+    
+    # ENFORCE LINKING CONSTRAINTS (critical for feasibility)
+    # If Y=0, force A=0; if Y=1, ensure A >= min_area
+    A_linked = {}
+    for key in A:
+        farm, food = key
+        y_val = Y_binary[key]
+        a_val = A[key]
+        
+        if y_val < 0.5:
+            # Y=0, force A=0
+            A_linked[key] = 0.0
+        else:
+            # Y=1, ensure A >= min_area
+            min_area = min_planting_area.get(food, 0.0001)
+            A_linked[key] = max(a_val, min_area)
+    
     final_solution = {
-        **{f"A_{f}_{c}": A[(f, c)] for f, c in A},
-        **{f"Y_{f}_{c}": 1.0 if Y[(f, c)] > 0.5 else 0.0 for f, c in Y}
+        **{f"A_{f}_{c}": A_linked[(f, c)] for f, c in A_linked},
+        **{f"Y_{f}_{c}": Y_binary[(f, c)] for f, c in Y_binary}
     }
     
-    # PROJECT TO FEASIBLE SPACE
+    # PROJECT TO FEASIBLE SPACE (land capacity)
     for farm in farms:
-        farm_total = sum(A.get((farm, c), 0.0) for c in foods)
+        farm_total = sum(A_linked.get((farm, c), 0.0) for c in foods)
         farm_capacity = farms[farm]
         
         if farm_total > farm_capacity + 1e-6:
@@ -127,10 +146,11 @@ def solve_with_admm(
                 key = f"A_{farm}_{c}"
                 if key in final_solution:
                     final_solution[key] *= scale_factor
+                    A_linked[(farm, c)] *= scale_factor
             print(f"  ⚠️  Projected {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
     
     total_area = sum(farms.values())
-    final_obj = sum(A[(f, c)] * benefits.get(c, 1.0) for f in farms for c in foods) / total_area
+    final_obj = sum(A_linked[(f, c)] * benefits.get(c, 1.0) for f in farms for c in foods) / total_area
     
     # Validate solution
     validation = validate_solution_constraints(

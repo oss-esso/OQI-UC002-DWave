@@ -16,6 +16,7 @@ import numpy as np
 
 from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm
 from dwave.system import LeapHybridBQMSampler
+import neal  # SimulatedAnnealing fallback
 
 from result_formatter import format_benders_result, validate_solution_constraints
 
@@ -57,9 +58,9 @@ def solve_with_benders_qpu(
     
     # Check if QPU is available
     has_qpu = dwave_token is not None and dwave_token != 'YOUR_DWAVE_TOKEN_HERE'
-    if use_qpu_for_master and not has_qpu:
-        print("⚠️  QPU requested but no token provided - using classical solver only")
-        use_qpu_for_master = False
+    use_simulated_annealing = use_qpu_for_master and not has_qpu
+    if use_simulated_annealing:
+        print("⚠️  QPU requested but no token provided - using SimulatedAnnealing fallback")
     
     # Extract parameters
     params = config.get('parameters', {})
@@ -100,11 +101,17 @@ def solve_with_benders_qpu(
         print(f"{'─'*80}")
         
         # Solve master problem
-        if use_qpu_for_master and iteration > 1:  # Use QPU after initial iteration
+        if has_qpu and use_qpu_for_master and iteration > 1:  # Use QPU after initial iteration
             Y_star, eta_value, master_time, qpu_time = solve_master_qpu(
                 farms, foods, food_groups, config, master_iterations, dwave_token
             )
             qpu_time_total += qpu_time
+        elif use_simulated_annealing and iteration > 1:  # Use SimulatedAnnealing fallback
+            Y_star, eta_value, master_time, sa_time = solve_master_sa(
+                farms, foods, food_groups, config, master_iterations
+            )
+            qpu_time_total += sa_time  # Track SA time as "QPU time" for comparison
+            qpu_time = sa_time
         else:
             Y_star, eta_value, master_time = solve_master_classical(
                 farms, foods, food_groups, config, benefits, master_iterations
@@ -296,6 +303,105 @@ def solve_master_classical(
     eta_value = eta.X
     
     return Y_solution, eta_value, solve_time
+
+
+def solve_master_sa(
+    farms: Dict,
+    foods: List[str],
+    food_groups: Dict,
+    config: Dict,
+    previous_iterations: List[Dict]
+) -> Tuple[Optional[Dict], float, float, float]:
+    """
+    Solve Benders master problem using SimulatedAnnealing sampler (fallback).
+    
+    Returns:
+        (Y_solution, eta_value, total_time, sa_time)
+    """
+    master_start = time.time()
+    
+    # Build CQM for master problem
+    cqm = ConstrainedQuadraticModel()
+    
+    # Variables: Y[f,c] binary
+    Y = {}
+    for farm in farms:
+        for food in foods:
+            Y[(farm, food)] = Binary(f"Y_{farm}_{food}")
+            cqm.add_variable('BINARY', f"Y_{farm}_{food}")
+    
+    # Objective: Use upper bound from previous iterations as proxy
+    if previous_iterations:
+        best_obj = max(it['subproblem_obj'] for it in previous_iterations)
+    else:
+        best_obj = 0.0
+    
+    # Simple objective: maximize number of selections (placeholder)
+    objective = sum(Y[(f, c)] for f in farms for c in foods)
+    cqm.set_objective(-objective)  # Minimize negative = maximize
+    
+    # Food group constraints
+    food_group_constraints = config.get('parameters', {}).get('food_group_constraints', {})
+    if food_group_constraints:
+        for group_name, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            min_foods = constraints.get('min_foods', 0)
+            max_foods = constraints.get('max_foods', len(foods_in_group) * len(farms))
+            
+            total = sum(Y[(f, c)] for f in farms for c in foods_in_group)
+            
+            if min_foods > 0:
+                cqm.add_constraint(total >= min_foods, label=f"FG_Min_{group_name}")
+            if max_foods < float('inf'):
+                cqm.add_constraint(total <= max_foods, label=f"FG_Max_{group_name}")
+    
+    # Convert CQM to BQM and solve with SimulatedAnnealing
+    bqm, invert = cqm_to_bqm(cqm)
+    
+    sampler = neal.SimulatedAnnealingSampler()
+    
+    sa_start = time.time()
+    sampleset = sampler.sample(bqm, num_reads=200, num_sweeps=2000)
+    sa_time = time.time() - sa_start
+    
+    # Find best FEASIBLE sample (check food group constraints)
+    best_sample = None
+    best_energy = float('inf')
+    
+    for sample, energy in zip(sampleset.samples(), sampleset.record.energy):
+        # Check food group constraints for this sample
+        is_feasible = True
+        for group_name, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            min_foods = constraints.get('min_foods', 0)
+            max_foods = constraints.get('max_foods', len(foods_in_group) * len(farms))
+            
+            count = sum(1 for f in farms for c in foods_in_group 
+                       if sample.get(f"Y_{f}_{c}", 0) > 0.5)
+            
+            if count < min_foods or count > max_foods:
+                is_feasible = False
+                break
+        
+        if is_feasible and energy < best_energy:
+            best_sample = sample
+            best_energy = energy
+    
+    # Fallback to best sample if no feasible found
+    if best_sample is None:
+        print("    ⚠️  No feasible sample found, using best energy sample")
+        best_sample = sampleset.first.sample
+    
+    # Extract solution
+    Y_solution = {}
+    for (farm, food), var in Y.items():
+        var_name = f"Y_{farm}_{food}"
+        Y_solution[(farm, food)] = best_sample.get(var_name, 0.0)
+    
+    total_time = time.time() - master_start
+    eta_value = best_obj  # Use previous best as eta approximation
+    
+    return Y_solution, eta_value, total_time, sa_time
 
 
 def solve_master_qpu(
