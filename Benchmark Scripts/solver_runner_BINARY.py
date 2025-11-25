@@ -553,24 +553,31 @@ def create_cqm_plots(farms, foods, food_groups, config):
     
     # Minimum plots per crop constraints
     # If a crop requires minimum area, convert to minimum number of plots
+    # NOTE: This is a CONDITIONAL constraint - only applies if crop is selected (U[food]=1)
+    # The constraint sum(Y) >= min_plots * U[food] means:
+    #   - If U[food]=0 (crop not selected): sum(Y) >= 0 (trivially satisfied)
+    #   - If U[food]=1 (crop selected): sum(Y) >= min_plots
     pbar.set_description("Adding minimum plot constraints")
     import math
     for food in foods:
         if food in min_planting_area and min_planting_area[food] > 0:
             min_plots = math.ceil(min_planting_area[food] / plot_area)
-            # If crop is planted anywhere, it must be planted on at least min_plots
-            cqm.add_constraint(
-                sum(Y[(farm, food)] for farm in farms) >= min_plots,
-                label=f"Min_Plots_{food}"
-            )
-            constraint_metadata['min_plots_per_crop'][food] = {
-                'type': 'min_plots_per_crop',
-                'food': food,
-                'min_area_ha': min_planting_area[food],
-                'plot_area_ha': plot_area,
-                'min_plots': min_plots
-            }
-            pbar.update(1)
+            # Only require min_plots IF the crop is selected (conditional on U)
+            # Skip adding if min_plots would be trivially satisfied (min_plots <= 1)
+            # since U-Y linking already ensures at least 1 plot if U=1
+            if min_plots > 1:
+                cqm.add_constraint(
+                    sum(Y[(farm, food)] for farm in farms) >= min_plots * U[food],
+                    label=f"Min_Plots_{food}"
+                )
+                constraint_metadata['min_plots_per_crop'][food] = {
+                    'type': 'min_plots_per_crop',
+                    'food': food,
+                    'min_area_ha': min_planting_area[food],
+                    'plot_area_ha': plot_area,
+                    'min_plots': min_plots
+                }
+                pbar.update(1)
     
     # Maximum plots per crop constraints
     # If a crop has maximum area, convert to maximum number of plots
@@ -812,12 +819,17 @@ def solve_with_pulp_plots(farms, foods, food_groups, config):
     for f in farms:
         model += pl.lpSum([X_pulp[(f, c)] for c in foods]) <= 1, f"Max_Assignment_{f}"
     
-    # Constraint 2: Minimum plots per crop
+    # Constraint 2: Minimum plots per crop (CONDITIONAL - only if crop is selected)
+    # NOTE: sum(X) >= min_plots * U means:
+    #   - If U=0 (crop not selected): sum(X) >= 0 (trivially satisfied)
+    #   - If U=1 (crop selected): sum(X) >= min_plots
+    # Skip if min_plots <= 1 since U-X linking already ensures at least 1 if U=1
     import math
     for crop in foods:
         if crop in min_planting_area and min_planting_area[crop] > 0:
             min_plots = math.ceil(min_planting_area[crop] / plot_area)
-            model += pl.lpSum([X_pulp[(f, crop)] for f in farms]) >= min_plots, f"Min_Plots_{crop}"
+            if min_plots > 1:
+                model += pl.lpSum([X_pulp[(f, crop)] for f in farms]) >= min_plots * U_pulp[crop], f"Min_Plots_{crop}"
     
     # Constraint 3: Maximum plots per crop
     for crop in foods:

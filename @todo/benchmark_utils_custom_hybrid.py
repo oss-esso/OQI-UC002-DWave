@@ -88,7 +88,8 @@ def run_farm_solver(farms_list, foods, food_groups, config, cqm, solver_name: st
                 'success': result['status'] == 'Optimal'
             }
             
-        elif solver_name == 'custom_hybrid' and dwave_token:
+        elif solver_name == 'custom_hybrid':
+            # Works with or without D-Wave token (uses SimulatedAnnealing if no token)
             result = solve_with_custom_hybrid_workflow(cqm, dwave_token)
             
             return {
@@ -98,6 +99,7 @@ def run_farm_solver(farms_list, foods, food_groups, config, cqm, solver_name: st
                 'solve_time': result['solve_time'],
                 'qpu_access_time': result.get('qpu_access_time'),
                 'iterations': result.get('iterations'),
+                'backend': 'QPU' if dwave_token else 'SimulatedAnnealing',
                 'success': result['status'] in ['Optimal', 'Converged']
             }
         else:
@@ -129,7 +131,8 @@ def run_patch_solver(patches_list, foods, food_groups, config, cqm, solver_name:
                 'success': result['status'] == 'Optimal'
             }
             
-        elif solver_name == 'custom_hybrid' and dwave_token:
+        elif solver_name == 'custom_hybrid':
+            # Works with or without D-Wave token (uses SimulatedAnnealing if no token)
             result = solve_with_custom_hybrid_workflow(cqm, dwave_token)
             
             return {
@@ -139,6 +142,7 @@ def run_patch_solver(patches_list, foods, food_groups, config, cqm, solver_name:
                 'solve_time': result['solve_time'],
                 'qpu_access_time': result.get('qpu_access_time'),
                 'iterations': result.get('iterations'),
+                'backend': 'QPU' if dwave_token else 'SimulatedAnnealing',
                 'success': result['status'] in ['Optimal', 'Converged']
             }
         else:
@@ -184,8 +188,8 @@ def run_single_benchmark(n_units: int, dwave_token: Optional[str] = None, total_
     farm_results = {}
     farm_results['gurobi'] = run_farm_solver(farms_list, foods, food_groups, config, cqm_farm, 'gurobi')
     
-    if dwave_token:
-        farm_results['custom_hybrid'] = run_farm_solver(farms_list, foods, food_groups, config, cqm_farm, 'custom_hybrid', dwave_token)
+    # Always run custom_hybrid - it uses SimulatedAnnealing when no D-Wave token
+    farm_results['custom_hybrid'] = run_farm_solver(farms_list, foods, food_groups, config, cqm_farm, 'custom_hybrid', dwave_token)
     
     results['scenarios']['farm'] = {
         'n_units': n_units,
@@ -208,8 +212,8 @@ def run_single_benchmark(n_units: int, dwave_token: Optional[str] = None, total_
     patch_results = {}
     patch_results['gurobi'] = run_patch_solver(patches_list, foods, food_groups, config, cqm_patch, 'gurobi')
     
-    if dwave_token:
-        patch_results['custom_hybrid'] = run_patch_solver(patches_list, foods, food_groups, config, cqm_patch, 'custom_hybrid', dwave_token)
+    # Always run custom_hybrid - it uses SimulatedAnnealing when no D-Wave token
+    patch_results['custom_hybrid'] = run_patch_solver(patches_list, foods, food_groups, config, cqm_patch, 'custom_hybrid', dwave_token)
     
     results['scenarios']['patch'] = {
         'n_units': n_units,
@@ -244,9 +248,12 @@ def print_summary(results: Dict):
             status = solver_result.get('status', 'Unknown')
             obj = solver_result.get('objective_value', 'N/A')
             time_val = solver_result.get('solve_time', 'N/A')
+            backend = solver_result.get('backend', '')
             
-            print(f"    {solver_name}: {status} | Obj: {obj} | Time: {time_val}s")
+            backend_str = f" [{backend}]" if backend else ""
+            print(f"    {solver_name}{backend_str}: {status} | Obj: {obj} | Time: {time_val}s")
             
             if solver_name == 'custom_hybrid' and 'iterations' in solver_result:
                 print(f"              Iterations: {solver_result['iterations']}")
-                print(f"              QPU Time: {solver_result.get('qpu_access_time', 'N/A')}s")
+                if solver_result.get('qpu_access_time'):
+                    print(f"              QPU Time: {solver_result.get('qpu_access_time')}s")
