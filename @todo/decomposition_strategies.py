@@ -72,17 +72,44 @@ class CurrentHybridStrategy(BaseDecompositionStrategy):
     
     def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
         from solver_runner_DECOMPOSED import solve_farm_with_hybrid_decomposition
+        from result_formatter import format_decomposition_result, validate_solution_constraints
         
         # Convert to format expected by existing solver
         farms_list = list(farms.keys())
         
-        result = solve_farm_with_hybrid_decomposition(
+        raw_result = solve_farm_with_hybrid_decomposition(
             farms=farms_list,
             foods=foods,
             food_groups=food_groups,
             config=config,
             token=kwargs.get('dwave_token'),
             **kwargs
+        )
+        
+        # Validate solution
+        validation = validate_solution_constraints(
+            raw_result['solution'], farms, foods, food_groups, farms, config, 'farm'
+        )
+        
+        # Wrap in standard format using format_decomposition_result
+        result = format_decomposition_result(
+            strategy_name='current_hybrid',
+            scenario_type='farm',
+            n_units=len(farms),
+            n_foods=len(foods),
+            total_area=sum(farms.values()),
+            objective_value=raw_result.get('final_objective', raw_result.get('objective_value', 0.0)),
+            solution=raw_result['solution'],
+            solve_time=raw_result['solve_time'],
+            num_iterations=1,
+            is_feasible=validation['is_feasible'],
+            validation_results=validation,
+            num_variables=len(farms) * len(foods) * 2,
+            num_constraints=len(farms) + len(food_groups) * 2,
+            status='Optimal' if validation['is_feasible'] else 'failed',
+            gurobi_time=raw_result.get('gurobi_time', 0),
+            qpu_time=raw_result.get('qpu_time', 0),
+            relaxation_objective=raw_result.get('relaxation_objective', 0)
         )
         
         return result

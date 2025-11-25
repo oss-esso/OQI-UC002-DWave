@@ -251,6 +251,21 @@ def solve_with_admm_qpu(
                     A_linked[(farm, c)] *= scale_factor
             print(f"  ⚠️  Projected {farm}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
     
+    # RE-CHECK MIN_AREA CONSTRAINT AFTER PROJECTION
+    # If scaling dropped A below min_area for selected crops, fix it
+    for key in A_linked:
+        farm, food = key
+        y_val = Y_binary.get(key, 0.0)
+        a_val = A_linked[key]
+        
+        if y_val > 0.5:  # Crop is selected
+            min_area = min_planting_area.get(food, 0.0001)
+            if a_val < min_area - 1e-6:
+                # Projection dropped below min_area - enforce min_area
+                A_linked[key] = min_area
+                final_solution[f"A_{farm}_{food}"] = min_area
+                print(f"  ⚠️  Fixed min_area for {farm}_{food}: {a_val:.4f} -> {min_area:.4f}")
+    
     # Recalculate objective with corrected A values
     total_area = sum(farms.values())
     final_obj = sum(A_linked[(f, c)] * benefits.get(c, 1.0) for f in farms for c in foods) / total_area

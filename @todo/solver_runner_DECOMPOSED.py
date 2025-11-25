@@ -1738,6 +1738,146 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
             y_var_name = f"Y_{f}_{c}"
             final_solution[y_var_name] = y_solution_cqm.get(y_var_name, 0)
     
+    # Check if QPU returned all zeros - if so, use relaxed Y values rounded
+    n_selected_qpu = sum(1 for f in farms for c in foods if final_solution[f"Y_{f}_{c}"] > 0.5)
+    if n_selected_qpu == 0:
+        print("  ⚠️  QPU returned all Y=0, using relaxed Y values instead")
+        for f in farms:
+            for c in foods:
+                y_var_name = f"Y_{f}_{c}"
+                # Round relaxed Y to binary (threshold 0.5)
+                final_solution[y_var_name] = 1.0 if Y_relaxed[(f, c)] > 0.5 else 0.0
+    
+    # ENFORCE FOOD GROUP MINIMUM CONSTRAINTS (SA/QPU may not satisfy these)
+    # NOTE: min_foods constraint counts UNIQUE foods selected (across all farms)
+    if food_group_constraints:
+        for group_name, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            min_foods_required = constraints.get('min_foods', 0)
+            
+            if min_foods_required > 0:
+                # Count UNIQUE foods selected (a food counts if selected on ANY farm)
+                unique_foods_selected = set()
+                for c in foods_in_group:
+                    if any(final_solution.get(f"Y_{f}_{c}", 0) > 0.5 for f in farms):
+                        unique_foods_selected.add(c)
+                
+                current_count = len(unique_foods_selected)
+                
+                if current_count < min_foods_required:
+                    # Need to add NEW unique foods to meet minimum
+                    shortfall = min_foods_required - current_count
+                    print(f"  ⚠️  Food group {group_name}: {current_count}/{min_foods_required} unique foods, adding {shortfall}")
+                    
+                    # Find foods in group NOT yet selected anywhere
+                    unselected_foods = [c for c in foods_in_group if c not in unique_foods_selected]
+                    
+                    # Sort by benefit (descending) using relaxed A values as proxy
+                    unselected_foods.sort(key=lambda c: sum(A_star[(f, c)] for f in farms), reverse=True)
+                    
+                    # For each missing food, select it on the farm with most remaining capacity
+                    for c in unselected_foods[:shortfall]:
+                        # Find farm with most remaining capacity
+                        farm_capacities = []
+                        for f in farms:
+                            current_usage = sum(final_solution.get(f"A_{f}_{food}", 0.0) 
+                                               for food in foods if final_solution.get(f"Y_{f}_{food}", 0) > 0.5)
+                            remaining = land_availability[f] - current_usage
+                            farm_capacities.append((f, remaining))
+                        farm_capacities.sort(key=lambda x: x[1], reverse=True)
+                        
+                        best_farm = farm_capacities[0][0]
+                        final_solution[f"Y_{best_farm}_{c}"] = 1.0
+                        # Use A* from relaxation, or min_area if A* is 0
+                        min_area = min_planting_area.get(c, 0.0001)
+                        final_solution[f"A_{best_farm}_{c}"] = max(A_star[(best_farm, c)], min_area)
+                        print(f"    + Added Y_{best_farm}_{c} with A={final_solution[f'A_{best_farm}_{c}']:.4f}")
+    
+    # Enforce linking constraints: If Y=1 but A=0, set A=min_area
+    for f in farms:
+        for c in foods:
+            if final_solution.get(f"Y_{f}_{c}", 0) > 0.5:
+                min_area = min_planting_area.get(c, 0.0001)
+                if final_solution.get(f"A_{f}_{c}", 0) < min_area:
+                    final_solution[f"A_{f}_{c}"] = min_area
+    
+    # PROJECT TO FEASIBLE SPACE (land capacity)
+    for f in farms:
+        farm_total = sum(final_solution.get(f"A_{f}_{food}", 0) for food in foods)
+        farm_capacity = land_availability[f]
+        
+        if farm_total > farm_capacity + 1e-6:
+            scale_factor = farm_capacity / farm_total
+            for c in foods:
+                final_solution[f"A_{f}_{c}"] = final_solution.get(f"A_{f}_{c}", 0) * scale_factor
+            print(f"  ⚠️  Projected {f}: {farm_total:.2f} -> {farm_capacity:.2f} ha")
+    
+    # RE-CHECK MIN_AREA AFTER PROJECTION - if A dropped below min_area for Y=1, 
+    # either fix it (if capacity allows) or deselect the crop
+    for f in farms:
+        farm_total = sum(final_solution.get(f"A_{f}_{food}", 0) for food in foods)
+        farm_capacity = land_availability[f]
+        remaining_capacity = farm_capacity - farm_total
+        
+        for c in foods:
+            if final_solution.get(f"Y_{f}_{c}", 0) > 0.5:
+                min_area = min_planting_area.get(c, 0.0001)
+                a_val = final_solution.get(f"A_{f}_{c}", 0)
+                if a_val < min_area - 1e-6:
+                    shortfall = min_area - a_val
+                    if shortfall <= remaining_capacity + 1e-6:
+                        # Can safely enforce min_area
+                        final_solution[f"A_{f}_{c}"] = min_area
+                        remaining_capacity -= shortfall
+                    else:
+                        # Cannot meet min_area - deselect this crop and set A=0
+                        final_solution[f"Y_{f}_{c}"] = 0.0
+                        final_solution[f"A_{f}_{c}"] = 0.0
+                        # Reclaim the area for remaining_capacity
+                        remaining_capacity += a_val
+            else:
+                # Y=0, ensure A=0 (fix linking constraint violation)
+                if final_solution.get(f"A_{f}_{c}", 0) > 0:
+                    remaining_capacity += final_solution.get(f"A_{f}_{c}", 0)
+                    final_solution[f"A_{f}_{c}"] = 0.0
+    
+    # RE-ENFORCE FOOD GROUP CONSTRAINTS after deselections
+    if food_group_constraints:
+        for group_name, constraints in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            min_foods_required = constraints.get('min_foods', 0)
+            
+            if min_foods_required > 0:
+                # Count UNIQUE foods selected (a food counts if selected on ANY farm)
+                unique_foods_selected = set()
+                for c in foods_in_group:
+                    if any(final_solution.get(f"Y_{f}_{c}", 0) > 0.5 for f in farms):
+                        unique_foods_selected.add(c)
+                
+                current_count = len(unique_foods_selected)
+                
+                if current_count < min_foods_required:
+                    shortfall = min_foods_required - current_count
+                    unselected_foods = [c for c in foods_in_group if c not in unique_foods_selected]
+                    unselected_foods.sort(key=lambda c: sum(A_star.get((f, c), 0) for f in farms), reverse=True)
+                    
+                    for c in unselected_foods[:shortfall]:
+                        # Find farm with most remaining capacity
+                        farm_capacities = []
+                        for f in farms:
+                            current_usage = sum(final_solution.get(f"A_{f}_{food}", 0) for food in foods)
+                            remaining = land_availability[f] - current_usage
+                            farm_capacities.append((f, remaining))
+                        farm_capacities.sort(key=lambda x: x[1], reverse=True)
+                        
+                        best_farm, best_remaining = farm_capacities[0]
+                        min_area = min_planting_area.get(c, 0.0001)
+                        
+                        if best_remaining >= min_area:
+                            final_solution[f"Y_{best_farm}_{c}"] = 1.0
+                            final_solution[f"A_{best_farm}_{c}"] = min_area
+                            print(f"    + Re-added Y_{best_farm}_{c} with A={min_area:.4f}")
+    
     # Calculate final objective using both A* and Y**
     # IMPORTANT: Don't use BQM energy! Evaluate the ORIGINAL objective function.
     # BQM energy includes penalties from constraints and is not comparable.
@@ -1746,12 +1886,12 @@ def solve_farm_with_hybrid_decomposition(farms, foods, food_groups, config, toke
          weights.get('nutrient_density', 0) * foods[c].get('nutrient_density', 0) -
          weights.get('environmental_impact', 0) * foods[c].get('environmental_impact', 0) +
          weights.get('affordability', 0) * foods[c].get('affordability', 0) +
-         weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * A_star[(f, c)] * final_solution[f"Y_{f}_{c}"]
+         weights.get('sustainability', 0) * foods[c].get('sustainability', 0)) * final_solution.get(f"A_{f}_{c}", 0) * final_solution.get(f"Y_{f}_{c}", 0)
         for f in farms for c in foods
     ) / total_area  # Normalize to match baseline formulation
     
     # Count how many Y variables are selected
-    n_selected = sum(1 for f in farms for c in foods if final_solution[f"Y_{f}_{c}"] > 0.5)
+    n_selected = sum(1 for f in farms for c in foods if final_solution.get(f"Y_{f}_{c}", 0) > 0.5)
     print(f"  ✓ Final objective: {final_objective:.6f} ({n_selected} crops selected)")
     print(f"  Decomposition benefit: Gurobi handled {len(A_star)} continuous vars, QPU handled {len(Y_binary)} binary vars")
     
