@@ -160,7 +160,10 @@ class BendersQPUStrategy(BaseDecompositionStrategy):
             max_iterations=kwargs.get('max_iterations', 50),
             gap_tolerance=kwargs.get('gap_tolerance', 1e-4),
             time_limit=kwargs.get('time_limit', 300.0),
-            use_qpu_for_master=kwargs.get('use_qpu_for_master', True)
+            use_qpu_for_master=kwargs.get('use_qpu_for_master', True),
+            no_improvement_cutoff=kwargs.get('no_improvement_cutoff', 3),
+            num_reads=kwargs.get('num_reads', 1000),
+            annealing_time=kwargs.get('annealing_time', 20)
         )
         return result  # Return new format directly
 

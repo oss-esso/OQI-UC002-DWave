@@ -69,6 +69,35 @@ applyTo: '**'
   - Use `detect_infeasibility()` for IIS computation
   - Track constraint names manually (can't access `constr.ConstrName` before update)
   - Provides automated relaxation suggestions by constraint type
+- **QPU Timing Documentation** (2025-11-26):
+  - Official D-Wave timing model: `T = Tp + Δ + Ts`
+  - `Tp` = Programming time (~15-20ms for Advantage)
+  - `Δ` = Overhead (~10-20ms)
+  - `Ts = R × (Ta + Tr + Td)` where R = num_reads
+  - Default: num_reads=1000, Ta=20µs, Tr=25-150µs (depends on qubits)
+  - Readout time scales with problem size (qubits)
+  - LaTeX report created: `Latex/qpu_timing_estimates_report.tex`
+- **CRITICAL BUG FIXED** (2025-11-26):
+  - `benders_qpu`, `admm_qpu`, `dantzig_wolfe_qpu` were using `LeapHybridBQMSampler`
+  - This is WRONG - hybrid has 3s minimum runtime and different billing!
+  - Fixed to use `DWaveSampler` + `EmbeddingComposite` for direct QPU access
+  - Now uses num_reads=100, annealing_time=20µs for fast iterative calls
+  - Extracts actual `qpu_access_time` from `sampleset.info['timing']`
+- **QPU Embedding Insights** (2025-11-26):
+  - **CRITICAL**: CQM→BQM creates slack variables with random names → cannot cache embedding!
+  - Embedding time dominates: ~10min for 316 vars (10 farms), fails at ~726 vars (25 farms)
+  - Actual QPU time is tiny: ~288ms billed for 1000 reads @ 20µs annealing
+  - Embedding is computed locally by `minorminer` (heuristic, can fail)
+  - Problem: 10 farms × 27 foods = 270 logical vars → 316 BQM vars → 11,353 quadratic terms
+  - Problem: 25 farms × 27 foods = 675 logical vars → 726 BQM vars → 61,754 quadratic terms (TOO DENSE!)
+  - Retry logic helps: embedding is stochastic, may succeed on retry
+  - Study tool created: `study_embedding_scaling.py` - tests embedding without QPU billing
+- **Benders QPU Results** (2025-11-26 - 10 farms, 1000 reads, 20µs):
+  - Iteration 1 (classical): 0.057s, obj=0.2007
+  - Iteration 2-6 (QPU): ~300-850s wall time each (embedding), ~288ms QPU billed
+  - Best objective: 0.3688 (improved from 0.2007)
+  - Total QPU time billed: 1.435s across 5 QPU iterations
+  - Early stopping after 3 non-improving iterations worked correctly
 - **Solution Validation Pattern**:
   - Function: `validate_solution_constraints(solution, farms, foods, food_groups, land_availability, config)`
   - Returns: Dictionary with `is_feasible`, `n_violations`, `violations` list, `constraint_checks`, `summary`

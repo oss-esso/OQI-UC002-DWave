@@ -10,7 +10,7 @@ from gurobipy import GRB
 from typing import Dict, List, Tuple, Optional
 import numpy as np
 
-from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm
+from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm, BinaryQuadraticModel
 from dwave.system import LeapHybridBQMSampler
 import neal  # SimulatedAnnealing fallback
 
@@ -536,15 +536,22 @@ def solve_y_subproblem_qpu(
             if max_foods < float('inf'):
                 cqm.add_constraint(total <= max_foods, label=f"FG_Max_{group_name}")
     
-    # Solve with hybrid solver
+    # Solve with Hybrid BQM solver (minimum 3s)
     sampler = LeapHybridBQMSampler(token=dwave_token)
     
     # Convert CQM to BQM
     bqm, invert = cqm_to_bqm(cqm)
     
     qpu_start = time.time()
-    sampleset = sampler.sample(bqm, label="ADMM_Y_Subproblem_QPU")
-    qpu_time = time.time() - qpu_start
+    sampleset = sampler.sample(bqm, time_limit=3, label="ADMM_Y_Subproblem_QPU")
+    wall_time = time.time() - qpu_start
+    
+    # Extract actual QPU access time from timing info
+    timing_info = sampleset.info.get('timing', {})
+    qpu_access_time_us = timing_info.get('qpu_access_time', 0)  # microseconds
+    qpu_time = qpu_access_time_us / 1_000_000  # Convert to seconds
+    
+    print(f"          [Hybrid] Wall: {wall_time:.3f}s, QPU access: {qpu_time*1000:.2f}ms")
     
     # Extract solution
     best_sample = sampleset.first.sample

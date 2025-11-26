@@ -441,7 +441,9 @@ def main():
         sys.exit(1)
     
     # Get D-Wave token
-    dwave_token = args.token or os.getenv('DWAVE_API_TOKEN')
+    token = '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551'
+    #token = None
+    dwave_token = token or args.token or os.getenv('DWAVE_API_TOKEN')
     
     # Create output directory
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

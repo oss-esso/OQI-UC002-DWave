@@ -14,8 +14,8 @@ from gurobipy import GRB
 from typing import Dict, List, Tuple, Optional
 import numpy as np
 
-from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm
-from dwave.system import LeapHybridBQMSampler
+from dimod import ConstrainedQuadraticModel, Binary, cqm_to_bqm, BinaryQuadraticModel
+from dwave.system import DWaveSampler, EmbeddingComposite, FixedEmbeddingComposite
 import neal  # SimulatedAnnealing fallback
 
 from result_formatter import format_benders_result, validate_solution_constraints
@@ -30,7 +30,10 @@ def solve_with_benders_qpu(
     max_iterations: int = 50,
     gap_tolerance: float = 1e-4,
     time_limit: float = 300.0,
-    use_qpu_for_master: bool = True
+    use_qpu_for_master: bool = True,
+    no_improvement_cutoff: int = 3,
+    num_reads: int = 1000,
+    annealing_time: int = 20
 ) -> Dict:
     """
     Solve farm allocation problem using Benders Decomposition with QPU integration.
@@ -50,6 +53,9 @@ def solve_with_benders_qpu(
         gap_tolerance: Convergence tolerance for optimality gap
         time_limit: Maximum total solve time in seconds
         use_qpu_for_master: Whether to use QPU for master problem
+        no_improvement_cutoff: Stop after N iterations without improvement
+        num_reads: Number of QPU samples per iteration
+        annealing_time: Annealing time in microseconds
     
     Returns:
         Formatted result dictionary
@@ -75,6 +81,14 @@ def solve_with_benders_qpu(
     best_solution = {}
     qpu_time_total = 0.0
     
+    # Early stopping tracking
+    no_improvement_count = 0
+    best_objective_so_far = -float('inf')
+    
+    # QPU EMBEDDING CACHE - compute once, reuse across iterations
+    cached_embedding = None
+    cached_sampler = None
+    
     print(f"\n{'='*80}")
     print(f"BENDERS DECOMPOSITION {'WITH QPU' if use_qpu_for_master else '(CLASSICAL)'}")
     print(f"{'='*80}")
@@ -82,14 +96,17 @@ def solve_with_benders_qpu(
     print(f"Master solver: {'QPU/Hybrid' if use_qpu_for_master else 'Gurobi'}")
     print(f"Subproblem solver: Gurobi (LP)")
     print(f"Max iterations: {max_iterations}")
+    print(f"Early stopping: {no_improvement_cutoff} non-improving iterations")
+    print(f"QPU params: num_reads={num_reads}, annealing_time={annealing_time}µs")
     print(f"{'='*80}\n")
     
     # Benders iteration loop
     iteration = 0
     converged = False
+    early_stopped = False
     Y_star = None  # Will store best Y solution
     
-    while iteration < max_iterations and not converged:
+    while iteration < max_iterations and not converged and not early_stopped:
         elapsed_time = time.time() - start_time
         if elapsed_time > time_limit:
             print(f"⏱️  Time limit reached at iteration {iteration}")
@@ -97,13 +114,15 @@ def solve_with_benders_qpu(
         
         iteration += 1
         print(f"\n{'─'*80}")
-        print(f"Benders Iteration {iteration}")
+        print(f"Benders Iteration {iteration}/{max_iterations} (no-improve: {no_improvement_count}/{no_improvement_cutoff})")
         print(f"{'─'*80}")
         
         # Solve master problem
         if has_qpu and use_qpu_for_master and iteration > 1:  # Use QPU after initial iteration
-            Y_star, eta_value, master_time, qpu_time = solve_master_qpu(
-                farms, foods, food_groups, config, master_iterations, dwave_token
+            Y_star, eta_value, master_time, qpu_time, cached_embedding, cached_sampler = solve_master_qpu(
+                farms, foods, food_groups, config, master_iterations, dwave_token,
+                cached_embedding=cached_embedding, cached_sampler=cached_sampler,
+                num_reads=num_reads, annealing_time=annealing_time
             )
             qpu_time_total += qpu_time
         elif use_simulated_annealing and iteration > 1:  # Use SimulatedAnnealing fallback
@@ -146,6 +165,15 @@ def solve_with_benders_qpu(
         rel_gap = abs(gap) / max(abs(upper_bound), 1.0)
         print(f"  Gap: {gap:.6f} (relative: {rel_gap:.6f})")
         
+        # Early stopping: check if objective improved
+        if subproblem_obj > best_objective_so_far + 1e-6:
+            best_objective_so_far = subproblem_obj
+            no_improvement_count = 0
+            print(f"  📈 New best objective: {best_objective_so_far:.4f}")
+        else:
+            no_improvement_count += 1
+            print(f"  📉 No improvement ({no_improvement_count}/{no_improvement_cutoff})")
+        
         master_iterations.append({
             'iteration': iteration,
             'eta': eta_value,
@@ -168,6 +196,16 @@ def solve_with_benders_qpu(
             }
             break
         
+        # Early stopping check
+        if no_improvement_count >= no_improvement_cutoff:
+            print(f"  ⛔ Early stopping: {no_improvement_cutoff} iterations without improvement")
+            early_stopped = True
+            best_solution = {
+                **{f"A_{f}_{c}": A_star.get((f, c), 0.0) for f in farms for c in foods},
+                **{f"Y_{f}_{c}": Y_star.get((f, c), 0.0) for f in farms for c in foods}
+            }
+            break
+        
         # Save current best solution
         best_solution = {
             **{f"A_{f}_{c}": A_star.get((f, c), 0.0) for f in farms for c in foods},
@@ -175,6 +213,14 @@ def solve_with_benders_qpu(
         }
     
     total_time = time.time() - start_time
+    
+    # Determine status
+    if converged:
+        status_msg = "✅ Converged"
+    elif early_stopped:
+        status_msg = f"⛔ Early stopped ({no_improvement_cutoff} non-improving iterations)"
+    else:
+        status_msg = "Max iterations reached"
     
     # PROJECT FINAL SOLUTION TO FEASIBLE SPACE
     A_dict_final = {(f, c): best_solution.get(f"A_{f}_{c}", 0.0) for f in farms for c in foods}
@@ -194,11 +240,11 @@ def solve_with_benders_qpu(
     print(f"Benders Decomposition Complete")
     print(f"{'='*80}")
     print(f"Iterations: {iteration}")
-    print(f"Final objective: {upper_bound:.4f}")
+    print(f"Final objective: {best_objective_so_far:.4f}")
     print(f"Total time: {total_time:.3f}s")
     if qpu_time_total > 0:
-        print(f"Total QPU time: {qpu_time_total:.3f}s")
-    print(f"Status: {'Converged' if converged else 'Max iterations reached'}")
+        print(f"Total QPU time: {qpu_time_total:.3f}s ({qpu_time_total*1000:.1f}ms)")
+    print(f"Status: {status_msg}")
     print(f"{'='*80}\n")
     
     # ENFORCE FOOD GROUP MINIMUM CONSTRAINTS (SA/QPU may not satisfy these)
@@ -505,15 +551,24 @@ def solve_master_qpu(
     food_groups: Dict,
     config: Dict,
     previous_iterations: List[Dict],
-    dwave_token: str
-) -> Tuple[Optional[Dict], float, float, float]:
+    dwave_token: str,
+    cached_embedding: Optional[Dict] = None,
+    cached_sampler = None,
+    num_reads: int = 1000,
+    annealing_time: int = 20
+) -> Tuple[Optional[Dict], float, float, float, Optional[Dict], any]:
     """
     Solve Benders master problem using QPU/Hybrid solver.
     
     Returns:
-        (Y_solution, eta_value, total_time, qpu_time)
+        (Y_solution, eta_value, total_time, qpu_time, embedding, sampler)
     """
+    from dwave.system import FixedEmbeddingComposite
+    import sys
     master_start = time.time()
+    
+    print(f"          [1/5] Building BQM...", end=" ", flush=True)
+    bqm_start = time.time()
     
     # Build CQM for master problem
     cqm = ConstrainedQuadraticModel()
@@ -552,16 +607,82 @@ def solve_master_qpu(
             if max_foods < float('inf'):
                 cqm.add_constraint(total <= max_foods, label=f"FG_Max_{group_name}")
     
-    # Solve with hybrid solver
-    sampler = LeapHybridBQMSampler(token=dwave_token)
-    
     # Convert CQM to BQM
     from dimod import cqm_to_bqm
     bqm, invert = cqm_to_bqm(cqm)
+    print(f"✓ ({time.time() - bqm_start:.2f}s)")
+    print(f"          [2/5] BQM: {len(bqm.variables)} vars, {len(bqm.quadratic)} interactions")
     
+    # Use cached sampler or create new one
+    if cached_sampler is not None:
+        print(f"          [3/5] Using cached D-Wave sampler ✓")
+        base_sampler = cached_sampler
+    else:
+        print(f"          [3/5] Connecting to D-Wave QPU...", end=" ", flush=True)
+        connect_start = time.time()
+        base_sampler = DWaveSampler(token=dwave_token)
+        print(f"✓ ({time.time() - connect_start:.2f}s) - {base_sampler.solver.name}")
+    
+    # NOTE: CQM→BQM creates slack variables with random names, so we CANNOT cache embedding
+    # Each call needs fresh embedding. For fast iterative use, consider Hybrid solver.
+    print(f"          [4/5] Using EmbeddingComposite (fresh embedding each time)")
+    print(f"          ⚠️  Note: Embedding takes ~10min for this problem size!")
+    
+    # QPU parameters from function arguments
+    print(f"          [5/5] Sampling (num_reads={num_reads}, anneal={annealing_time}µs)...", end=" ", flush=True)
     qpu_start = time.time()
-    sampleset = sampler.sample(bqm, label="Benders_Master_QPU")
-    qpu_time = time.time() - qpu_start
+    
+    # Retry logic for embedding failures
+    max_retries = 3
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            # Create fresh sampler for each attempt (minorminer is stochastic)
+            sampler = EmbeddingComposite(base_sampler)
+            
+            sampleset = sampler.sample(
+                bqm, 
+                num_reads=num_reads,
+                annealing_time=annealing_time,
+                label="Benders_Master_QPU"
+            )
+            wall_time = time.time() - qpu_start
+            
+            # Extract actual QPU access time from timing info
+            timing_info = sampleset.info.get('timing', {})
+            qpu_access_time_us = timing_info.get('qpu_access_time', 0)  # microseconds
+            qpu_programming_us = timing_info.get('qpu_programming_time', 0)
+            qpu_sampling_us = timing_info.get('qpu_sampling_time', 0)
+            qpu_time = qpu_access_time_us / 1_000_000  # Convert to seconds
+            
+            print(f"✓")
+            print(f"          [QPU] ═══════════════════════════════════════════════════")
+            print(f"          [QPU] Wall time:      {wall_time:.3f}s")
+            print(f"          [QPU] Programming:    {qpu_programming_us/1000:.2f}ms")
+            print(f"          [QPU] Sampling:       {qpu_sampling_us/1000:.2f}ms") 
+            print(f"          [QPU] ACCESS (BILLED): {qpu_access_time_us/1000:.2f}ms")
+            print(f"          [QPU] Embedding time: ~{wall_time - qpu_access_time_us/1_000_000:.0f}s (NOT billed)")
+            print(f"          [QPU] ═══════════════════════════════════════════════════")
+            
+            # Success - break out of retry loop
+            break
+            
+        except ValueError as e:
+            last_error = e
+            if "no embedding found" in str(e):
+                if attempt < max_retries - 1:
+                    print(f"\n          ⚠️  Embedding failed (attempt {attempt+1}/{max_retries}), retrying...")
+                    qpu_start = time.time()  # Reset timer for next attempt
+                else:
+                    print(f"✗ FAILED after {max_retries} attempts: {e}")
+                    raise
+            else:
+                print(f"✗ FAILED: {e}")
+                raise
+        except Exception as e:
+            print(f"✗ FAILED: {e}")
+            raise
     
     # Extract best sample
     best_sample = sampleset.first.sample
@@ -575,7 +696,8 @@ def solve_master_qpu(
     total_time = time.time() - master_start
     eta_value = best_obj  # Use previous best as eta approximation
     
-    return Y_solution, eta_value, total_time, qpu_time
+    # Return None for embedding since we can't cache it with CQM
+    return Y_solution, eta_value, total_time, qpu_time, None, base_sampler
 
 
 def solve_subproblem(

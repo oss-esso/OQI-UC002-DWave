@@ -1,0 +1,545 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+
+% Colors
+\definecolor{dwaveblue}{RGB}{0,84,147}
+\definecolor{qpugreen}{RGB}{34,139,34}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{D-Wave QPU Timing Analysis}
+\lhead{OQI-UC002-DWave}
+\rfoot{Page \thepage}
+
+\title{\textbf{QPU Access Time and Billing Estimates for\\Decomposition Strategies}\\[0.5em]
+\large Based on D-Wave Operation and Timing Documentation}
+\author{Agricultural Land Allocation Optimization Project\\OQI-UC002-DWave}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report provides detailed estimates of Quantum Processing Unit (QPU) access time and associated billing charges for various quantum-classical hybrid decomposition strategies implemented in the agricultural land allocation optimization project. Estimates are derived from official D-Wave documentation on operation timing and validated against actual solver parameters used in the codebase. We analyze four QPU-enabled approaches: \texttt{current\_hybrid}, \texttt{benders\_qpu}, \texttt{dantzig\_wolfe\_qpu}, and \texttt{admm\_qpu}, providing timing breakdowns for problem sizes ranging from 10 to 50 farm units.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+The D-Wave quantum computer operates through Quantum Machine Instructions (QMIs), each requiring a sequence of operations with well-defined timing characteristics. Understanding these timings is critical for:
+\begin{itemize}
+    \item Estimating computational costs before execution
+    \item Optimizing solver parameters for efficiency
+    \item Comparing quantum and classical approaches fairly
+    \item Budget planning for QPU quota consumption
+\end{itemize}
+
+This report focuses on the \textbf{QPU access time}, which represents the actual time billed by D-Wave and is computed as:
+\begin{equation}
+    T = T_p + \Delta + T_s
+    \label{eq:total_time}
+\end{equation}
+where:
+\begin{itemize}
+    \item $T_p$ = Programming time (typically 10--20 ms for Advantage systems)
+    \item $\Delta$ = Overhead time for low-level operations (10--20 ms)
+    \item $T_s$ = Total sampling time
+\end{itemize}
+
+%==============================================================================
+\section{D-Wave Timing Model}
+%==============================================================================
+
+\subsection{QPU Access Time Components}
+
+According to official D-Wave documentation, the sampling time is computed as:
+\begin{equation}
+    \frac{T_s}{R} \approx T_a + T_r + T_d
+    \label{eq:sampling_time}
+\end{equation}
+where:
+\begin{itemize}
+    \item $R$ = Number of reads (samples)
+    \item $T_a$ = Anneal time per sample
+    \item $T_r$ = Readout time per sample
+    \item $T_d$ = Delay time per sample
+\end{itemize}
+
+The delay time consists of optional components:
+\begin{equation}
+    T_d = \text{readout\_thermalization} + \text{reduce\_intersample\_correlation} + \text{reinitialize\_state}
+\end{equation}
+
+\subsection{Typical Parameter Values}
+
+Table~\ref{tab:default_params} shows the default parameter values used in our implementation.
+
+\begin{table}[H]
+\centering
+\caption{Default D-Wave Solver Parameters (from \texttt{dwave\_qpu\_adapter.py})}
+\label{tab:default_params}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Unit} \\
+\midrule
+\texttt{num\_reads} & 1000 & samples \\
+\texttt{annealing\_time} ($T_a$) & 20.0 & \si{\micro\second} \\
+\texttt{programming\_thermalization} & 1000.0 & \si{\micro\second} \\
+\texttt{readout\_thermalization} & 1000.0 & \si{\micro\second} \\
+\texttt{reduce\_intersample\_correlation} & true & -- \\
+\texttt{reinitialize\_state} & true & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Readout Time Dependency on Problem Size}
+
+A critical insight from the documentation is that \textbf{readout time depends on the number of qubits}:
+\begin{itemize}
+    \item Small problems ($\sim$12 qubits): $T_r \approx \SI{25}{\micro\second}$
+    \item Large problems ($\sim$5000 qubits): $T_r \approx \SI{150}{\micro\second}$
+\end{itemize}
+
+For our agricultural optimization problems with $n$ farms and 27 foods, the number of binary variables is:
+\begin{equation}
+    N_{\text{vars}} = n \times 27
+\end{equation}
+
+With minor embedding overhead (chain factor $\approx$ 2--4), the estimated qubit count becomes:
+\begin{equation}
+    N_{\text{qubits}} \approx (2 \text{ to } 4) \times N_{\text{vars}}
+\end{equation}
+
+%==============================================================================
+\section{Decomposition Strategy Analysis}
+%==============================================================================
+
+Our codebase implements seven decomposition strategies, of which four use QPU:
+
+\begin{enumerate}
+    \item \texttt{current\_hybrid}: Uses LeapHybridCQMSampler or LeapHybridBQMSampler
+    \item \texttt{benders\_qpu}: Benders decomposition with QPU for master problem
+    \item \texttt{dantzig\_wolfe\_qpu}: Column generation with QPU for pricing
+    \item \texttt{admm\_qpu}: ADMM with QPU for Y-subproblem
+\end{enumerate}
+
+\subsection{Current Hybrid Strategy}
+
+The \texttt{current\_hybrid} strategy uses D-Wave's Leap Hybrid solvers, which abstract away direct QPU management.
+
+\begin{table}[H]
+\centering
+\caption{Current Hybrid Strategy Timing Characteristics}
+\label{tab:current_hybrid}
+\begin{tabular}{lc}
+\toprule
+\textbf{Characteristic} & \textbf{Value} \\
+\midrule
+Solver Type & LeapHybridCQMSampler / LeapHybridBQMSampler \\
+Minimum Time Limit & 3.0 seconds \\
+QPU Calls per Solve & Variable (managed internally) \\
+Typical QPU Access Time & 10--100 ms per hybrid call \\
+QPU Time Fraction & $\approx$ 1--3\% of total solve time \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Billing Model}: Hybrid solvers bill based on problem complexity and actual QPU access within the hybrid workflow. The \texttt{qpu\_access\_time} field in the response indicates actual QPU time consumed.
+
+\subsection{Benders QPU Strategy}
+
+The \texttt{benders\_qpu} strategy uses QPU to solve the master problem (binary $Y$ variables) in each Benders iteration.
+
+\begin{table}[H]
+\centering
+\caption{Benders QPU Strategy Timing Characteristics}
+\label{tab:benders_qpu}
+\begin{tabular}{lc}
+\toprule
+\textbf{Characteristic} & \textbf{Value} \\
+\midrule
+Solver Type & LeapHybridBQMSampler (or SimulatedAnnealing fallback) \\
+Max Iterations & 50 \\
+QPU Calls per Solve & Up to 49 (first iteration classical) \\
+Problem per QPU Call & $n_{\text{farms}} \times n_{\text{foods}}$ binary variables \\
+Hybrid Time Limit & 3.0 seconds per call \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Dantzig-Wolfe QPU Strategy}
+
+The \texttt{dantzig\_wolfe\_qpu} strategy uses QPU for the pricing subproblem in column generation.
+
+\begin{table}[H]
+\centering
+\caption{Dantzig-Wolfe QPU Strategy Timing Characteristics}
+\label{tab:dw_qpu}
+\begin{tabular}{lc}
+\toprule
+\textbf{Characteristic} & \textbf{Value} \\
+\midrule
+Solver Type & LeapHybridBQMSampler (or SimulatedAnnealing fallback) \\
+Max Iterations & 50 \\
+QPU Calls per Solve & Up to 50 \\
+Problem per QPU Call & Pricing subproblem (smaller than full problem) \\
+Hybrid Time Limit & 3.0 seconds per call \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ADMM QPU Strategy}
+
+The \texttt{admm\_qpu} strategy uses QPU for the $Y$-subproblem in each ADMM iteration.
+
+\begin{table}[H]
+\centering
+\caption{ADMM QPU Strategy Timing Characteristics}
+\label{tab:admm_qpu}
+\begin{tabular}{lc}
+\toprule
+\textbf{Characteristic} & \textbf{Value} \\
+\midrule
+Solver Type & LeapHybridBQMSampler (or SimulatedAnnealing fallback) \\
+Max Iterations & 10 (default) \\
+QPU Calls per Solve & Up to 10 \\
+Problem per QPU Call & $n_{\text{farms}} \times n_{\text{foods}}$ binary variables \\
+Hybrid Time Limit & 3.0 seconds per call \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{QPU Access Time Estimates}
+%==============================================================================
+
+\subsection{Direct QPU Access (DWaveSampler)}
+
+For strategies using direct QPU access (not hybrid), we can estimate the QPU access time using the formulas from Section~2.
+
+\subsubsection{Calculation Methodology}
+
+Using the timing model from D-Wave documentation:
+\begin{align}
+    T_p &= \text{typical\_programming\_time} + \text{programming\_thermalization} \\
+    &\approx \SI{15}{\milli\second} + \SI{1}{\milli\second} = \SI{16}{\milli\second}
+\end{align}
+
+For sampling time per read:
+\begin{align}
+    T_{\text{sample}} &= T_a + T_r + T_d \\
+    T_a &= \SI{20}{\micro\second} \text{ (default annealing time)} \\
+    T_r &= \SI{25}{\micro\second} \text{ to } \SI{150}{\micro\second} \text{ (depends on qubits)} \\
+    T_d &\approx \SI{21}{\micro\second} + \text{readout\_thermalization}
+\end{align}
+
+With \texttt{readout\_thermalization} = \SI{1000}{\micro\second}:
+\begin{equation}
+    T_{\text{sample}} \approx 20 + T_r + 1021 = 1041 + T_r \text{ } (\si{\micro\second})
+\end{equation}
+
+\subsubsection{Problem Size Estimates}
+
+Table~\ref{tab:direct_qpu_estimates} shows QPU access time estimates for different problem sizes.
+
+\begin{table}[H]
+\centering
+\caption{Direct QPU Access Time Estimates (1000 reads)\protect\footnotemark}
+\label{tab:direct_qpu_estimates}
+\begin{tabular}{ccccccc}
+\toprule
+\textbf{Farms} & \textbf{Variables} & \textbf{Est. Qubits} & $T_r$ (\si{\micro\second}) & $T_s$ (ms) & $T$ (ms) & \textbf{Cost} \\
+\midrule
+10 & 270 & $\sim$800 & 60 & 112.1 & 143 & 0.14 min \\
+25 & 675 & $\sim$2000 & 90 & 115.1 & 146 & 0.15 min \\
+50 & 1350 & $\sim$4000 & 130 & 119.1 & 150 & 0.15 min \\
+100 & 2700 & $\sim$5000+ & 150 & 121.1 & 152 & 0.15 min \\
+\bottomrule
+\end{tabular}
+\end{table}
+\footnotetext{Cost based on quota conversion rate of 1 and 1 minute = 60,000 ms}
+
+\subsection{Hybrid Solver Access (LeapHybrid)}
+
+For hybrid solvers, the timing model is different:
+\begin{itemize}
+    \item Minimum run time: 3 seconds
+    \item QPU access time is a fraction of total run time
+    \item Typical QPU access: 10--100 ms per hybrid call
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Estimated QPU Time per Hybrid Solver Call}
+\label{tab:hybrid_estimates}
+\begin{tabular}{cccc}
+\toprule
+\textbf{Farms} & \textbf{Problem Size} & \textbf{Hybrid Time (s)} & \textbf{Est. QPU Time (ms)} \\
+\midrule
+10 & Small & 3.0 & 20--40 \\
+25 & Medium & 3.0--5.0 & 40--80 \\
+50 & Large & 5.0--10.0 & 80--150 \\
+100 & Very Large & 10.0--30.0 & 100--300 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{Total Billed Time by Strategy}
+%==============================================================================
+
+Based on the analysis above, we estimate the total QPU access time (billed time) for each strategy.
+
+\subsection{Summary Table}
+
+\begin{table}[H]
+\centering
+\caption{Total Estimated QPU Access Time by Strategy (25 farms, 27 foods)\protect\footnotemark}
+\label{tab:total_billed}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Strategy} & \textbf{QPU Calls} & \textbf{Time/Call} & \textbf{Total QPU} & \textbf{Total QPU} & \textbf{Quota} \\
+ & & \textbf{(ms)} & \textbf{(ms)} & \textbf{(s)} & \textbf{(min)} \\
+\midrule
+\texttt{current\_hybrid} & 1 & 40--80 & 40--80 & 0.04--0.08 & $<$0.01 \\
+\texttt{benders\_qpu} & 10--30 & 40--80 & 400--2400 & 0.4--2.4 & 0.01--0.04 \\
+\texttt{dantzig\_wolfe\_qpu} & 10--30 & 30--60 & 300--1800 & 0.3--1.8 & 0.01--0.03 \\
+\texttt{admm\_qpu} & 10 & 40--80 & 400--800 & 0.4--0.8 & 0.01--0.01 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\footnotetext{Actual iterations depend on convergence}
+
+\subsection{Detailed Breakdown: 10 Farms Configuration}
+
+\begin{table}[H]
+\centering
+\caption{QPU Timing Breakdown for 10-Farm Configuration}
+\label{tab:breakdown_10}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Strategy} & \textbf{Iterations} & \textbf{QPU/Iter (ms)} & \textbf{Total QPU (ms)} & \textbf{Total Hybrid (s)} \\
+\midrule
+\texttt{current\_hybrid} & 1 & 20--40 & 20--40 & 3.0 \\
+\texttt{benders\_qpu} & $\sim$15 & 20--40 & 300--600 & 45--75 \\
+\texttt{dantzig\_wolfe\_qpu} & $\sim$20 & 15--30 & 300--600 & 60--100 \\
+\texttt{admm\_qpu} & 10 & 20--40 & 200--400 & 30--40 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Detailed Breakdown: 25 Farms Configuration}
+
+\begin{table}[H]
+\centering
+\caption{QPU Timing Breakdown for 25-Farm Configuration}
+\label{tab:breakdown_25}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Strategy} & \textbf{Iterations} & \textbf{QPU/Iter (ms)} & \textbf{Total QPU (ms)} & \textbf{Total Hybrid (s)} \\
+\midrule
+\texttt{current\_hybrid} & 1 & 40--80 & 40--80 & 3.0--5.0 \\
+\texttt{benders\_qpu} & $\sim$20 & 40--80 & 800--1600 & 60--120 \\
+\texttt{dantzig\_wolfe\_qpu} & $\sim$25 & 30--60 & 750--1500 & 75--150 \\
+\texttt{admm\_qpu} & 10 & 40--80 & 400--800 & 30--50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Detailed Breakdown: 50 Farms Configuration}
+
+\begin{table}[H]
+\centering
+\caption{QPU Timing Breakdown for 50-Farm Configuration}
+\label{tab:breakdown_50}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Strategy} & \textbf{Iterations} & \textbf{QPU/Iter (ms)} & \textbf{Total QPU (ms)} & \textbf{Total Hybrid (s)} \\
+\midrule
+\texttt{current\_hybrid} & 1 & 80--150 & 80--150 & 5.0--10.0 \\
+\texttt{benders\_qpu} & $\sim$25 & 80--150 & 2000--3750 & 75--180 \\
+\texttt{dantzig\_wolfe\_qpu} & $\sim$30 & 60--120 & 1800--3600 & 90--210 \\
+\texttt{admm\_qpu} & 10 & 80--150 & 800--1500 & 30--60 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{Billing and Quota Consumption}
+%==============================================================================
+
+\subsection{D-Wave Billing Model}
+
+D-Wave charges based on \texttt{qpu\_access\_time}, with rates depending on the solver:
+\begin{itemize}
+    \item \textbf{Direct QPU (DWaveSampler)}: Full QPU access time is billed
+    \item \textbf{Hybrid Solvers}: Only actual QPU access within hybrid is billed
+    \item \textbf{Quota Conversion Rate}: Typically 1 (1 ms QPU time = 1 ms quota)
+\end{itemize}
+
+\subsection{Monthly Quota Estimates}
+
+Assuming monthly free quota of 1 minute (60,000 ms) for Leap accounts:
+
+\begin{table}[H]
+\centering
+\caption{Estimated Runs per Month (1 minute free quota)}
+\label{tab:monthly_runs}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Strategy} & \textbf{QPU/Run (ms)} & \textbf{Runs/Month} & \textbf{Sufficient?} \\
+\midrule
+\texttt{current\_hybrid} & 60 & 1000 & {\color{qpugreen}\checkmark} Excellent \\
+\texttt{benders\_qpu} (10 farms) & 450 & 133 & {\color{qpugreen}\checkmark} Good \\
+\texttt{benders\_qpu} (25 farms) & 1200 & 50 & {\color{qpugreen}\checkmark} Adequate \\
+\texttt{benders\_qpu} (50 farms) & 2875 & 20 & {\color{orange}$\sim$} Limited \\
+\texttt{admm\_qpu} (25 farms) & 600 & 100 & {\color{qpugreen}\checkmark} Good \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{Optimization Recommendations}
+%==============================================================================
+
+\subsection{Reducing QPU Access Time}
+
+Based on the timing model, we can optimize QPU usage:
+
+\begin{enumerate}
+    \item \textbf{Reduce \texttt{num\_reads}}: Current default is 1000; for iterative methods, 100--500 may suffice
+    \item \textbf{Reduce \texttt{readout\_thermalization}}: Current \SI{1000}{\micro\second} can be reduced to \SI{0}{\micro\second} for faster sampling
+    \item \textbf{Use shorter annealing times}: For quick exploration, \SI{5}{\micro\second} to \SI{10}{\micro\second} may work
+    \item \textbf{Limit iterations}: Early stopping when convergence is achieved
+\end{enumerate}
+
+\subsection{Optimized Parameter Set}
+
+\begin{table}[H]
+\centering
+\caption{Optimized vs Default Parameters for Iterative Methods}
+\label{tab:optimized}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Optimized} \\
+\midrule
+\texttt{num\_reads} & 1000 & 200 \\
+\texttt{annealing\_time} & \SI{20}{\micro\second} & \SI{10}{\micro\second} \\
+\texttt{readout\_thermalization} & \SI{1000}{\micro\second} & \SI{0}{\micro\second} \\
+\midrule
+\textbf{Estimated QPU/call} & \SI{146}{\milli\second} & \SI{23}{\milli\second} \\
+\textbf{Speedup Factor} & 1$\times$ & 6$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{Conclusions}
+%==============================================================================
+
+\subsection{Key Findings}
+
+\begin{enumerate}
+    \item \textbf{Hybrid solvers are most efficient}: The \texttt{current\_hybrid} approach provides the best QPU time efficiency, as the hybrid solver optimizes QPU usage internally.
+    
+    \item \textbf{Iterative methods accumulate QPU time}: Strategies like \texttt{benders\_qpu} and \texttt{dantzig\_wolfe\_qpu} can consume 10--50$\times$ more QPU time than single-call hybrid approaches due to multiple iterations.
+    
+    \item \textbf{ADMM is most predictable}: With a fixed 10 iterations (default), \texttt{admm\_qpu} provides consistent and predictable QPU consumption.
+    
+    \item \textbf{Problem size impact is moderate}: QPU access time scales sublinearly with problem size due to the dominance of programming and thermalization overhead.
+    
+    \item \textbf{Free quota is adequate for development}: The standard 1 minute/month Leap quota supports 50--1000 optimization runs depending on strategy and problem size.
+\end{enumerate}
+
+\subsection{Recommended Strategy Selection}
+
+\begin{table}[H]
+\centering
+\caption{Strategy Recommendations by Use Case}
+\label{tab:recommendations}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Use Case} & \textbf{Recommended Strategy} & \textbf{Rationale} \\
+\midrule
+Production/Many runs & \texttt{current\_hybrid} & Lowest QPU cost \\
+Research/Best quality & \texttt{benders\_qpu} & Best solution quality \\
+Quick prototyping & \texttt{admm\_qpu} & Predictable time \\
+Large problems & \texttt{current\_hybrid} & Scales best \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\appendix
+\section{SAPI Timing Fields Reference}
+%==============================================================================
+
+The following fields are returned by the D-Wave SAPI for timing analysis:
+
+\begin{table}[H]
+\centering
+\caption{SAPI Timing Fields}
+\label{tab:sapi_fields}
+\begin{tabular}{lp{10cm}}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+\texttt{qpu\_access\_time} & Total time in QPU (billed time) \\
+\texttt{qpu\_programming\_time} & Time to program the QPU ($T_p$) \\
+\texttt{qpu\_sampling\_time} & Total time for all samples ($T_s$) \\
+\texttt{qpu\_anneal\_time\_per\_sample} & Time for one anneal ($T_a$) \\
+\texttt{qpu\_readout\_time\_per\_sample} & Time for one read ($T_r$) \\
+\texttt{qpu\_delay\_time\_per\_sample} & Delay between anneals ($T_d$) \\
+\texttt{qpu\_access\_overhead\_time} & Overhead time ($\Delta$) \\
+\texttt{total\_post\_processing\_time} & Server-side postprocessing \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Example SAPI Timing Response}
+
+From D-Wave documentation:
+\begin{verbatim}
+{'qpu_sampling_time': 80.78,
+ 'qpu_anneal_time_per_sample': 20.0,
+ 'qpu_readout_time_per_sample': 39.76,
+ 'qpu_access_time': 16016.18,
+ 'qpu_access_overhead_time': 10426.82,
+ 'qpu_programming_time': 15935.4,
+ 'qpu_delay_time_per_sample': 21.02,
+ 'total_post_processing_time': 809.0,
+ 'post_processing_overhead_time': 809.0}
+\end{verbatim}
+
+This example shows:
+\begin{itemize}
+    \item Programming time dominates ($\sim$16 ms)
+    \item Sampling is very fast ($\sim$81 µs for the entire run)
+    \item Total QPU access time: $\sim$16 ms
+\end{itemize}
+
+\end{document}
