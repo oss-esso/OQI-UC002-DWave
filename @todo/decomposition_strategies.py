@@ -20,6 +20,7 @@ class DecompositionStrategy(str, Enum):
     CURRENT_HYBRID = "current_hybrid"
     BENDERS = "benders"
     BENDERS_QPU = "benders_qpu"
+    BENDERS_HIERARCHICAL = "benders_hierarchical"
     DANTZIG_WOLFE = "dantzig_wolfe"
     DANTZIG_WOLFE_QPU = "dantzig_wolfe_qpu"
     ADMM = "admm"
@@ -168,6 +169,35 @@ class BendersQPUStrategy(BaseDecompositionStrategy):
         return result  # Return new format directly
 
 
+class BendersHierarchicalStrategy(BaseDecompositionStrategy):
+    """Hierarchical Benders decomposition with graph partitioning for large problems."""
+    
+    def __init__(self):
+        super().__init__(
+            name="Benders Hierarchical (QPU)",
+            description="Hierarchical graph partitioning for large-scale problems, inspired by QAOA-in-QAOA"
+        )
+    
+    def solve(self, farms: Dict, foods: List[str], food_groups: Dict, config: Dict, **kwargs) -> Dict:
+        from decomposition_benders_hierarchical import solve_with_benders_hierarchical
+        
+        result = solve_with_benders_hierarchical(
+            farms=farms,
+            foods=foods,
+            food_groups=food_groups,
+            config=config,
+            dwave_token=kwargs.get('dwave_token', None),
+            max_iterations=kwargs.get('max_iterations', 50),
+            gap_tolerance=kwargs.get('gap_tolerance', 1e-4),
+            time_limit=kwargs.get('time_limit', 600.0),
+            max_embeddable_vars=kwargs.get('max_embeddable_vars', 150),
+            use_qpu=kwargs.get('use_qpu', True),
+            num_reads=kwargs.get('num_reads', 200),
+            annealing_time=kwargs.get('annealing_time', 20)
+        )
+        return result  # Return new format directly
+
+
 class DantzigWolfeStrategy(BaseDecompositionStrategy):
     """Dantzig-Wolfe decomposition strategy (classical only)."""
     
@@ -274,6 +304,7 @@ class DecompositionFactory:
         DecompositionStrategy.CURRENT_HYBRID: CurrentHybridStrategy,
         DecompositionStrategy.BENDERS: BendersStrategy,
         DecompositionStrategy.BENDERS_QPU: BendersQPUStrategy,
+        DecompositionStrategy.BENDERS_HIERARCHICAL: BendersHierarchicalStrategy,
         DecompositionStrategy.DANTZIG_WOLFE: DantzigWolfeStrategy,
         DecompositionStrategy.DANTZIG_WOLFE_QPU: DantzigWolfeQPUStrategy,
         DecompositionStrategy.ADMM: ADMMStrategy,

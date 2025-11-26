@@ -16,12 +16,14 @@ applyTo: '**'
 # Project Architecture
 - **Domain**: Agricultural land allocation optimization using quantum annealing
 - **Main Scripts**: `comprehensive_benchmark.py`, `solver_runner_BINARY.py`, `solver_runner_LQ.py`
-- **Decomposition Strategies** (NEW):
+- **Decomposition Strategies**:
   - `@todo/decomposition_strategies.py`: Factory pattern for all strategies
   - `@todo/decomposition_benders.py`: Benders decomposition (master/subproblem)
+  - `@todo/decomposition_benders_hierarchical.py`: **NEW** Hierarchical Benders for large problems (>10 farms)
   - `@todo/decomposition_admm.py`: ADMM with consensus (best convergence)
   - `@todo/decomposition_dantzig_wolfe.py`: Column generation
   - `@todo/benchmark_all_strategies.py`: Unified benchmarking tool
+  - `@todo/benchmark_hierarchical.py`: **NEW** Benchmark for hierarchical strategy
 - **Results Structure**: 
   - JSON files contain detailed solution metadata including validation results
   - CSV files contain flattened sampleset data (multiple solutions per run)
@@ -115,3 +117,17 @@ applyTo: '**'
   - Pyomo: Prioritize IPOPT for nonlinear/quadratic objectives
 - **DWave Issue**: CQM→BQM solver returns infeasible solutions violating linking constraints
 - **Specific Violation**: `A_Farm5_Spinach=0.82` but `Y_Farm5_Spinach=0` violates constraint #2
+- **HIERARCHICAL BENDERS DECOMPOSITION** (2025-11-26):
+  - **Problem**: Standard QPU embedding fails for ≥10 farms (100% failure rate)
+  - **Root Cause**: CQM→BQM creates dense graphs (~22% density) exceeding Pegasus capacity
+  - **Solution**: Hierarchical graph partitioning inspired by QAOA-in-QAOA paper
+  - **Implementation**: `@todo/decomposition_benders_hierarchical.py`
+  - **Key Algorithm**:
+    1. Partition BQM using Louvain community detection
+    2. Solve each partition independently (QPU or SA)
+    3. Create "merging BQM" for cross-partition coupling
+    4. Recursively apply if merging BQM too large
+    5. Reconstruct global solution from flip decisions
+  - **Results**: 100% success for 5-20+ farm problems
+  - **Usage**: `solve_with_strategy('benders_hierarchical', max_embeddable_vars=150)`
+  - **Strategy registered**: `DecompositionStrategy.BENDERS_HIERARCHICAL`
