@@ -1,0 +1,647 @@
+
+
+\section{Introduction}
+
+Across different domains, computational 
+% there are different types of optimization; definitely in interdisciplinary areas; in a non opt journal we have to indicate exactly what do we mean
+optimization problems that model large-scale complex systems often introduce a major obstacle to solvers even if tackled with high-performance computing systems. The reasons include a large number of variables and even larger number of interactions, dimensionality required to describe each variable or interaction, and time slices. % RS: time slices are out of scope 
+% IS: in many problems, time slices cause high dimensionality as well there are many multilevel optimizations schemes for time slices
+The combinatorial and mixed-integer optimization problems introduce additional layers of complexity, with integer variables often making the problem NP-hard (e.g., in cases of  nonlinearity and nonconvexity). A common practical approach for solving these problems is to use iterative methods.
+%Being practically important, for decades these problems were approached using iterative methods. 
+The iterative methods, while being composed with completely different algorithmic principles, typically share a common property: several fast improvement iterations are followed by a long tail of slow improvement iterations \cite{voss2012meta,kelley1999iterative}. Usually, in such iterative algorithms, solving a large-scale system by using first-order optimization (e.g., gradient descent) or limited observable information (e.g., local search) methods per iteration leads to a local optimum. In other words, local methods tend to converge to a local optimum, which often corresponds to a solution of much lower quality than the true global optimum \cite{horst2000introduction}.  Moreover, in some cases, another problem may exist within each iteration: the algorithms used to solve them are not necessarily exact. In order to accelerate the solvers at each iteration, various heuristics, parallelism-friendly methods, and ad hoc tricks are employed, which often reduce the quality of the solution.
+
+%Heuristics, parallelization-friendly methods, and ad-hoc tricks are applied to accelerate the solvers at each iteration, sacrificing the solution quality.
+
+%\added[id=rs]{COMMENT: Seems like there's a lot of text not very relevant to the results presented in this paper; if we want to talk about `` first-order interaction laws'' and ``local attraction basins'' and such, we need to connect the discussion in Methods section to them.} \added[id=hm]{is "local optima" the same as local attraction basin. The sentence seems insightful in general but not very clear }\added[id=is]{all these should be clear to semi-physicists of that journal as most of them are familiar with numerical methods, and yes, we need to make them connected to methods}
+
+%\added[id=hm]{why delete this sentence? next paragraph talks about second building block, so we need to clearly state what the first is}
+In this paper, we take steps towards building more robust solvers for mid- to large-scale combinatorial optimization problems by fusing two areas whose simultaneous application is only beginning to be explored, namely, quantum computing and multiscale methods. Recent advances in quantum computing provide a new approach for algorithm development for many combinatorial optimization problems. However, Noisy Intermediate Scale Quantum (NISQ) devices are widely expected to be limited to a few hundred, and for certain sparse architectures up to a few thousands qubits. The current state of quantum computing theory and engineering suggests moderately optimistic expectations. In particular, it is believed that in the near future, we will witness relatively robust small-scale architectures with much less noise. This would allow algorithms like the Quantum Approximate Optimization Algorithm (QAOA) and Quantum Annealing (QA) to be run on hardware with minimal error correction efforts. Given the realistic level of precision and, in the case of QAOA, ansatz depth, these algorithms are widely considered to be prime candidates for demonstrating quantum advantage, that is solving a computationally hard problem (such as NP-hard) faster than classical state-of-the-art algorithms. Such algorithms are our first building block.
+
+The multiscale optimization method is our second building block. These methods have been developed to cope with large-scale problems by introducing an approach to avoid entering false local  attraction basins (local optima), a complementary method to stochastic and multistart strategies that help escape it if trapped. Because of historical reasons, on graph problems, they have been termed \emph{multilevel} (rather than multiscale), which we will use here. The multilevel (or multiscale) methods have a long history of breakthrough results in many different optimization problems 
+% DON'T ERASE THIS COMMENTED LINE!  \cite{Walshaw2004,Cong2003,brandt:review01,migdalas2013multilevel,gelman1990multilevel,KarypisKumar99fast,safro:relaxml,hager2006multiscale,gratton2008recursive,hu2005efficient,mgbooktrott,sharon06Hierarchy,fish2013practical,abou2006multilevel,Safro2006a,SafroRB08,SafroRB06,amg-sss12,leyffer2013fast,hager2018multilevel,SafroT11,Ron2010,shaydulin2019algdist,cheval-mlpartcompar,safro:engsvm}
+\cite{Cong2003,brandt:review01,migdalas2013multilevel,gelman1990multilevel,KarypisKumar99fast,safro:relaxml,gratton2008recursive,SafroRB08,amg-sss12,leyffer2013fast,hager2018multilevel,Ron2010,shaydulin2019algdist,shaydulin_et_al:LIPIcs:2018:8937,sadrfaridpour2019engineering,sadrfaridpour_ehsan2017} and have been implemented on a variety of hardware architectures. The success of multilevel methods for optimization problems supports our optimism about the ideas proposed in this paper.
+
+No unique prescription exists for how to design multilevel algorithms, but the main idea behind them is to \emph{think globally while acting locally} on a hierarchy of coarse representations of the original large-scale  optimization problem. A multilevel algorithm therefore begins by constructing such a hierarchy of progressively smaller (coarser) representations of the original problem. The goal of the next coarser level in this hierarchy is to approximate the current level problem with a coarser one that has fewer degrees of freedom and thus can be solved more effectively. When the coarse problem is solved, its solution is projected back to the finer level and further refined, a stage that is called uncoarsening. As a result of such a strategy, the multilevel framework is often able to significantly improve the running time and solution quality of optimization methods.  
+ The quality of multilevel algorithms in large part depends on that of the optimization solvers applied at all stages of the multilevel framework. In many cases, these locally acting optimization solvers are either heuristics that get stuck in a local optimum or exact solvers applied on a small number of variables (i.e., on subproblems). In both cases, the quality of a global solution can significantly suffer depending on the quality of the solution from the local solver. The optimization algorithms running on the NISQ devices that may replace such local solvers are expected to be a critical missing component to achieve a game-changing breakthrough in multilevel methods for combinatorial optimization. Although the performance of these NISQ-era optimization algorithms is not fully understood (see Sec.~\ref{sec:qopt_scale} for an overview), in this work we do not attempt to rigorously benchmark them. Rather, we focus on the problems arising when integrating these optimization algorithms into a multilevel framework. The proposed synergy between multilevel algorithms and future quantum devices is intended to bridge the gap between slow exact solvers (that are unrealistic to cope with relatively large instances in a reasonable time neither for classical nor NISQ devices) and fast suboptimal heuristics (that are practically employed everywhere) that may never achieve the optimal solution no matter how much time they are given.
+
+%\paragraph{Our contribution} 
+In this paper, we introduce Multilevel Quantum Local Search (ML-QLS), which uses an iterative refinement scheme on NISQ devices within a multilevel framework. ML-QLS extends the Quantum Local Search (QLS)~\cite{shaydulin2018community,shaydulin2018network} approach to solve larger problems. This work builds on early results using a multilevel framework and the D-Wave quantum annealer for the graph partitioning \cite{mniszewski2018multilevel}. We demonstrate the general approach  of solving combinatorial optimization problems with NISQ devices in a multilevel framework on two well-known problems. In particular, we solve the Graph Partitioning Problem and the Community Detection Problem on graphs up to approximately $29,000$ nodes using subproblem sizes of 20 and 64 that map onto NISQ devices such as IBM Q Poughkeepsie (20 qubits) and D-Wave 2000Q ($\sim$2048 qubits). Such graphs are orders of magnitude larger than those solved by state-of-the-art hybrid quantum-classical methods. To implement this approach, we develop a novel efficient subproblem formulation method.
+
+In contrast, some of the authors of this paper have previously developed quantum and quantum-classical algorithms for the Graph Partitioning Problem and the Community Detection Problem for multiple parts (> 2) \cite{negre2019detecting,ushijima2017graph}. These did not use a multilevel approach, instead an \emph{all at once} or concurrent approach was employed. 
+
+
+%Many combinatorial optimization problems on graphs turn out be NP-hard problems. For real-world applications, in practice, we depend on heuristic and approximation algorithms. The development of these algorithms however requires a lot of specialized domain skills per problem together with experiments based on trial and error. Metaheuristics such as simulated annealing and tabu search are also widely used with the advantage that they require less problem domain experience and can easily be adapted from one problem to another. The recent advances in quantum computing provides a new approach for algorithm development for many of these combinatorial optimization problems. Quantum optimization heuristics such as Quantum Annealing (QA) and Quantum Approximate Optimization Algorithm (QAOA) have the potential to improve on classical state-of-the-art for many problems~\cite{crooks2018performance, osti_1492737, PhysRevA.97.022304}\added[id=rs]{[D-Wave citation needed]}. These algorithms can be run on Noisy Intermediate Scale Quantum (NISQ) devices that are becoming available on the cloud~\cite{Qiskit, ibmqxdevices} \added[id=rs]{[D-Wave citation needed]}. However, in the near term quantum computing devices are widely expected to have no more than tens to hundreds of qubits in case of Gate-based or Universal Quantum Computers (UQC) and thousands of qubits for Quantum Annealers (QA), with sparse connectivity between qubits limiting the size of the optimization problem that can be mapped onto them.
+
+%The limited number of qubits in near-term quantum computers creates a challenge in using them for practical applications. For example, a set of graph commonly used to benchmark the performance of GP algorithms, Walshaw Graph Partitioning Archive~\cite{Soper2004}, contains graphs with between 2,000 and 450,000 nodes. These graphs are too large to tackle directly using NISQ hardware. This motivates recent research into hybrid decomposition techniques that use NISQ devices as subproblem solvers~\cite{shaydulin2018network, shaydulin2019computer, shaydulin2018community}. Most proposed approaches are inspired by the successful application of large neighborhood local-search heuristics to a variety of classical combinatorial optimization problems (see~\cite{rotta2011multilevel, ahuja2002survey} for a survey). However this approaches are limited in the size of the problems they can tackle, as local search tends to get stuck in local minima even if large neighborhoods are considered at each step. 
+
+%To address the limitations described above, we introduce MultiLevel Quantum Local Search (ML-QLS), which uses an iterative refinement scheme within a multilevel framework. ML-QLS extends Quantum Local Search (QLS)~\cite{shaydulin2018network} to larger problems. To the best of our knowledge, this is the first method that uses quantum optimization methods within a multilevel framework. We demonstrate it to solve Graph Partitioning and Community Detection on graphs with up to 10,000 nodes using only 20 qubits, orders of magnitude larger than state-of-the-art hybrid quantum-classical methods.
+
+The rest of this paper is organized as follows. In Section \ref{sec:bg}, we discuss the relevant on quantum optimization and multilevel methods, and define the problems. In Sections \ref{sec:methods} and \ref{sec:results}, we discuss the hybrid quantum-classical multilevel algorithm and computational results, respectively. A discussion of the outlook and important open problems that represent major future research directions are presented in Section \ref{sec:conclusion}.
+
+\section{Background}\label{sec:bg}
+
+The methods proposed and implemented in this work aim to solve large graph problems by integrating NISQ optimization algorithms to a multilevel scheme. In this section, we provide a brief introduction into all three components: target graph problems (Sec.~\ref{sec:background:prob_def}), quantum optimization (Sec.~\ref{sec:background:qopt}) and multilevel methods (Sec.~\ref{sec:background:mlcombopt})
+
+Many optimization problems discussed in this work are posed in Ising form. The Ising model is a common mathematical abstraction used to represent the energy of $n$ discrete spin variables $\sigma_i\in \{-1,1\}$, $1\leq i \leq n$,  and interactions $J_{ij}$ between $\sigma_i$ and $\sigma_j$. For each spin variable $\sigma_i$, a local field $h_i$ is specified. The energy of a configuration $\sigma$ is given by the Hamiltonian function: \begin{eqnarray}\label{eq:hamiltonian}
+ H(\sigma) = \sum_{i,j} J_{ij}\sigma_i\sigma_j + \sum_i h_i\sigma_i, \quad \sigma_i\in \{-1,1\}.
+ \end{eqnarray}
+An equivalent mathematical formulation is the Quadratic Unconstrained Binary Optimization (QUBO) problem. The objective of a QUBO problem is to minimize (or maximize) the following function:
+
+\[
+H(x) = \sum_{i < j}Q_{ij}x_ix_j + \sum_i Q_{ii} x_i, \quad x\in \{0,1\}.
+\]
+ 
+\subsection{Problem Definitions}\label{sec:background:prob_def}
+%\added[id=hm]{Comment: Ising model is not defined up to this point but problems are defined with respect to the ising model. Thus definition of Ising model should be in introduction} \added[id=is]{agree, please define it}
+
+Let $G=(V,E)$ be an undirected graph with vertex set $V$ and edge set $E$. We denote by $n$ and $m$ the numbers of nodes and edges, respectively. For each node $i$, define $\mathbbm{v}_i \in \mathbbm{R}$  as the volume of node $i$ and $A_{ij} \in \mathbbm{R}$ as the positive weight of edge $(i,j)$. For a fixed integer $k$, the \emph{Graph Partitioning Problem} is to find a partition $V_1, \dots, V_k$ of the vertex set $V$ into $k$ parts with equal total node volume such that the total weight of \textit{cut edges} is minimized. A \textit{cut edge} is defined as an edge whose end points are in different partitions. A requirement of equal total sizes  of $V_i$ for all $i$ is sometimes referred as \emph{perfectly balanced} graph partitioning, otherwise an imbalancing parameter is usually introduced to allow imbalanced partitions \cite{bulucc2016recent}. However, in this work we deal with perfect balancing constraints and limit the number of parts to $k=2$. In this case we can write the GP problem as the following quadratic program
+\begin{equation}
+\begin{aligned}
+%& \underset{\textbf{s}}{\text{maximize}}
+& \max 
+& & \textbf{s}^TA\textbf{s} \\
+& \text{s.t.}
+& & \displaystyle\sum\limits_{i=1}^n \mathbbm{v}_i s_{i} =0\\
+& & & s_{i} \in \{-1,1\},~ i=1 ,\ldots, n,
+\end{aligned}
+\label{GP_problem}
+\end{equation}
+
+%  \begin{equation}
+%    \begin{array}{ll@{}ll}
+%      \text{maximize}_{\limits{\textbf{s}}} & %\textbf{s}^TA\textbf{s} &\\
+%      \text{subject to}& \displaystyle\sum\limits_{i}v_i s_{i} =0\\
+%      \text{with} &   s_{i} \in \{-1,1\}, &    \ \ i=1 ,..., n
+%    \end{array}
+%    \label{GP_problem}
+%  \end{equation}
+\noindent which, as shown in  \cite{ushijima2017graph}, can be reformulated into the following Ising model:
+\begin{equation}
+    \begin{aligned}
+%& \underset{\textbf{s}}{\text{maximize}}
+& \max 
+& & \textbf{s}^T(\beta A - \alpha \mathbbm{v}\mathbbm{v}^T)\textbf{s} \\
+& \text{s.t.}
+& &  s_{i} \in \{-1,1\},~ i=1 ,\ldots, n,
+    \end{aligned}
+    \label{gp_ising}
+\end{equation}
+%\begin{equation*}
+%\begin{array}{ll@{}ll}
+%\max  & \textbf{s}^T(\beta A - \alpha \mathbbm{v}\mathbbm{v}^T)\textbf{s}\\
+%&   s_{i} \in \{-1,1\}, &    \ \ i=1 ,..., n
+%\end{array}
+%\end{equation*}
+for some constants $\alpha, \beta >0$, where $\mathbbm{v}$ is a column vector of volumes such that $(\mathbbm{v})_i = \mathbbm{v}_i$. %\added[id=is]{what do you mean? should we say about vector of volumes?}.
+
+ Maximization of modularity is a famous problem in network science where the goal is to find communities in a network through node clustering (also known as modularity clustering) \cite{Newman06modularity}. For the graph $G$, the problem of Modularity Maximization is to find a partitioning of the vertex set into one or more parts (communities) that maximizes the modularity metric. 
+%  If we limit the number of communities to at most two communities, then the modularity metric is simply defined in matrix notation by the modularity matrix. 
+The modularity matrix % \added[id=is]{The modularity is typically defined on unweighted graphs, do we have weighted examples of problems?}
+ is a symmetric matrix given by 
+  \begin{equation}
+    B_{ij}=  A_{ij} - \frac{k_ik_j}{2|E|}, 
+    \label{mod_duplicate}
+  \end{equation}
+  where $k_i$ is the weighted degree of node $i$, namely, $k_i=\sum_j A_{ij}$.  Whereas the modularity is typically defined on unweighted graphs, within the multilevel framework, due to the coarsening of nodes, we primarily work with weighted graphs.
+  It can equivalently be written in matrix-vector notation as
+  \begin{equation}
+      B = A - \frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T
+  \end{equation}
+  where $\mathbbm{k}$ is a vector of weighted degrees of the nodes in the graph.  %It is defined as follows \added[id=is]{rewrite both with ``aligned'' like Eq 1 and 2 and add constraints}
+  For two communities, the \emph{Modularity Maximization Problem}, also referred to as the \emph{Community Detection Problem}, can be written in Ising form as follows:
+  
+  \begin{equation}
+    \begin{aligned}
+%& \underset{\textbf{s}}{\text{maximize}}
+& \max 
+& &  \frac{1}{4|E|}\textbf{s}^T \Big( A - \frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T \Big )\textbf{s} \\
+& \text{s.t.}
+& &  s_{i} \in \{-1,1\},~ i=1 ,\ldots, n
+    \end{aligned}
+    \label{mod_ising}
+\end{equation}
+where the objective value of (\ref{mod_ising}), for a given assignment of resulting communities, is referred to as the \emph{modularity}.
+For more than 2 communities, the Ising formulation of the Community Detection Problem is given in \cite{negre2019detecting}.
+  
+  Note that the above formulation of Modularity Maximization can be viewed as the Graph Partitioning Problem in the Ising model given in equation (\ref{gp_ising}) where the volume of a node is defined as the weighted degree and the penalty constants $\beta = 1, \alpha = \frac{1}{2|E|}$. We exploit this deep duality between the two problems in our implementation.
+  
+
+\subsection{Optimization on NISQ devices}\label{sec:background:qopt}
+%\added[id=hm]{Comment: This shoudl come before Problem Definition as it includes definition of Ising and should include definition of QUBO}
+
+In recent years we have seen a number of advances in quantum optimization algorithms that can be run on NISQ devices. The two most prominent ones are the Quantum Approximate Optimization Algorithm (QAOA) and Quantum Annealing (QA), which are inspired by the adiabatic theorem. There are many formulations of the adiabatic theorem (see \cite{albash2a018adiabatic-rs} for a comprehensive review), but all of them stem from the adiabatic approximation formulated by Kato in 1950~\cite{Kato1950}. 
+% \added[id=is]{I think eigenstate should be defined of formulated more detailed here} 
+ Adiabatic approximation states, roughly, that a system prepared in an eigenstate (e.g., a ground state) of some time-dependent Hamiltonian $H(t)$ will remain in the corresponding eigenstate\footnote{A note on terminology: a Hamiltonian $H$ is a Hermitian operator. The spectrum of $H$ corresponds to the potential outcomes if one was to measure the energy of the system described by $H$. $\ket{\psi}$ is an eigenstate of a system described by Hamiltonian $H$ with energy $\lambda\in \mathbb{R}$ if $H\ket{\psi} = \lambda \ket{\psi}$. In other words, $\ket{\psi}$ is an eigenvector of $H$ with real eigenvalue $\lambda$.} 
+ provided that $H(t)$ is varied ``slowly enough.'' The requirement on the evolution time scales as $O(1/\Delta^2)$ in the worst case~\cite{Elgart2012}, where $\Delta$ is the minimum gap between the ground and first excited state of $H(t)$. 
+ 
+Quantum Annealing is a special case of AQC limited to stochastic Hamiltonians. 
+%(i.e. Hamiltonians with real nonpositive off-diagonal elements).
+The transverse field Hamiltonian 
+\begin{equation}
+H_M = \sum_i \sigma^x_i
+\end{equation}
+is  used as the initial Hamiltonian. The final Hamiltonian is a classical Ising model Hamiltonian with the ground state encoding the solution of the original problem:
+
+\[
+H_C = \sum_{ij}J_{ij}s_is_j + \sum_ih_is_i, \quad s_i\in\{-1,+1\}.
+\]
+
+The evolution of the system starts in the ground state of $H_M$ and is described by a time-dependent Hamiltonian 
+\begin{equation}
+    H(t) = \frac{t}{T}H_C + \Big(1-\frac{t}{T}\Big)H_M, ~ t\in (0, T).
+\end{equation}
+
+QAOA extends the logic of AQC to gate-model quantum computers and can be interpreted as a discrete approximation of the continuous QA schedule, performed by applying two alternating operators: 
+\[W(\beta_k) = e^{-i\beta_kH_M} \text{ and } V(\gamma_k) = e^{-i\gamma_kH_C},
+\]
+where $W(\beta_k)$ corresponds to evolving the system with Hamiltonian $H_M$ for a period of time $\beta_k$, and $V(\gamma_k)$ corresponds to evolving  $H_C$ for time $\gamma_k$. Similarly to QA, the evolution begins in the ground state of $H_M$, namely, $\ket{+}^{\otimes n}$. Alternating operators are applied to produce the state:
+
+% \begin{equation}
+% \begin{array}{rl}
+%   \ket{\psi{(\vect{\beta},\vect{\gamma})}}  & =  \\
+%     = & e^{-i\beta_p \HsubM}e^{-i\gamma_p \HsubC}\compactdots e^{-i\beta_1 \HsubM}e^{-i\gamma_1 \HsubC}\ket{+}^{\otimes n} \\
+%     = & U(\vect{\beta},\vect{\gamma})\ket{+}^{\otimes n}.
+% \end{array}
+% \label{eq:ansatz}
+% \end{equation}
+
+
+\begin{equation}
+   \ket{\psi{(\vect{\beta},\vect{\gamma})}} = e^{-i\beta_p \HsubM}e^{-i\gamma_p \HsubC}\compactdots e^{-i\beta_1 \HsubM}e^{-i\gamma_1 \HsubC}\ket{+}^{\otimes n}= U(\vect{\beta},\vect{\gamma})\ket{+}^{\otimes n}.
+\label{eq:ansatz}
+\end{equation}
+
+An alternative implementation was proposed, inspired by the success of the Variational Quantum Eigensolver (VQE)~\cite{peruzzo2014variational, Yung2014}. A variational implementation of QAOA combines an ansatz $U(\vect{\beta},\vect{\gamma})$ (that can be different from the alternating operator described above) and a classical optimizer. A commonly used ansatz is a hardware-efficient ansatz~\cite{kandala2017hardware}, consisting of alternating layers of entangling and rotation gates. The algorithm starts by preparing a trial state by applying the parameterized gates to some initial state: $\ket{\psi{(\vect{\beta},\vect{\gamma})}} =  U(\vect{\beta},\vect{\gamma})\ket{+}^{\otimes n}$. In the next step, the state $\ket{\psi{(\vect{\beta},\vect{\gamma})}}$ is measured, and the classical optimization algorithm uses the result of the measurement to choose the next set of parameters $\vect{\beta},\vect{\gamma}$. The goal of the classical optimization is to find the parameters $\vect{\beta},\vect{\gamma}$ corresponding to the optimal QAOA ``schedule,'' that is, the schedule that produces the ground state of the problem Hamiltonian $H_C$:
+
+\begin{equation}
+    \vect{\beta_{*}},\vect{\gamma_{*}} = \argmin_{\vect{\beta}, \vect{\gamma}}\bra{\psi{(\vect{\beta},\vect{\gamma})}}H_C\ket{\psi{(\vect{\beta},\vect{\gamma})}}.
+\label{eq:argmin_obj_func}
+\end{equation}
+
+Both QA and QAOA have been successfully implemented in hardware by a number of companies,  universities, and national laboratories~\cite{dwave2018,iarpaqeo,novikov2018exploring, pichler2018quantum, pagano2019quantum, otterbach2017unsupervised}.
+
+\subsection{On the Scalability of Quantum Optimization Heuristics}\label{sec:qopt_scale}
+
+The question of asymptotic scaling is the central question in the analysis of algorithms. Unfortunately, for many of the most promising quantum optimization algorithms, rigorous analysis (such as provable approximation ratios) beyond the most simple problems is unavailable. Therefore researchers have to resort to experimental evaluations and back-of-the-envelope projections. Such approaches give rise to the second major complication, namely, the fact that empirical results on small problem instances are almost totally uninformative about the overall scaling behavior. % This is due to problem not exhibiting the structure that gives it its hardness until the problem size reaches a certain threshold\added[id=is]{this sentence is not clear to me}. 
+Famously, the adiabatic quantum algorithm initially appeared to be practically useful for solving NP-complete problems in polynomial time based on numerical simulations of problems of up to tens of variables~\cite{quant-ph/0001106, quant-ph/0104129}. Later analysis, however, has shown that for many problems, both synthetic ones that are classically easy and hard problems like 3-SAT~\cite{vazirani2002gaps}, eigengaps diminish exponentially, leading to exponential worst-case running time for the adiabatic quantum algorithm~\cite{albash2a018adiabatic-rs}. This provides a cautionary example for researchers trying to analyze modern quantum optimization approaches. The exact number of variables needed for the separation between polynomial and exponential scaling to become apparent varies from problem to problem, and the separation might not be clear for small problem instances (i.e., the scaling that is in fact exponential looks polynomial for small instance sizes). However, the increased size of the simulations as well as the hardware (in the case of quantum annealers, reaching thousands of qubits) provides increasing confidence in the potential of quantum optimization heuristics.
+
+Performance on the D-Wave quantum annealer depends on the input, the solver, and the %\added[id=is]{do you mean hybrid or what D-Wave provides?}
+%\added[id=is]{hardware} 
+hardware platform \cite{mcgeoch2019performance,Denchev2016,King2019,Katzgraber2015}. Changes to the solver include modifying the anneal time or schedule. In this case the platform is the D-Wave 2000Q. Preprocessing strategies such as variable reduction, error mitigation, and improved embeddings applied to the input contribute to more optimized performance. %Minimizing the number of qubits per variable results in shorter chains and improved embeddings.
+The solver tuning strategies include finding an optimal anneal time dependent on the problem, as well as modifying the anneal schedule. Longer anneal times may be required for larger problems. Performance scaling for quantum applications is usually assessed by measuring the dependence of the time to solution (TTS) (for optimized run parameters) on the problem size, as often done for classical applications.
+
+Considering the ground-state success probability for the Sherrington-Kirkpatrick (SK) model and MAX-CUT problems of increasing size was shown to be helpful in understanding the scaling \cite{ Hamerly2019exp}. When evaluating the TTS, one should optimize the run parameters as much as possible, in particular the optimal annealing time. %Small problems require short anneals where the success probability is always close to unity and insensitive to the annealing time. Larger problems require long anneals where the success probability dominates.
+
+Work focused on determining the optimal anneal time on a quantum annealer over classical simulated annealing (SA) for logical-planted instances demonstrated a scaling advantage over SA on the D-Wave quantum annealer \cite{Albash2018-rs}. A scaling advantage in both system size and inverse temperature was demonstrated for simulation of frustrated magnetism in quantum condensed matter for the D-Wave quantum annealer over classical path-integral Monte Carlo \cite{ King2019scale}. An approach to benchmarking quantum annealers using specially crafted problems with varying hardness has been proposed~\cite{Katzgraber2015}. Using a specially crafted problem class, a scaling advantage of algorithms simulating quantum annealing over simulated annealing has been demonstrated numerically for problems too large to be represented on available quantum hardware~\cite{Denchev2016}. This class of problems has been extended and used to show that D-Wave quantum annealer can significantly outperform non-tailored classical state-of-the-art solvers~\cite{King2019}.
+
+A D-Wave API is available for collecting timing information on the details of the Quantum Processing Unit (QPU) 
+%\added[id=is]{tbd: check if QPU was defined earlier} 
+access time \cite{Dwave2019time}. The QPU access time consists of programming time, sampling time, postprocessing time, and a small amount of time spent for the QPU to regain it's temperature per sample. %initialization\added[id=is]{sounds like we repeat the initialization twice, i.e., as initialization and programming?}.
+Programming time measures how long it takes to initialize the problem on the QPU. The sampling time is further broken down into per sample times for the anneal, readout, and delay. With this API, runtime scaling for the quantum isomer search problem  
+%\added[id=is]{need to say something about the problem size in number of variables and its form, e.g., quadratic? otherwise it doesn't tell us much about the complexity} 
+on the D-Wave QA was shown to grow linearly with problem size \cite{Terry2020isomersearch}. In this case the problem size is defined by the number of carbon atoms $n$ in an alkane, which translates to $4(n-2)$ variables; and the number of isomer solutions increases with the number of carbon atoms. 
+% We use this API similarly to show the scaling of the D-Wave contribution on problems of increasing size in Sec.~\ref{sec:exp_scale}.
+
+%\added[id=rs]{@Sue put an overview of quantum annealing scaling results here. Discuss %Albash and Lidar paper you mentioned in the email(Ref~\cite{Albash2018-rs})}
+%Discuss D-Wave scaling \cite{mcgeoch2018performance}, timing API \cite{Dwave2019time}, optimal anneal time \cite{Albash2018-rs}, MAXCUT scaling \cite{Hamerly2019exp}, application scaling \cite{Terry2020isomersearch}, and scaling advantage \cite{King2019scale}.
+
+The scaling of Quantum Approximate Optimization Algorithm (QAOA) is particularly hard due to two factors, namely the presence of outer-loop optimization and the lack of understanding of the scaling of the depth of QAOA circuit required to achieve a good solution. 
+The first factor complicating the analysis of QAOA is the outer-loop optimization, i.e., the need to optimize parameters $\vect{\beta},\vect{\gamma}$ in Eq.~\ref{eq:ansatz}. As the landscape is known to be highly non-convex~\cite{Shaydulin2019MultistartDOI, Shaydulin2019EvaluatingDOI,zhou2018quantum}, this optimization becomes a daunting task. Little is known about the structure of this landscape, making it hard to provide an upper bound on the computational hardness of the problem.
+% \added[id=is]{strange structure of claim, the problem is not hard because little is known about the structure} 
+At the time of writing the best known upper bound is that the problem of optimizing $\vect{\beta},\vect{\gamma}$ is as hard as finding a global minimizer to a nonconvex problem, where even verifying a feasible point is a local minimizer is NP-hard~\cite{murty1987}. However, in practice a number of techniques have been developed to successfully solve this problem. While the structure is hard to analyze, there have been successful attempts to leverage it using machine learning techniques~\cite{garcia2019quantum,verdon2019learning, khairy2019learning} or accelerate search with multi-start optimization \cite{Shaydulin2019MultistartDOI}. These results make us hopeful that with the help of a pre-trained model, high-quality QAOA parameters can be found in a small number of objective evaluations. There have been promising results showing that in higher-depth regime for some problems it is possible to avoid optimization altogether and use a smoothly extrapolated set of parameters reminiscent of an adiabatic schedule~\cite{zhou2018quantum}.
+
+The second factor in the lack of analytical and empirical results on QAOA behavior in low- to medium-depth regime (e.g., $5 \leq p\leq 100$). Analytically, QAOA appears to be hard to analyze beyond $p=\{1,2\}$ for non-trivial problems~\cite{wang2018quantum, brandao2018fixed,Szegedy2019qaoaenergies}. At the same time, even for very simple problems and small instance sizes it is clear that achieving a good solution requires going beyond at least $p=5$~\cite{Shaydulin2019EvaluatingDOI, crooks2018performance, Szegedy2019qaoaenergies}. Therefore we have to rely on empirical results to answer the question of exactly how large the $p$ needs to be in order to achieve a good solution. This empirical evaluation is impeded by the complexity of simulating QAOA in medium depths. On one end, traditional state-vector based simulators have running time exponential in number of \emph{qubits}, limiting the problem sizes to tens of variables. On the other end, tensor network based simulators have running time that is exponential in the number of \emph{gates}, limiting the depth of the QAOA circuit that can be simulated. At the time of the writing, the state-of-the-art simulators were limited to simulating a thousand qubits to depth $p=5$~\cite{huang2019alibabacloud}. These two constraints (on number of qubits for one simulation approach and on the depth for the other) make it challenging to numerically analyze QAOA performance in the crucial zone of medium-sized problems (hundreds to thousands of variables) and medium-depth circuit ($p>10$). The high levels of noise and small number of available qubits make this analysis impossible on the currently available quantum hardware. All of the aforementioned complications contribute to the lack of the results showing how QAOA depth $p$ scales with the size of the problem. At the same time, results presented in~\cite{crooks2018performance, zhou2018quantum} indicate that at least for the problem sizes small enough to fit on near-term quantum computers, $10\leq p\leq 30$ is sufficient to achieve high-quality solutions.
+
+Due to the limitations of the available hardware, in this paper we do not run full QAOA ansatz on the IBM Q hardware. Instead, we use a shallow-depth hardware-efficient ansatz (HEA)~\cite{kandala2017hardware}. Much less is known about the potential of such ansatzes to produce quantum speedup. Numerical experiments on small problem instances do not show that quantum entanglement provides an advantage in optimization~\cite{Nannicini2019performance}. At the same time, recent analytical results show that HEAs are efficiently simulatable classically in constant depth~\cite{napp2019efficientshallow} and suffer from exponentially vanishing gradients in polynomial depth~\cite{McClean2018barrendoi} (here depth is a function of number of qubits). A recent result shows that in logarithmic depth regime gradient vanishes only polynomially, making HEAs trainable in this regime~\cite{cerezo2020costfunctiondependent}. This result indicates a potential for quantum advantage using HEAs in logarithmic depth, as they are both hard to simulate classically and do not suffer from exponentially vanishing gradients. Evaluating the potential for quantum advantage from using logarithmic-depth HEAs in QAOA setting for optimization remains an open problem.
+  
+\subsection{Multilevel Combinatorial Optimization}\label{sec:background:mlcombopt}
+
+\begin{figure*}[b]
+    \centering
+    \includegraphics[width=\textwidth, trim=0cm 13cm 0cm 0cm]{fig/multilevel2.pdf}
+    % \vspace{-0.5cm}
+    \caption{V-cycle for a graph problem. First, the problem is iteratively coarsened (left). Second, the coarse problem is solved using a NISQ optimization solver (bottom). Finally, the problem is iteratively uncoarsened and the solution is refined using a NISQ solver (right).}
+    \label{fig:multilevel}
+\end{figure*}
+
+The goal of the multilevel approach for optimization problems on graphs is to create a hierarchy of coarsened graphs $G_0=G$, $G_1$, ... ,$G_k$ in such a way that the next coarser graph $G_{i+1}$ ``approximates''  some properties of $G_i$ (that are directly relevant to the optimization problem of interest)  with fewer degrees of freedom. After constructing such a hierarchy, the coarsening is followed by solving the problem on $G_k$ as best as we can (preferably exactly) and then the uncoarsening projects the solution back to $G_0$ through gradual refinement at all levels of the hierarchy, with a refined solution at level $i+1$ serving as the initial solution at level $i$. The entire coarsening-uncoarsening process is called a V-cycle. Other variations of hierarchical coarsening-uncoarsening schemes include W- and F-cycles \cite{vlsicad}. Figure~\ref{fig:multilevel} presents an outline of a V-cycle.
+
+Typically, when solving problems on graphs in which  nodes represent the optimization variables (such as those in the partitioning and community detection),  having fewer degrees of freedom implies a decreased number of nodes in each next coarser graph:
+$|V_0| > |V_1| > |V_2| > ... > |V_k|$.\footnote{Note that this does not necessarily implies $|E_0| > |E_1| > |E_2| > ... > |E_k|$}
+With a smaller number of variables at progressively coarser levels, one can use more sophisticated but possibly slower refinement algorithms. 
+% but until the coarsening reaches the coarsest level, it is still not enough to solve the original problem as a whole. 
+However, it is still not sufficient to solve the whole  problem until the coarsening reaches the coarsest level.
+As a result, at each level, the actual solution is produced by a refinement. Refinement is typically implemented with a decomposition method that uses a previous iteration or a coarser-level solution as an initialization. The multilevel algorithms rely heavily \cite{Walshaw2004} on the quality of refinement solvers for small and local subproblems at all levels of coarseness. 
+Thus, the most straightforward way to use NISQ devices in multilevel frameworks is to iteratively apply them as local solvers to refine a solution inherited from the coarse level. Because the refinement is executed at all levels of coarseness, \emph{even a small improvement of a solution at the coarse level  may cause a major improvement at the finest scale}. 
+%In fact, -- Not discussing coarsening in this paper} 
+%\added[id=hm]{why remove? this sentence is about solution quality of refinement} \added[id=rs]{Removed because we do not talk about coarsening in this paper. Specifically, without additional discussion it is not entirely clear what ``refinement is executed at all levels of coarseness'' means specifically and how it leads to small improvements at coarser levels causing major improvements at finest scale. Either needs more discussion or needs to be cut.}
+Typically, this is the most time-consuming stage of the multilevel solvers  which is expected to be fundamentally better if improved by NISQ devices. 
+
+Most refinement solvers in multilevel frameworks rely on fast  but low-quality heuristics, rather than on the ability to compute an optimal solution. Moreover, in many existing solvers, the number of variables in such local subproblems is comparable with or smaller than the the size of the problems that can be directly embedded on the NISQ devices (see examples in \cite{hager2018multilevel,leyffer2013fast}), making them a perfect target for NISQ optimization algorithms.
+In most multilevel/multiscale/multigrid-based optimization solvers, a refinement consists of covering the domain (or all variables) with \emph{small} subsets of variables (i.e., small subproblems) such that solving a small local problem on a subset improves the global solution  for the current level.
+
+% This can be achieved by collapsing edges and creating coarse level vertices, which are the nodes in the next level of the hierarchy that represent sets of vertices in next-coarser levels. The coarsening phase is stopped when the graph is small enough to be partitioned using an expensive but accurate algorithm. This phase is referred to as the initial partitioning phase. After the initial partitioning is performed, the uncoarsening phase begins, which is made up of two parts. In the first part of this stage, the partition at the coarser level $\Pi$ is projected onto the graph one level finer in the hierarchy  Next, this projected partition is refined using a variant of the aforementioned improvement algorithms to create a better partition at this level in the hierarchy. This is done until P0 is obtained. There are other (sometimes more sophisticated) multilevel frameworks for partitioning  and other cut-based problems on graphs such as the minimum linear arrangement, wavefront, bandwidth, and vertex separators.
+
+Multilevel graph partitioning and community detection algorithms are examples of the most successful applications of multilevel algorithms for large graphs, achieving an excellent time/quality trade-off \cite{bulucc2016recent}. 
+In this paper, we deliberately use the simplest version of coarsening (in order to focus on the hybrid quantum-classical refinement) in which the edges of the fine level graph are collapsed 
+ and create coarse level vertices by merging the fine level ones. 
+ % no need to move but a later explanation of coarsening should be added \added[id=rs]{COMMENT: should we move the following discussion to methods? This feel out of place and ends abruptly. Otherwise, I would suggest removing the entire paragraph.} 
+ There are several classes of refinement for both problems but in all of them, at each step a small subset of nodes (or even a singleton) is reassigned with partition (or cluster) that either better optimizes the objective or improves constraints. Some variants of stochastic extensions also exist.
+ 
+%A graph is gradually coarsened to one where a $k$-way partition can be computed
+%efficiently and effectively and then this partition is projected back onto the original graph. To be more specific,
+%let us consider a weighted graph $G_0 = (V_0,E_0)$ that has weights on both vertices and edges. 
+
+%\added[id=rs]{COMMENT: in my personal opinion, the paper should be clear to someone who's never heard of multilevel/multiscale} \added[id=is]{which can be achieved only if you add more info but not remove}
+  
+\subsection{On Scalability of Multilevel Methods}\label{sec:multilevel_scale}
+
+If we do not consider algorithmic frameworks with very limited space (such as streaming), the scalability of a correctly designed in-memory multilevel framework with its instance graphs is practically limited (or proportional) to the available memory size. Requirements to keep graphs in memory (not necessarily RAM) for multilevel partitioning and community detection are similar to those of matrices for multigrid \cite{vlsicad}, so the complexity is also comparable up to the factor of refinement. Theoretically, the multilevel and multigrid frameworks exhibit $O(|E|)$ or $O(\text{number of non-zeros in a matrix})$ complexity. However, for optimization on graphs, the refinement stage is typically computationally more expensive than that for the multigrid (e.g., compare Gauss-Seidel relaxation sweeps \cite{livne2012lean} and Kernighan-Lin or min-cut/max-flow refinement in graph partitioning \cite{bulucc2016recent}) because at each step of the refinement, an integer problem has to be solved. Refinement for the relaxed versions of integer problems (e.g., for the minimum 2-sum or bandwidth \cite{SafroRB08}) are usually faster but the quality suffers and in the end they should follow some rounding scheme for integer solution. However, even if the the refinement complexity is linear in the number of edges or corresponding matrix non-zeros, some overhead is typically introduced for the integer problems.
+
+In this paper, we deliberately use a simple coarsening which folds edges by merging pairs of nodes. The situation with the scalability of multilevel frameworks if high-order interpolation coarsening is involved (e.g., algebraic multigrid inspired weighted aggregation \cite{Safro2006} when nodes can be split into several fractions, and different fractions form coarse nodes) is different. The high-order interpolation coarsening may result in increasing number of edges at several fine levels immediately implying increased running time. In such cases, the complexity can increase to $\max_{\text{level }i}O(E_i)$. Subsequently, a larger graph at each level requires more intensive refinement. In addition, the number of refinement calls required to achieve a very good solution strongly depends on the coarsening quality which makes it difficult to get a complexity required for a nearly optimal solution. The only practical solution to that is artificially limiting the number of refinement calls (see all major solvers such as Metis, Jostle, Kahip, and Scotch reviewed in \cite{bulucc2016recent}). 
+
+The criteria for limiting the number of refinement calls is never ideal. The refinemnt algorithms always heuristically decide what vertex or group of vertices should be optimized with respect to the current assignment of vertices to clusters (or parts) to make the current solution better. Typically, they take so called ``boundary'' nodes in all parts, i.e., those whose move from part to part can potentially improve the solution and optimize them or their groups. Therefore, the scalability of multilevel graph partitioning and clustering frameworks can be loosely described in terms of $|V|$ and $|E|$. Instead, it is better to describe it in terms of expected cut similar to the analysis in \cite{KarypisKumar95b}. To the best of our knowledge, there is no analysis that connects the size of the graph and performance of multilevel algorithms providing any practically useful theoretical bounds. Currently, the best way to describe the scalability of multilevel graph partitioning and clustering solvers is to use $O(|E|)$. However, the hidden constant in the linear complexity depends on the type of refinement. Thus, we anticipate that with the advent of reliable quantum hardware, one can expect a significant improvement in the running time and quality of the refinement in multilevel frameworks which will eliminate computationally expensive solvers to locally optimize groups of variables.  
+We refer the reader to one of the most recent examples of multilevel scalability in \cite{davis2019algorithm} (e.g., see Table IV) in which a graph with 3.8B edges was (suboptimally) solved in 255 seconds.
+    
+\section{Methods}\label{sec:methods}
+
+An iterative improvement scheme is a common approach for solving large scale problems with NISQ devices. Traditionally, this is done by formulating the entire problem in the Ising model or as a QUBO and then solving it using hybrid quantum-classical algorithms (see, for example, "qbsolv" from D-Wave systems \cite{booth2017partitioning}). These methods decompose the large QUBO into smaller sub-QUBOs or decrease the number of degrees of freedom to fit the subproblem on the hardware (for example, using a multilevel scheme), and iteratively improve the global solution by solving the small subproblems (sub-QUBOs). One of the main limitations of this approach is the size and density of the original QUBO. For example, in the graph partitioning formulation given by Equation~\ref{gp_ising}, the term $\mathbbm{v}\mathbbm{v}^T$ leads to the formulation of a completely dense $n \times n$ QUBO matrix regardless of whether or not the original graph was sparse. Storing and processing this dense matrix can easily make this method prohibitively computationally expensive even for moderately sized problems. In our implementation of Quantum Local Search (QLS)~\cite{shaydulin2018network} we circumvent this limitation by developing a novel subproblem formulation of the Graph Partitioning Problem and Modularity Maximization as a QUBO that does not require formulating the entire QUBO.
+
+
+%  Quantum Local Search (QLS) however consists of solving subproblems that are formulated as a QUBO, thus avoiding the need to generate the QUBO of the entire problem. In this work, we develop the subproblem formulation of graph partitioning and modularity maximization as a QUBO without first formulating the entire QUBO.
+%\added[id=hm]{add notes on why not to generate qubo for huge problem, thus need to coarsen graph not qubo}
+
+%Due to penalty constraints\added[id=is]{are you talking about the same penalty constraint as in the end of 2.1? if not, the penalty constraint should be defined because last time it was referred only in the end of 2.1}, the formulation of many optimization problems as a QUBO often leads to matrices with at least $O(n^2)$ non-zero entries, where $n$ is the input size of the problem. However, storing such matrices can be computationally expensive even in a classical-quantum computational paradigm. \added[id=is]{this table and sentence are probably good for thesis but not for paper, it is clear that storing a square is expensive}For example, consider Table \ref{tab:ram}
+
+%\begin{table}[htp!]
+%    \centering
+%    \begin{tabular}{|c|c|}
+%    \hline
+%       $n$  & RAM Requirement \\ \hline
+%      10K   & 1GB \\
+%      100K & 100GB \\
+%      1M & 10TB \\
+%      10M & 1PB \\ \hline
+%    \end{tabular}
+%    \caption{Memory requirements for storing $O(n^2)$ non-zeros}
+%    \label{tab:ram}
+%\end{table}
+%This implies that to work with problems with 10 million variables, one would need a classical computer with at least 1 Petabytes of memory in a classical-quantum computational paradigm, yet many real-world datasets can easily have billions of variables.  However, the hybrid classical-quantum paradigm often deals with generating smaller fixed sized sub-QUBO's from the original QUBO \added[id=is]{this sentence is not clear, what is sub-QUBO?}. In this work, for both the graph partitioning problem and community detection, we show how to efficiently generate sub-QUBOs without explicitly generating the original QUBO, thus making it possible to work with problems with millions of variables even on a personal computer with a connection to a quantum computer.
+%Each iteration of QLS consists of solving a subproblem or sub-QUBO. One way to achieve this is to generate and store the whole QUBO matrix describing the given problem then at each iteration formulate a sub-QUBO accordingly. However, these QUBO matrices can often be dense matrices thus this approach is not scalable.
+Another concern is the effectiveness of selection criteria of candidate variables (or nodes) to be included in each subproblem. A common metric used in selecting whether or not a variable is to be included in the subproblem is whether or not changing the variable value would reduce (increase) the objective value for a minimization (maximization) problem. Thus, since computing the change in objective value for a small change in the solution is performed multiple times, it is important to ensure that this computation is efficient. We derive a novel efficient way to compute the change in the objective value of the entire QUBO also without formulating the entire QUBO and thus provide an efficient refinement scheme using current NISQ devices. 
+
+We begin by introducing an efficient QUBO subproblem formulation for the Graph Partitioning Problem, and the Community Detection Problem. Then we present an efficient way to compute the gain and change in the objective of the entire QUBO. Finally, we put it all together and outline our algorithm.
+
+%the Selection criteria usually depend on computing the change of objective value if a candidate variable is flipped or a local change is made. In this section, we show to efficiently generate a given subproblem, and likewise give a efficient approach to computing change energy function \added[id=is]{what is energy function? first time appears} given a local change. Thus providing a scalable refinement algorithm \added[id=is]{unfinished sentence}.
+
+%\subsection{Solution Refinement with QPU}
+%Given an initial partition of a graph $G$, in this section we demonstrate how a quantum solver can improve on the quality of this solution.
+%For a weighted graph, where both nodes and edges have weights, we formulate weighted graph partitioning as an unconstrained optimization problem.
+
+%Let $\mathbbm{v}_i$ and $w_{ij}$ be the volume of a vertex and weight of an edge respectively. Then
+%\begin{equation*}
+%	\begin{array}{ll@{}ll}
+%		\text{minimize}  & \beta x^TLx + \alpha (\sum \mathbbm{v}_i x_i - \frac{n}{2})^2  &\\
+%		&   x_{i} \in \{0,1\}, &    \ \ i=1 ,..., n
+%	\end{array}
+%\end{equation*}
+%\begin{equation*}
+%	\begin{array}{ll@{}ll}
+%		\text{minimize}  &\beta  x^TLx + \alpha (\sum \mathbbm{v}_i x_i)^2 - \alpha n(\sum \mathbbm{v}_ix_i) + \frac{\alpha n^2}{4}  &\\
+%		&   x_{i} \in \{0,1\}, &    \ \ i=1 ,..., n
+%	\end{array}
+%\end{equation*}
+%Now $(\sum \mathbbm{v}_i x_i)^2 = \sum \mathbbm{v}_i^2x_i + 2\sum\limits_{ij}\mathbbm{v}_i\mathbbm{v}_j x_ix_j$. Define matrix $\mathbbm{V}$ as $(\mathbbm{v}_{ij}) = \mathbbm{v}_i\mathbbm{v}_j$
+%\begin{equation*}
+%	\begin{array}{ll@{}ll}
+%		\text{minimize}  & x^T(\beta  L + \alpha \mathbbm{V} )x + \sum \mathbbm{v}_i^2x_i - \alpha n(\sum \mathbbm{v}_i x_i) + \frac{\alpha n^2}{4}  &\\
+%		&   x_{i} \in \{0,1\}, &    \ \ i=1 ,..., n
+%	\end{array}
+%\end{equation*}
+%\begin{equation*}
+%\begin{array}{ll@{}ll}
+%\text{minimize}  & x^T(\beta  L + \alpha \mathbbm{V})x + \alpha \sum (\mathbbm{v}_i^2 -  n \mathbbm{v}_i) x_i + \frac{\alpha n^2}{4}  &\\
+%&   x_{i} \in \{0,1\}, &    \ \ i=1 ,..., n
+%\end{array}
+%\end{equation*}
+%\begin{equation*}
+%	q_{ij} = 
+%	\begin{cases} 
+%		\alpha\mathbbm{v}_i\mathbbm{v}_j - \beta w_{ij}, & \text{if } (i,j) \in E \\
+%		\alpha\mathbbm{v}_i\mathbbm{v}_j,       & \text{if } (i,j) \notin E, i \neq j\\
+%		\beta deg(v_i) + \alpha (\mathbbm{v}_i^2-n\mathbbm{v}_i)    & \text{if } i = j
+%	\end{cases}
+%\end{equation*}
+%Thus QUBO is
+%\begin{equation*}
+%\begin{array}{ll@{}ll}
+%\text{minimize}  & x^T(\beta  L + \alpha vv^T)x + \alpha \sum (\mathbbm{v}_i^2 -  n \mathbbm{v}_i) x_i &\\
+%&   x_{i} \in \{0,1\}, & \ \ i=1 ,..., n
+%\end{array}
+%\end{equation*}
+%and Ising Hamiltonian is
+%\added[id=is]{no need to repeat what was defined earlier, just refer the equation}
+%\begin{equation*}
+%%\begin{array}{ll@{}ll}
+%\max  & \textbf{s}^T(\beta A - \alpha vv^T)\textbf{s}\\
+%&   s_{i} \in \{-1,1\}, &    \ \ i=1 ,..., n
+%\end{array}
+%\end{equation*}
+%or
+%\begin{equation}
+%\begin{array}{ll@{}ll}
+%\min    & \textbf{s}^T( \alpha vv^T - \beta A )\textbf{s}\\
+%&   s_{i} \in \{-1,1\}, &    \ \ i=1 ,..., n
+%\end{array}
+%\label{gp_ising}
+%\end{equation}
+\subsection{QUBO formulation for subproblems}
+Let $M$ be an $n \times n$ symmetric matrix that represents the QUBO for a large scale problem such that it is prohibitively expensive to either generate or store $M$. However, for QLS we need to generate constant-size sub-QUBOs of $M$ which in turn represent subproblems of the original problem. In order to generate a sub-QUBO, let $k$ be the size of the desired sub-QUBO. In other words, the sub-QUBO will have $k$ variables and $n-k$ \emph{fixed variables} that remain invariant for this specific sub-QUBO. We refer to the $k$ variables as \emph{free variables}.  Without loss of generality, let the the first $k$ variables of $\textbf{s}$ be the free variables, then we write $\textbf{s}$ as 
+
+  \begin{equation*}
+    \textbf{s} = \begin{bmatrix}
+    \textbf{s}_v  \\
+   \textbf{s}_f \\
+    \end{bmatrix},
+  \end{equation*}
+where $\textbf{s}_v$ represents the $k$ free variable terms and $\textbf{s}_f$ represents the $n-k$ fixed terms.  In the next step, $M$ can be represented using block form
+\begin{equation}
+   M=\left[
+   \begin{array}{c|cccc}
+~ \large M_{vv}  ~&& &\large M_{vf} \quad &~\\\hline
+&&&&~\\
+&&&&~\\
+\large M_{vf}^T& && \large M_{ff}\\
+&&&&~\\
+&&&&~\\
+\end{array}
+\right] 
+\label{block}
+\end{equation}
+such that $ M_{vv} $  is a $k \times k$ matrix. Next, we can write $\textbf{s}^T M \textbf{s}$ as 
+\begin{equation}
+ \textbf{s}^T M\textbf{s} =  \textbf{s}_v^T M_{vv}  \textbf{s}_v + \textbf{s}_v^T (2M_{vf}  \textbf{s}_f) + \textbf{s}_f^T M_{ff}  \textbf{s}_f
+\end{equation}
+Since $\textbf{s}_f$ are fixed values, we have $\textbf{s}_f^T M_{ff}  \textbf{s}_f$  %\added[id=is]{what are $M_{22},M_{12}$?} 
+as a constant thus
+
+\begin{equation}
+    \min  \ \textbf{s}^T M\textbf{s} =  \min \   \textbf{s}_v^T M_{vv}  \textbf{s}_v + \textbf{s}_v^T (2M_{vf}  \textbf{s}_f) 
+    \label{variable}
+\end{equation}
+From equation (\ref{block}), we have
+\begin{equation}
+  \mathbbm{v}\mathbbm{v}^T=\left[
+   \begin{array}{c|cccc}
+~ \mathbbm{v}_v\mathbbm{v}_v^T  ~&& &\mathbbm{v}_v\mathbbm{v}_f^T \quad &~\\\hline
+&&&&~\\
+&&&&~\\
+\mathbbm{v}_f\mathbbm{v}_v^T& && \mathbbm{v}_f\mathbbm{v}_f^T\\
+&&&&~\\
+&&&&~\\
+\end{array}
+\right] 
+\end{equation}
+Therefore, from equation (\ref{variable}), we have
+\begin{equation}
+\min  \ \textbf{s}^T  \mathbbm{v}\mathbbm{v}^T\textbf{s}  = \min  \ \textbf{s}_v^T \mathbbm{v}_v \mathbbm{v}_v^T\textbf{s}_v + 2\textbf{s}_v^T \mathbbm{v}_v\mathbbm{v}_f^T   \textbf{s}_f 
+\label{sub_vol}
+\end{equation}
+The formulation in (\ref{sub_vol}) is particularly important because it shows that the matrix $\mathbbm{v}\mathbbm{v}^T$ does not need to be explicitly created at each iteration during refinement. This is a crucial observation because $\mathbbm{v}\mathbbm{v}^T$ is a completely dense matrix. 
+
+% The modularity matrix is a symmetric matrix given by 
+%   \begin{equation}
+%     B_{ij}=  A_{ij} - \frac{k_ik_j}{2|E|} 
+%     \label{mod}
+%   \end{equation}
+%   It can equivalently be written as
+%   \begin{equation}
+%       A - \frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T
+%   \end{equation}
+%   where $\mathbbm{k}$ is a vector of weighted degrees of the nodes in the graph. 
+  
+  As described in Sec.~\ref{sec:background:prob_def}, the Community Detection Problem is given by
+    \begin{equation}
+     \max \ \frac{1}{4|E|}\textbf{s}^T \Big( A - \frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T \Big )\textbf{s}
+  \end{equation}
+  or 
+      \begin{equation}
+     \min \ \textbf{s}^T \Big(\frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T - A \Big )\textbf{s}
+  \end{equation}
+  and the Graph Partitioning Problem is given by
+       \begin{equation}
+     \min \ \textbf{s}^T \Big(\alpha \mathbbm{v} \mathbbm{v}^T - \beta A \Big )\textbf{s}.
+  \end{equation}
+  In the above formulation, modularity clustering can be viewed as the Graph Partitioning Problem in a QUBO model, where the volume of a node is defined as the weighted degree and the penalty constant is $\frac{1}{|E|}$
+  Therefore, in both cases we can perform a refinement while  defining fixed values as
+  \begin{equation}
+          \begin{aligned}
+     \min \ \textbf{s}^T \Big(\frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T - A \Big )\textbf{s} &= \min \  \textbf{s}_v^T \Big (\frac{1}{2|E|} \mathbbm{k}_v \mathbbm{k}_v^T \Big )\textbf{s}_v +  \textbf{s}_v^T \Big (\frac{1}{|E|} \mathbbm{k}_v\mathbbm{k}_f^T \Big )  \textbf{s}_f  - \textbf{s}^TA \textbf{s}  
+  \end{aligned}
+  \label{eq:mod_refine}
+  \end{equation}
+
+  and
+  \begin{equation}
+\begin{aligned}
+     \min \ \textbf{s}^T \Big(\alpha \mathbbm{v} \mathbbm{v}^T - \beta A \Big )\textbf{s} &= \min \  \textbf{s}_v^T  \Big ( \alpha \mathbbm{v}_v \mathbbm{v}_v^T \Big )\textbf{s}_v  +  \textbf{s}_v^T \Big  (2\alpha \mathbbm{v}_v\mathbbm{v}_f^T  \Big ) \textbf{s}_f  - \beta \textbf{s}^TA\textbf{s} 
+  \end{aligned}
+       \label{eq:gp_refine}
+  \end{equation}
+
+  with
+  \begin{equation}
+      \min \ - \beta\textbf{s}^TA \textbf{s} = \min \ - \beta\textbf{s}_v^TA_{vv} \textbf{s}_v - \textbf{s}_v^T (2\beta A_{vf}\textbf{s}_f)
+  \end{equation}
+  The formulation in (\ref{eq:mod_refine}) and (\ref{eq:gp_refine}) are particularly important during the refinement step because this implies that the complete dense (and therefore prohibitively large) QUBO or Ising model does not need to be created at each iteration. These formulations also demonstrate a close relationship between the Graph Partitioning Problem and the Community Detection Problem. 
+  
+  
+
+\subsection{Efficient Evaluation of the Objective}
+% \subsubsection{Gain Functions}
+%   For both graph partitioning and community detection, t
+  In order to select the free variables for the subproblem, we need to be able to efficiently compute the change of the objective function by moving one node from one part to another. 
+In other words, for each vertex $v$, we need to efficiently compute the  \emph{gain}, which is the decrease (or
+increase) in the edge-cut together with penalty if $v$ is moved to the other part. 
+
+For a symmetric matrix $M$, the change in the value  $Q = \textbf{s}^TM \textbf{s}$ by flipping a single variable $s_i$ corresponding to the node $i$ is given by
+\begin{equation}
+    \Delta Q(i) = 2(\sum_{j \in C_1} M_{ij} - \sum_{j \in C_2}M_{ij})
+\end{equation}
+where $C_1$ and $C_2$ correspond to all variables with $s_i = -1$ and $s_i = 1$ respectively. 
+Next, we define
+\begin{equation*}
+    \begin{aligned}
+         deg(v, C) := \sum_{j \in C} A_{vj}; & \text{~}&
+         Deg(C) := \sum_{i \in C} k_i;  & \text{~}&
+         Vol(C) := \sum_{i \in C} \mathbbm{v}_i
+    \end{aligned}
+\end{equation*}
+then
+\begin{align*}
+    2(\sum_{j \in C_1} A_{ij} - \sum_{j \in C_2}A_{ij}) &= 2deg(v_i, C_1) - 2deg(v_i, C_2)
+\end{align*}
+and finally
+\begin{align*}
+    2(\sum_{j \in C_1} (\mathbbm{v} \mathbbm{v}^T)_{ij}  -  \sum_{j \in C_2}(\mathbbm{v} \mathbbm{v}^T)_{ij}) &= 2\Big (\mathbbm{v}_i \sum_{j \in C_1, i \neq j} \mathbbm{v}_j - \mathbbm{v}_i \sum_{j \in C_2}\mathbbm{v}_j \Big )\\
+    & = 2 \mathbbm{v}_i \big (Vol(C_1\backslash i)   - Vol(C_2) \big ),
+\end{align*}
+where we assume that $i \in C_1$. This expression can be computed in $O(1)$ time. 
+
+In the same way
+
+\begin{align*}
+    2(\sum_{j \in C_1} (\mathbbm{k} \mathbbm{k}^T)_{ij} - \sum_{j \in C_2}(\mathbbm{k} \mathbbm{k}^T)_{ij})&= 2\Big (k_i \sum_{j \in C_1, i \neq j} k_j - k_i \sum_{j \in C_2}k_j \Big )\\ 
+    & = 2 k_i \big (Deg(C_1\backslash i) - Deg(C_2) \big )
+\end{align*}
+can also be computed in $O(1)$ time given $ Deg(C_1) $ and $ Deg(C_2) $, where $ Deg(C_i) $ represents the sum of weighted degrees of nodes in community $i$.
+
+Therefore, the change in modularity is given by 
+\begin{equation}
+    \begin{aligned}
+    \Delta Q(i) &= \frac{ k_i}{|E|} \big (Deg(C_1\backslash i) - Deg(C_2) \big )- 2\Big (  deg(v_i, C_1) - deg(v_i, C_2) \Big )
+\end{aligned}
+\label{mod_update}
+\end{equation}
+
+and change in edge-cut together with penalty value is given by 
+\begin{equation}
+    \begin{aligned}
+    \Delta Q(i) &= 2 \alpha  \mathbbm{v}_i \big (Vol(C_1\backslash i)  - Vol(C_2) \big ))- 2\beta \Big (  deg(v_i, C_1) - deg(v_i, C_2) \Big ) 
+\end{aligned}
+     \label{gp_update}
+\end{equation}
+
+   
+
+
+For each node $i$, both expressions (\ref{mod_update}) and (\ref{gp_update}) can be computed in $O(k_i)$ time, where $k_i$ is the unweighted degree of $i$.
+% \subsubsection{Computing Objective Value in $O(1)$ time}
+
+At no point during the algorithm should the complete QUBO matrix be formulated. This also applies to the process of evaluating a given solution. In other words, evaluating the modularity for the Community Detection Problem or edge-cut together with penalty term for the Graph Partitioning Problem should be done in $O(1)$ time and space. %\added[id=rs]{Should or should not?} 
+The term is
+\begin{equation*}
+      \textbf{s}^T \mathbbm{v}\mathbbm{v}^T\textbf{s} = \big (Vol(C_1) - Vol(C_2) \big )^2
+\end{equation*}
+where as
+\begin{equation*}
+      \textbf{s}^T A\textbf{s} = 2(|E| - 2cut).
+\end{equation*}
+Therefore, 
+\begin{equation}
+\begin{aligned}
+     \textbf{s}^T( \alpha\mathbbm{v}\mathbbm{v}^T- \beta   A)\textbf{s} &= \alpha \Big (Vol(C_1) - Vol(C_2) \Big )^2 - 2\beta(|E| - 2cut)
+\end{aligned}
+\label{no_qubo_gp_en}
+\end{equation}
+and
+\begin{equation}
+\begin{aligned}
+         \textbf{s}^T \Big(  \frac{1}{2|E|}\mathbbm{k} \mathbbm{k}^T  - A\Big )\textbf{s} &= \frac{1}{2|E|}\Big (Deg(C_1) - Deg(C_2) \Big )^2 - 2(|E| - 2cut)
+\end{aligned}
+\label{no_qubo_mod_en}
+\end{equation}
+where equations (\ref{no_qubo_gp_en}) and (\ref{no_qubo_mod_en}) give the formulations for computing the modularity and edge-cut with corresponding penalty value respectively without creating the QUBO matrix. 
+%\added[id=rs]{Ends abruptly. Is there more? Not obvious how this leads to Computing Objective Value in $O(1)$ time.}
+
+
+\subsection{Algorithm Overview}
+
+Now we can combine the building blocks described in the previous two subsections. Let $G=(V,E)$ be the problem graph. ML-QLS begins by coarsening the problem graph. %\added[id=rs]{@Hayato: add modularity reweighting info}
+During the coarsening stage, for some integer $k$, a hierarchy of coarsened graphs $G = G_0, G_1, \dots ,G_k$ is constructed. In this work, we used the coarsening tools implemented in KaHIP Graph Partitioning package~\cite{sandersschulz2013}. We used the coarsening implementation that is performed using maximum weight matching with ``expansion$^{*2}$'' metric as described in~\cite{Holtgrewe2010}. The maximum edge matching is found using the Global Path Algorithm ~\cite{Holtgrewe2010}. In the next step, a QUBO is formulated for the smallest graph $G_k$ and solved on the quantum device. If $|V_k|$ is greater than the hardware size\footnote{more specifically, greater than the maximum number of variables in a problem that can be embedded on the device}, QLS~\cite{shaydulin2018network} with a random initialization is used to solve for $G_k$. Then, the solution is iteratively projected onto finer levels and refined using QLS. The algorithm overview is presented in Alg.~\ref{alg:outline}.
+
+For the Graph Partitioning Problem, the initial weight of each node is one by definition, therefore coarsening of the nodes keeps the total node volume constant at each coarsening level.  For the Community Detection Problem, the initial weight of each node is set to the degree of the node. This ensures that the size of the graph (total number of weighted edges) is also kept constant at each level. Note that Graph Partitioning is defined with respect to total node volume ($|V|)$, while modularity is defined with respect to the size ($|E|$, the total number of weighted edges) of the graph.  
+
+
+\begin{algorithm}[tbp]
+ \caption{Multilevel Quantum Local Search}\label{alg:outline}
+\begin{algorithmic}
+\Function{ML-QLS}{$G$, problem\_type}
+\If{problem\_type is modularity}
+\State $G$ = UpdateWeights($G$)
+\EndIf 
+\State $G_0, G_1, \ldots ,G_k$ = KaHIPCoarsen($G$)
+\If{$|V_k|\leq $HardwareSize}
+\State // \textit{solve directly}
+\State QUBO = FormulateQUBO($G_k$)
+\State solution = SolveSubproblem(QUBO)
+\Else
+\State // \textit{use QLS}
+\State initial\_solution = RandomSolution($G_k$)
+\State solution = RefineSolution($G_k$, initial\_solution)
+\EndIf
+\For{$G_i$ in $G_{k-1}, G_{k-2}, \ldots ,G_0$}
+\State projected\_solution = ProjectSolution(solution, $G_i$, $G_{i+1}$)
+\State solution = RefineSolution($G_i$, projected\_solution)
+\EndFor
+\Return solution
+\EndFunction
+\end{algorithmic}
+% \end{algorithm}
+
+% \begin{algorithm}[H]
+%  \caption{Quantum Local Search}\label{alg:qls}
+\begin{algorithmic}
+\Function{RefineSolution}{$G_i$, projected\_solution}
+\State solution = projected\_solution
+ \While{not converged}
+    \State $\Delta Q$ = ComputeGains($G_i$, solution)
+  	\State $X$ = HighestGainNodes($\Delta Q$)
+  	\State QUBO = FormulateQUBO($X$)
+  	\State // \textit{using IBM UQC or D-Wave QA}
+  	\State candidate = SolveSubproblem(QUBO)
+  	\If{$\mbox{candidate} > \mbox{solution}$}
+  	\State solution = candidate
+    \EndIf
+ \EndWhile
+ 
+ \Return solution
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure*}[ht]
+    \subfloat[Edge weights of the coarsest graph \texttt{SSS12}.]{\includegraphics[width=0.5\textwidth]{./fig/A.pdf}%
+    \label{fig:edgeweird_sss12}}
+    \hfill
+    \subfloat[Entries of the matrix $\mathbbm{v}\mathbbm{v}^T$.]{\includegraphics[width=0.5\textwidth]{./fig/vvT.pdf}%
+    \label{fig:vvT}}
+    \caption{In Figure~\ref{fig:edgeweird_sss12}, the maximum value is approximately $13 \times 10^{3}$.In Figure~\ref{fig:vvT}, the maximum value is approximately $5 \times 10^6$ and minimum value $1$. 
+    % A naive scaling of QUBO matrix $A - \mathbbm{v}\mathbbm{v}^T$ because of the limited precision of the quantum annealer can easily ignore the values of $A$ leading to random balanced partitions. 
+    A naive scaling of QUBO matrix $A - \mathbbm{v}\mathbbm{v}^T$ can result in values that are too large to be handled by the quantum annealer due to its limited precision. Such values of $A$ are ignored, leading to random balanced partitions.}
+%    \added[id=rs]{COMMENT: figure is not mentioned anywhere in the text. Second figure needs to be updated with nicer x labels.}}
+\end{figure*}
+
+
+\subsection{Addressing the Limited Precision of the Hardware}
+
+One of the subproblem solvers we used in this work is Quantum Annealing, which we ran on the LANL D-Wave 2000Q machine. The D-Wave 2000Q is an analog quantum annealer with limited precision. 
+% However, at each stage of the coarsening process, the precision to describe the node volume and node weight for each graph formed can increase significantly. 
+In this work, we used a simple coarsening that constructs coarser graphs by aggregating nodes at a finer level to become a single node at the coarser level (i.e. many nodes on the finer level are merged into one node at the coarser level, with the volume of the new node set to be the sum of the volumes of the nodes on the coarser level). This causes the precision required to describe the node volumes and edge weights for coarser graphs to increase dramatically, especially for the large scale problems.
+% However, as coarser problem representations are constructed during the coarsening stage of the algorithm, the precision required to describe the node volumes and edge weights increases, as finer nodes are aggregated into coarser.
+Thus, a QUBO describing the coarsest graph could require significantly more precision to represent compared to the finest graph. For example, in Graph Partitioning where the QUBO problem to be minimized is $A - \alpha \mathbbm{v}\mathbbm{v}^T$, the range of values in the matrix $A$ increase at a different rate than the range of values in the matrix $\mathbbm{v}\mathbbm{v}^T$ during the coarsening process, increasing the precision required to describe the overall QUBO formed at each level (see an example on Fig.~\ref{fig:edgeweird_sss12}). Thus, if the QUBO $A - \alpha \mathbbm{v}\mathbbm{v}^T$ is directly scaled to accommodate the limited precision of the device, the quality of the results can suffer. In our experiments, we observe that directly scaling the QUBO returned feasible, but low quality solutions.  In order to overcome this challenge, for the problems solved on the D-Wave device, we first scaled the matrices $A$ and $\alpha \mathbbm{v}\mathbbm{v}^T$ separately, and then formed the QUBO to be optimized. This approach then resulted in achieving results with high quality solutions on the D-Wave device. 
+
+\input{experiments.tex}  % 
+%{\color{red}\input{old.tex}}
+
+\section{Open Problems and Discussion}\label{sec:conclusion}
+Revising (un)coarsening operators in anticipation of the new class of high-quality  refinement solvers is the first major open problem. The majority of multilevel algorithms for combinatorial optimization problems are inspired by the idea of "thinking globally while acting locally".
+However, there is a crucial difference between  these algorithms for combinatorial problems and such methods as multigrid for continuous problems or multiscale PDE-based optimization. 
+In multigrid (e.g., for systems of linear equations), a relaxation at the uncoarsening stage is convergent \cite{brandt:review01}, and in most cases assumes an optimal solution (up to some tolerance) for a subset of relaxed variables given other variables are invariant (i.e., a fixed solution for those variables that are not in the optimized subset). Examples include easily parallelizable Jacobi relaxation, as well as  hard to parallelize Gauss-Seidel relaxation in which most variables are typically optimized sequentially, and many more. Both coarsening and uncoarsening operators (also known as the restriction, and prolongation in multigrid) assume this convergence which in the end provides guarantees for the entire multilevel framework. However, for the \emph{combinatorial} multilevel solvers, the integer variables make this assumption practically impossible,  even for subproblems containing tens of variables optimized simultaneously. With the development of less noisy quantum devices, we can assume that in our hands will be extremely fast heuristics to produce nearly (if hypothetically not completely) optimal solutions for combinatorial optimization problems of up to several hundreds of variables. In order to use the multilevel paradigm correctly, there will be a critical need to revise  (un)coarsening operators that take this feature into account because (to the best of our knowledge) all existing versions of coarsening operators do not consider optimality of the refinement.  Moreover, most existing multilevel frameworks exhibit more emphasis on computational speedup rather than on the quality of the solution to better approximate the fine problem.
+
+The second problem is not unique to multilevel methods but to most decomposition based approaches. Even if quantum devices become fully developed and become more accessible for the broad scientific community, they will still remain more expensive than regular CPU based devices. The decomposition approaches split the problem into many small local subproblems, while multilevel methods may need even more of them because solving subproblems is required at all levels of coarseness. Thus, there is a critical need in developing an extremely fast routing classifier for a subproblem that will decide whether solving a particular subproblem  on the NISQ device will be beneficial in comparison to the CPU.
+
+The third consideration is the sparsity of the problem. The methods outlined in this work are evaluated on sparse problems, and we expect them to perform well only under the assumption on sparsity of the problem. We make this assumption because the standard benchmarks for the problems we consider are sparse (see, for example, The Graph Partitioning Archive~\cite{Soper2004} and DIMACS Graph Partitioning and Graph Clustering Challenge~\cite{sanders2014benchmarking,bader2013graph}). Development of decomposition methods specifically targeting dense problems is an interesting future direction. Typically, in existing  multilevel solvers, the fact of density at some level serves as a stopping criterion, i.e., when the problem is originally dense, the multilevel hierarchy construction is terminated which is clearly insufficient thing to do for many distributions of accumulated edge weights. In other words, this problem exists not only for multilevel quantum but for classical solvers as well. In multilevel algorithms, the problem density requires a different approach such as sparsification \cite{safro:spars}.
+
+%\added[id=is]{what else?}\added[id=rs]{That's already pretty dense! It seems like you're introducing a lot of very complex concepts without really defining them, so for a person who does not have a good grasp of multiscale methods, most of this section is meaningless. Also, the assumption about "fast optimal solvers" is bad; none of the NISQ optimization algorithms are exact, all of them are heuristical approaches with varying promise (this is especially true for QAOA and quantum annealing, since there is a plethora of research analyzing their limitations).}\added[id=is]{optimality is an assumption for future noiseless devices with perfect error correction including fast reading methods which I believe at some point will be hardware based}
+
+%\added[id=hm]{Too many acronyms}\added[id=is]{do you see something to define or get rid of?}
+\section{Conclusion} Current Noisy Intermediate-Scale Quantum (NISQ) devices are limited in the number of qubits and can therefore only be used to directly solve combinatorial optimization problems that exhibit a limited number of variables. In order to overcome this limitation, in this work we have proposed the multilevel computational framework for solving large-scale combinatorial problems on NISQ devices. We demonstrate this approach on two well-known combinatorial optimization problems, the Graph Partitioning Problem, and the Community Detection Problem, and perform experiments on the 20 qubit IBM gate-model quantum computer, and the 2048 qubit D-Wave 2000Q quantum annealer. In order to implement an efficient iterative refinement scheme using the NISQ devices, we have developed novel techniques for efficiently formulating and evaluating sub-QUBOs without explicitly constructing the entire QUBO of the large-scale problem, which in many cases can be a dense matrix that makes it computationally expensive to store and process. In our experiments, for the Graph Partitioning Problem, five graphs were chosen such that the smallest graph had 2851 nodes while the largest had 28924 nodes, while for the Community Detection Problem, the smallest graph had 4941 nodes and largest had 10,000 nodes. For both problems, for comparison purposes, we run one V-cycle of the multilevel framework with the different NISQ devices multiple times and compared the results to the state-of-art methods. Our experimental results give comparable results to the state-of-the-art methods and for some cases we were able to get the best-known results.  This work therefore provides an important stepping stone to demonstrating practical Quantum Advantage. As the capabilities of NISQ devices increase, we are hopeful that similar methods can provide a path to adoption of quantum computers for a variety of business~\cite{dwavefinance} and scientific applications.
+
+
+%As Noisy Intermediate-Scale Quantum (NISQ) devices become more and more powerful, development of the algorithms that leverage them becomes ever more important. NISQ devices pose a number of challenges, including the small number of qubits and limited error-correction. In this work, we demostrate a way to leverage these devices by integrating them within a multilevel scheme. We show that for two important problems on graphs, namely the graph partitioning problem and community detection problem, this enables us to solve problems of practical size while achieving the quality of the solution that is competitive with classical state-of-the-art. Therefore, this work provides an important stepping stone to demonstrating practical Quantum Advantage. As the capabilities of NISQ devices increase, we are hopeful that similar methods can provide a path to adoption of quantum computers for a variety of business and scientific applications.
+
+ 
+\section*{Acknowledgments}
+The authors thank anonymous referees whose valuable comments helped to  improve this work. This work was supported in part with funding from the Defense Advanced Research Projects Agency (DARPA). The views, opinions and/or findings expressed are those of the author and should not be interpreted as representing the official views or policies of the Department of Defense or the U.S. Government. 
+This work was supported in part by NSF award \#1522751. High-performance computing resources at Clemson University were supported by NSF award MRI \#1725573. This research used resources of the Oak Ridge Leadership Computing Facility, which is a DOE Office of Science User Facility supported under Contract DE-AC05-00OR22725. This research also used the resources of the Argonne Leadership Computing Facility, which is DOE Office of Science User Facility supported under Contract DE-AC02-06CH11357. Yuri Alexeev and Ruslan Shaydulin were supported by the DOE Office of Science. The authors would also like to acknowledge the NNSA’s Advanced Simulation and Computing (ASC) program at Los Alamos National Laboratory (LANL) for use of their Ising D-Wave 2000Q quantum computing resource. LANL is operated by Triad National Security, LLC, for the National Nuclear Security Administration of U.S. Department of Energy (Contract No. 89233218NCA000001). Susan Mniszewski and Christian Negre were supported by the ASC program at LANL. Assigned: Los Alamos Unclassified Report 19-30113.

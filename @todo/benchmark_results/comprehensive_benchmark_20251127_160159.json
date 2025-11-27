@@ -1,0 +1,1199 @@
+{
+  "timestamp": "20251127_160159",
+  "problem_sizes": [
+    25
+  ],
+  "results": [
+    {
+      "scenario": "Farm",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Farm_CQM",
+        "n_farms": 25,
+        "n_foods": 27,
+        "variables": 1350,
+        "constraints": 1377,
+        "continuous_vars": 675,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.014153003692626953,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "constraints": 26,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.005607128143310547,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.04099678993225098,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "Skipped - density 0.409 > threshold 0.3",
+        "skipped": true
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 101.48425221443176,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 54.91139793395996,
+        "chain_length_max": 9,
+        "chain_length_mean": 4.348148148148148,
+        "num_chains": 675,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 2.1168429851531982,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 0.9867441654205322,
+        "chain_length_max": 1,
+        "chain_length_mean": 1,
+        "num_chains": 675,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.011631011962890625,
+        "objective": -351.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 7.98658013343811,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.229629629629629,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 7.973890066146851,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.2,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 5.1531150341033936,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.140740740740741,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 7.402934789657593,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.066666666666666,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 12.051390886306763,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.162962962962963,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 40.56791090965271,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 1.9917848110198975,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 8.316364765167236,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.111111111111111,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 9.517027139663696,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.044444444444444,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 17.39203906059265,
+            "chain_length_max": 6,
+            "chain_length_mean": 3.911111111111111,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 4.5575361251831055,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.214814814814815,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 16.740375995635986,
+            "chain_length_max": 6,
+            "chain_length_mean": 3.888888888888889,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 56.523343086242676,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 2.3009068965911865,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "Multilevel_MLQLS",
+      "embedding": {
+        "num_partitions": 4,
+        "partition_sizes": [
+          193,
+          193,
+          192,
+          97
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 16.155006885528564,
+            "chain_length_max": 7,
+            "chain_length_mean": 3.9740932642487046,
+            "num_chains": 193,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 9.393080949783325,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.212435233160622,
+            "num_chains": 193,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 11.220838069915771,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.109375,
+            "num_chains": 192,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 4.799464225769043,
+            "chain_length_max": 6,
+            "chain_length_mean": 3.7731958762886597,
+            "num_chains": 97,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 41.568390130996704,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 1.9635231494903564,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 23,
+        "partition_sizes": [
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          15
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.393 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.323 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 1.1325709819793701,
+            "chain_length_max": 4,
+            "chain_length_mean": 2.533333333333333,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.9870829582214355,
+            "chain_length_max": 3,
+            "chain_length_mean": 2.3,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.7291111946105957,
+            "chain_length_max": 3,
+            "chain_length_mean": 2.3666666666666667,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.7669992446899414,
+            "chain_length_max": 3,
+            "chain_length_mean": 2.466666666666667,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 1.5089960098266602,
+            "chain_length_max": 4,
+            "chain_length_mean": 2.5,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.323 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.393 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.393 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.323 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.805678129196167,
+            "chain_length_max": 4,
+            "chain_length_mean": 2.6,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.6484720706939697,
+            "chain_length_max": 3,
+            "chain_length_mean": 2.3666666666666667,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.3763008117675781,
+            "chain_length_max": 4,
+            "chain_length_mean": 2.466666666666667,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.5725319385528564,
+            "chain_length_max": 3,
+            "chain_length_mean": 2.3333333333333335,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 1.0332722663879395,
+            "chain_length_max": 4,
+            "chain_length_mean": 2.533333333333333,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.323 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.393 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.393 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.323 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 1.2012097835540771,
+            "chain_length_max": 4,
+            "chain_length_mean": 2.6666666666666665,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.9804918766021729,
+            "chain_length_max": 3,
+            "chain_length_mean": 2.2666666666666666,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.467 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 10.742717266082764,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 1.9470829963684082,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          150,
+          150,
+          150,
+          150,
+          75
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.23310208320617676,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 150,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.22043895721435547,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 150,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.21880125999450684,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 150,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.2397162914276123,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 150,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.13690686225891113,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 75,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 1.0489654541015625,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.009883880615234375,
+        "objective": -351.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.1828138828277588,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.182725191116333,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.1810588836669922,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.18217897415161133,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.1991569995880127,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0.927933931350708,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.009566068649291992,
+        "objective": -351.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "Multilevel_MLQLS",
+      "embedding": {
+        "num_partitions": 4,
+        "partition_sizes": [
+          179,
+          179,
+          178,
+          139
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.25972676277160645,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 179,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.25123023986816406,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 179,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.25115203857421875,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 178,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.2103421688079834,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 139,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0.9724512100219727,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.009624719619750977,
+        "objective": -351.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 23,
+        "partition_sizes": [
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          15
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.050781965255737305,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05247783660888672,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05126500129699707,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.056632041931152344,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05030179023742676,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.0506441593170166,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.04811406135559082,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.050032854080200195,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.050801992416381836,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05529904365539551,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.053117990493774414,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05285024642944336,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.06437301635742188,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.06132912635803223,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05488729476928711,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.053910017013549805,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.0488741397857666,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05055713653564453,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05672097206115723,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05204296112060547,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.05217623710632324,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.051702022552490234,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 30,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 0.04544401168823242,
+            "chain_length_max": 1,
+            "chain_length_mean": 1,
+            "num_chains": 15,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 1.2143359184265137,
+        "all_embedded": true
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.010315895080566406,
+        "objective": -351.0,
+        "status": 2
+      }
+    }
+  ]
+}

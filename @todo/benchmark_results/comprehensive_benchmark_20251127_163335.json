@@ -1,0 +1,1789 @@
+{
+  "timestamp": "20251127_163335",
+  "problem_sizes": [
+    25
+  ],
+  "results": [
+    {
+      "scenario": "Farm",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Farm_CQM",
+        "n_farms": 25,
+        "n_foods": 27,
+        "variables": 1350,
+        "constraints": 1377,
+        "continuous_vars": 675,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.014515876770019531,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "constraints": 26,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.002418041229248047,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.046759843826293945,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "No embedding found in 297.9s",
+        "skipped": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.03224611282349,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 157.0621519088745,
+        "chain_length_max": 9,
+        "chain_length_mean": 4.376296296296296,
+        "num_chains": 675,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 5.672262907028198,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 1.771989107131958,
+        "chain_length_max": 1,
+        "chain_length_mean": 1,
+        "num_chains": 675,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.01260685920715332,
+        "objective": -351.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 22.66767191886902,
+            "chain_length_max": 6,
+            "chain_length_mean": 3.925925925925926,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 25.17611312866211,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.088888888888889,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 22.392884016036987,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.037037037037037,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 22.983594179153442,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.281481481481482,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 27.08361792564392,
+            "chain_length_max": 7,
+            "chain_length_mean": 4.177777777777778,
+            "num_chains": 135,
+            "error": null,
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 120.30388116836548,
+        "all_embedded": true
+      },
+      "solving": {
+        "num_partitions": 5,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.7284350395202637,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 1.3511769771575928,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.8484230041503906,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 1.1294329166412354,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 4,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 2.8100130558013916,
+            "objective": -5.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 6.867480993270874,
+        "aggregated_objective": -25.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 6.867480993270874,
+        "objective": -25.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 5,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.7918601036071777,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.9467740058898926,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 1.0099618434906006,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.9470119476318359,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 4,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.7685720920562744,
+            "objective": -5.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 4.464179992675781,
+        "aggregated_objective": -25.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 4.464179992675781,
+        "objective": -25.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "Multilevel_MLQLS",
+      "embedding": {
+        "num_partitions": 4,
+        "partition_sizes": [
+          193,
+          192,
+          194,
+          96
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 4,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 193,
+            "success": true,
+            "solve_time": 1.11008882522583,
+            "objective": -8.0,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 192,
+            "success": true,
+            "solve_time": 1.0689949989318848,
+            "objective": -8.0,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 194,
+            "success": true,
+            "solve_time": 1.1350200176239014,
+            "objective": -8.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 96,
+            "success": true,
+            "solve_time": 0.6382367610931396,
+            "objective": -4.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 3.952340602874756,
+        "aggregated_objective": -28.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 3.952340602874756,
+        "objective": -28.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 7,
+        "partition_sizes": [
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          75
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 7,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.7285048961639404,
+            "objective": -4.0,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.5278139114379883,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.43297290802001953,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.45638608932495117,
+            "objective": -4.0,
+            "status": 2
+          },
+          {
+            "partition_id": 4,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.3895881175994873,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 5,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.4058229923248291,
+            "objective": -5.0,
+            "status": 2
+          },
+          {
+            "partition_id": 6,
+            "n_vars": 75,
+            "success": true,
+            "solve_time": 0.34954071044921875,
+            "objective": -3.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 3.2906296253204346,
+        "aggregated_objective": -31.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 3.2906296253204346,
+        "objective": -31.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 23,
+        "partition_sizes": [
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          15
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 5.210937976837158,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          150,
+          150,
+          150,
+          150,
+          75
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 5,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 150,
+            "success": true,
+            "solve_time": 0.005517005920410156,
+            "objective": -78.0,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 150,
+            "success": true,
+            "solve_time": 0.009021997451782227,
+            "objective": -78.0,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 150,
+            "success": true,
+            "solve_time": 0.00785684585571289,
+            "objective": -78.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 150,
+            "success": true,
+            "solve_time": 0.00798487663269043,
+            "objective": -78.0,
+            "status": 2
+          },
+          {
+            "partition_id": 4,
+            "n_vars": 75,
+            "success": true,
+            "solve_time": 0.002370119094848633,
+            "objective": -39.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 0.032750844955444336,
+        "aggregated_objective": -351.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 0.032750844955444336,
+        "objective": -351.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 5,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.00583195686340332,
+            "objective": -81.0,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.00626826286315918,
+            "objective": -81.0,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.009442806243896484,
+            "objective": -81.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.005522251129150391,
+            "objective": -81.0,
+            "status": 2
+          },
+          {
+            "partition_id": 4,
+            "n_vars": 135,
+            "success": true,
+            "solve_time": 0.006555795669555664,
+            "objective": -81.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 0.03362107276916504,
+        "aggregated_objective": -405.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 0.03362107276916504,
+        "objective": -405.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "Multilevel_MLQLS",
+      "embedding": {
+        "num_partitions": 4,
+        "partition_sizes": [
+          177,
+          179,
+          178,
+          141
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 4,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 177,
+            "success": true,
+            "solve_time": 0.01679372787475586,
+            "objective": -92.5,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 179,
+            "success": true,
+            "solve_time": 0.006688833236694336,
+            "objective": -93.5,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 178,
+            "success": true,
+            "solve_time": 0.014329910278320312,
+            "objective": -93.0,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 141,
+            "success": true,
+            "solve_time": 0.005043983459472656,
+            "objective": -74.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 0.042856454849243164,
+        "aggregated_objective": -353.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 0.042856454849243164,
+        "objective": -353.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 7,
+        "partition_sizes": [
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          75
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "num_partitions": 7,
+        "partition_results": [
+          {
+            "partition_id": 0,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.009468317031860352,
+            "objective": -63.5,
+            "status": 2
+          },
+          {
+            "partition_id": 1,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.009351015090942383,
+            "objective": -63.5,
+            "status": 2
+          },
+          {
+            "partition_id": 2,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.0045049190521240234,
+            "objective": -63.5,
+            "status": 2
+          },
+          {
+            "partition_id": 3,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.00529789924621582,
+            "objective": -63.5,
+            "status": 2
+          },
+          {
+            "partition_id": 4,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.003467082977294922,
+            "objective": -63.5,
+            "status": 2
+          },
+          {
+            "partition_id": 5,
+            "n_vars": 100,
+            "success": true,
+            "solve_time": 0.008677005767822266,
+            "objective": -63.5,
+            "status": 2
+          },
+          {
+            "partition_id": 6,
+            "n_vars": 75,
+            "success": true,
+            "solve_time": 0.008787870407104492,
+            "objective": -51.0,
+            "status": 2
+          }
+        ],
+        "total_solve_time": 0.04955410957336426,
+        "aggregated_objective": -432.0,
+        "all_solved": true,
+        "success": true,
+        "solve_time": 0.04955410957336426,
+        "objective": -432.0
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 23,
+        "partition_sizes": [
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          15
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.01399087905883789,
+        "objective": -351.0,
+        "status": 2
+      }
+    }
+  ]
+}

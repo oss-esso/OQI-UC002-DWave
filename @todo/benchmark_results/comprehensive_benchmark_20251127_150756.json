@@ -1,0 +1,2047 @@
+{
+  "timestamp": "20251127_150756",
+  "problem_sizes": [
+    5,
+    10,
+    25
+  ],
+  "results": [
+    {
+      "scenario": "Farm",
+      "formulation": "CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Farm_CQM",
+        "n_farms": 5,
+        "n_foods": 27,
+        "variables": 270,
+        "constraints": 277,
+        "continuous_vars": 135,
+        "binary_vars": 135
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.00986790657043457,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_CQM",
+        "n_patches": 5,
+        "n_foods": 27,
+        "variables": 135,
+        "constraints": 6,
+        "binary_vars": 135
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.0026612281799316406,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.015569925308227539,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "Skipped - density 0.423 > threshold 0.3",
+        "skipped": true
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.0081799030304,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 5,
+        "n_foods": 27,
+        "variables": 135,
+        "linear_terms": 135,
+        "quadratic_terms": 1755,
+        "density": 0.0962962962962963
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 16.067387342453003,
+        "chain_length_max": 7,
+        "chain_length_mean": 4.088888888888889,
+        "num_chains": 135,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.46253108978271484,
+        "objective": -5.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 5,
+        "n_foods": 27,
+        "variables": 135,
+        "linear_terms": 135,
+        "quadratic_terms": 108,
+        "density": 0.005925925925925926
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 0.5765352249145508,
+        "chain_length_max": 1,
+        "chain_length_mean": 1,
+        "num_chains": 135,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.0040590763092041016,
+        "objective": -81.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.015569925308227539,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 2,
+        "partition_sizes": [
+          127,
+          30
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.427 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.483 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.00362968444824,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.015569925308227539,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 1,
+        "partition_sizes": [
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.00283479690552,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.015569925308227539,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "decomposition": "EnergyImpact",
+      "embedding": {
+        "num_partitions": 1,
+        "partition_sizes": [
+          100
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.474 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.00673198699951,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 5,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.015569925308227539,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 4,
+        "partition_sizes": [
+          50,
+          50,
+          50,
+          7
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": true,
+            "embedding_time": 5.163062810897827,
+            "chain_length_max": 8,
+            "chain_length_mean": 4.78,
+            "num_chains": 50,
+            "error": null,
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.429 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 5.163062810897827,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.09321403503418,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Farm",
+      "formulation": "CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Farm_CQM",
+        "n_farms": 10,
+        "n_foods": 27,
+        "variables": 540,
+        "constraints": 552,
+        "continuous_vars": 270,
+        "binary_vars": 270
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.0007319450378417969,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_CQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "constraints": 11,
+        "binary_vars": 270
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.00034999847412109375,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.007280111312866211,
+        "variables": 309,
+        "linear_terms": 309,
+        "quadratic_terms": 39621,
+        "density": 0.41496213906431645
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "Skipped - density 0.415 > threshold 0.3",
+        "skipped": true
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.00653409957886,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "linear_terms": 270,
+        "quadratic_terms": 3510,
+        "density": 0.04814814814814815
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 12.100709199905396,
+        "chain_length_max": 8,
+        "chain_length_mean": 4.311111111111111,
+        "num_chains": 270,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.7781338691711426,
+        "objective": -10.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "linear_terms": 270,
+        "quadratic_terms": 243,
+        "density": 0.0033333333333333335
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "[Errno 32] Broken pipe",
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.009182929992675781,
+        "objective": -148.5,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.007280111312866211,
+        "variables": 309,
+        "linear_terms": 309,
+        "quadratic_terms": 39621,
+        "density": 0.41496213906431645
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 3,
+        "partition_sizes": [
+          150,
+          129,
+          30
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.421 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.428 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.483 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.00832009315491,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.007280111312866211,
+        "variables": 309,
+        "linear_terms": 309,
+        "quadratic_terms": 39621,
+        "density": 0.41496213906431645
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 2,
+        "partition_sizes": [
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.03140783309937,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.007280111312866211,
+        "variables": 309,
+        "linear_terms": 309,
+        "quadratic_terms": 39621,
+        "density": 0.41496213906431645
+      },
+      "decomposition": "EnergyImpact",
+      "embedding": {
+        "num_partitions": 1,
+        "partition_sizes": [
+          100
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.474 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.03083086013794,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.007280111312866211,
+        "variables": 309,
+        "linear_terms": 309,
+        "quadratic_terms": 39621,
+        "density": 0.41496213906431645
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 7,
+        "partition_sizes": [
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          9
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.444 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.00827383995056,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "linear_terms": 270,
+        "quadratic_terms": 3510,
+        "density": 0.04814814814814815
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 2,
+        "partition_sizes": [
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.8512918949127197,
+        "objective": -10.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "linear_terms": 270,
+        "quadratic_terms": 3510,
+        "density": 0.04814814814814815
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 2,
+        "partition_sizes": [
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.7958018779754639,
+        "objective": -10.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "linear_terms": 270,
+        "quadratic_terms": 3510,
+        "density": 0.04814814814814815
+      },
+      "decomposition": "EnergyImpact",
+      "embedding": {
+        "num_partitions": 1,
+        "partition_sizes": [
+          100
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.7790160179138184,
+        "objective": -10.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 10,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 10,
+        "n_foods": 27,
+        "variables": 270,
+        "linear_terms": 270,
+        "quadratic_terms": 3510,
+        "density": 0.04814814814814815
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 6,
+        "partition_sizes": [
+          50,
+          50,
+          50,
+          50,
+          50,
+          20
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.475 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.7912530899047852,
+        "objective": -10.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Farm",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Farm_CQM",
+        "n_farms": 25,
+        "n_foods": 27,
+        "variables": 1350,
+        "constraints": 1377,
+        "continuous_vars": 675,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.0010149478912353516,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "constraints": 26,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.0004878044128417969,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.03116011619567871,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "Skipped - density 0.409 > threshold 0.3",
+        "skipped": true
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.84181499481201,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "[Errno 32] Broken pipe",
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 1.9022140502929688,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "UltraSparse_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 648,
+        "density": 0.0014222222222222223
+      },
+      "decomposition": null,
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": null,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "error": "[Errno 32] Broken pipe",
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.009354829788208008,
+        "objective": -351.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.03116011619567871,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 6,
+        "partition_sizes": [
+          130,
+          150,
+          150,
+          150,
+          150,
+          30
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.428 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.421 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.421 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.421 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.421 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.483 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.08172011375427,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.03116011619567871,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.496 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 101.12791895866394,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.03116011619567871,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": "EnergyImpact",
+      "embedding": {
+        "num_partitions": 1,
+        "partition_sizes": [
+          100
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.474 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.0918140411377,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.03116011619567871,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": "Multilevel_MLQLS",
+      "embedding": {
+        "num_partitions": 2,
+        "partition_sizes": [
+          400,
+          360
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.403 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.415 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.03010892868042,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "BQM_from_CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.03116011619567871,
+        "variables": 760,
+        "linear_terms": 760,
+        "quadratic_terms": 236370,
+        "density": 0.40922783933518003
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 16,
+        "partition_sizes": [
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          10
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.490 > threshold 0.3",
+            "skipped": true
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.450 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 100.07154703140259,
+        "objective": null,
+        "status": 9
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "Louvain",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 2.9355978965759277,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "PlotBased",
+      "embedding": {
+        "num_partitions": 5,
+        "partition_sizes": [
+          135,
+          135,
+          135,
+          135,
+          135
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 2.2609410285949707,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "EnergyImpact",
+      "embedding": {
+        "num_partitions": 1,
+        "partition_sizes": [
+          100
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 2.0726120471954346,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "Multilevel_MLQLS",
+      "embedding": {
+        "num_partitions": 2,
+        "partition_sizes": [
+          386,
+          289
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 3.041624069213867,
+        "objective": -25.0,
+        "status": 2
+      }
+    },
+    {
+      "scenario": "Patch",
+      "formulation": "Direct_BQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Patch_Direct_BQM",
+        "n_patches": 25,
+        "n_foods": 27,
+        "variables": 675,
+        "linear_terms": 675,
+        "quadratic_terms": 8775,
+        "density": 0.01925925925925926
+      },
+      "decomposition": "SequentialCutSet",
+      "embedding": {
+        "num_partitions": 14,
+        "partition_sizes": [
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          50,
+          25
+        ],
+        "partition_results": [
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "[Errno 32] Broken pipe",
+            "skipped": false
+          },
+          {
+            "attempted": true,
+            "success": false,
+            "embedding_time": null,
+            "chain_length_max": null,
+            "chain_length_mean": null,
+            "num_chains": 0,
+            "error": "Skipped - density 0.480 > threshold 0.3",
+            "skipped": true
+          }
+        ],
+        "total_embedding_time": 0,
+        "all_embedded": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 10.746097803115845,
+        "objective": -25.0,
+        "status": 2
+      }
+    }
+  ]
+}
