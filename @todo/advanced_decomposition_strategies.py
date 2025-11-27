@@ -360,6 +360,55 @@ def decompose_sequential_cutset(bqm: BinaryQuadraticModel, max_cut_size: int = 5
 
 
 # =============================================================================
+# SPATIAL GRID DECOMPOSITION
+# =============================================================================
+
+def decompose_spatial_grid(bqm: BinaryQuadraticModel, grid_size: int = 5) -> List[Set]:
+    """
+    Decompose based on spatial grid partitioning of variables.
+    
+    Assumes variables follow naming pattern like Y_i_j where i is spatial index.
+    Creates a grid of partitions based on spatial locality.
+    
+    Args:
+        bqm: Binary Quadratic Model
+        grid_size: Number of variables per grid cell
+        
+    Returns:
+        List of variable sets (partitions)
+    """
+    variables = list(bqm.variables)
+    
+    # Extract spatial indices from variable names
+    spatial_map = {}
+    for var in variables:
+        if var.startswith("Y_"):
+            parts = var.split("_")
+            if len(parts) >= 2:
+                try:
+                    spatial_idx = int(parts[1])
+                    if spatial_idx not in spatial_map:
+                        spatial_map[spatial_idx] = []
+                    spatial_map[spatial_idx].append(var)
+                except ValueError:
+                    continue
+    
+    # Create grid partitions
+    partitions = []
+    spatial_indices = sorted(spatial_map.keys())
+    
+    # Partition into grid cells
+    for i in range(0, len(spatial_indices), grid_size):
+        partition = set()
+        for idx in spatial_indices[i:i + grid_size]:
+            partition.update(spatial_map[idx])
+        if partition:
+            partitions.append(partition)
+    
+    return partitions if len(partitions) > 1 else [set(variables)]
+
+
+# =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
 

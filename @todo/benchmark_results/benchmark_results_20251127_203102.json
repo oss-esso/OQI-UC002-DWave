@@ -1,0 +1,198 @@
+{
+  "timestamp": "20251127_203102",
+  "config": {
+    "problem_sizes": [
+      5
+    ],
+    "n_foods": 27,
+    "embedding_timeout": 10,
+    "solve_timeout": 30,
+    "formulations": [
+      "CQM",
+      "BQM",
+      "SparseBQM"
+    ],
+    "decompositions": [
+      "None",
+      "PlotBased"
+    ]
+  },
+  "results": [
+    {
+      "n_farms": 5,
+      "formulation": "CQM",
+      "decomposition": "None",
+      "num_partitions": 1,
+      "metadata": {
+        "type": "Patch_CQM",
+        "n_patches": 5,
+        "n_foods": 27,
+        "variables": 135,
+        "constraints": 6,
+        "binary_vars": 135
+      },
+      "embedding": null,
+      "solving": {
+        "success": false,
+        "solve_time": 0.0004730224609375,
+        "objective": null,
+        "status": 3,
+        "mip_gap": null
+      },
+      "total_embedding_time": 0,
+      "total_solve_time": 0.0004730224609375,
+      "total_time": 0.0004730224609375,
+      "error": null
+    },
+    {
+      "n_farms": 5,
+      "formulation": "BQM",
+      "decomposition": "None",
+      "num_partitions": 1,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.006444215774536133,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 13.689476251602173,
+        "chain_length_max": 55,
+        "chain_length_mean": 23.643312101910826,
+        "num_chains": 157,
+        "num_variables": 157,
+        "num_edges": 10431,
+        "density": 0.4231814678080247,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 30.008168935775757,
+        "objective": null,
+        "status": 9
+      },
+      "total_embedding_time": 13.689476251602173,
+      "total_solve_time": 30.008168935775757,
+      "total_time": 43.69764518737793,
+      "error": null
+    },
+    {
+      "n_farms": 5,
+      "formulation": "BQM",
+      "decomposition": "PlotBased",
+      "num_partitions": 1,
+      "metadata": {
+        "type": "Patch_CQM_to_BQM",
+        "conversion_time": 0.0036563873291015625,
+        "variables": 157,
+        "linear_terms": 157,
+        "quadratic_terms": 10431,
+        "density": 0.4231814678080247
+      },
+      "embedding": {
+        "attempted": true,
+        "success": false,
+        "embedding_time": 22.81659436225891,
+        "chain_length_max": null,
+        "chain_length_mean": null,
+        "num_chains": 0,
+        "num_variables": 157,
+        "num_edges": 10431,
+        "density": 0.4231814678080247,
+        "error": "No embedding found in 22.8s",
+        "skipped": false
+      },
+      "solving": {
+        "success": false,
+        "solve_time": 30.00814127922058,
+        "objective": null,
+        "status": 9
+      },
+      "total_embedding_time": 22.81659436225891,
+      "total_solve_time": 30.00814127922058,
+      "total_time": 52.82473564147949,
+      "error": null
+    },
+    {
+      "n_farms": 5,
+      "formulation": "SparseBQM",
+      "decomposition": "None",
+      "num_partitions": 1,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 5,
+        "n_foods": 27,
+        "variables": 135,
+        "linear_terms": 135,
+        "quadratic_terms": 108,
+        "density": 0.005925925925925926
+      },
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 0.13932394981384277,
+        "chain_length_max": 1,
+        "chain_length_mean": 1,
+        "num_chains": 135,
+        "num_variables": 135,
+        "num_edges": 108,
+        "density": 0.005925925925925926,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.005705833435058594,
+        "objective": -81.0,
+        "status": 2
+      },
+      "total_embedding_time": 0.13932394981384277,
+      "total_solve_time": 0.005705833435058594,
+      "total_time": 0.14502978324890137,
+      "error": null
+    },
+    {
+      "n_farms": 5,
+      "formulation": "SparseBQM",
+      "decomposition": "PlotBased",
+      "num_partitions": 1,
+      "metadata": {
+        "type": "Patch_UltraSparse_BQM",
+        "n_patches": 5,
+        "n_foods": 27,
+        "variables": 135,
+        "linear_terms": 135,
+        "quadratic_terms": 108,
+        "density": 0.005925925925925926
+      },
+      "embedding": {
+        "attempted": true,
+        "success": true,
+        "embedding_time": 0.1292424201965332,
+        "chain_length_max": 1,
+        "chain_length_mean": 1,
+        "num_chains": 135,
+        "num_variables": 135,
+        "num_edges": 108,
+        "density": 0.005925925925925926,
+        "error": null,
+        "skipped": false
+      },
+      "solving": {
+        "success": true,
+        "solve_time": 0.005294322967529297,
+        "objective": -81.0,
+        "status": 2
+      },
+      "total_embedding_time": 0.1292424201965332,
+      "total_solve_time": 0.005294322967529297,
+      "total_time": 0.1345367431640625,
+      "error": null
+    }
+  ]
+}

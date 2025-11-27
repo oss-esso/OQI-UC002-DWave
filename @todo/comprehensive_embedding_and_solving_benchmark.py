@@ -1,40 +1,39 @@
 #!/usr/bin/env python3
 """
-Comprehensive Embedding and Solving Benchmark
+Comprehensive Embedding and Solving Benchmark v2.0
 
-Implements the COMPREHENSIVE_DECOMPOSITION_PLAN.md strategy:
-1. Build multiple formulations (CQM, BQM variants)
-2. Test embedding feasibility and timing (no QPU billing)
-3. Apply decomposition strategies where needed
-4. Solve with Gurobi (classical baseline)
-5. Compare embedding time vs solve time
+Systematically tests ALL combinations of:
+- Problem sizes (5, 10, 15, 20, 25, 30 farms)
+- Formulations (CQM, BQM from CQM, Sparse Direct BQM)
+- Decomposition strategies:
+  * None (direct embedding)
+  * Louvain community detection
+  * Plot-based domain decomposition
+  * Multilevel coarsening (ML-QLS style)
+  * Sequential cut-set reduction
+  * Energy-impact (dwave-hybrid)
 
-Formulations:
-- Farm CQM (continuous + binary)
-- Farm BQM (from CQM conversion)
-- Patch CQM (binary only)
-- Patch BQM (from CQM)
-- Patch Direct BQM (minimal slack)
-- Patch Ultra-Sparse BQM (ultra-minimal quadratic)
+For each configuration:
+1. Build formulation
+2. Apply decomposition (if any)
+3. Attempt embedding (300s timeout, continue even if fails)
+4. Solve with Gurobi (always, regardless of embedding)
+5. Calculate total times (summing partitions for decomposed)
 
-Decomposition Strategies:
-- None (direct embedding)
-- Louvain graph partitioning
-- Plot-based partitioning
-- Energy-impact decomposition (dwave-hybrid)
-
-Solvers:
-- Gurobi (MINLP/MILP for CQM, QUBO for BQM)
-- Embedding study (timing only, no QPU)
+Outputs:
+- JSON (detailed results)
+- CSV (flattened for analysis)
+- Markdown (human-readable summary)
 
 Author: Generated for OQI-UC002-DWave comprehensive benchmark
-Date: 2025-11-27
+Date: 2025-11-27 (v2.0 - comprehensive testing matrix)
 """
 
 import os
 import sys
 import time
 import json
+import csv
 import statistics
 import networkx as nx
 from datetime import datetime
@@ -45,7 +44,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 print("=" * 80)
-print("COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK")
+print("COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK v2.0")
 print("=" * 80)
 print("Testing: Formulations × Decompositions × Solvers")
 print("=" * 80)
@@ -97,6 +96,7 @@ try:
     from advanced_decomposition_strategies import (
         decompose_multilevel,
         decompose_sequential_cutset,
+        decompose_spatial_grid,
         analyze_decomposition_quality
     )
     ADVANCED_DECOMP_AVAILABLE = True
@@ -104,15 +104,20 @@ except ImportError:
     ADVANCED_DECOMP_AVAILABLE = False
     print("  Warning: Advanced decomposition strategies not available.")
 
-print(f"  ✅ Imports done in {time.time() - import_start:.2f}s")
+print(f"  [OK] Imports done in {time.time() - import_start:.2f}s")
 
 # Configuration
-PROBLEM_SIZES = [25]  # Number of units (farms/patches) - focus on size 25 for decomposition study
+PROBLEM_SIZES = [5, 10, 15, 20, 25, 30]  # Number of farms to test
 N_FOODS = 27
-EMBEDDING_TIMEOUT = 180  # 3 minutes per partition (study_binary_plot_embedding used 120s successfully)
-SOLVE_TIMEOUT = 100  # 10 minutes for Gurobi
-SKIP_DENSE_EMBEDDING = True  # Skip embedding if density > threshold
-DENSITY_THRESHOLD = 0.5  # 30% - problems this dense rarely embed
+EMBEDDING_TIMEOUT = 300  # 5 minutes per partition - continue even if fails
+SOLVE_TIMEOUT = 300  # 5 minutes for Gurobi per partition
+SKIP_DENSE_EMBEDDING = False  # NEVER skip - always try embedding
+
+# Formulation types to test
+FORMULATIONS = ["CQM", "BQM", "SparseBQM"]
+
+# Decomposition strategies to test
+DECOMPOSITIONS = ["None", "Louvain", "PlotBased", "Multilevel", "Cutset", "SpatialGrid", "EnergyImpact"]
 
 # Output directory
 OUTPUT_DIR = Path(__file__).parent / "benchmark_results"
@@ -429,26 +434,31 @@ def get_target_graph() -> nx.Graph:
 
 
 def study_embedding(bqm: BinaryQuadraticModel, target_graph: nx.Graph, timeout: int = 300) -> Dict:
-    """Study embedding feasibility and timing"""
-    density = len(bqm.quadratic) / (len(bqm.variables) ** 2) if len(bqm.variables) > 0 else 0
-    print(f"      Testing embedding: {len(bqm.variables)} vars, {len(bqm.quadratic)} edges (density={density:.3f})")
+    """Study embedding feasibility and timing - ALWAYS attempts embedding regardless of density"""
+    n_vars = len(bqm.variables)
+    n_edges = len(bqm.quadratic)
+    density = n_edges / (n_vars ** 2) if n_vars > 0 else 0
+    print(f"      Testing embedding: {n_vars} vars, {n_edges} edges (density={density:.3f})")
     
     result = {
         "attempted": True,
         "success": False,
-        "embedding_time": None,
+        "embedding_time": timeout,  # Default to full timeout if failed
         "chain_length_max": None,
         "chain_length_mean": None,
         "num_chains": 0,
+        "num_variables": n_vars,
+        "num_edges": n_edges,
+        "density": density,
         "error": None,
         "skipped": False
     }
     
-    # Skip very dense problems - they won't embed
-    if SKIP_DENSE_EMBEDDING and density > DENSITY_THRESHOLD:
-        result["skipped"] = True
-        result["error"] = f"Skipped - density {density:.3f} > threshold {DENSITY_THRESHOLD}"
-        print(f"      ⊘ Skipped (too dense: {density:.3f} > {DENSITY_THRESHOLD})")
+    # Handle empty or trivial BQMs
+    if n_vars == 0:
+        result["success"] = True
+        result["embedding_time"] = 0
+        result["error"] = "Empty BQM - trivially embeddable"
         return result
     
     source_graph = get_bqm_graph(bqm)
@@ -458,51 +468,67 @@ def study_embedding(bqm: BinaryQuadraticModel, target_graph: nx.Graph, timeout: 
         start = time.time()
         embedding = minorminer.find_embedding(source_graph, target_graph, timeout=timeout, verbose=0)
         elapsed = time.time() - start
+        result["embedding_time"] = elapsed
         
         if embedding:
             result["success"] = True
-            result["embedding_time"] = elapsed
             result["num_chains"] = len(embedding)
             
             chain_lengths = [len(chain) for chain in embedding.values()]
             result["chain_length_max"] = max(chain_lengths)
             result["chain_length_mean"] = statistics.mean(chain_lengths)
-            print(f"      ✓ Embedded in {elapsed:.1f}s (chains: max={result['chain_length_max']}, mean={result['chain_length_mean']:.1f})")
+            print(f"      [SUCCESS] Embedded in {elapsed:.1f}s (chains: max={result['chain_length_max']}, mean={result['chain_length_mean']:.1f})")
         else:
             result["error"] = f"No embedding found in {elapsed:.1f}s"
-            print(f"      ✗ No embedding (tried for {elapsed:.1f}s)")
+            print(f"      [FAILED] No embedding (tried for {elapsed:.1f}s)")
             
     except Exception as e:
         result["error"] = str(e)
-        print(f"      ✗ Error: {e}")
-    
-    return result
+        result["embedding_time"] = timeout  # Assume full timeout on error
+        print(f"      [ERROR] {e}")
     
     return result
 
 
 def study_decomposed_embedding(bqm: BinaryQuadraticModel, partitions: List[Set],
                                target_graph: nx.Graph, timeout: int = 300) -> Dict:
-    """Study embedding for decomposed problem"""
+    """Study embedding for decomposed problem - always calculates total time"""
     print(f"      Embedding {len(partitions)} partitions...")
     
     result = {
         "num_partitions": len(partitions),
         "partition_sizes": [len(p) for p in partitions],
         "partition_results": [],
-        "total_embedding_time": 0,
-        "all_embedded": True
+        "total_embedding_time": 0,  # Sum of all partition times (success or not)
+        "successful_embedding_time": 0,  # Sum of only successful embeddings
+        "all_embedded": True,
+        "num_successful": 0,
+        "num_failed": 0
     }
     
     for i, partition in enumerate(partitions):
+        print(f"        Partition {i+1}/{len(partitions)} ({len(partition)} vars)...")
         sub_bqm = extract_sub_bqm(bqm, partition)
         partition_result = study_embedding(sub_bqm, target_graph, timeout)
+        partition_result["partition_id"] = i
         
         result["partition_results"].append(partition_result)
-        if partition_result["success"]:
+        
+        # Always add to total time (even failed attempts take time)
+        if partition_result.get("embedding_time") is not None:
             result["total_embedding_time"] += partition_result["embedding_time"]
+        
+        if partition_result["success"]:
+            result["num_successful"] += 1
+            if partition_result.get("embedding_time") is not None:
+                result["successful_embedding_time"] += partition_result["embedding_time"]
         else:
+            result["num_failed"] += 1
             result["all_embedded"] = False
+    
+    # Copy key metrics for convenience
+    result["success"] = result["all_embedded"]
+    result["embedding_time"] = result["total_embedding_time"]
     
     return result
 
@@ -510,7 +536,7 @@ def study_decomposed_embedding(bqm: BinaryQuadraticModel, partitions: List[Set],
 def solve_decomposed_bqm_with_gurobi(bqm: BinaryQuadraticModel, partitions: List[Set], timeout: int = 600) -> Dict:
     """Solve each partition independently with Gurobi and aggregate results"""
     if not GUROBI_AVAILABLE:
-        return {"error": "Gurobi not available"}
+        return {"error": "Gurobi not available", "success": False, "solve_time": 0}
     
     print(f"      Solving {len(partitions)} partitions with Gurobi...")
     
@@ -616,7 +642,7 @@ def solve_cqm_with_gurobi(cqm: ConstrainedQuadraticModel, timeout: int = 600) ->
         start = time.time()
         model.optimize()
         solve_time = time.time() - start
-        print(f"        ✓ Done in {solve_time:.2f}s (status={model.status})")
+        print(f"        [DONE] in {solve_time:.2f}s (status={model.status})")
         
         result = {
             "success": model.status == GRB.OPTIMAL,
@@ -629,7 +655,7 @@ def solve_cqm_with_gurobi(cqm: ConstrainedQuadraticModel, timeout: int = 600) ->
         return result
         
     except Exception as e:
-        print(f"        ✗ Error: {e}")
+        print(f"        [ERROR] {e}")
         return {"error": str(e)}
 
 
@@ -664,7 +690,7 @@ def solve_bqm_with_gurobi(bqm: BinaryQuadraticModel, timeout: int = 600) -> Dict
         start = time.time()
         model.optimize()
         solve_time = time.time() - start
-        print(f"        ✓ Done in {solve_time:.2f}s (status={model.status})")
+        print(f"        [DONE] in {solve_time:.2f}s (status={model.status})")
         
         result = {
             "success": model.status == GRB.OPTIMAL,
@@ -676,267 +702,432 @@ def solve_bqm_with_gurobi(bqm: BinaryQuadraticModel, timeout: int = 600) -> Dict
         return result
         
     except Exception as e:
-        print(f"        ✗ Error: {e}")
+        print(f"        [ERROR] {e}")
         return {"error": str(e)}
+
+
+# =============================================================================
+# OUTPUT GENERATION
+# =============================================================================
+
+def save_results_json(results: List[Dict], output_dir: Path, timestamp: str) -> Path:
+    """Save detailed results as JSON"""
+    output_file = output_dir / f"benchmark_results_{timestamp}.json"
+    with open(output_file, 'w') as f:
+        json.dump({
+            "timestamp": timestamp,
+            "config": {
+                "problem_sizes": PROBLEM_SIZES,
+                "n_foods": N_FOODS,
+                "embedding_timeout": EMBEDDING_TIMEOUT,
+                "solve_timeout": SOLVE_TIMEOUT,
+                "formulations": FORMULATIONS,
+                "decompositions": DECOMPOSITIONS
+            },
+            "results": results
+        }, f, indent=2)
+    return output_file
+
+
+def save_results_csv(results: List[Dict], output_dir: Path, timestamp: str) -> Path:
+    """Save flattened results as CSV for analysis"""
+    output_file = output_dir / f"benchmark_results_{timestamp}.csv"
+    
+    rows = []
+    for r in results:
+        # Handle None embedding (for CQM)
+        embedding = r.get("embedding") or {}
+        solving = r.get("solving") or {}
+        metadata = r.get("metadata") or {}
+        
+        row = {
+            "n_farms": r.get("n_farms"),
+            "formulation": r.get("formulation"),
+            "decomposition": r.get("decomposition", "None"),
+            "num_partitions": r.get("num_partitions", 1),
+            
+            # Variables and structure
+            "num_variables": metadata.get("variables", 0),
+            "num_quadratic": metadata.get("quadratic_terms", 0),
+            "density": metadata.get("density", 0),
+            
+            # Embedding results (may be None for CQM)
+            "embedding_success": embedding.get("success", False) if embedding else False,
+            "embedding_time": embedding.get("embedding_time", 0) or 0 if embedding else 0,
+            "chain_length_max": embedding.get("chain_length_max") if embedding else None,
+            "chain_length_mean": embedding.get("chain_length_mean") if embedding else None,
+            
+            # Solving results
+            "solve_success": solving.get("success", False),
+            "solve_time": solving.get("solve_time", 0) or 0,
+            "objective": solving.get("objective"),
+            
+            # Total times
+            "total_embedding_time": r.get("total_embedding_time", 0),
+            "total_solve_time": r.get("total_solve_time", 0),
+            "total_time": r.get("total_time", 0),
+        }
+        rows.append(row)
+    
+    # Write CSV (csv module imported at top)
+    if rows:
+        with open(output_file, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+    
+    return output_file
+
+
+def save_results_markdown(results: List[Dict], output_dir: Path, timestamp: str) -> Path:
+    """Generate human-readable Markdown summary"""
+    output_file = output_dir / f"benchmark_summary_{timestamp}.md"
+    
+    lines = [
+        f"# Comprehensive Benchmark Summary",
+        f"",
+        f"**Generated:** {timestamp}",
+        f"",
+        f"## Configuration",
+        f"",
+        f"- Problem sizes: {PROBLEM_SIZES}",
+        f"- Foods per farm: {N_FOODS}",
+        f"- Embedding timeout: {EMBEDDING_TIMEOUT}s",
+        f"- Solve timeout: {SOLVE_TIMEOUT}s",
+        f"- Formulations: {FORMULATIONS}",
+        f"- Decompositions: {DECOMPOSITIONS}",
+        f"",
+        f"## Results Summary",
+        f"",
+        f"| n_farms | Formulation | Decomposition | Partitions | Embed? | Embed Time | Solve? | Solve Time | Total Time |",
+        f"|---------|-------------|---------------|------------|--------|------------|--------|------------|------------|",
+    ]
+    
+    for r in results:
+        # Handle None embedding (for CQM)
+        embedding = r.get("embedding") or {}
+        solving = r.get("solving") or {}
+        
+        embed_success = "[OK]" if embedding.get("success") else "[NO]"
+        solve_success = "[OK]" if solving.get("success") else "[NO]"
+        embed_time = r.get("total_embedding_time", 0) or 0
+        solve_time = r.get("total_solve_time", 0) or 0
+        total_time = r.get("total_time", 0) or 0
+        
+        lines.append(
+            f"| {r.get('n_farms', 'N/A')} | {r.get('formulation', 'N/A')} | "
+            f"{r.get('decomposition', 'None')} | {r.get('num_partitions', 1)} | "
+            f"{embed_success} | {embed_time:.1f}s | {solve_success} | {solve_time:.1f}s | {total_time:.1f}s |"
+        )
+    
+    # Statistics
+    lines.extend([
+        f"",
+        f"## Statistics",
+        f"",
+        f"- Total experiments: {len(results)}",
+        f"- Successful embeddings: {sum(1 for r in results if r.get('embedding') and r['embedding'].get('success'))}",
+        f"- Successful solves: {sum(1 for r in results if r.get('solving') and r['solving'].get('success'))}",
+    ])
+    
+    # Best configurations by farm size
+    lines.extend([
+        f"",
+        f"## Best Configurations by Problem Size",
+        f"",
+    ])
+    
+    for n_farms in PROBLEM_SIZES:
+        farm_results = [r for r in results if r.get("n_farms") == n_farms]
+        if farm_results:
+            # Best by total time (only successful solves)
+            successful = [r for r in farm_results if r.get("solving", {}).get("success")]
+            if successful:
+                best = min(successful, key=lambda x: x.get("total_time", float('inf')))
+                lines.append(
+                    f"- **{n_farms} farms**: {best.get('formulation')} + {best.get('decomposition', 'None')} "
+                    f"(total: {best.get('total_time', 0):.1f}s)"
+                )
+    
+    with open(output_file, 'w') as f:
+        f.write('\n'.join(lines))
+    
+    return output_file
 
 
 # =============================================================================
 # MAIN BENCHMARK
 # =============================================================================
 
+def apply_decomposition(bqm: BinaryQuadraticModel, decomp_name: str) -> Tuple[List[Set], str]:
+    """Apply a decomposition strategy and return partitions"""
+    if decomp_name == "None" or decomp_name is None:
+        return [set(bqm.variables)], "None"
+    
+    elif decomp_name == "Louvain":
+        if not LOUVAIN_AVAILABLE:
+            return None, "Louvain not available"
+        partitions = decompose_louvain(bqm, max_partition_size=150)
+        if not partitions or len(partitions) <= 1:
+            return [set(bqm.variables)], "Louvain produced single partition"
+        return partitions, None
+    
+    elif decomp_name == "PlotBased":
+        partitions = decompose_plot_based(bqm, plots_per_partition=5)
+        if not partitions or len(partitions) <= 1:
+            return [set(bqm.variables)], "PlotBased produced single partition"
+        return partitions, None
+    
+    elif decomp_name == "Multilevel":
+        if not ADVANCED_DECOMP_AVAILABLE:
+            return None, "Multilevel not available"
+        partitions = decompose_multilevel(bqm, levels=2, partition_size=100)
+        if not partitions or len(partitions) <= 1:
+            return [set(bqm.variables)], "Multilevel produced single partition"
+        return partitions, None
+    
+    elif decomp_name == "Cutset":
+        if not ADVANCED_DECOMP_AVAILABLE:
+            return None, "Cutset not available"
+        partitions = decompose_sequential_cutset(bqm, max_cut_size=5, min_partition_size=50)
+        if not partitions or len(partitions) <= 1:
+            return [set(bqm.variables)], "Cutset produced single partition"
+        return partitions, None
+    
+    elif decomp_name == "SpatialGrid":
+        if not ADVANCED_DECOMP_AVAILABLE:
+            return None, "SpatialGrid not available"
+        partitions = decompose_spatial_grid(bqm, grid_size=5)
+        if not partitions or len(partitions) <= 1:
+            return [set(bqm.variables)], "SpatialGrid produced single partition"
+        return partitions, None
+    
+    elif decomp_name == "EnergyImpact":
+        if not HYBRID_AVAILABLE:
+            return None, "EnergyImpact not available"
+        partitions = decompose_energy_impact(bqm, partition_size=100)
+        if not partitions or len(partitions) <= 1:
+            return [set(bqm.variables)], "EnergyImpact produced single partition"
+        return partitions, None
+    
+    else:
+        return None, f"Unknown decomposition: {decomp_name}"
+
+
+def test_single_configuration(
+    n_farms: int,
+    formulation: str,
+    decomposition: str,
+    target_graph: nx.Graph,
+    experiment_id: int,
+    total_experiments: int
+) -> Dict:
+    """Test a single configuration and return comprehensive results"""
+    
+    print(f"\n  [{experiment_id}/{total_experiments}] n_farms={n_farms}, form={formulation}, decomp={decomposition}")
+    
+    result = {
+        "n_farms": n_farms,
+        "formulation": formulation,
+        "decomposition": decomposition,
+        "num_partitions": 1,
+        "metadata": {},
+        "embedding": None,
+        "solving": None,
+        "total_embedding_time": 0,
+        "total_solve_time": 0,
+        "total_time": 0,
+        "error": None
+    }
+    
+    try:
+        # Step 1: Build formulation
+        print(f"    Building {formulation}...")
+        
+        if formulation == "CQM":
+            cqm, meta = build_patch_cqm(n_farms)
+            result["metadata"] = meta
+            
+            # CQM: No embedding (continuous), just solve with Gurobi
+            print(f"    Solving CQM with Gurobi (no embedding for CQM)...")
+            solve_result = solve_cqm_with_gurobi(cqm, SOLVE_TIMEOUT)
+            result["solving"] = solve_result
+            result["total_solve_time"] = solve_result.get("solve_time", 0) or 0
+            result["total_time"] = result["total_solve_time"]
+            
+            # No decomposition for CQM
+            if decomposition != "None":
+                result["error"] = "CQM does not support decomposition"
+                return result
+            
+            return result
+        
+        elif formulation == "BQM":
+            # Convert CQM to BQM
+            cqm, _ = build_patch_cqm(n_farms)
+            bqm, meta = cqm_to_bqm_wrapper(cqm, "Patch_CQM")
+            result["metadata"] = meta
+            
+        elif formulation == "SparseBQM":
+            bqm, meta = build_patch_ultra_sparse_bqm(n_farms)
+            result["metadata"] = meta
+        
+        else:
+            result["error"] = f"Unknown formulation: {formulation}"
+            return result
+        
+        # Step 2: Apply decomposition
+        print(f"    Applying decomposition: {decomposition}...")
+        partitions, decomp_error = apply_decomposition(bqm, decomposition)
+        
+        if partitions is None:
+            result["error"] = decomp_error
+            # Still try to solve without decomposition
+            partitions = [set(bqm.variables)]
+        
+        result["num_partitions"] = len(partitions)
+        print(f"      Created {len(partitions)} partition(s)")
+        
+        # Step 3: Embedding study (always try, even if dense)
+        print(f"    Running embedding study...")
+        if len(partitions) == 1:
+            embed_result = study_embedding(bqm, target_graph, EMBEDDING_TIMEOUT)
+            result["embedding"] = embed_result
+            result["total_embedding_time"] = embed_result.get("embedding_time", 0) or 0
+        else:
+            embed_result = study_decomposed_embedding(bqm, partitions, target_graph, EMBEDDING_TIMEOUT)
+            result["embedding"] = embed_result
+            result["total_embedding_time"] = embed_result.get("total_embedding_time", 0) or 0
+        
+        # Step 4: Solve with Gurobi (always, regardless of embedding success)
+        print(f"    Solving with Gurobi...")
+        if len(partitions) == 1:
+            solve_result = solve_bqm_with_gurobi(bqm, SOLVE_TIMEOUT)
+            result["solving"] = solve_result
+            result["total_solve_time"] = solve_result.get("solve_time", 0) or 0
+        else:
+            solve_result = solve_decomposed_bqm_with_gurobi(bqm, partitions, SOLVE_TIMEOUT)
+            result["solving"] = solve_result
+            result["total_solve_time"] = solve_result.get("total_solve_time", 0) or 0
+        
+        # Step 5: Calculate total time
+        result["total_time"] = result["total_embedding_time"] + result["total_solve_time"]
+        
+        # Summary
+        embed_status = "[OK]" if result["embedding"].get("success") else "[NO]"
+        solve_status = "[OK]" if result["solving"].get("success") else "[NO]"
+        print(f"    Result: Embed={embed_status} ({result['total_embedding_time']:.1f}s), "
+              f"Solve={solve_status} ({result['total_solve_time']:.1f}s), "
+              f"Total={result['total_time']:.1f}s")
+        
+    except Exception as e:
+        result["error"] = str(e)
+        print(f"    [ERROR] {e}")
+        import traceback
+        traceback.print_exc()
+    
+    return result
+
+
 def run_comprehensive_benchmark():
-    """Run complete benchmark following COMPREHENSIVE_DECOMPOSITION_PLAN.md"""
+    """Run complete systematic benchmark across all configurations"""
     
-    print("\n[2/6] Getting target graph (QPU topology)...")
+    print("\n" + "=" * 80)
+    print("COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK v2.0")
+    print("=" * 80)
+    
+    # Initialize
+    print("\n[1/4] Initializing...")
     target_graph = get_target_graph()
-    print(f"  ✅ Target graph: {len(target_graph.nodes)} nodes, {len(target_graph.edges)} edges")
+    print(f"  [OK] Target graph: {len(target_graph.nodes)} nodes, {len(target_graph.edges)} edges")
     
+    # Calculate total experiments
+    # CQM only with None decomposition
+    # BQM and SparseBQM with all decompositions
+    total_experiments = 0
+    for n_farms in PROBLEM_SIZES:
+        total_experiments += 1  # CQM (no decomp)
+        for form in ["BQM", "SparseBQM"]:
+            for decomp in DECOMPOSITIONS:
+                total_experiments += 1
+    
+    print(f"  Total configurations to test: {total_experiments}")
+    print(f"  Problem sizes: {PROBLEM_SIZES}")
+    print(f"  Formulations: {FORMULATIONS}")
+    print(f"  Decompositions: {DECOMPOSITIONS}")
+    
+    # Run all experiments
+    print("\n[2/4] Running experiments...")
     all_results = []
+    experiment_id = 0
+    benchmark_start = time.time()
     
-    for n_units in PROBLEM_SIZES:
-        print(f"\n{'='*80}")
-        print(f"TESTING PROBLEM SIZE: {n_units} units")
-        print(f"{'='*80}")
+    for n_farms in PROBLEM_SIZES:
+        print(f"\n{'='*60}")
+        print(f"PROBLEM SIZE: {n_farms} farms × {N_FOODS} foods = {n_farms * N_FOODS} variables")
+        print(f"{'='*60}")
         
-        # =====================================================================
-        # FARM SCENARIO
-        # =====================================================================
-        print(f"\n[3/6] Farm Scenario ({n_units} farms)...")
+        # Test CQM (only with None decomposition)
+        experiment_id += 1
+        result = test_single_configuration(
+            n_farms, "CQM", "None", target_graph, experiment_id, total_experiments
+        )
+        all_results.append(result)
         
-        # Farm CQM
-        print("  Building Farm CQM...")
-        farm_cqm, farm_cqm_meta = build_farm_cqm(n_units)
-        
-        # Solve with Gurobi
-        print("    Solving Farm CQM with Gurobi...")
-        farm_cqm_gurobi = solve_cqm_with_gurobi(farm_cqm, SOLVE_TIMEOUT)
-        
-        all_results.append({
-            "scenario": "Farm",
-            "formulation": "CQM",
-            "n_units": n_units,
-            "metadata": farm_cqm_meta,
-            "decomposition": None,
-            "embedding": None,
-            "solving": farm_cqm_gurobi
-        })
-        
-        # NOTE: Farm CQM contains continuous variables, cannot convert to BQM
-        # Skip BQM conversion for Farm scenario - it's inherently mixed-integer
-        print("  (Skipping BQM conversion for Farm - continuous variables not supported)")
-        
-        # =====================================================================
-        # PATCH SCENARIO
-        # =====================================================================
-        print(f"\n[4/6] Patch Scenario ({n_units} patches)...")
-        
-        # Patch CQM
-        print("  Building Patch CQM...")
-        patch_cqm, patch_cqm_meta = build_patch_cqm(n_units)
-        patch_cqm_gurobi = solve_cqm_with_gurobi(patch_cqm, SOLVE_TIMEOUT)
-        
-        all_results.append({
-            "scenario": "Patch",
-            "formulation": "CQM",
-            "n_units": n_units,
-            "metadata": patch_cqm_meta,
-            "decomposition": None,
-            "embedding": None,
-            "solving": patch_cqm_gurobi
-        })
-        
-        # Patch BQM (from CQM)
-        print("  Converting Patch CQM to BQM...")
-        patch_bqm_cqm, patch_bqm_cqm_meta = cqm_to_bqm_wrapper(patch_cqm, "Patch_CQM")
-        patch_bqm_cqm_embed = study_embedding(patch_bqm_cqm, target_graph, EMBEDDING_TIMEOUT)
-        patch_bqm_cqm_gurobi = solve_bqm_with_gurobi(patch_bqm_cqm, SOLVE_TIMEOUT)
-        
-        all_results.append({
-            "scenario": "Patch",
-            "formulation": "BQM_from_CQM",
-            "n_units": n_units,
-            "metadata": patch_bqm_cqm_meta,
-            "decomposition": None,
-            "embedding": patch_bqm_cqm_embed,
-            "solving": patch_bqm_cqm_gurobi
-        })
-        
-        # Patch Direct BQM
-        print("  Building Patch Direct BQM...")
-        patch_bqm_direct, patch_bqm_direct_meta = build_patch_direct_bqm(n_units)
-        patch_bqm_direct_embed = study_embedding(patch_bqm_direct, target_graph, EMBEDDING_TIMEOUT)
-        patch_bqm_direct_gurobi = solve_bqm_with_gurobi(patch_bqm_direct, SOLVE_TIMEOUT)
-        
-        all_results.append({
-            "scenario": "Patch",
-            "formulation": "Direct_BQM",
-            "n_units": n_units,
-            "metadata": patch_bqm_direct_meta,
-            "decomposition": None,
-            "embedding": patch_bqm_direct_embed,
-            "solving": patch_bqm_direct_gurobi
-        })
-        
-        # Patch Ultra-Sparse BQM
-        print("  Building Patch Ultra-Sparse BQM...")
-        patch_bqm_sparse, patch_bqm_sparse_meta = build_patch_ultra_sparse_bqm(n_units)
-        patch_bqm_sparse_embed = study_embedding(patch_bqm_sparse, target_graph, EMBEDDING_TIMEOUT)
-        patch_bqm_sparse_gurobi = solve_bqm_with_gurobi(patch_bqm_sparse, SOLVE_TIMEOUT)
-        
-        all_results.append({
-            "scenario": "Patch",
-            "formulation": "UltraSparse_BQM",
-            "n_units": n_units,
-            "metadata": patch_bqm_sparse_meta,
-            "decomposition": None,
-            "embedding": patch_bqm_sparse_embed,
-            "solving": patch_bqm_sparse_gurobi
-        })
-        
-        # Test decompositions on Direct BQM and Ultra-Sparse BQM (the good formulations!)
-        # Skip BQM_from_CQM - it's too dense even after decomposition
-        print(f"\n  Testing decompositions on embeddable formulations...")
-        
-        for bqm, meta, name in [
-            (patch_bqm_direct, patch_bqm_direct_meta, "Direct_BQM"),
-            (patch_bqm_sparse, patch_bqm_sparse_meta, "UltraSparse_BQM"),
-        ]:
-            print(f"\n    Decomposing {name} ({len(bqm.variables)} vars, {len(bqm.quadratic)} edges, density={meta.get('density', 0):.3f})...")
-            
-            # Strategy 1: Louvain graph partitioning
-            if LOUVAIN_AVAILABLE:
-                print(f"      [1/5] Louvain decomposition...")
-                louvain_parts = decompose_louvain(bqm, max_partition_size=150)  # Match study_binary_plot_embedding
-                if louvain_parts and len(louvain_parts) > 1:
-                    print(f"        Created {len(louvain_parts)} partitions")
-                    louvain_embed = study_decomposed_embedding(bqm, louvain_parts, target_graph, EMBEDDING_TIMEOUT)
-                    louvain_solve = solve_decomposed_bqm_with_gurobi(bqm, louvain_parts, SOLVE_TIMEOUT)
-                    all_results.append({
-                        "scenario": "Patch",
-                        "formulation": name,
-                        "n_units": n_units,
-                        "metadata": meta,
-                        "decomposition": "Louvain",
-                        "embedding": louvain_embed,
-                        "solving": louvain_solve
-                    })
-            
-            # Strategy 2: Plot-based partitioning
-            print(f"      [2/5] Plot-based decomposition...")
-            plot_parts = decompose_plot_based(bqm, plots_per_partition=5)
-            if plot_parts and len(plot_parts) > 1:
-                print(f"        Created {len(plot_parts)} partitions (5 plots each)")
-                plot_embed = study_decomposed_embedding(bqm, plot_parts, target_graph, EMBEDDING_TIMEOUT)
-                plot_solve = solve_decomposed_bqm_with_gurobi(bqm, plot_parts, SOLVE_TIMEOUT)
-                all_results.append({
-                    "scenario": "Patch",
-                    "formulation": name,
-                    "n_units": n_units,
-                    "metadata": meta,
-                    "decomposition": "PlotBased",
-                    "embedding": plot_embed,
-                    "solving": plot_solve
-                })
-            
-            # Strategy 3: Energy-impact decomposition
-            if HYBRID_AVAILABLE:
-                print(f"      [3/5] Energy-impact decomposition...")
-                energy_parts = decompose_energy_impact(bqm, partition_size=100)
-                if energy_parts and len(energy_parts) > 1:
-                    print(f"        Created {len(energy_parts)} partitions")
-                    energy_embed = study_decomposed_embedding(bqm, energy_parts, target_graph, EMBEDDING_TIMEOUT)
-                    energy_solve = solve_decomposed_bqm_with_gurobi(bqm, energy_parts, SOLVE_TIMEOUT)
-                    all_results.append({
-                        "scenario": "Patch",
-                        "formulation": name,
-                        "n_units": n_units,
-                        "metadata": meta,
-                        "decomposition": "EnergyImpact",
-                        "embedding": energy_embed,
-                        "solving": energy_solve
-                    })
-            
-            # Strategy 4: Multilevel decomposition (ML-QLS)
-            if ADVANCED_DECOMP_AVAILABLE:
-                print(f"      [4/5] Multilevel (ML-QLS) decomposition...")
-                ml_parts = decompose_multilevel(bqm, levels=2, partition_size=50)
-                if ml_parts and len(ml_parts) > 1:
-                    print(f"        Created {len(ml_parts)} partitions")
-                    ml_embed = study_decomposed_embedding(bqm, ml_parts, target_graph, EMBEDDING_TIMEOUT)
-                    ml_solve = solve_decomposed_bqm_with_gurobi(bqm, ml_parts, SOLVE_TIMEOUT)
-                    all_results.append({
-                        "scenario": "Patch",
-                        "formulation": name,
-                        "n_units": n_units,
-                        "metadata": meta,
-                        "decomposition": "Multilevel_MLQLS",
-                        "embedding": ml_embed,
-                        "solving": ml_solve
-                    })
-            
-            # Strategy 5: Sequential cut-set reduction
-            if ADVANCED_DECOMP_AVAILABLE:
-                print(f"      [5/5] Sequential cut-set decomposition...")
-                cutset_parts = decompose_sequential_cutset(bqm, max_cut_size=5, min_partition_size=100)
-                if cutset_parts and len(cutset_parts) > 1:
-                    print(f"        Created {len(cutset_parts)} partitions")
-                    cutset_embed = study_decomposed_embedding(bqm, cutset_parts, target_graph, EMBEDDING_TIMEOUT)
-                    cutset_solve = solve_decomposed_bqm_with_gurobi(bqm, cutset_parts, SOLVE_TIMEOUT)
-                    all_results.append({
-                        "scenario": "Patch",
-                        "formulation": name,
-                        "n_units": n_units,
-                        "metadata": meta,
-                        "decomposition": "SequentialCutSet",
-                        "embedding": cutset_embed,
-                        "solving": cutset_solve
-                    })
-            
-            # Strategy 5: Sequential cut-set reduction
-            if ADVANCED_DECOMP_AVAILABLE:
-                print(f"      [5/5] Sequential cut-set decomposition...")
-                cutset_parts = decompose_sequential_cutset(bqm, max_cut_size=3, min_partition_size=30)
-                if cutset_parts and len(cutset_parts) > 1:
-                    print(f"        Created {len(cutset_parts)} partitions")
-                    cutset_embed = study_decomposed_embedding(bqm, cutset_parts, target_graph, EMBEDDING_TIMEOUT)
-                    all_results.append({
-                        "scenario": "Patch",
-                        "formulation": name,
-                        "n_units": n_units,
-                        "metadata": meta,
-                        "decomposition": "SequentialCutSet",
-                        "embedding": cutset_embed,
-                        "solving": solve_bqm_with_gurobi(bqm, SOLVE_TIMEOUT)
-                    })
+        # Test BQM and SparseBQM with all decompositions
+        for formulation in ["BQM", "SparseBQM"]:
+            for decomposition in DECOMPOSITIONS:
+                experiment_id += 1
+                result = test_single_configuration(
+                    n_farms, formulation, decomposition, target_graph, experiment_id, total_experiments
+                )
+                all_results.append(result)
+    
+    benchmark_time = time.time() - benchmark_start
     
     # Save results
-    print(f"\n[5/6] Saving results...")
+    print("\n[3/4] Saving results...")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = OUTPUT_DIR / f"comprehensive_benchmark_{timestamp}.json"
     
-    with open(output_file, 'w') as f:
-        json.dump({
-            "timestamp": timestamp,
-            "problem_sizes": PROBLEM_SIZES,
-            "results": all_results
-        }, f, indent=2)
+    json_file = save_results_json(all_results, OUTPUT_DIR, timestamp)
+    print(f"  [OK] JSON: {json_file}")
     
-    print(f"  ✅ Results saved to {output_file}")
+    csv_file = save_results_csv(all_results, OUTPUT_DIR, timestamp)
+    print(f"  [OK] CSV: {csv_file}")
     
-    # Generate summary
-    print(f"\n[6/6] Summary...")
+    md_file = save_results_markdown(all_results, OUTPUT_DIR, timestamp)
+    print(f"  [OK] Markdown: {md_file}")
+    
+    # Final summary
+    print("\n[4/4] Summary...")
     print(f"\n{'='*80}")
     print("BENCHMARK COMPLETE")
     print(f"{'='*80}")
     print(f"Total experiments: {len(all_results)}")
-    print(f"Output: {output_file}")
+    print(f"Total benchmark time: {benchmark_time:.1f}s ({benchmark_time/60:.1f} min)")
     
-    # Quick stats
-    embedded_count = sum(1 for r in all_results if r.get("embedding") and r["embedding"].get("success"))
-    solved_count = sum(1 for r in all_results if r.get("solving") and r["solving"].get("success"))
+    # Statistics
+    embed_attempts = sum(1 for r in all_results if r.get("embedding"))
+    embed_success = sum(1 for r in all_results if r.get("embedding") and r["embedding"].get("success"))
+    solve_success = sum(1 for r in all_results if r.get("solving") and r["solving"].get("success"))
     
-    print(f"\nSuccessful embeddings: {embedded_count}/{sum(1 for r in all_results if r.get('embedding'))}")
-    print(f"Successful solves: {solved_count}/{len(all_results)}")
+    print(f"\nSuccessful embeddings: {embed_success}/{embed_attempts}")
+    print(f"Successful solves: {solve_success}/{len(all_results)}")
+    
+    # Best results by problem size
+    print("\nBest configurations by problem size (by total time):")
+    for n_farms in PROBLEM_SIZES:
+        farm_results = [r for r in all_results if r.get("n_farms") == n_farms]
+        successful = [r for r in farm_results if r.get("solving", {}).get("success")]
+        if successful:
+            best = min(successful, key=lambda x: x.get("total_time", float('inf')))
+            print(f"  {n_farms} farms: {best.get('formulation')} + {best.get('decomposition', 'None')} "
+                  f"({best.get('total_time', 0):.1f}s total)")
+    
+    print(f"\nOutput files:")
+    print(f"  - {json_file}")
+    print(f"  - {csv_file}")
+    print(f"  - {md_file}")
     
     return all_results
 
