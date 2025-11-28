@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Embedding and Solving Benchmark v2.0
+Comprehensive Embedding and Solving Benchmark v3.0
 
 Systematically tests ALL combinations of:
 - Problem sizes (5, 10, 15, 20, 25, 30 farms)
@@ -14,11 +14,12 @@ Systematically tests ALL combinations of:
   * Energy-impact (dwave-hybrid)
 
 For each configuration:
-1. Build formulation
+1. Build formulation using REAL food data with nutritional weights
 2. Apply decomposition (if any)
 3. Attempt embedding (300s timeout, continue even if fails)
 4. Solve with Gurobi (always, regardless of embedding)
-5. Calculate total times (summing partitions for decomposed)
+5. Calculate ACTUAL objectives from solutions (not BQM energy)
+6. Calculate total times (summing partitions for decomposed)
 
 Outputs:
 - JSON (detailed results)
@@ -26,7 +27,7 @@ Outputs:
 - Markdown (human-readable summary)
 
 Author: Generated for OQI-UC002-DWave comprehensive benchmark
-Date: 2025-11-27 (v2.0 - comprehensive testing matrix)
+Date: 2025-11-28 (v3.0 - real formulation with nutritional weights)
 """
 
 import os
@@ -104,10 +105,21 @@ except ImportError:
     ADVANCED_DECOMP_AVAILABLE = False
     print("  Warning: Advanced decomposition strategies not available.")
 
+# Real data loading
+try:
+    from src.scenarios import load_food_data
+    from Utils.farm_sampler import generate_farms
+    from Utils.patch_sampler import generate_grid
+    REAL_DATA_AVAILABLE = True
+    print("  [OK] Real data loaders available (scenarios, farm_sampler, patch_sampler)")
+except ImportError as e:
+    REAL_DATA_AVAILABLE = False
+    print(f"  Warning: Real data loading not available: {e}")
+
 print(f"  [OK] Imports done in {time.time() - import_start:.2f}s")
 
 # Configuration
-PROBLEM_SIZES = [5, 10, 15, 20, 25, 30]  # Number of farms to test
+PROBLEM_SIZES = [25]  # Testing 25 farms only
 N_FOODS = 27
 EMBEDDING_TIMEOUT = 300  # 5 minutes per partition - continue even if fails
 SOLVE_TIMEOUT = 300  # 5 minutes for Gurobi per partition
@@ -125,118 +137,410 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 
 # =============================================================================
+# REAL DATA LOADING
+# =============================================================================
+
+# Global caches for real data (loaded once)
+_CACHED_FOODS = None
+_CACHED_FOOD_GROUPS = None
+_CACHED_BASE_CONFIG = None
+_CACHED_WEIGHTS = None
+
+
+def load_real_data():
+    """Load real food data from scenarios (cached)"""
+    global _CACHED_FOODS, _CACHED_FOOD_GROUPS, _CACHED_BASE_CONFIG, _CACHED_WEIGHTS
+    
+    if _CACHED_FOODS is not None:
+        return _CACHED_FOODS, _CACHED_FOOD_GROUPS, _CACHED_BASE_CONFIG, _CACHED_WEIGHTS
+    
+    if not REAL_DATA_AVAILABLE:
+        raise RuntimeError("Real data loading not available - check imports")
+    
+    print("  Loading real food data from 'full_family' scenario...")
+    _, foods, food_groups, base_config = load_food_data('full_family')
+    
+    weights = base_config['parameters'].get('weights', {
+        'nutritional_value': 0.3,
+        'nutrient_density': 0.2,
+        'environmental_impact': 0.2,
+        'affordability': 0.15,
+        'sustainability': 0.15
+    })
+    
+    _CACHED_FOODS = foods
+    _CACHED_FOOD_GROUPS = food_groups
+    _CACHED_BASE_CONFIG = base_config
+    _CACHED_WEIGHTS = weights
+    
+    print(f"    Loaded {len(foods)} foods, {len(food_groups)} food groups")
+    print(f"    Weights: {weights}")
+    
+    return foods, food_groups, base_config, weights
+
+
+def generate_land_data(n_units: int, total_land: float = 100.0, seed: int = 42) -> Dict[str, float]:
+    """Generate land availability data using patch_sampler"""
+    if not REAL_DATA_AVAILABLE:
+        # Fallback to simple even distribution
+        unit_names = [f"Unit_{i}" for i in range(n_units)]
+        land_per_unit = total_land / n_units
+        return {name: land_per_unit for name in unit_names}
+    
+    patches = generate_grid(n_farms=n_units, area=total_land, seed=seed)
+    return patches
+
+
+def create_real_config(land_data: Dict[str, float], base_config: Dict) -> Dict:
+    """Create configuration for CQM building"""
+    total_land = sum(land_data.values())
+    max_percentage = base_config['parameters'].get('max_percentage_per_crop', {})
+    maximum_planting_area = {crop: max_pct * total_land for crop, max_pct in max_percentage.items()}
+    
+    return {
+        'parameters': {
+            'land_availability': land_data,
+            'minimum_planting_area': base_config['parameters'].get('minimum_planting_area', {}),
+            'maximum_planting_area': maximum_planting_area,
+            'food_group_constraints': base_config['parameters'].get('food_group_constraints', {}),
+            'weights': base_config['parameters'].get('weights', {}),
+        }
+    }
+
+
+def calculate_actual_objective(solution: Dict, foods: Dict, weights: Dict, 
+                                land_data: Dict, unit_names: List[str]) -> float:
+    """
+    Calculate the ACTUAL objective value from a solution (not BQM energy).
+    
+    The real objective is:
+    sum over units and foods of:
+        weights['nutritional_value'] * foods[food]['nutritional_value'] * area +
+        weights['nutrient_density'] * foods[food]['nutrient_density'] * area -
+        weights['environmental_impact'] * foods[food]['environmental_impact'] * area +
+        weights['affordability'] * foods[food]['affordability'] * area +
+        weights['sustainability'] * foods[food]['sustainability'] * area
+    
+    Normalized by total land area.
+    """
+    total_land = sum(land_data.values())
+    if total_land == 0:
+        return 0.0
+    
+    actual_objective = 0.0
+    food_names = list(foods.keys())
+    
+    for unit_idx, unit in enumerate(unit_names):
+        unit_area = land_data.get(unit, 0)
+        
+        for food_idx, food in enumerate(food_names):
+            # Check for Y variable (binary selection)
+            y_key = f"Y_{unit_idx}_{food_idx}"
+            y_val = solution.get(y_key, 0)
+            
+            # Also check for A variable (area) if available
+            a_key = f"A_{unit_idx}_{food_idx}"
+            a_val = solution.get(a_key, 0)
+            
+            # Use area if available, otherwise use unit_area * y_val
+            if a_val > 0:
+                effective_area = a_val
+            elif y_val > 0.5:
+                effective_area = unit_area  # Assume full allocation if selected
+            else:
+                effective_area = 0
+            
+            if effective_area > 0:
+                food_data = foods[food]
+                crop_value = (
+                    weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * food_data.get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * food_data.get('affordability', 0) +
+                    weights.get('sustainability', 0) * food_data.get('sustainability', 0)
+                )
+                actual_objective += effective_area * crop_value
+    
+    # Normalize by total land
+    return actual_objective / total_land
+
+
+def calculate_actual_objective_from_bqm_solution(solution: Dict, metadata: Dict, n_units: int) -> Optional[float]:
+    """
+    Calculate the ACTUAL objective from a BQM solution using metadata.
+    
+    BQM energy includes penalty terms, so we need to recalculate
+    using the original nutritional weights.
+    """
+    if not solution:
+        return None
+    
+    # Try to get data from metadata
+    if "weights" not in metadata or "total_land" not in metadata:
+        # Metadata not available, try to load from cache
+        try:
+            foods, _, _, weights = load_real_data()
+            food_names = metadata.get("food_names", list(foods.keys())[:N_FOODS])
+        except Exception:
+            return None
+    else:
+        weights = metadata["weights"]
+        food_names = metadata.get("food_names", [])
+        if not food_names:
+            try:
+                foods, _, _, _ = load_real_data()
+                food_names = list(foods.keys())[:N_FOODS]
+            except Exception:
+                return None
+    
+    total_land = metadata.get("total_land", 100.0)
+    
+    # Load food data
+    try:
+        foods, _, _, _ = load_real_data()
+    except Exception:
+        return None
+    
+    # Generate land data (same seed as formulation builder)
+    land_data = generate_land_data(n_units, total_land=total_land)
+    unit_names = list(land_data.keys())
+    
+    actual_objective = 0.0
+    
+    for p_idx, unit in enumerate(unit_names):
+        unit_area = land_data.get(unit, 0)
+        
+        for c_idx, food in enumerate(food_names):
+            # Check for Y variable (binary selection)
+            y_key = f"Y_{p_idx}_{c_idx}"
+            y_val = solution.get(y_key, 0)
+            
+            if y_val > 0.5:  # Selected
+                food_data = foods.get(food, {})
+                crop_value = (
+                    weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
+                    weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
+                    weights.get('environmental_impact', 0) * food_data.get('environmental_impact', 0) +
+                    weights.get('affordability', 0) * food_data.get('affordability', 0) +
+                    weights.get('sustainability', 0) * food_data.get('sustainability', 0)
+                )
+                actual_objective += unit_area * crop_value
+    
+    # Normalize by total land
+    return actual_objective / total_land if total_land > 0 else 0.0
+
+
+# =============================================================================
 # FORMULATION BUILDERS
 # =============================================================================
 
 def build_farm_cqm(n_farms: int, n_foods: int = 27) -> Tuple[ConstrainedQuadraticModel, Dict]:
-    """Build Farm CQM with continuous areas + binary selections"""
-    print(f"    Building Farm CQM ({n_farms} farms, {n_foods} foods)...")
+    """Build Farm CQM with continuous areas + binary selections using REAL food data"""
+    print(f"    Building Farm CQM ({n_farms} farms, {n_foods} foods) with REAL data...")
+    
+    # Load real data
+    foods, food_groups, base_config, weights = load_real_data()
+    land_data = generate_land_data(n_farms, total_land=100.0)
+    config = create_real_config(land_data, base_config)
+    
+    unit_names = list(land_data.keys())
+    food_names = list(foods.keys())[:n_foods]  # Limit to n_foods
     
     cqm = ConstrainedQuadraticModel()
-    metadata = {"type": "Farm_CQM", "n_farms": n_farms, "n_foods": n_foods}
+    metadata = {
+        "type": "Farm_CQM", 
+        "n_farms": n_farms, 
+        "n_foods": len(food_names),
+        "unit_names": unit_names,
+        "food_names": food_names,
+        "weights": weights,
+        "total_land": sum(land_data.values())
+    }
     
     # Variables
     A = {}  # Continuous area
     Y = {}  # Binary selection
-    for f in range(n_farms):
-        for c in range(n_foods):
-            A[f, c] = Real(f"A_{f}_{c}", lower_bound=0, upper_bound=10)
-            Y[f, c] = Binary(f"Y_{f}_{c}")
+    for f_idx, farm in enumerate(unit_names):
+        for c_idx, food in enumerate(food_names):
+            land_avail = land_data[farm]
+            A[f_idx, c_idx] = Real(f"A_{f_idx}_{c_idx}", lower_bound=0, upper_bound=land_avail)
+            Y[f_idx, c_idx] = Binary(f"Y_{f_idx}_{c_idx}")
     
-    # Objective: maximize total area
-    objective = sum(A[f, c] for f in range(n_farms) for c in range(n_foods))
+    # Objective: weighted nutritional value (REAL formulation)
+    objective = 0
+    for f_idx, farm in enumerate(unit_names):
+        for c_idx, food in enumerate(food_names):
+            food_data = foods[food]
+            crop_coeff = (
+                weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
+                weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
+                weights.get('environmental_impact', 0) * food_data.get('environmental_impact', 0) +
+                weights.get('affordability', 0) * food_data.get('affordability', 0) +
+                weights.get('sustainability', 0) * food_data.get('sustainability', 0)
+            )
+            objective += crop_coeff * A[f_idx, c_idx]
+    
     cqm.set_objective(-objective)  # Minimize negative = maximize
     
     # Constraints
-    land_per_farm = 10.0
     min_area = 0.0001
     
-    # 1. Land availability per farm
-    for f in range(n_farms):
+    # 1. Land availability per farm (use REAL land data)
+    for f_idx, farm in enumerate(unit_names):
+        land_avail = land_data[farm]
         cqm.add_constraint(
-            sum(A[f, c] for c in range(n_foods)) <= land_per_farm,
-            label=f"land_capacity_farm_{f}"
+            sum(A[f_idx, c] for c in range(len(food_names))) <= land_avail,
+            label=f"land_capacity_farm_{f_idx}"
         )
     
     # 2. Min area if selected (A >= min_area * Y => A - min_area * Y >= 0)
-    for f in range(n_farms):
-        for c in range(n_foods):
-            cqm.add_constraint(A[f, c] - min_area * Y[f, c] >= 0, label=f"min_area_{f}_{c}")
+    for f_idx in range(n_farms):
+        for c_idx in range(len(food_names)):
+            cqm.add_constraint(A[f_idx, c_idx] - min_area * Y[f_idx, c_idx] >= 0, 
+                             label=f"min_area_{f_idx}_{c_idx}")
     
-    # 3. Max area if selected (A <= max * Y => A - max * Y <= 0)
-    for f in range(n_farms):
-        for c in range(n_foods):
-            cqm.add_constraint(A[f, c] - land_per_farm * Y[f, c] <= 0, label=f"max_area_{f}_{c}")
+    # 3. Max area if selected (A <= land_avail * Y)
+    for f_idx, farm in enumerate(unit_names):
+        land_avail = land_data[farm]
+        for c_idx in range(len(food_names)):
+            cqm.add_constraint(A[f_idx, c_idx] - land_avail * Y[f_idx, c_idx] <= 0, 
+                             label=f"max_area_{f_idx}_{c_idx}")
     
     # 4. Simple food group constraint (global)
-    total_selections = sum(Y[f, c] for f in range(n_farms) for c in range(n_foods))
-    cqm.add_constraint(total_selections >= n_foods // 2, label="min_total_foods")
-    cqm.add_constraint(total_selections <= n_foods * n_farms, label="max_total_foods")
+    n_food_vars = len(food_names)
+    total_selections = sum(Y[f, c] for f in range(n_farms) for c in range(n_food_vars))
+    cqm.add_constraint(total_selections >= n_food_vars // 2, label="min_total_foods")
+    cqm.add_constraint(total_selections <= n_food_vars * n_farms, label="max_total_foods")
     
     metadata.update({
         "variables": len(cqm.variables),
         "constraints": len(cqm.constraints),
-        "continuous_vars": n_farms * n_foods,
-        "binary_vars": n_farms * n_foods
+        "continuous_vars": n_farms * n_food_vars,
+        "binary_vars": n_farms * n_food_vars
     })
     
     return cqm, metadata
 
 
 def build_patch_cqm(n_patches: int, n_foods: int = 27) -> Tuple[ConstrainedQuadraticModel, Dict]:
-    """Build Patch CQM with binary-only selections"""
-    print(f"    Building Patch CQM ({n_patches} patches, {n_foods} foods)...")
+    """Build Patch CQM with binary-only selections using REAL food data"""
+    print(f"    Building Patch CQM ({n_patches} patches, {n_foods} foods) with REAL data...")
+    
+    # Load real data
+    foods, food_groups, base_config, weights = load_real_data()
+    land_data = generate_land_data(n_patches, total_land=100.0)
+    
+    unit_names = list(land_data.keys())
+    food_names = list(foods.keys())[:n_foods]
     
     cqm = ConstrainedQuadraticModel()
-    metadata = {"type": "Patch_CQM", "n_patches": n_patches, "n_foods": n_foods}
+    metadata = {
+        "type": "Patch_CQM", 
+        "n_patches": n_patches, 
+        "n_foods": len(food_names),
+        "unit_names": unit_names,
+        "food_names": food_names,
+        "weights": weights,
+        "total_land": sum(land_data.values())
+    }
     
     # Variables: binary only
     Y = {}
-    for p in range(n_patches):
-        for c in range(n_foods):
-            Y[p, c] = Binary(f"Y_{p}_{c}")
+    for p_idx in range(n_patches):
+        for c_idx in range(len(food_names)):
+            Y[p_idx, c_idx] = Binary(f"Y_{p_idx}_{c_idx}")
     
-    # Objective: maximize total selections
-    objective = sum(Y[p, c] for p in range(n_patches) for c in range(n_foods))
-    cqm.set_objective(-objective)
+    # Objective: weighted nutritional value (REAL formulation)
+    # For binary: Y * patch_area * weighted_food_value
+    objective = 0
+    for p_idx, patch in enumerate(unit_names):
+        patch_area = land_data[patch]
+        for c_idx, food in enumerate(food_names):
+            food_data = foods[food]
+            crop_coeff = (
+                weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
+                weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
+                weights.get('environmental_impact', 0) * food_data.get('environmental_impact', 0) +
+                weights.get('affordability', 0) * food_data.get('affordability', 0) +
+                weights.get('sustainability', 0) * food_data.get('sustainability', 0)
+            )
+            # Weight by patch area
+            objective += crop_coeff * patch_area * Y[p_idx, c_idx]
+    
+    # Normalize by total land
+    total_land = sum(land_data.values())
+    objective = objective / total_land
+    
+    cqm.set_objective(-objective)  # Minimize negative = maximize
     
     # Constraints
-    # 1. One food per patch (or allow multiple with constraint)
-    for p in range(n_patches):
-        cqm.add_constraint(sum(Y[p, c] for c in range(n_foods)) <= 5, label=f"patch_limit_{p}")
+    # 1. Limit foods per patch
+    for p_idx in range(n_patches):
+        cqm.add_constraint(sum(Y[p_idx, c] for c in range(len(food_names))) <= 5, 
+                          label=f"patch_limit_{p_idx}")
     
     # 2. Global food constraints
-    total_selections = sum(Y[p, c] for p in range(n_patches) for c in range(n_foods))
-    cqm.add_constraint(total_selections >= n_foods // 2, label="min_foods")
+    n_food_vars = len(food_names)
+    total_selections = sum(Y[p, c] for p in range(n_patches) for c in range(n_food_vars))
+    cqm.add_constraint(total_selections >= n_food_vars // 2, label="min_foods")
     
     metadata.update({
         "variables": len(cqm.variables),
         "constraints": len(cqm.constraints),
-        "binary_vars": n_patches * n_foods
+        "binary_vars": n_patches * n_food_vars
     })
     
     return cqm, metadata
 
 
 def build_patch_direct_bqm(n_patches: int, n_foods: int = 27) -> Tuple[BinaryQuadraticModel, Dict]:
-    """Build Patch BQM directly (minimal slack variables)"""
-    print(f"    Building Patch Direct BQM ({n_patches} patches, {n_foods} foods)...")
+    """Build Patch BQM directly with REAL nutritional coefficients (minimal slack variables)"""
+    print(f"    Building Patch Direct BQM ({n_patches} patches, {n_foods} foods) with REAL data...")
+    
+    # Load real data
+    foods, food_groups, base_config, weights = load_real_data()
+    land_data = generate_land_data(n_patches, total_land=100.0)
+    
+    unit_names = list(land_data.keys())
+    food_names = list(foods.keys())[:n_foods]
+    total_land = sum(land_data.values())
     
     bqm = BinaryQuadraticModel('BINARY')
-    metadata = {"type": "Patch_Direct_BQM", "n_patches": n_patches, "n_foods": n_foods}
+    metadata = {
+        "type": "Patch_Direct_BQM", 
+        "n_patches": n_patches, 
+        "n_foods": len(food_names),
+        "unit_names": unit_names,
+        "food_names": food_names,
+        "weights": weights,
+        "total_land": total_land
+    }
     
-    # Primary variables
-    for p in range(n_patches):
-        for c in range(n_foods):
-            var = f"Y_{p}_{c}"
-            bqm.add_variable(var, -1.0)  # Reward selection
+    # Primary variables with REAL nutritional coefficients
+    for p_idx, patch in enumerate(unit_names):
+        patch_area = land_data[patch]
+        for c_idx, food in enumerate(food_names):
+            var = f"Y_{p_idx}_{c_idx}"
+            food_data = foods[food]
+            # Linear coefficient: negative of weighted value (to minimize)
+            crop_coeff = (
+                weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
+                weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
+                weights.get('environmental_impact', 0) * food_data.get('environmental_impact', 0) +
+                weights.get('affordability', 0) * food_data.get('affordability', 0) +
+                weights.get('sustainability', 0) * food_data.get('sustainability', 0)
+            )
+            # Weight by area and normalize
+            linear_coeff = -crop_coeff * patch_area / total_land
+            bqm.add_variable(var, linear_coeff)
     
     # Penalty for constraint violations (soft constraints)
     penalty = 10.0
+    n_food_vars = len(food_names)
     
     # Patch limit constraint: sum(Y[p,:]) <= 5
-    for p in range(n_patches):
-        vars_in_patch = [f"Y_{p}_{c}" for c in range(n_foods)]
+    for p_idx in range(n_patches):
+        vars_in_patch = [f"Y_{p_idx}_{c}" for c in range(n_food_vars)]
         # Add quadratic penalty for exceeding limit
         for i, v1 in enumerate(vars_in_patch):
             for v2 in vars_in_patch[i+1:]:
@@ -253,24 +557,51 @@ def build_patch_direct_bqm(n_patches: int, n_foods: int = 27) -> Tuple[BinaryQua
 
 
 def build_patch_ultra_sparse_bqm(n_patches: int, n_foods: int = 27) -> Tuple[BinaryQuadraticModel, Dict]:
-    """Build ultra-sparse BQM with minimal quadratic terms"""
-    print(f"    Building Patch Ultra-Sparse BQM ({n_patches} patches, {n_foods} foods)...")
+    """Build ultra-sparse BQM with REAL nutritional coefficients and minimal quadratic terms"""
+    print(f"    Building Patch Ultra-Sparse BQM ({n_patches} patches, {n_foods} foods) with REAL data...")
+    
+    # Load real data
+    foods, food_groups, base_config, weights = load_real_data()
+    land_data = generate_land_data(n_patches, total_land=100.0)
+    
+    unit_names = list(land_data.keys())
+    food_names = list(foods.keys())[:n_foods]
+    total_land = sum(land_data.values())
     
     bqm = BinaryQuadraticModel('BINARY')
-    metadata = {"type": "Patch_UltraSparse_BQM", "n_patches": n_patches, "n_foods": n_foods}
+    metadata = {
+        "type": "Patch_UltraSparse_BQM", 
+        "n_patches": n_patches, 
+        "n_foods": len(food_names),
+        "unit_names": unit_names,
+        "food_names": food_names,
+        "weights": weights,
+        "total_land": total_land
+    }
     
-    # Only linear terms - maximize selections
-    for p in range(n_patches):
-        for c in range(n_foods):
-            var = f"Y_{p}_{c}"
-            bqm.add_variable(var, -1.0)
+    # Linear terms with REAL nutritional coefficients
+    for p_idx, patch in enumerate(unit_names):
+        patch_area = land_data[patch]
+        for c_idx, food in enumerate(food_names):
+            var = f"Y_{p_idx}_{c_idx}"
+            food_data = foods[food]
+            crop_coeff = (
+                weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
+                weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
+                weights.get('environmental_impact', 0) * food_data.get('environmental_impact', 0) +
+                weights.get('affordability', 0) * food_data.get('affordability', 0) +
+                weights.get('sustainability', 0) * food_data.get('sustainability', 0)
+            )
+            linear_coeff = -crop_coeff * patch_area / total_land
+            bqm.add_variable(var, linear_coeff)
     
-    # Minimal quadratic terms: only adjacent patches
+    # Minimal quadratic terms: only adjacent patches (for spatial constraint)
     penalty = 5.0
-    for p in range(n_patches - 1):
-        for c in range(n_foods):
-            v1 = f"Y_{p}_{c}"
-            v2 = f"Y_{p+1}_{c}"
+    n_food_vars = len(food_names)
+    for p_idx in range(n_patches - 1):
+        for c_idx in range(n_food_vars):
+            v1 = f"Y_{p_idx}_{c_idx}"
+            v2 = f"Y_{p_idx+1}_{c_idx}"
             bqm.add_interaction(v1, v2, penalty * 0.1)
     
     metadata.update({
@@ -545,7 +876,11 @@ def solve_decomposed_bqm_with_gurobi(bqm: BinaryQuadraticModel, partitions: List
         "partition_results": [],
         "total_solve_time": 0,
         "aggregated_objective": 0,
-        "all_solved": True
+        "all_optimal": True,
+        "all_have_solution": True,
+        "num_optimal": 0,
+        "num_with_solution": 0,
+        "num_time_limit": 0
     }
     
     for i, partition in enumerate(partitions):
@@ -554,26 +889,43 @@ def solve_decomposed_bqm_with_gurobi(bqm: BinaryQuadraticModel, partitions: List
         # Solve partition
         partition_solve = solve_bqm_with_gurobi(sub_bqm, timeout)
         
+        # Always add solve time (even for failures/timeouts)
+        partition_time = partition_solve.get("solve_time", 0) or 0
+        result["total_solve_time"] += partition_time
+        
         result["partition_results"].append({
             "partition_id": i,
             "n_vars": len(partition),
             "success": partition_solve.get("success", False),
-            "solve_time": partition_solve.get("solve_time", None),
+            "has_solution": partition_solve.get("has_solution", False),
+            "is_time_limit": partition_solve.get("is_time_limit", False),
+            "solve_time": partition_time,
             "objective": partition_solve.get("objective", None),
             "status": partition_solve.get("status", None)
         })
         
+        # Track statistics
         if partition_solve.get("success"):
-            result["total_solve_time"] += partition_solve["solve_time"]
+            result["num_optimal"] += 1
+        else:
+            result["all_optimal"] = False
+            
+        if partition_solve.get("has_solution"):
+            result["num_with_solution"] += 1
             if partition_solve.get("objective") is not None:
                 result["aggregated_objective"] += partition_solve["objective"]
         else:
-            result["all_solved"] = False
+            result["all_have_solution"] = False
+            
+        if partition_solve.get("is_time_limit"):
+            result["num_time_limit"] += 1
     
     # Add summary info
-    result["success"] = result["all_solved"]
+    # "success" = all optimal; "has_solution" = all partitions have at least one solution
+    result["success"] = result["all_optimal"]
+    result["has_solution"] = result["all_have_solution"]
     result["solve_time"] = result["total_solve_time"]
-    result["objective"] = result["aggregated_objective"] if result["all_solved"] else None
+    result["objective"] = result["aggregated_objective"] if result["all_have_solution"] else None
     
     return result
 
@@ -630,12 +982,16 @@ def solve_cqm_with_gurobi(cqm: ConstrainedQuadraticModel, timeout: int = 600) ->
             for (v1, v2), coeff in constraint.lhs.quadratic.items():
                 constr_expr += coeff * gurobi_vars[v1] * gurobi_vars[v2]
             
-            if constraint.sense == '<=':
+            # Handle Sense enum from dimod (Sense.Le, Sense.Ge, Sense.Eq) or string comparison
+            sense_str = str(constraint.sense)
+            if sense_str == 'Sense.Le' or constraint.sense == '<=':
                 model.addConstr(constr_expr <= constraint.rhs, name=label)
-            elif constraint.sense == '>=':
+            elif sense_str == 'Sense.Ge' or constraint.sense == '>=':
                 model.addConstr(constr_expr >= constraint.rhs, name=label)
-            else:  # ==
+            elif sense_str == 'Sense.Eq' or constraint.sense == '==':
                 model.addConstr(constr_expr == constraint.rhs, name=label)
+            else:
+                raise ValueError(f"Unknown constraint sense: {constraint.sense} (type: {type(constraint.sense)})")
         
         # Solve
         print("        [5/5] Optimizing...")
@@ -690,20 +1046,42 @@ def solve_bqm_with_gurobi(bqm: BinaryQuadraticModel, timeout: int = 600) -> Dict
         start = time.time()
         model.optimize()
         solve_time = time.time() - start
-        print(f"        [DONE] in {solve_time:.2f}s (status={model.status})")
+        
+        # Check if we have a feasible solution (even if not optimal)
+        has_solution = model.SolCount > 0
+        is_optimal = model.status == GRB.OPTIMAL
+        is_time_limit = model.status == GRB.TIME_LIMIT
+        
+        # Get objective and solution if we have any solution
+        obj_value = None
+        solution = {}
+        if has_solution:
+            obj_value = model.objVal
+            # Extract solution for objective recalculation
+            for var_name, gvar in gurobi_vars.items():
+                solution[var_name] = gvar.X
+        
+        status_str = "OPTIMAL" if is_optimal else ("TIME_LIMIT" if is_time_limit else f"STATUS_{model.status}")
+        solution_str = f", bqm_energy={obj_value:.4f}" if has_solution else ", no solution"
+        print(f"        [DONE] in {solve_time:.2f}s ({status_str}{solution_str})")
         
         result = {
-            "success": model.status == GRB.OPTIMAL,
+            "success": is_optimal,
+            "has_solution": has_solution,
+            "is_time_limit": is_time_limit,
             "solve_time": solve_time,
-            "objective": model.objVal if model.status == GRB.OPTIMAL else None,
-            "status": model.status
+            "bqm_energy": obj_value,  # BQM energy includes penalty terms
+            "objective": obj_value,  # Will be replaced with actual objective if metadata available
+            "solution": solution,  # Store solution for actual objective calculation
+            "status": model.status,
+            "solution_count": model.SolCount
         }
         
         return result
         
     except Exception as e:
         print(f"        [ERROR] {e}")
-        return {"error": str(e)}
+        return {"error": str(e), "solve_time": 0}
 
 
 # =============================================================================
@@ -1005,19 +1383,66 @@ def test_single_configuration(
             solve_result = solve_bqm_with_gurobi(bqm, SOLVE_TIMEOUT)
             result["solving"] = solve_result
             result["total_solve_time"] = solve_result.get("solve_time", 0) or 0
+            
+            # Calculate ACTUAL objective from solution (not BQM energy)
+            if solve_result.get("has_solution") and "solution" in solve_result:
+                actual_obj = calculate_actual_objective_from_bqm_solution(
+                    solve_result["solution"], meta, n_farms
+                )
+                if actual_obj is not None:
+                    solve_result["actual_objective"] = actual_obj
+                    solve_result["bqm_energy"] = solve_result.get("objective")
+                    solve_result["objective"] = actual_obj
+                    print(f"      Actual objective: {actual_obj:.6f} (BQM energy: {solve_result.get('bqm_energy', 0):.4f})")
         else:
             solve_result = solve_decomposed_bqm_with_gurobi(bqm, partitions, SOLVE_TIMEOUT)
             result["solving"] = solve_result
             result["total_solve_time"] = solve_result.get("total_solve_time", 0) or 0
+            
+            # For decomposed: aggregate actual objectives from partitions
+            if solve_result.get("all_have_solution"):
+                total_actual_obj = 0.0
+                for part_result in solve_result.get("partition_results", []):
+                    if "solution" in part_result and part_result.get("has_solution"):
+                        part_obj = calculate_actual_objective_from_bqm_solution(
+                            part_result["solution"], meta, n_farms
+                        )
+                        if part_obj is not None:
+                            total_actual_obj += part_obj
+                            part_result["actual_objective"] = part_obj
+                
+                solve_result["actual_objective"] = total_actual_obj
+                solve_result["bqm_energy"] = solve_result.get("aggregated_objective")
+                solve_result["objective"] = total_actual_obj
+                print(f"      Actual objective: {total_actual_obj:.6f} (BQM energy: {solve_result.get('bqm_energy', 0):.4f})")
         
         # Step 5: Calculate total time
         result["total_time"] = result["total_embedding_time"] + result["total_solve_time"]
         
         # Summary
         embed_status = "[OK]" if result["embedding"].get("success") else "[NO]"
-        solve_status = "[OK]" if result["solving"].get("success") else "[NO]"
+        
+        # More detailed solve status
+        solving = result["solving"]
+        if solving.get("success"):
+            solve_status = "[OK]"
+        elif solving.get("has_solution"):
+            solve_status = "[PARTIAL]"  # Has solution but not proven optimal
+        else:
+            solve_status = "[NO]"
+        
+        # Show extra info for decomposed problems
+        extra_info = ""
+        if len(partitions) > 1 and "num_optimal" in solving:
+            extra_info = f" [{solving['num_optimal']}/{len(partitions)} optimal"
+            if solving.get("num_time_limit", 0) > 0:
+                extra_info += f", {solving['num_time_limit']} timeout"
+            extra_info += "]"
+        elif solving.get("is_time_limit"):
+            extra_info = " [timeout]"
+            
         print(f"    Result: Embed={embed_status} ({result['total_embedding_time']:.1f}s), "
-              f"Solve={solve_status} ({result['total_solve_time']:.1f}s), "
+              f"Solve={solve_status} ({result['total_solve_time']:.1f}s){extra_info}, "
               f"Total={result['total_time']:.1f}s")
         
     except Exception as e:

@@ -489,11 +489,12 @@ def solve_cqm_with_pulp_gurobi(cqm, name: str, n_seeds: int = 5) -> Dict:
                     constr_expr += coeff * pulp_vars[v1] * pulp_vars[v2]
                 
                 rhs = constraint.rhs
-                if constraint.sense == '<=':
+                sense_str = str(constraint.sense)
+                if sense_str == 'Sense.Le' or constraint.sense == '<=':
                     prob += constr_expr <= rhs, label
-                elif constraint.sense == '>=':
+                elif sense_str == 'Sense.Ge' or constraint.sense == '>=':
                     prob += constr_expr >= rhs, label
-                elif constraint.sense == '==':
+                elif sense_str == 'Sense.Eq' or constraint.sense == '==':
                     prob += constr_expr == rhs, label
             
             # Solve with Gurobi
@@ -662,13 +663,14 @@ def test_penalty_sensitivity(cqm, name: str, multipliers: List[float] = None) ->
                 n_violations = 0
                 for constraint in cqm.constraints.values():
                     lhs = constraint.lhs.energy(sample)
-                    if constraint.sense == '<=':
+                    sense_str = str(constraint.sense)
+                    if sense_str == 'Sense.Le' or constraint.sense == '<=':
                         if lhs > constraint.rhs + 1e-6:
                             n_violations += 1
-                    elif constraint.sense == '>=':
+                    elif sense_str == 'Sense.Ge' or constraint.sense == '>=':
                         if lhs < constraint.rhs - 1e-6:
                             n_violations += 1
-                    elif constraint.sense == '==':
+                    elif sense_str == 'Sense.Eq' or constraint.sense == '==':
                         if abs(lhs - constraint.rhs) > 1e-6:
                             n_violations += 1
                 
