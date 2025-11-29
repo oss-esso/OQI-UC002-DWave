@@ -363,39 +363,59 @@ def decompose_sequential_cutset(bqm: BinaryQuadraticModel, max_cut_size: int = 5
 # SPATIAL GRID DECOMPOSITION
 # =============================================================================
 
-def decompose_spatial_grid(bqm: BinaryQuadraticModel, grid_size: int = 5) -> List[Set]:
+def decompose_spatial_grid(bqm: BinaryQuadraticModel, grid_size: int = 3) -> List[Set]:
     """
     Decompose based on spatial grid partitioning of variables.
     
-    Assumes variables follow naming pattern like Y_i_j where i is spatial index.
+    Handles both numeric indices (Y_0_0) and string identifiers (Y_Patch1_Beef).
     Creates a grid of partitions based on spatial locality.
     
     Args:
         bqm: Binary Quadratic Model
-        grid_size: Number of variables per grid cell
+        grid_size: Number of spatial units per grid cell (default 3 for smaller partitions)
         
     Returns:
         List of variable sets (partitions)
     """
+    import re
     variables = list(bqm.variables)
     
     # Extract spatial indices from variable names
+    # Handle both Y_0_0 (numeric) and Y_Patch1_Beef (string) formats
     spatial_map = {}
     for var in variables:
         if var.startswith("Y_"):
-            parts = var.split("_")
+            parts = var.split("_", 2)  # Split into at most 3 parts
             if len(parts) >= 2:
+                spatial_part = parts[1]
+                
+                # Try numeric index first
                 try:
-                    spatial_idx = int(parts[1])
-                    if spatial_idx not in spatial_map:
-                        spatial_map[spatial_idx] = []
-                    spatial_map[spatial_idx].append(var)
+                    spatial_idx = int(spatial_part)
                 except ValueError:
-                    continue
+                    # Extract numeric part from string like "Patch1" -> 1
+                    match = re.search(r'(\d+)', spatial_part)
+                    if match:
+                        spatial_idx = int(match.group(1))
+                    else:
+                        # Use hash for completely non-numeric strings
+                        spatial_idx = hash(spatial_part) % 10000
+                
+                if spatial_idx not in spatial_map:
+                    spatial_map[spatial_idx] = []
+                spatial_map[spatial_idx].append(var)
+        elif var.startswith("U_"):
+            # U variables (unique food indicators) - group separately
+            if -1 not in spatial_map:
+                spatial_map[-1] = []
+            spatial_map[-1].append(var)
+    
+    if not spatial_map:
+        return [set(variables)]
     
     # Create grid partitions
     partitions = []
-    spatial_indices = sorted(spatial_map.keys())
+    spatial_indices = sorted([k for k in spatial_map.keys() if k >= 0])
     
     # Partition into grid cells
     for i in range(0, len(spatial_indices), grid_size):
@@ -404,6 +424,14 @@ def decompose_spatial_grid(bqm: BinaryQuadraticModel, grid_size: int = 5) -> Lis
             partition.update(spatial_map[idx])
         if partition:
             partitions.append(partition)
+    
+    # Add U variables to each partition (they connect to all Y vars)
+    if -1 in spatial_map:
+        u_vars = spatial_map[-1]
+        # Distribute U variables across partitions
+        for i, u_var in enumerate(u_vars):
+            if partitions:
+                partitions[i % len(partitions)].add(u_var)
     
     return partitions if len(partitions) > 1 else [set(variables)]
 

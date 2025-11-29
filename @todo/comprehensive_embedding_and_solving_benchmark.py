@@ -116,20 +116,51 @@ except ImportError as e:
     REAL_DATA_AVAILABLE = False
     print(f"  Warning: Real data loading not available: {e}")
 
+# Import create_cqm_plots from solver_runner_BINARY for proper CQM formulation
+try:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "solver_runner_BINARY", 
+        os.path.join(os.path.dirname(__file__), '..', 'Benchmark Scripts', 'solver_runner_BINARY.py')
+    )
+    solver_runner_BINARY = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(solver_runner_BINARY)
+    create_cqm_plots_original = solver_runner_BINARY.create_cqm_plots
+    CREATE_CQM_PLOTS_AVAILABLE = True
+    print("  [OK] create_cqm_plots available from solver_runner_BINARY")
+except Exception as e:
+    CREATE_CQM_PLOTS_AVAILABLE = False
+    print(f"  Warning: create_cqm_plots not available: {e}")
+
 print(f"  [OK] Imports done in {time.time() - import_start:.2f}s")
 
 # Configuration
 PROBLEM_SIZES = [25]  # Testing 25 farms only
 N_FOODS = 27
-EMBEDDING_TIMEOUT = 300  # 5 minutes per partition - continue even if fails
-SOLVE_TIMEOUT = 100  # 5 minutes for Gurobi per partition
-SKIP_DENSE_EMBEDDING = False  # NEVER skip - always try embedding
+EMBEDDING_TIMEOUT = 30  # 30 seconds per partition (reduced to avoid hanging)
+SOLVE_TIMEOUT = 30  # 30 seconds for Gurobi per partition (focus on embedding, not solving)
+SKIP_DENSE_EMBEDDING = True  # Skip embedding for CQM and dense BQM (None decomp)
 
 # Formulation types to test
-FORMULATIONS = ["CQM", "BQM", "SparseBQM"]
+FORMULATIONS = ["CQM", "BQM"]
 
 # Decomposition strategies to test
-DECOMPOSITIONS = ["None", "Louvain", "PlotBased", "Multilevel", "Cutset", "SpatialGrid", "EnergyImpact"]
+# IMPORTANT: Graph-based decomposition does NOT produce correct objectives
+# because constraints span partitions. This benchmark focuses on EMBEDDING PERFORMANCE.
+#
+# For correct objectives, use:
+#   - CQM with None decomposition (handled by D-Wave hybrid or Gurobi)
+#
+# Decomposition is useful for:
+#   - Studying embedding feasibility and timing
+#   - Creating smaller subproblems that CAN embed on QPU
+#   - The solutions won't be globally optimal due to constraint violations
+#
+# Removed: Cutset (creates too many partitions, hangs), SpatialGrid (1 partition)
+DECOMPOSITIONS = ["None", "Louvain", "PlotBased"]
+
+# NOTE: For correct objective values, only use None decomposition
+VALID_DECOMPOSITIONS_FOR_OBJECTIVE = ["None"]
 
 # Output directory
 OUTPUT_DIR = Path(__file__).parent / "benchmark_results"
@@ -271,6 +302,10 @@ def calculate_actual_objective_from_bqm_solution(solution: Dict, metadata: Dict,
     
     BQM energy includes penalty terms, so we need to recalculate
     using the original nutritional weights.
+    
+    Handles both variable naming formats:
+    - Y_{idx}_{idx} (fallback formulation)
+    - Y_{unit_name}_{food_name} (create_cqm_plots format)
     """
     if not solution:
         return None
@@ -303,7 +338,7 @@ def calculate_actual_objective_from_bqm_solution(solution: Dict, metadata: Dict,
     
     # Generate land data (same seed as formulation builder)
     land_data = generate_land_data(n_units, total_land=total_land)
-    unit_names = list(land_data.keys())
+    unit_names = metadata.get("unit_names", list(land_data.keys()))
     
     actual_objective = 0.0
     
@@ -311,9 +346,13 @@ def calculate_actual_objective_from_bqm_solution(solution: Dict, metadata: Dict,
         unit_area = land_data.get(unit, 0)
         
         for c_idx, food in enumerate(food_names):
-            # Check for Y variable (binary selection)
-            y_key = f"Y_{p_idx}_{c_idx}"
-            y_val = solution.get(y_key, 0)
+            # Check for Y variable with multiple naming formats
+            # Format 1: Y_{idx}_{idx} (numeric indices)
+            y_key_idx = f"Y_{p_idx}_{c_idx}"
+            # Format 2: Y_{unit_name}_{food_name} (string names from create_cqm_plots)
+            y_key_name = f"Y_{unit}_{food}"
+            
+            y_val = solution.get(y_key_idx, solution.get(y_key_name, 0))
             
             if y_val > 0.5:  # Selected
                 food_data = foods.get(food, {})
@@ -423,15 +462,73 @@ def build_farm_cqm(n_farms: int, n_foods: int = 27) -> Tuple[ConstrainedQuadrati
 
 
 def build_patch_cqm(n_patches: int, n_foods: int = 27) -> Tuple[ConstrainedQuadraticModel, Dict]:
-    """Build Patch CQM with binary-only selections using REAL food data"""
+    """Build Patch CQM using create_cqm_plots from solver_runner_BINARY.
+    
+    This ensures the formulation matches exactly what PuLP/Gurobi benchmarks use,
+    including proper constraint encoding for:
+    - At most one food per patch
+    - Min/max planting areas
+    - Food group diversity (unique foods)
+    - U variables for linking
+    """
     print(f"    Building Patch CQM ({n_patches} patches, {n_foods} foods) with REAL data...")
     
     # Load real data
-    foods, food_groups, base_config, weights = load_real_data()
+    foods_dict, food_groups, base_config, weights = load_real_data()
     land_data = generate_land_data(n_patches, total_land=100.0)
     
     unit_names = list(land_data.keys())
-    food_names = list(foods.keys())[:n_foods]
+    food_names = list(foods_dict.keys())[:n_foods]
+    total_land = sum(land_data.values())
+    
+    # Limit foods dict to n_foods
+    foods_limited = {k: v for i, (k, v) in enumerate(foods_dict.items()) if i < n_foods}
+    
+    # Create config matching what create_cqm_plots expects
+    config = {
+        'parameters': {
+            'land_availability': land_data,
+            'weights': weights,
+            'minimum_planting_area': base_config['parameters'].get('minimum_planting_area', {}),
+            'maximum_planting_area': {},  # Will be computed from max_percentage
+            'food_group_constraints': base_config['parameters'].get('food_group_constraints', {})
+        }
+    }
+    
+    # Convert max_percentage_per_crop to maximum_planting_area
+    max_pct = base_config['parameters'].get('max_percentage_per_crop', {})
+    for crop, pct in max_pct.items():
+        if crop in foods_limited:
+            config['parameters']['maximum_planting_area'][crop] = pct * total_land
+    
+    # Use create_cqm_plots if available, otherwise fall back to simple formulation
+    if CREATE_CQM_PLOTS_AVAILABLE:
+        print(f"    Using create_cqm_plots from solver_runner_BINARY...")
+        try:
+            cqm, Y, constraint_metadata = create_cqm_plots_original(
+                unit_names, foods_limited, food_groups, config
+            )
+            
+            metadata = {
+                "type": "Patch_CQM_BINARY", 
+                "n_patches": n_patches, 
+                "n_foods": len(food_names),
+                "unit_names": unit_names,
+                "food_names": food_names,
+                "weights": weights,
+                "total_land": total_land,
+                "variables": len(cqm.variables),
+                "constraints": len(cqm.constraints),
+                "constraint_metadata": constraint_metadata
+            }
+            
+            return cqm, metadata
+            
+        except Exception as e:
+            print(f"    Warning: create_cqm_plots failed ({e}), using fallback...")
+    
+    # Fallback: simple formulation
+    print(f"    Using fallback simple CQM formulation...")
     
     cqm = ConstrainedQuadraticModel()
     metadata = {
@@ -441,22 +538,21 @@ def build_patch_cqm(n_patches: int, n_foods: int = 27) -> Tuple[ConstrainedQuadr
         "unit_names": unit_names,
         "food_names": food_names,
         "weights": weights,
-        "total_land": sum(land_data.values())
+        "total_land": total_land
     }
     
-    # Variables: binary only
+    # Variables: binary only (Y_patchIdx_foodIdx format for compatibility)
     Y = {}
-    for p_idx in range(n_patches):
-        for c_idx in range(len(food_names)):
-            Y[p_idx, c_idx] = Binary(f"Y_{p_idx}_{c_idx}")
+    for p_idx, patch in enumerate(unit_names):
+        for c_idx, food in enumerate(food_names):
+            Y[(p_idx, c_idx)] = Binary(f"Y_{p_idx}_{c_idx}")
     
     # Objective: weighted nutritional value (REAL formulation)
-    # For binary: Y * patch_area * weighted_food_value
     objective = 0
     for p_idx, patch in enumerate(unit_names):
         patch_area = land_data[patch]
         for c_idx, food in enumerate(food_names):
-            food_data = foods[food]
+            food_data = foods_dict[food]
             crop_coeff = (
                 weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
                 weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
@@ -464,20 +560,16 @@ def build_patch_cqm(n_patches: int, n_foods: int = 27) -> Tuple[ConstrainedQuadr
                 weights.get('affordability', 0) * food_data.get('affordability', 0) +
                 weights.get('sustainability', 0) * food_data.get('sustainability', 0)
             )
-            # Weight by patch area
-            objective += crop_coeff * patch_area * Y[p_idx, c_idx]
+            objective += crop_coeff * patch_area * Y[(p_idx, c_idx)]
     
     # Normalize by total land
-    total_land = sum(land_data.values())
     objective = objective / total_land
-    
     cqm.set_objective(-objective)  # Minimize negative = maximize
     
-    # Constraints
-    # 1. Limit foods per patch
+    # Constraints - at most one food per patch
     for p_idx in range(n_patches):
-        cqm.add_constraint(sum(Y[p_idx, c] for c in range(len(food_names))) <= 5, 
-                          label=f"patch_limit_{p_idx}")
+        cqm.add_constraint(sum(Y[(p_idx, c)] for c in range(len(food_names))) <= 1, 
+                          label=f"Max_Assignment_{p_idx}")
     
     # 2. Global food constraints
     n_food_vars = len(food_names)
@@ -557,8 +649,24 @@ def build_patch_direct_bqm(n_patches: int, n_foods: int = 27) -> Tuple[BinaryQua
 
 
 def build_patch_ultra_sparse_bqm(n_patches: int, n_foods: int = 27) -> Tuple[BinaryQuadraticModel, Dict]:
-    """Build ultra-sparse BQM with REAL nutritional coefficients and minimal quadratic terms"""
-    print(f"    Building Patch Ultra-Sparse BQM ({n_patches} patches, {n_foods} foods) with REAL data...")
+    """Build sparse BQM with REAL nutritional coefficients and AT-MOST-ONE constraint per patch.
+    
+    The key insight is that "at most one food per patch" creates O(n_patches * n_foods^2)
+    quadratic terms, but this is still much sparser than full pairwise coupling.
+    
+    For 25 patches × 27 foods:
+    - Variables: 675
+    - At-most-one quadratic: 25 × (27 choose 2) = 25 × 351 = 8,775 terms
+    - Full pairwise: 675 × 674 / 2 = 227,475 terms
+    
+    That's 26× sparser while encoding the actual constraint!
+    
+    AT-MOST-ONE constraint: sum(x_i) <= 1
+    Penalty form: P * max(0, sum(x_i) - 1)^2
+    For binary vars, this is: P * sum(x_i * x_j) for all pairs i < j
+    (No linear penalty needed - selecting 0 or 1 is fine, only penalize selecting 2+)
+    """
+    print(f"    Building Patch Sparse BQM ({n_patches} patches, {n_foods} foods) with REAL data...")
     
     # Load real data
     foods, food_groups, base_config, weights = load_real_data()
@@ -570,7 +678,7 @@ def build_patch_ultra_sparse_bqm(n_patches: int, n_foods: int = 27) -> Tuple[Bin
     
     bqm = BinaryQuadraticModel('BINARY')
     metadata = {
-        "type": "Patch_UltraSparse_BQM", 
+        "type": "Patch_Sparse_BQM", 
         "n_patches": n_patches, 
         "n_foods": len(food_names),
         "unit_names": unit_names,
@@ -579,12 +687,18 @@ def build_patch_ultra_sparse_bqm(n_patches: int, n_foods: int = 27) -> Tuple[Bin
         "total_land": total_land
     }
     
-    # Linear terms with REAL nutritional coefficients
+    # Penalty for constraint violations - should dominate objective coefficients
+    # Objective coeffs are ~0.01-0.1, so penalty of 2.0 should be sufficient
+    PENALTY = 2.0
+    
+    # Linear terms with REAL nutritional coefficients (no constraint penalty for at-most-one)
     for p_idx, patch in enumerate(unit_names):
         patch_area = land_data[patch]
         for c_idx, food in enumerate(food_names):
             var = f"Y_{p_idx}_{c_idx}"
             food_data = foods[food]
+            
+            # Objective coefficient (negative because we minimize and want to maximize value)
             crop_coeff = (
                 weights.get('nutritional_value', 0) * food_data.get('nutritional_value', 0) +
                 weights.get('nutrient_density', 0) * food_data.get('nutrient_density', 0) -
@@ -592,23 +706,27 @@ def build_patch_ultra_sparse_bqm(n_patches: int, n_foods: int = 27) -> Tuple[Bin
                 weights.get('affordability', 0) * food_data.get('affordability', 0) +
                 weights.get('sustainability', 0) * food_data.get('sustainability', 0)
             )
-            linear_coeff = -crop_coeff * patch_area / total_land
-            bqm.add_variable(var, linear_coeff)
+            objective_coeff = -crop_coeff * patch_area / total_land
+            
+            bqm.add_variable(var, objective_coeff)
     
-    # Minimal quadratic terms: only adjacent patches (for spatial constraint)
-    penalty = 5.0
+    # At-most-one quadratic terms: for each patch, penalize selecting multiple foods
+    # sum(x_i) <= 1 penalty: P * x_i * x_j for all pairs (penalize selecting 2+ foods)
     n_food_vars = len(food_names)
-    for p_idx in range(n_patches - 1):
-        for c_idx in range(n_food_vars):
-            v1 = f"Y_{p_idx}_{c_idx}"
-            v2 = f"Y_{p_idx+1}_{c_idx}"
-            bqm.add_interaction(v1, v2, penalty * 0.1)
+    for p_idx in range(n_patches):
+        for c1 in range(n_food_vars):
+            for c2 in range(c1 + 1, n_food_vars):
+                v1 = f"Y_{p_idx}_{c1}"
+                v2 = f"Y_{p_idx}_{c2}"
+                bqm.add_interaction(v1, v2, PENALTY)
     
     metadata.update({
         "variables": len(bqm.variables),
         "linear_terms": len(bqm.linear),
         "quadratic_terms": len(bqm.quadratic),
-        "density": len(bqm.quadratic) / (len(bqm.variables) ** 2) if len(bqm.variables) > 0 else 0
+        "density": len(bqm.quadratic) / (len(bqm.variables) ** 2) if len(bqm.variables) > 0 else 0,
+        "penalty": PENALTY,
+        "constraint": "at_most_one_per_patch"
     })
     
     return bqm, metadata
@@ -651,46 +769,89 @@ def get_bqm_graph(bqm: BinaryQuadraticModel) -> nx.Graph:
     return G
 
 
-def decompose_louvain(bqm: BinaryQuadraticModel, max_partition_size: int = 150) -> List[Set]:
-    """Decompose using Louvain community detection"""
+def decompose_louvain(bqm: BinaryQuadraticModel, max_partition_size: int = 60) -> List[Set]:
+    """Decompose using Louvain community detection.
+    
+    Creates partitions based on community structure with size limits.
+    Large communities are split into smaller partitions.
+    """
     if not LOUVAIN_AVAILABLE:
-        return []
+        return decompose_plot_based(bqm, plots_per_partition=3)
     
     G = get_bqm_graph(bqm)
-    communities = louvain_communities(G, seed=42)
+    communities = louvain_communities(G, seed=42, resolution=1.5)  # Higher resolution = smaller communities
     
-    # Merge small communities
+    # Process communities - split large ones, merge small ones
     partitions = []
     current_partition = set()
     
     for community in communities:
-        if len(current_partition) + len(community) <= max_partition_size:
+        community = set(community)
+        
+        # If community is too large, split it
+        if len(community) > max_partition_size:
+            # Split by converting to list and chunking
+            comm_list = list(community)
+            for i in range(0, len(comm_list), max_partition_size):
+                chunk = set(comm_list[i:i + max_partition_size])
+                partitions.append(chunk)
+        elif len(current_partition) + len(community) <= max_partition_size:
+            # Merge small communities
             current_partition.update(community)
         else:
+            # Current partition is full, start new one
             if current_partition:
                 partitions.append(current_partition)
-            current_partition = set(community)
+            current_partition = community.copy()
     
     if current_partition:
         partitions.append(current_partition)
     
-    return partitions
+    return partitions if partitions else [set(bqm.variables)]
 
 
-def decompose_plot_based(bqm: BinaryQuadraticModel, plots_per_partition: int = 5) -> List[Set]:
-    """Decompose by grouping plots together"""
+def decompose_plot_based(bqm: BinaryQuadraticModel, plots_per_partition: int = 3) -> List[Set]:
+    """Decompose by grouping plots together.
+    
+    Handles both Y_0_0 (numeric) and Y_Patch1_Beef (string) variable naming formats.
+    """
+    import re
     variables = list(bqm.variables)
     
-    # Extract plot indices from variable names (assumes Y_p_c format)
+    # Extract plot indices from variable names
     plot_vars = {}
+    slack_vars = []  # Collect slack/auxiliary variables separately
+    
     for var in variables:
         if var.startswith("Y_"):
-            parts = var.split("_")
-            if len(parts) >= 3:
-                plot_idx = int(parts[1])
+            parts = var.split("_", 2)  # Split into at most 3 parts
+            if len(parts) >= 2:
+                plot_part = parts[1]
+                
+                # Try numeric index first
+                try:
+                    plot_idx = int(plot_part)
+                except ValueError:
+                    # Extract numeric part from string like "Patch1" -> 1
+                    match = re.search(r'(\d+)', plot_part)
+                    if match:
+                        plot_idx = int(match.group(1))
+                    else:
+                        # Use hash for completely non-numeric strings
+                        plot_idx = hash(plot_part) % 10000
+                
                 if plot_idx not in plot_vars:
                     plot_vars[plot_idx] = []
                 plot_vars[plot_idx].append(var)
+        elif var.startswith("U_"):
+            # U variables (unique food indicators) - track separately
+            slack_vars.append(var)
+        else:
+            # Other slack or auxiliary variables
+            slack_vars.append(var)
+    
+    if not plot_vars:
+        return [set(variables)]
     
     # Group plots into partitions
     partitions = []
@@ -702,32 +863,100 @@ def decompose_plot_based(bqm: BinaryQuadraticModel, plots_per_partition: int = 5
             partition.update(plot_vars[plot_idx])
         partitions.append(partition)
     
+    # Distribute slack variables among partitions (needed for constraint satisfaction)
+    # Strategy: Add slack vars to the partition that has the most connections to them
+    for slack_var in slack_vars:
+        best_partition_idx = 0
+        best_connection_count = 0
+        
+        for p_idx, partition in enumerate(partitions):
+            # Count quadratic connections from slack_var to this partition
+            connection_count = sum(
+                1 for (u, v) in bqm.quadratic 
+                if (u == slack_var and v in partition) or (v == slack_var and u in partition)
+            )
+            if connection_count > best_connection_count:
+                best_connection_count = connection_count
+                best_partition_idx = p_idx
+        
+        partitions[best_partition_idx].add(slack_var)
+    
     return partitions
 
 
-def decompose_energy_impact(bqm: BinaryQuadraticModel, partition_size: int = 100) -> List[Set]:
-    """Decompose using energy-impact from dwave-hybrid"""
+def decompose_energy_impact(bqm: BinaryQuadraticModel, partition_size: int = 60) -> List[Set]:
+    """Decompose using energy-impact from dwave-hybrid.
+    
+    Runs the decomposer iteratively to create multiple partitions covering all variables.
+    """
     if not HYBRID_AVAILABLE:
-        return []
+        # Fallback to plot-based if hybrid not available
+        return decompose_plot_based(bqm, plots_per_partition=3)
     
-    decomposer = EnergyImpactDecomposer(
-        size=partition_size,
-        rolling_history=0.85,
-        traversal="bfs"
-    )
+    partitions = []
+    remaining_vars = set(bqm.variables)
     
-    # Create initial state
-    initial_sample = {v: 0 for v in bqm.variables}
-    state = State.from_sample(initial_sample, bqm)
+    # Create a working BQM that we'll progressively reduce
+    while remaining_vars and len(partitions) < 100:  # Safety limit
+        # Create sub-BQM with remaining variables
+        sub_bqm = BinaryQuadraticModel('BINARY')
+        for var in remaining_vars:
+            if var in bqm.linear:
+                sub_bqm.add_variable(var, bqm.linear[var])
+        for (u, v), bias in bqm.quadratic.items():
+            if u in remaining_vars and v in remaining_vars:
+                sub_bqm.add_interaction(u, v, bias)
+        
+        if len(sub_bqm.variables) == 0:
+            break
+            
+        # Use smaller partition size for better embedding
+        actual_size = min(partition_size, len(sub_bqm.variables))
+        
+        decomposer = EnergyImpactDecomposer(
+            size=actual_size,
+            rolling_history=0.85,
+            traversal="bfs"
+        )
+        
+        # Create initial state
+        initial_sample = {v: 0 for v in sub_bqm.variables}
+        state = State.from_sample(initial_sample, sub_bqm)
+        
+        try:
+            # Run decomposer
+            decomposed_state = decomposer.run(state).result()
+            
+            # Extract subproblem variables
+            if hasattr(decomposed_state, 'subproblem') and decomposed_state.subproblem:
+                partition_vars = set(decomposed_state.subproblem.variables)
+                if partition_vars:
+                    partitions.append(partition_vars)
+                    remaining_vars -= partition_vars
+                else:
+                    # Decomposer didn't produce useful result - take a chunk
+                    chunk = set(list(remaining_vars)[:partition_size])
+                    partitions.append(chunk)
+                    remaining_vars -= chunk
+            else:
+                # No subproblem - take a chunk
+                chunk = set(list(remaining_vars)[:partition_size])
+                partitions.append(chunk)
+                remaining_vars -= chunk
+        except Exception as e:
+            # Decomposer failed - take a chunk
+            chunk = set(list(remaining_vars)[:partition_size])
+            partitions.append(chunk)
+            remaining_vars -= chunk
     
-    # Run decomposer
-    decomposed_state = decomposer.run(state).result()
+    # Add any remaining variables to the last partition
+    if remaining_vars:
+        if partitions:
+            partitions[-1].update(remaining_vars)
+        else:
+            partitions.append(remaining_vars)
     
-    # Extract subproblem variables
-    if hasattr(decomposed_state, 'subproblem'):
-        return [set(decomposed_state.subproblem.variables)]
-    
-    return []
+    return partitions if partitions else [set(bqm.variables)]
 
 
 def extract_sub_bqm(bqm: BinaryQuadraticModel, variables: Set) -> BinaryQuadraticModel:
@@ -901,7 +1130,8 @@ def solve_decomposed_bqm_with_gurobi(bqm: BinaryQuadraticModel, partitions: List
             "is_time_limit": partition_solve.get("is_time_limit", False),
             "solve_time": partition_time,
             "objective": partition_solve.get("objective", None),
-            "status": partition_solve.get("status", None)
+            "status": partition_solve.get("status", None),
+            "solution": partition_solve.get("solution", {})  # FIX: Pass through solution for objective calculation
         })
         
         # Track statistics
@@ -1245,7 +1475,7 @@ def apply_decomposition(bqm: BinaryQuadraticModel, decomp_name: str) -> Tuple[Li
     elif decomp_name == "Louvain":
         if not LOUVAIN_AVAILABLE:
             return None, "Louvain not available"
-        partitions = decompose_louvain(bqm, max_partition_size=150)
+        partitions = decompose_louvain(bqm, max_partition_size=50)
         if not partitions or len(partitions) <= 1:
             return [set(bqm.variables)], "Louvain produced single partition"
         return partitions, None
@@ -1275,7 +1505,7 @@ def apply_decomposition(bqm: BinaryQuadraticModel, decomp_name: str) -> Tuple[Li
     elif decomp_name == "SpatialGrid":
         if not ADVANCED_DECOMP_AVAILABLE:
             return None, "SpatialGrid not available"
-        partitions = decompose_spatial_grid(bqm, grid_size=5)
+        partitions = decompose_spatial_grid(bqm, grid_size=3)
         if not partitions or len(partitions) <= 1:
             return [set(bqm.variables)], "SpatialGrid produced single partition"
         return partitions, None
@@ -1345,10 +1575,6 @@ def test_single_configuration(
             cqm, _ = build_patch_cqm(n_farms)
             bqm, meta = cqm_to_bqm_wrapper(cqm, "Patch_CQM")
             result["metadata"] = meta
-            
-        elif formulation == "SparseBQM":
-            bqm, meta = build_patch_ultra_sparse_bqm(n_farms)
-            result["metadata"] = meta
         
         else:
             result["error"] = f"Unknown formulation: {formulation}"
@@ -1366,13 +1592,26 @@ def test_single_configuration(
         result["num_partitions"] = len(partitions)
         print(f"      Created {len(partitions)} partition(s)")
         
-        # Step 3: Embedding study (always try, even if dense)
-        print(f"    Running embedding study...")
-        if len(partitions) == 1:
+        # Step 3: Embedding study
+        # Skip embedding for BQM with None decomposition (known to fail for dense 25-farm problems)
+        skip_embedding = SKIP_DENSE_EMBEDDING and decomposition == "None" and len(partitions) == 1
+        
+        if skip_embedding:
+            print(f"    Skipping embedding (dense BQM with no decomposition - known to fail)")
+            result["embedding"] = {
+                "success": False,
+                "skipped": True,
+                "embedding_time": 0,
+                "error": "Skipped - dense BQM without decomposition"
+            }
+            result["total_embedding_time"] = 0
+        elif len(partitions) == 1:
+            print(f"    Running embedding study...")
             embed_result = study_embedding(bqm, target_graph, EMBEDDING_TIMEOUT)
             result["embedding"] = embed_result
             result["total_embedding_time"] = embed_result.get("embedding_time", 0) or 0
         else:
+            print(f"    Running embedding study...")
             embed_result = study_decomposed_embedding(bqm, partitions, target_graph, EMBEDDING_TIMEOUT)
             result["embedding"] = embed_result
             result["total_embedding_time"] = embed_result.get("total_embedding_time", 0) or 0
@@ -1399,22 +1638,31 @@ def test_single_configuration(
             result["solving"] = solve_result
             result["total_solve_time"] = solve_result.get("total_solve_time", 0) or 0
             
-            # For decomposed: aggregate actual objectives from partitions
+            # For decomposed: MERGE all partition solutions first, then calculate objective once
+            # FIX: Previous code calculated objective per partition which was wrong
             if solve_result.get("all_have_solution"):
-                total_actual_obj = 0.0
+                # Merge all partition solutions into a single global solution dict
+                merged_solution = {}
                 for part_result in solve_result.get("partition_results", []):
-                    if "solution" in part_result and part_result.get("has_solution"):
-                        part_obj = calculate_actual_objective_from_bqm_solution(
-                            part_result["solution"], meta, n_farms
-                        )
-                        if part_obj is not None:
-                            total_actual_obj += part_obj
-                            part_result["actual_objective"] = part_obj
+                    if part_result.get("has_solution") and "solution" in part_result:
+                        merged_solution.update(part_result["solution"])
                 
-                solve_result["actual_objective"] = total_actual_obj
-                solve_result["bqm_energy"] = solve_result.get("aggregated_objective")
-                solve_result["objective"] = total_actual_obj
-                print(f"      Actual objective: {total_actual_obj:.6f} (BQM energy: {solve_result.get('bqm_energy', 0):.4f})")
+                # Calculate actual objective ONCE from merged solution
+                actual_obj = calculate_actual_objective_from_bqm_solution(
+                    merged_solution, meta, n_farms
+                )
+                
+                if actual_obj is not None:
+                    solve_result["actual_objective"] = actual_obj
+                    solve_result["bqm_energy"] = solve_result.get("aggregated_objective")
+                    solve_result["objective"] = actual_obj
+                    print(f"      Actual objective: {actual_obj:.6f} (BQM energy: {solve_result.get('bqm_energy', 0):.4f})")
+                    
+                    # Warn if decomposition likely caused constraint violations
+                    if decomposition not in VALID_DECOMPOSITIONS_FOR_OBJECTIVE:
+                        print(f"      ⚠️  WARNING: Decomposition '{decomposition}' may violate constraints (objective unreliable)")
+                else:
+                    print(f"      Warning: Could not calculate actual objective from merged solution")
         
         # Step 5: Calculate total time
         result["total_time"] = result["total_embedding_time"] + result["total_solve_time"]
@@ -1468,13 +1716,12 @@ def run_comprehensive_benchmark():
     
     # Calculate total experiments
     # CQM only with None decomposition
-    # BQM and SparseBQM with all decompositions
+    # BQM with all decompositions
     total_experiments = 0
     for n_farms in PROBLEM_SIZES:
         total_experiments += 1  # CQM (no decomp)
-        for form in ["BQM", "SparseBQM"]:
-            for decomp in DECOMPOSITIONS:
-                total_experiments += 1
+        for decomp in DECOMPOSITIONS:
+            total_experiments += 1  # BQM with each decomposition
     
     print(f"  Total configurations to test: {total_experiments}")
     print(f"  Problem sizes: {PROBLEM_SIZES}")
@@ -1499,14 +1746,13 @@ def run_comprehensive_benchmark():
         )
         all_results.append(result)
         
-        # Test BQM and SparseBQM with all decompositions
-        for formulation in ["BQM", "SparseBQM"]:
-            for decomposition in DECOMPOSITIONS:
-                experiment_id += 1
-                result = test_single_configuration(
-                    n_farms, formulation, decomposition, target_graph, experiment_id, total_experiments
-                )
-                all_results.append(result)
+        # Test BQM with all decompositions
+        for decomposition in DECOMPOSITIONS:
+            experiment_id += 1
+            result = test_single_configuration(
+                n_farms, "BQM", decomposition, target_graph, experiment_id, total_experiments
+            )
+            all_results.append(result)
     
     benchmark_time = time.time() - benchmark_start
     

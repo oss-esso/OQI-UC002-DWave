@@ -624,7 +624,7 @@ def create_cqm_plots(farms, foods, food_groups, config):
                 # Global minimum: at least min_foods UNIQUE foods from this group
                 if 'min_foods' in constraints:
                     cqm.add_constraint(
-                        sum(U[food] for food in foods_in_group) - constraints['min_foods'] >= 0,
+                        sum(U[food] for food in foods_in_group) >= constraints['min_foods'],
                         label=f"MinFoodGroup_Unique_{group_label}"
                     )
                     constraint_metadata['food_group_min'][group] = {
@@ -639,7 +639,7 @@ def create_cqm_plots(farms, foods, food_groups, config):
                 # Global maximum: at most max_foods UNIQUE foods from this group
                 if 'max_foods' in constraints:
                     cqm.add_constraint(
-                        sum(U[food] for food in foods_in_group) - constraints['max_foods'] <= 0,
+                        sum(U[food] for food in foods_in_group) <= constraints['max_foods'],
                         label=f"MaxFoodGroup_Unique_{group_label}"
                     )
                     constraint_metadata['food_group_max'][group] = {
