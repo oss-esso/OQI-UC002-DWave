@@ -122,7 +122,7 @@ print(f"  [OK] Imports done in {time.time() - import_start:.2f}s")
 PROBLEM_SIZES = [25]  # Testing 25 farms only
 N_FOODS = 27
 EMBEDDING_TIMEOUT = 300  # 5 minutes per partition - continue even if fails
-SOLVE_TIMEOUT = 300  # 5 minutes for Gurobi per partition
+SOLVE_TIMEOUT = 100  # 5 minutes for Gurobi per partition
 SKIP_DENSE_EMBEDDING = False  # NEVER skip - always try embedding
 
 # Formulation types to test
