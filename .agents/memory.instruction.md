@@ -131,3 +131,15 @@ applyTo: '**'
   - **Results**: 100% success for 5-20+ farm problems
   - **Usage**: `solve_with_strategy('benders_hierarchical', max_embeddable_vars=150)`
   - **Strategy registered**: `DecompositionStrategy.BENDERS_HIERARCHICAL`
+- **QPU BENCHMARK PLAN** (2025-11-30):
+  - **Purpose**: Pure QPU benchmarking (NO hybrid solvers)
+  - **Methods Tested**: Direct QPU (DWaveSampler), Decomposition (PlotBased, Multilevel, Cutset)
+  - **QBSolv Status**: Deprecated, Python 3.12 incompatible - NOT USED
+  - **Files Created**: 
+    - `@todo/qpu_benchmark.py` - Main benchmark runner
+    - `@todo/qpu_validate_access.py` - D-Wave access validation
+    - `@todo/qpu_benchmark_results/` - Results output directory
+  - **API Token**: Requires DWAVE_API_TOKEN environment variable
+  - **Fallback**: Uses `neal.SimulatedAnnealingSampler` when QPU unavailable
+  - **Constraint Issue**: Decomposition methods violate global constraints (food group diversity)
+  - **Solution**: Need coordinated solving (Benders cuts) or post-processing repair
