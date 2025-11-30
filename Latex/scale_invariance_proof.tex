@@ -1,0 +1,595 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\geometry{margin=2.5cm}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+% Custom commands
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\title{Scale Invariance and Decomposability of the\\Binary Plot Allocation Problem:\\A Rigorous Mathematical Analysis}
+\author{Quantum Optimization Project}
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We establish rigorous mathematical foundations for the scale invariance properties of the binary plot allocation problem used in agricultural land optimization. We prove that under area-normalized objectives and purely combinatorial constraints, the optimal allocation pattern is independent of the total land area. Furthermore, we derive conditions under which the problem decomposes into identical subproblems, enabling significant computational savings through solution replication. These results have important implications for quantum-classical hybrid optimization, where problem size is constrained by quantum hardware limitations.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction and Motivation}
+
+In agricultural land allocation, we seek to optimally assign crops to land parcels while satisfying various constraints on diversity, capacity, and resource usage. When the land is discretized into equal-sized plots, the problem becomes a binary optimization problem amenable to quantum annealing and other combinatorial optimization techniques.
+
+A fundamental question arises: \emph{If we solve the allocation problem for a representative subset of land (e.g., 100 hectares with 25 plots), can we scale the solution to larger areas (e.g., 1000 hectares) without re-solving?}
+
+This document provides rigorous proofs that, under specific conditions, the answer is affirmative. This result has profound implications for quantum optimization, where hardware constraints limit problem size.
+
+\section{Problem Formulation}
+
+\subsection{Basic Notation}
+
+Let us establish the fundamental notation:
+
+\begin{definition}[Problem Parameters]
+\label{def:parameters}
+The binary plot allocation problem $\mathcal{P}$ is characterized by:
+\begin{itemize}[noitemsep]
+    \item $\mathcal{F} = \{1, 2, \ldots, n\}$: Set of $n$ plots (equal-sized land parcels)
+    \item $\mathcal{C} = \{1, 2, \ldots, m\}$: Set of $m$ crops
+    \item $A \in \R_{>0}$: Total land area (hectares)
+    \item $a = A/n$: Area of each individual plot
+    \item $B_c \in \R_{\geq 0}$: Benefit density of crop $c$ (value per unit area)
+    \item $\mathcal{G} = \{G_1, G_2, \ldots, G_K\}$: Partition of $\mathcal{C}$ into $K$ food groups
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Decision Variables]
+\label{def:variables}
+The decision variables are:
+\begin{equation}
+Y_{p,c} \in \{0, 1\} \quad \forall p \in \mathcal{F}, \forall c \in \mathcal{C}
+\end{equation}
+where $Y_{p,c} = 1$ if and only if crop $c$ is assigned to plot $p$.
+\end{definition}
+
+\subsection{Objective Function}
+
+\begin{definition}[Area-Normalized Objective]
+\label{def:objective}
+The objective function maximizes the total agricultural benefit, normalized by total land area:
+\begin{equation}
+\label{eq:objective}
+Z(Y) = \frac{1}{A} \sum_{p \in \mathcal{F}} \sum_{c \in \mathcal{C}} a \cdot B_c \cdot Y_{p,c}
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Objective Simplification]
+\label{lem:obj_simplification}
+The objective function \eqref{eq:objective} simplifies to:
+\begin{equation}
+\label{eq:objective_simplified}
+Z(Y) = \frac{1}{n} \sum_{p \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot Y_{p,c}
+\end{equation}
+which is independent of the total area $A$.
+\end{lemma}
+
+\begin{proof}
+Substituting $a = A/n$ into \eqref{eq:objective}:
+\begin{align}
+Z(Y) &= \frac{1}{A} \sum_{p \in \mathcal{F}} \sum_{c \in \mathcal{C}} \frac{A}{n} \cdot B_c \cdot Y_{p,c} \\
+&= \frac{1}{A} \cdot \frac{A}{n} \sum_{p \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot Y_{p,c} \\
+&= \frac{1}{n} \sum_{p \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot Y_{p,c}
+\end{align}
+The total area $A$ cancels completely. \qedhere
+\end{proof}
+
+\subsection{Constraint Set}
+
+\begin{definition}[Combinatorial Constraint Set]
+\label{def:constraints}
+The constraint set $\mathcal{K}$ consists of purely combinatorial (count-based) constraints:
+
+\paragraph{(C1) Plot Assignment Constraint:}
+Each plot is assigned to at most one crop:
+\begin{equation}
+\label{eq:c1}
+\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p \in \mathcal{F}
+\end{equation}
+
+\paragraph{(C2) Food Group Minimum Constraints:}
+For each food group $G_k$, at least $N^{\min}_k$ plots must be assigned:
+\begin{equation}
+\label{eq:c2}
+\sum_{p \in \mathcal{F}} \sum_{c \in G_k} Y_{p,c} \geq N^{\min}_k \quad \forall k \in \{1, \ldots, K\}
+\end{equation}
+
+\paragraph{(C3) Food Group Maximum Constraints:}
+For each food group $G_k$, at most $N^{\max}_k$ plots can be assigned:
+\begin{equation}
+\label{eq:c3}
+\sum_{p \in \mathcal{F}} \sum_{c \in G_k} Y_{p,c} \leq N^{\max}_k \quad \forall k \in \{1, \ldots, K\}
+\end{equation}
+
+\paragraph{(C4) Maximum Plots Per Crop:}
+Each crop $c$ can be assigned to at most $K_c$ plots:
+\begin{equation}
+\label{eq:c4}
+\sum_{p \in \mathcal{F}} Y_{p,c} \leq K_c \quad \forall c \in \mathcal{C}
+\end{equation}
+\end{definition}
+
+\begin{remark}
+Crucially, none of the constraints (C1)--(C4) depend on the total area $A$ or the individual plot area $a$. They are purely combinatorial, depending only on counts of assignments.
+\end{remark}
+
+\subsection{Complete Problem Formulation}
+
+\begin{definition}[Binary Plot Allocation Problem]
+\label{def:problem}
+The complete optimization problem is:
+\begin{equation}
+\label{eq:problem}
+\mathcal{P}(n, A, \mathcal{K}) : \quad Z^* = \max_{Y \in \{0,1\}^{n \times m}} Z(Y) \quad \text{subject to } Y \in \mathcal{K}
+\end{equation}
+where $\mathcal{K}$ denotes the feasible region defined by constraints (C1)--(C4).
+\end{definition}
+
+\section{Scale Invariance Theorem}
+
+We now establish the fundamental scale invariance property.
+
+\begin{theorem}[Pure Scale Invariance]
+\label{thm:scale_invariance}
+Consider two instances of the binary plot allocation problem:
+\begin{align}
+\mathcal{P}_1 &= \mathcal{P}(n, A_1, \mathcal{K}) \\
+\mathcal{P}_2 &= \mathcal{P}(n, A_2, \mathcal{K})
+\end{align}
+with identical parameters $(n, m, \{B_c\}, \{N^{\min}_k\}, \{N^{\max}_k\}, \{K_c\})$ but different total areas $A_1 \neq A_2$.
+
+Then:
+\begin{enumerate}[label=(\roman*)]
+    \item The feasible regions are identical: $\mathcal{K}_1 = \mathcal{K}_2$
+    \item The optimal objectives are equal: $Z^*_1 = Z^*_2$
+    \item The optimal solutions coincide: $Y^*_1 = Y^*_2$
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+We prove each claim:
+
+\paragraph{(i) Feasibility equivalence:}
+The feasible region $\mathcal{K}$ is defined by constraints (C1)--(C4). Examining each:
+\begin{itemize}
+    \item Constraint (C1): $\sum_{c} Y_{p,c} \leq 1$ --- no dependence on $A$
+    \item Constraint (C2): $\sum_{p,c \in G_k} Y_{p,c} \geq N^{\min}_k$ --- no dependence on $A$
+    \item Constraint (C3): $\sum_{p,c \in G_k} Y_{p,c} \leq N^{\max}_k$ --- no dependence on $A$
+    \item Constraint (C4): $\sum_{p} Y_{p,c} \leq K_c$ --- no dependence on $A$
+\end{itemize}
+Since none of the constraint coefficients or bounds depend on $A$, the feasible regions are identical.
+
+\paragraph{(ii) Objective equivalence:}
+By Lemma \ref{lem:obj_simplification}, the objective function is:
+\begin{equation}
+Z(Y) = \frac{1}{n} \sum_{p,c} B_c \cdot Y_{p,c}
+\end{equation}
+This expression contains no reference to $A$. Therefore, $Z_1(Y) = Z_2(Y)$ for all feasible $Y$.
+
+\paragraph{(iii) Solution equivalence:}
+Since $\mathcal{K}_1 = \mathcal{K}_2$ and $Z_1 \equiv Z_2$, we have:
+\begin{equation}
+Y^*_1 = \argmax_{Y \in \mathcal{K}_1} Z_1(Y) = \argmax_{Y \in \mathcal{K}_2} Z_2(Y) = Y^*_2
+\end{equation}
+(In case of multiple optima, the set of optimal solutions is identical.) \qedhere
+\end{proof}
+
+\begin{corollary}[Area Independence]
+\label{cor:area_independence}
+The optimal assignment pattern $Y^*$ and optimal benefit density $Z^*$ are invariant under arbitrary positive rescaling of the total land area.
+\end{corollary}
+
+\section{Decomposability Theorem}
+
+We now address the more powerful result: when can we solve a smaller problem and replicate the solution?
+
+\subsection{Problem Scaling}
+
+\begin{definition}[Scaled Problem]
+\label{def:scaled_problem}
+Given a base problem $\mathcal{P}_1 = \mathcal{P}(n, A, \mathcal{K}_1)$, the $k$-fold scaled problem is:
+\begin{equation}
+\mathcal{P}_k = \mathcal{P}(kn, kA, \mathcal{K}_k)
+\end{equation}
+where the constraint parameters are scaled as follows:
+\begin{itemize}
+    \item Plot assignment (C1): unchanged (applies per-plot)
+    \item Food group bounds: $N^{\min}_{k,g} = k \cdot N^{\min}_{1,g}$, $N^{\max}_{k,g} = k \cdot N^{\max}_{1,g}$
+    \item Max plots per crop: $K_{k,c} = k \cdot K_{1,c}$
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Separable Constraints]
+\label{def:separable}
+The constraint set $\mathcal{K}_k$ is \emph{separable} if we can partition the $kn$ plots into $k$ groups $\mathcal{F}_1, \ldots, \mathcal{F}_k$ (each of size $n$) such that:
+\begin{enumerate}[label=(\alph*)]
+    \item Each constraint involves variables from only one group
+    \item The constraint structure is identical across groups
+\end{enumerate}
+\end{definition}
+
+\subsection{Tiled Constraints}
+
+\begin{definition}[Tiled Constraint Set]
+\label{def:tiled}
+The \emph{tiled} constraint set $\mathcal{K}^{\text{tile}}_k$ is defined as follows. Partition the plots $\{1, \ldots, kn\}$ into $k$ groups:
+\begin{equation}
+\mathcal{F}_j = \{(j-1)n + 1, \ldots, jn\} \quad \text{for } j = 1, \ldots, k
+\end{equation}
+
+The constraints for each group $j$ are:
+
+\paragraph{(C1) Plot Assignment:}
+\begin{equation}
+\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p \in \mathcal{F}_j
+\end{equation}
+
+\paragraph{(C2)-(C3) Food Group Constraints (per tile):}
+\begin{equation}
+N^{\min}_g \leq \sum_{p \in \mathcal{F}_j} \sum_{c \in G_g} Y_{p,c} \leq N^{\max}_g \quad \forall g, \forall j
+\end{equation}
+
+\paragraph{(C4) Max Plots Per Crop (per tile):}
+\begin{equation}
+\sum_{p \in \mathcal{F}_j} Y_{p,c} \leq K_c \quad \forall c \in \mathcal{C}, \forall j
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Tiled Constraints are Separable]
+\label{lem:separable}
+The tiled constraint set $\mathcal{K}^{\text{tile}}_k$ is separable in the sense of Definition \ref{def:separable}.
+\end{lemma}
+
+\begin{proof}
+By construction, each constraint in $\mathcal{K}^{\text{tile}}_k$ involves only variables $Y_{p,c}$ where $p \in \mathcal{F}_j$ for a single tile $j$. The constraints for different tiles are completely decoupled. Furthermore, the constraint structure (coefficients and bounds) is identical across all tiles. \qedhere
+\end{proof}
+
+\subsection{Main Decomposability Result}
+
+\begin{theorem}[Solution Decomposability]
+\label{thm:decomposability}
+Consider the base problem $\mathcal{P}_1 = \mathcal{P}(n, A, \mathcal{K}_1)$ with optimal solution $Y^* \in \{0,1\}^{n \times m}$ and optimal objective $Z^*$.
+
+Consider the $k$-fold tiled problem $\mathcal{P}^{\text{tile}}_k$ with tiled constraints $\mathcal{K}^{\text{tile}}_k$.
+
+Then:
+\begin{enumerate}[label=(\roman*)]
+    \item The replicated solution $\tilde{Y} = [Y^*, Y^*, \ldots, Y^*]$ (k copies) is feasible for $\mathcal{P}^{\text{tile}}_k$
+    \item The replicated solution is optimal: $\tilde{Y} \in \argmax_{Y \in \mathcal{K}^{\text{tile}}_k} Z_k(Y)$
+    \item The optimal objectives are equal: $Z^*_k = Z^*_1$
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+We establish each claim rigorously.
+
+\paragraph{(i) Feasibility of replicated solution:}
+
+Define the replicated solution $\tilde{Y} \in \{0,1\}^{kn \times m}$ by:
+\begin{equation}
+\tilde{Y}_{p,c} = Y^*_{((p-1) \mod n) + 1, c} \quad \forall p \in \{1, \ldots, kn\}, \forall c \in \mathcal{C}
+\end{equation}
+
+For each tile $j$, the variables $\{\tilde{Y}_{p,c} : p \in \mathcal{F}_j\}$ are a copy of $Y^*$.
+
+\textbf{Constraint (C1):} For any plot $p \in \mathcal{F}_j$:
+\begin{equation}
+\sum_{c \in \mathcal{C}} \tilde{Y}_{p,c} = \sum_{c \in \mathcal{C}} Y^*_{p',c} \leq 1
+\end{equation}
+where $p' = ((p-1) \mod n) + 1$ is the corresponding plot in the base problem. The inequality holds because $Y^*$ satisfies (C1).
+
+\textbf{Constraints (C2)-(C3):} For each tile $j$ and food group $g$:
+\begin{equation}
+\sum_{p \in \mathcal{F}_j} \sum_{c \in G_g} \tilde{Y}_{p,c} = \sum_{p=1}^{n} \sum_{c \in G_g} Y^*_{p,c}
+\end{equation}
+Since $Y^*$ satisfies $N^{\min}_g \leq \sum_{p,c \in G_g} Y^*_{p,c} \leq N^{\max}_g$, the tiled constraints are satisfied.
+
+\textbf{Constraint (C4):} For each tile $j$ and crop $c$:
+\begin{equation}
+\sum_{p \in \mathcal{F}_j} \tilde{Y}_{p,c} = \sum_{p=1}^{n} Y^*_{p,c} \leq K_c
+\end{equation}
+Again inherited from feasibility of $Y^*$.
+
+\paragraph{(ii) Optimality of replicated solution:}
+
+The objective for the tiled problem is:
+\begin{equation}
+Z_k(\tilde{Y}) = \frac{1}{kn} \sum_{p=1}^{kn} \sum_{c \in \mathcal{C}} B_c \cdot \tilde{Y}_{p,c}
+\end{equation}
+
+Since the tiled constraints are separable (Lemma \ref{lem:separable}), we can decompose:
+\begin{align}
+Z_k(\tilde{Y}) &= \frac{1}{kn} \sum_{j=1}^{k} \sum_{p \in \mathcal{F}_j} \sum_{c \in \mathcal{C}} B_c \cdot \tilde{Y}_{p,c} \\
+&= \frac{1}{kn} \sum_{j=1}^{k} \left( \sum_{p=1}^{n} \sum_{c \in \mathcal{C}} B_c \cdot Y^*_{p,c} \right) \\
+&= \frac{1}{kn} \cdot k \cdot \left( \sum_{p=1}^{n} \sum_{c \in \mathcal{C}} B_c \cdot Y^*_{p,c} \right) \\
+&= \frac{1}{n} \sum_{p=1}^{n} \sum_{c \in \mathcal{C}} B_c \cdot Y^*_{p,c} \\
+&= Z^*_1
+\end{align}
+
+Now suppose for contradiction that $\tilde{Y}$ is not optimal, i.e., there exists $\hat{Y} \in \mathcal{K}^{\text{tile}}_k$ with $Z_k(\hat{Y}) > Z_k(\tilde{Y}) = Z^*_1$.
+
+By separability, we can write:
+\begin{equation}
+Z_k(\hat{Y}) = \frac{1}{k} \sum_{j=1}^{k} Z^{(j)}(\hat{Y})
+\end{equation}
+where $Z^{(j)}(\hat{Y}) = \frac{1}{n} \sum_{p \in \mathcal{F}_j} \sum_{c} B_c \hat{Y}_{p,c}$ is the contribution from tile $j$.
+
+Since $Z_k(\hat{Y}) > Z^*_1$ and $Z_k(\hat{Y})$ is the average of $Z^{(1)}, \ldots, Z^{(k)}$, there must exist some tile $j^*$ with:
+\begin{equation}
+Z^{(j^*)}(\hat{Y}) > Z^*_1
+\end{equation}
+
+But the restriction of $\hat{Y}$ to tile $j^*$ is feasible for the base problem $\mathcal{P}_1$ (since the constraints are identical). This contradicts the optimality of $Y^*$ for $\mathcal{P}_1$.
+
+Therefore, $\tilde{Y}$ is optimal.
+
+\paragraph{(iii) Objective equality:}
+
+From part (ii), we have $Z^*_k = Z_k(\tilde{Y}) = Z^*_1$. \qedhere
+\end{proof}
+
+\begin{corollary}[Computational Reduction]
+\label{cor:computation}
+To solve the tiled problem $\mathcal{P}^{\text{tile}}_k$ with $kn$ plots, it suffices to:
+\begin{enumerate}
+    \item Solve the base problem $\mathcal{P}_1$ with $n$ plots
+    \item Replicate the solution $k$ times
+\end{enumerate}
+The computational complexity is $O(\text{solve}(n))$ rather than $O(\text{solve}(kn))$, providing potentially exponential savings for combinatorial optimization.
+\end{corollary}
+
+\section{Conditions for Decomposability}
+
+\subsection{When Decomposition Holds}
+
+\begin{proposition}[Sufficient Conditions for Decomposability]
+\label{prop:sufficient}
+The decomposability result (Theorem \ref{thm:decomposability}) holds when:
+\begin{enumerate}[label=(S\arabic*)]
+    \item The objective is linear and area-normalized
+    \item All constraints are count-based (not area-based)
+    \item Constraints are applied locally (per tile) rather than globally
+    \item The constraint bounds are identical across tiles
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Conditions (S1) and (S2) ensure the objective and constraints are independent of total area (Section 3). Conditions (S3) and (S4) ensure separability (Definition \ref{def:separable}), which is required for the decomposition argument in Theorem \ref{thm:decomposability}. \qedhere
+\end{proof}
+
+\subsection{When Decomposition Fails}
+
+\begin{proposition}[Failure Conditions]
+\label{prop:failure}
+The decomposability result \emph{fails} under any of the following conditions:
+\end{proposition}
+
+\paragraph{(F1) Global constraints:}
+If there exist constraints that couple multiple tiles, e.g.,
+\begin{equation}
+\sum_{p=1}^{kn} Y_{p,c} \leq K^{\text{global}}_c
+\end{equation}
+then the problem does not decompose. Replicating a feasible base solution may violate the global bound.
+
+\begin{example}
+Base problem: $n=25$ plots, $K_c = 5$ (max 5 plots per crop).
+Scaled problem with global constraint: $kn=250$ plots, $K^{\text{global}}_c = 20$.
+Replicated solution uses $k \cdot 5 = 50 > 20$ plots, violating the constraint.
+\end{example}
+
+\paragraph{(F2) Non-linear objectives:}
+If the objective has diminishing returns, e.g.,
+\begin{equation}
+Z(Y) = \sum_{c \in \mathcal{C}} f_c\left( \sum_{p=1}^{kn} a \cdot Y_{p,c} \right)
+\end{equation}
+where $f_c$ is concave, then replication may not be optimal.
+
+\begin{example}
+Market saturation: $f_c(x) = \log(1 + x)$. The marginal value of additional area for crop $c$ decreases. A diverse allocation across tiles may outperform replication.
+\end{example}
+
+\paragraph{(F3) Global diversity constraints:}
+If there exist constraints requiring variety across the entire domain:
+\begin{equation}
+\left| \{c \in \mathcal{C} : \exists p, Y_{p,c} = 1 \} \right| \geq D^{\text{global}}
+\end{equation}
+Replication uses the same crops in each tile, potentially failing to achieve global diversity.
+
+\paragraph{(F4) Shared resource constraints:}
+If tiles compete for a shared resource (water, labor, equipment):
+\begin{equation}
+\sum_{j=1}^{k} \sum_{p \in \mathcal{F}_j} \sum_{c \in \mathcal{C}} r_c \cdot Y_{p,c} \leq R^{\text{total}}
+\end{equation}
+where $R^{\text{total}}$ does not scale with $k$, decomposition fails.
+
+\section{Implications for Quantum Optimization}
+
+\subsection{QPU Size Limitations}
+
+Current quantum processing units (QPUs) are limited in the number of qubits and connectivity. For the binary plot allocation problem:
+
+\begin{itemize}
+    \item Number of binary variables: $n \cdot m$ (plots $\times$ crops)
+    \item Number of logical qubits needed: $O(n \cdot m)$
+    \item Physical qubits after embedding: $O(n \cdot m \cdot \chi)$ where $\chi$ is chain length
+\end{itemize}
+
+\begin{proposition}[QPU Scaling via Decomposition]
+\label{prop:qpu}
+If the decomposability conditions (Proposition \ref{prop:sufficient}) hold, then a problem with $kn$ plots can be solved using a QPU sized for $n$ plots, with:
+\begin{enumerate}
+    \item Same solution quality (optimal)
+    \item $k\times$ reduction in qubit requirements
+    \item No additional QPU calls (solve once, replicate $k$ times)
+\end{enumerate}
+\end{proposition}
+
+\subsection{Practical Algorithm}
+
+\begin{algorithm}
+\caption{Scalable Plot Allocation via Decomposition}
+\label{alg:scalable}
+\begin{algorithmic}[1]
+\Require Target area $A_{\text{target}}$, number of tiles $k$, crops $\mathcal{C}$, constraints $\mathcal{K}$
+\Ensure Optimal allocation $Y^*$ for $A_{\text{target}}$
+
+\State $A_{\text{base}} \gets A_{\text{target}} / k$
+\State $n_{\text{base}} \gets $ desired plots per tile
+\Comment{Choose $n_{\text{base}}$ to fit QPU}
+
+\State Verify decomposability conditions (Prop. \ref{prop:sufficient})
+\If{conditions not satisfied}
+    \State \textbf{return} solve full problem (no decomposition)
+\EndIf
+
+\State $Y^*_{\text{base}} \gets$ SolveOnQPU($n_{\text{base}}$, $A_{\text{base}}$, $\mathcal{K}$)
+\Comment{Solve base problem}
+
+\State $Y^* \gets$ Replicate($Y^*_{\text{base}}$, $k$)
+\Comment{Tile the solution}
+
+\State \textbf{return} $Y^*$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Relationship to Continuous Formulation}
+
+\subsection{Discretization Gap}
+
+\begin{definition}[Continuous Relaxation]
+\label{def:continuous}
+The continuous relaxation replaces binary variables with:
+\begin{equation}
+A_{p,c} \in [0, a] \quad \text{(area allocated to crop $c$ on plot $p$)}
+\end{equation}
+with objective:
+\begin{equation}
+Z^{\text{cont}}(A) = \frac{1}{A} \sum_{p,c} B_c \cdot A_{p,c}
+\end{equation}
+\end{definition}
+
+\begin{definition}[Discretization Gap]
+\label{def:gap}
+The discretization gap is:
+\begin{equation}
+\epsilon = \frac{Z^{\text{cont},*} - Z^{\text{bin},*}}{Z^{\text{cont},*}}
+\end{equation}
+where $Z^{\text{cont},*}$ and $Z^{\text{bin},*}$ are the optimal continuous and binary objectives.
+\end{definition}
+
+\begin{theorem}[Gap Preservation Under Scaling]
+\label{thm:gap}
+If the binary problem has discretization gap $\epsilon$ for $n$ plots, then the $k$-fold tiled problem also has gap $\epsilon$.
+\end{theorem}
+
+\begin{proof}
+By Theorem \ref{thm:decomposability}, $Z^{\text{bin},*}_k = Z^{\text{bin},*}_1$.
+
+By similar arguments, the continuous problem also decomposes (linear objective, separable constraints), giving $Z^{\text{cont},*}_k = Z^{\text{cont},*}_1$.
+
+Therefore:
+\begin{equation}
+\epsilon_k = \frac{Z^{\text{cont},*}_k - Z^{\text{bin},*}_k}{Z^{\text{cont},*}_k} = \frac{Z^{\text{cont},*}_1 - Z^{\text{bin},*}_1}{Z^{\text{cont},*}_1} = \epsilon_1
+\end{equation}
+\qedhere
+\end{proof}
+
+\begin{remark}
+The discretization gap depends on the \emph{granularity} (plots per unit area), not the total area. Finer discretization (more plots per hectare) reduces the gap but increases computational cost.
+\end{remark}
+
+\section{Numerical Verification}
+
+The theoretical results can be verified empirically:
+
+\begin{enumerate}
+    \item Solve the base problem $\mathcal{P}_1(n=25, A=100)$
+    \item Solve the scaled problem $\mathcal{P}_k(kn=250, A=1000)$ with tiled constraints
+    \item Verify: $Z^*_k = Z^*_1$ and $Y^*_k = $ replication of $Y^*_1$
+\end{enumerate}
+
+See the accompanying benchmark script \texttt{scaling\_formulation\_benchmark.py} for empirical validation.
+
+\section{Conclusion}
+
+We have established rigorous mathematical foundations for the scale invariance of the binary plot allocation problem:
+
+\begin{enumerate}
+    \item \textbf{Pure Scale Invariance} (Theorem \ref{thm:scale_invariance}): The optimal allocation is independent of total land area when the number of plots and combinatorial constraints are fixed.
+    
+    \item \textbf{Solution Decomposability} (Theorem \ref{thm:decomposability}): Under tiled (local) constraints, the optimal solution to a large problem is the replication of the optimal solution to a smaller subproblem.
+    
+    \item \textbf{Conditions} (Propositions \ref{prop:sufficient}, \ref{prop:failure}): Decomposition requires local constraints and fails under global constraints, non-linear objectives, or shared resources.
+    
+    \item \textbf{Gap Preservation} (Theorem \ref{thm:gap}): The discretization gap from the continuous relaxation is preserved under scaling.
+\end{enumerate}
+
+These results enable significant computational savings in quantum optimization by allowing problems to be solved at a scale that fits current QPU limitations, then scaled to arbitrary sizes through replication.
+
+\appendix
+
+\section{Notation Summary}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$n$ & Number of plots \\
+$m$ & Number of crops \\
+$A$ & Total land area \\
+$a = A/n$ & Area per plot \\
+$\mathcal{F}$ & Set of plots \\
+$\mathcal{C}$ & Set of crops \\
+$G_k$ & Food group $k$ \\
+$B_c$ & Benefit density of crop $c$ \\
+$Y_{p,c}$ & Binary: crop $c$ assigned to plot $p$ \\
+$N^{\min}_k, N^{\max}_k$ & Bounds on food group $k$ \\
+$K_c$ & Max plots for crop $c$ \\
+$Z(Y)$ & Objective function \\
+$Z^*$ & Optimal objective value \\
+$Y^*$ & Optimal solution \\
+$\mathcal{K}$ & Feasible region (constraint set) \\
+$k$ & Scaling factor (number of tiles) \\
+$\epsilon$ & Discretization gap \\
+\bottomrule
+\end{tabular}
+\caption{Notation used in this document}
+\end{table}
+
+\end{document}

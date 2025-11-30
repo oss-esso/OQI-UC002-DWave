@@ -1,34 +1,204 @@
-Sanitizing results for JSON compatibility...
+====================================================================================================================================================================================
+COMPREHENSIVE SCALING SUMMARY (with Embedding)
+====================================================================================================================================================================================
 
-================================================================================
-STRATEGY COMPARISON
-================================================================================
+====================================================================================================================================================================================
+25 FARMS × 27 FOODS (GT=0.315055)
+====================================================================================================================================================================================
 
-Strategy                  Status       Time (s)   Objective    Valid    Area Used      
----------------------------------------------------------------------------------------------------------
-current_hybrid            Optimal      140.328    0.0000       ✅        0.0/100.0      
-benders                   ok (optimal) 1.325      0.1353       ✅        45.5/100.0     
-benders_qpu               ok (optimal) 309.836    0.2102       ✅        84.4/100.0     
-dantzig_wolfe             failed       0.168      0.1728       ❌        57.7/100.0     
-dantzig_wolfe_qpu         failed       2.829      0.1728       ❌        57.7/100.0     
-admm                      ok (optimal) 5.695      0.0129       ✅        6.2/100.0      
-admm_qpu                  failed       688.462    0.0151       ❌        9.5/100.0      
----------------------------------------------------------------------------------------------------------
+Method       Decomp           Parts      Solve      Embed     Qubits  Chain    Objective        Gap   Viol
+------------------------------------------------------------------------------------------------------------------------
+CQM (Binary):
+  CQM        None                 1     0.019s      37.4s       FAIL    N/A     0.315055      -0.0%      ✅
+  CQM        PlotBased           26     0.039s      16.8s       2600      5     0.315055      -0.0%      ✅
+  CQM        Spectral(4)          4     0.020s      18.8s       2929      9     0.315055      -0.0%      ✅
+  CQM        Louvain             25     0.032s      17.0s       2600      5     0.271504     +13.8%     ❌3
+  CQM        Multilevel(5)        6     0.010s      28.8s       2760      7     0.315055      -0.0%      ✅
+  CQM        Cutset(2)           14     0.026s      32.7s       2588      6     0.315055      -0.0%      ✅
+  CQM        SpatialGrid(5)       6     0.012s      31.8s       2760      7     0.315055      -0.0%      ✅
 
-================================================================================
-VALIDATION DETAILS
-================================================================================
+Benders (Continuous):
+  Benders    None               N/A     0.087s        N/A        N/A    N/A     0.315055      -0.0%     ❌4
+  Benders    PlotBased          N/A     0.113s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Spectral(4)        N/A     0.089s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Louvain            N/A     0.090s        N/A        N/A    N/A     0.293279      +6.9%     ❌4
+  Benders    Multilevel(5)      N/A     0.050s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Cutset(2)          N/A     0.074s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    SpatialGrid(5)     N/A     0.051s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
 
-❌ DANTZIG_WOLFE:
-  food_group_min_violation: 5 violations
+Dantzig-Wolfe (Continuous):
+  D-W        None               N/A     0.626s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  D-W        PlotBased          N/A     0.910s        N/A        N/A    N/A     0.017198     +94.5%     ❌5
+  D-W        Spectral(4)        N/A     0.600s        N/A        N/A    N/A     0.164949     +47.6%     ❌4
+  D-W        Louvain            N/A     0.776s        N/A        N/A    N/A     0.017198     +94.5%     ❌5
+  D-W        Multilevel(5)      N/A     0.409s        N/A        N/A    N/A     0.085990     +72.7%     ❌5
+  D-W        Cutset(2)          N/A     0.613s        N/A        N/A    N/A     0.034396     +89.1%     ❌5
+  D-W        SpatialGrid(5)     N/A     0.443s        N/A        N/A    N/A     0.085990     +72.7%     ❌5
 
-❌ DANTZIG_WOLFE_QPU:
-  food_group_min_violation: 5 violations
+====================================================================================================================================================================================
+50 FARMS × 27 FOODS (GT=0.315055)
+====================================================================================================================================================================================
 
-❌ ADMM_QPU:
-  min_area_violation: 2 violations
-================================================================================
+Method       Decomp           Parts      Solve      Embed     Qubits  Chain    Objective        Gap   Viol
+------------------------------------------------------------------------------------------------------------------------
+CQM (Binary):
+  CQM        None                 1     0.041s      44.8s       FAIL    N/A     0.315055      +0.0%      ✅
+  CQM        PlotBased           51     0.067s      31.6s       5200      5     0.315055      +0.0%      ✅
+  CQM        Spectral(4)          4     0.033s      63.1s       FAIL    N/A     0.315055      +0.0%      ✅
+  CQM        Louvain             50     0.078s      30.7s       5200      5     0.159350     +49.4%     ❌2
+  CQM        Multilevel(5)       11     0.023s      55.1s       5520      7     0.315055      +0.0%      ✅
+  CQM        Cutset(2)           26     0.036s      54.8s       5175      6     0.315055      +0.0%      ✅
+  CQM        SpatialGrid(5)       6     0.016s      75.3s       5480      7     0.315055      +0.0%      ✅
 
-✅ Benchmark complete!
-   Results saved: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/Benchmarks/ALL_STRATEGIES/all_strategies_config_25_20251125_160909.json
-(oqi) edoardospigarolo@simonecampanambpro @todo % 
+Benders (Continuous):
+  Benders    None               N/A     0.166s        N/A        N/A    N/A     0.315055      -0.0%     ❌4
+  Benders    PlotBased          N/A     0.193s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Spectral(4)        N/A     0.275s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Louvain            N/A     0.235s        N/A        N/A    N/A     0.304167      +3.5%     ❌4
+  Benders    Multilevel(5)      N/A     0.102s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Cutset(2)          N/A     0.141s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    SpatialGrid(5)     N/A     0.199s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+
+Dantzig-Wolfe (Continuous):
+  D-W        None               N/A     1.021s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  D-W        PlotBased          N/A     1.605s        N/A        N/A    N/A     0.008599     +97.3%     ❌5
+  D-W        Spectral(4)        N/A     1.146s        N/A        N/A    N/A     0.206603     +34.4%     ❌4
+  D-W        Louvain            N/A     1.735s        N/A        N/A    N/A     0.008599     +97.3%     ❌5
+  D-W        Multilevel(5)      N/A     0.772s        N/A        N/A    N/A     0.042995     +86.4%     ❌5
+  D-W        Cutset(2)          N/A     1.124s        N/A        N/A    N/A     0.017198     +94.5%     ❌5
+  D-W        SpatialGrid(5)     N/A     0.701s        N/A        N/A    N/A     0.085990     +72.7%     ❌5
+
+====================================================================================================================================================================================
+100 FARMS × 27 FOODS (GT=0.315055)
+====================================================================================================================================================================================
+
+Method       Decomp           Parts      Solve      Embed     Qubits  Chain    Objective        Gap   Viol
+------------------------------------------------------------------------------------------------------------------------
+CQM (Binary):
+  CQM        None                 1     0.061s      81.4s       FAIL    N/A     0.315055      +0.0%      ✅
+  CQM        PlotBased          101     0.179s      62.0s      10400      5     0.315055      +0.0%      ✅
+  CQM        Spectral(4)          4     0.073s      79.6s       FAIL    N/A     0.315055      +0.0%      ✅
+  CQM        Louvain            100     0.235s      58.0s      10400      5     0.095263     +69.8%     ❌2
+  CQM        Multilevel(5)       21     0.049s     105.9s      11040      7     0.315055      +0.0%      ✅
+  CQM        Cutset(2)           51     0.104s     105.2s      10350      6     0.315055      +0.0%      ✅
+  CQM        SpatialGrid(5)       6     0.026s      60.9s      11985      9     0.315055      +0.0%      ✅
+
+Benders (Continuous):
+  Benders    None               N/A     0.239s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    PlotBased          N/A     0.579s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Spectral(4)        N/A     0.259s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Louvain            N/A     0.646s        N/A        N/A    N/A     0.309611      +1.7%     ❌4
+  Benders    Multilevel(5)      N/A     0.217s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Cutset(2)          N/A     0.341s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    SpatialGrid(5)     N/A     0.187s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+
+Dantzig-Wolfe (Continuous):
+  D-W        None               N/A     1.994s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  D-W        PlotBased          N/A     3.476s        N/A        N/A    N/A     0.004300     +98.6%     ❌5
+  D-W        Spectral(4)        N/A     1.891s        N/A        N/A    N/A     0.263339     +16.4%     ❌4
+  D-W        Louvain            N/A     3.533s        N/A        N/A    N/A     0.004300     +98.6%     ❌5
+  D-W        Multilevel(5)      N/A     1.769s        N/A        N/A    N/A     0.021498     +93.2%     ❌5
+  D-W        Cutset(2)          N/A     2.409s        N/A        N/A    N/A     0.008599     +97.3%     ❌5
+  D-W        SpatialGrid(5)     N/A     1.501s        N/A        N/A    N/A     0.085990     +72.7%     ❌5
+
+====================================================================================================================================================================================
+200 FARMS × 27 FOODS (GT=0.315055)
+====================================================================================================================================================================================
+
+Method       Decomp           Parts      Solve      Embed     Qubits  Chain    Objective        Gap   Viol
+------------------------------------------------------------------------------------------------------------------------
+CQM (Binary):
+  CQM        None                 1     0.128s      40.6s       FAIL    N/A     0.315055      -0.0%      ✅
+  CQM        PlotBased          201     0.600s     120.7s      20800      5     0.315055      +0.0%      ✅
+  CQM        Spectral(4)          4     0.217s     155.0s       FAIL    N/A     0.315055      -0.0%      ✅
+  CQM        Louvain            200     0.909s     120.8s      20800      5     0.045145     +85.7%     ❌2
+  CQM        Multilevel(5)       41     0.147s     225.0s      22080      7     0.315055      +0.0%      ✅
+  CQM        Cutset(2)          101     0.335s     222.2s      20700      6     0.315055      +0.0%      ✅
+  CQM        SpatialGrid(5)       6     0.058s     211.9s       FAIL    N/A     0.315055      +0.0%      ✅
+
+Benders (Continuous):
+  Benders    None               N/A     0.524s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    PlotBased          N/A     1.584s        N/A        N/A    N/A     0.315055      -0.0%     ❌4
+  Benders    Spectral(4)        N/A     0.488s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  Benders    Louvain            N/A     2.135s        N/A        N/A    N/A     0.312333      +0.9%     ❌4
+  Benders    Multilevel(5)      N/A     0.536s        N/A        N/A    N/A     0.315055      -0.0%     ❌4
+  Benders    Cutset(2)          N/A     1.040s        N/A        N/A    N/A     0.315055      -0.0%     ❌4
+  Benders    SpatialGrid(5)     N/A     0.460s        N/A        N/A    N/A     0.315055      -0.0%     ❌4
+
+Dantzig-Wolfe (Continuous):
+  D-W        None               N/A     4.674s        N/A        N/A    N/A     0.315055      +0.0%     ❌4
+  D-W        PlotBased          N/A     8.920s        N/A        N/A    N/A     0.002150     +99.3%     ❌5
+  D-W        Spectral(4)        N/A     4.107s        N/A        N/A    N/A     0.162236     +48.5%     ❌4
+  D-W        Louvain            N/A     9.217s        N/A        N/A    N/A     0.002150     +99.3%     ❌5
+  D-W        Multilevel(5)      N/A     4.172s        N/A        N/A    N/A     0.010749     +96.6%     ❌5
+  D-W        Cutset(2)          N/A     5.941s        N/A        N/A    N/A     0.004300     +98.6%     ❌5
+  D-W        SpatialGrid(5)     N/A     2.793s        N/A        N/A    N/A     0.085990     +72.7%     ❌5
+
+====================================================================================================================================================================================
+EMBEDDING SUMMARY (CQM only - all decompositions)
+====================================================================================================================================================================================
+
+Scale    Decomp             Parts     Embeddable   Log.Qubits  Phys.Qubits   MaxChain    EmbedTime
+--------------------------------------------------------------------------------------------------------------
+
+25 farms:
+  25     None                   1          ❌ 0/1          675       FAILED        N/A        37.4s
+  25     PlotBased             26          ✅ ALL          675         2600          5        16.8s
+  25     Spectral(4)            4          ✅ ALL          675         2929          9        18.8s
+  25     Louvain               25          ✅ ALL          675         2600          5        17.0s
+  25     Multilevel(5)          6          ✅ ALL          675         2760          7        28.8s
+  25     Cutset(2)             14          ✅ ALL          675         2588          6        32.7s
+  25     SpatialGrid(5)         6          ✅ ALL          675         2760          7        31.8s
+
+50 farms:
+  50     None                   1          ❌ 0/1         1350       FAILED        N/A        44.8s
+  50     PlotBased             51          ✅ ALL         1350         5200          5        31.6s
+  50     Spectral(4)            4          ❌ 3/4         1350       FAILED        N/A        63.1s
+  50     Louvain               50          ✅ ALL         1350         5200          5        30.7s
+  50     Multilevel(5)         11          ✅ ALL         1350         5520          7        55.1s
+  50     Cutset(2)             26          ✅ ALL         1350         5175          6        54.8s
+  50     SpatialGrid(5)         6          ✅ ALL         1350         5480          7        75.3s
+
+100 farms:
+  100    None                   1          ❌ 0/1         2700       FAILED        N/A        81.4s
+  100    PlotBased            101          ✅ ALL         2700        10400          5        62.0s
+  100    Spectral(4)            4          ❌ 3/4         2700       FAILED        N/A        79.6s
+  100    Louvain              100          ✅ ALL         2700        10400          5        58.0s
+  100    Multilevel(5)         21          ✅ ALL         2700        11040          7       105.9s
+  100    Cutset(2)             51          ✅ ALL         2700        10350          6       105.2s
+  100    SpatialGrid(5)         6          ✅ ALL         2700        11985          9        60.9s
+
+200 farms:
+  200    None                   1          ❌ 0/1         5400       FAILED        N/A        40.6s
+  200    PlotBased            201          ✅ ALL         5400        20800          5       120.7s
+  200    Spectral(4)            4          ❌ 2/4         5400       FAILED        N/A       155.0s
+  200    Louvain              200          ✅ ALL         5400        20800          5       120.8s
+  200    Multilevel(5)         41          ✅ ALL         5400        22080          7       225.0s
+  200    Cutset(2)            101          ✅ ALL         5400        20700          6       222.2s
+  200    SpatialGrid(5)         6          ❌ 1/6         5400       FAILED        N/A       211.9s
+
+====================================================================================================================================================================================
+BEST RESULTS PER SCALE
+====================================================================================================================================================================================
+
+25 farms:
+  🏆 Best CQM:     PlotBased       gap=-0.0% viol=0 embed=✅
+  🏆 Best Benders: None            gap=-0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+50 farms:
+  🏆 Best CQM:     Spectral(4)     gap=+0.0% viol=0 embed=❌
+  🏆 Best Benders: None            gap=-0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+100 farms:
+  🏆 Best CQM:     Spectral(4)     gap=+0.0% viol=0 embed=❌
+  🏆 Best Benders: Spectral(4)     gap=+0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+200 farms:
+  🏆 Best CQM:     Spectral(4)     gap=-0.0% viol=0 embed=❌
+  🏆 Best Benders: PlotBased       gap=-0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+====================================================================================================================================================================================
