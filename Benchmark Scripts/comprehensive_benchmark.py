@@ -51,7 +51,11 @@ BENCHMARK_CONFIGS = [
     15,
     25,
     50,
-    #125
+    100,
+    200,
+    500,
+    1000
+
 ]
 
 # Number of runs per configuration for statistical analysis
@@ -1064,11 +1068,11 @@ def run_comprehensive_benchmark(config_values: List[int], dwave_token: Optional[
         print(f"{'='*80}")
 
         # Run Farm Scenario (Continuous)
-        try:
-            farm_result = run_farm_scenario(farm_sample, dwave_token)
-            farm_results.append(farm_result)
-        except Exception as e:
-            print(f"  ❌ Farm sample {farm_sample['sample_id']} failed: {e}")
+        #try:
+        #    farm_result = run_farm_scenario(farm_sample, dwave_token)
+        #    farm_results.append(farm_result)
+        #except Exception as e:
+        #    print(f"  ❌ Farm sample {farm_sample['sample_id']} failed: {e}")
 
         # Run Binary Scenario (Discretized)
         try:
@@ -1169,8 +1173,9 @@ Examples:
         if args.token:
             dwave_token = args.token
         else:
-            #dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
             dwave_token = None
+            dwave_token = os.getenv('DWAVE_API_TOKEN', '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551')
+            
         
         if not dwave_token:
             print("Warning: D-Wave enabled but no token found. Set DWAVE_API_TOKEN environment variable or use --token")

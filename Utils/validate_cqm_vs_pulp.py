@@ -34,6 +34,35 @@ class CQMPuLPValidator:
         self.discrepancies = []
         self.warnings = []
     
+    def _normalize_variable_name(self, var_name: str) -> str:
+        """
+        Normalize variable names to handle PuLP tuple-based names vs CQM string names.
+        
+        PuLP creates variables with tuple keys like ('Patch1', 'Tomatoes'), resulting in
+        names like "X_('Patch1',_'Tomatoes')". CQM uses string names like "Y_Patch1_Tomatoes".
+        
+        This function normalizes both formats to a common format for comparison.
+        
+        Examples:
+            "X_('Patch1',_'Tomatoes')" -> "Patch1_Tomatoes"
+            "Y_Patch1_Tomatoes" -> "Patch1_Tomatoes"
+            "U_Spinach" -> "Spinach"
+        
+        Returns:
+            Normalized variable name without prefix and with underscores
+        """
+        import re
+        
+        # Remove common prefixes (Y_, X_, U_, A_, etc.)
+        name = re.sub(r'^[A-Z]_', '', var_name)
+        
+        # Handle PuLP tuple format: ('Patch1',_'Tomatoes') -> Patch1_Tomatoes
+        # Remove parens, quotes, and normalize separators
+        name = name.replace("('", "").replace("')", "").replace("',_'", "_").replace("', '", "_")
+        name = name.replace("(", "").replace(")", "").replace("'", "").replace(", ", "_")
+        
+        return name
+    
     def _extract_pulp_constraint_expression(self, constraint) -> Dict[str, float]:
         """
         Extract variable coefficients from PuLP constraint as LHS - RHS.
@@ -53,7 +82,8 @@ class CQMPuLPValidator:
                 for var, coeff in lhs_dict.items():
                     if var != 'constant':
                         var_name = str(var.name) if hasattr(var, 'name') else str(var)
-                        coeffs[var_name] = float(coeff)
+                        normalized_name = self._normalize_variable_name(var_name)
+                        coeffs[normalized_name] = float(coeff)
                 
                 # Subtract RHS constant (move to LHS)
                 # PuLP stores as: sum(coeffs) + constant {sense} 0
@@ -72,7 +102,8 @@ class CQMPuLPValidator:
                 if hasattr(expr, 'items'):
                     for var, coeff in expr.items():
                         if hasattr(var, 'name'):
-                            coeffs[var.name] = float(coeff)
+                            normalized_name = self._normalize_variable_name(var.name)
+                            coeffs[normalized_name] = float(coeff)
                 
                 # Get RHS
                 rhs_value = float(getattr(constraint, 'constant', 0.0))
@@ -107,7 +138,8 @@ class CQMPuLPValidator:
             # Extract linear terms from LHS
             if hasattr(lhs, 'linear'):
                 for var, coeff in lhs.linear.items():
-                    coeffs[str(var)] = float(coeff)
+                    normalized_name = self._normalize_variable_name(str(var))
+                    coeffs[normalized_name] = float(coeff)
             
             # Extract quadratic terms (if any)
             if hasattr(lhs, 'quadratic'):
@@ -786,8 +818,8 @@ class CQMPuLPValidator:
                     if key not in ['type', 'severity', 'message']:
                         report_lines.append(f"   {key}: {value}")
         
-        # Write to file
-        with open(filepath, 'w') as f:
+        # Write to file with UTF-8 encoding to handle special characters
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write('\n'.join(report_lines))
         
         print(f"  ✓ Saved detailed comparison to:")

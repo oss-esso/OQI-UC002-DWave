@@ -1,0 +1,146 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-11-30T21:54:46.114277
+Scales: [200]
+Methods: ['ground_truth', 'coordinated', 'decomposition_PlotBased_QPU', 'decomposition_Multilevel(5)_QPU', 'decomposition_Louvain_QPU', 'cqm_first_PlotBased']
+QPU Available: True
+
+
+================================================================================
+SCALE: 200 farms
+================================================================================
+
+Metadata:
+  n_farms: 200
+  n_foods: 27
+  n_variables: 5427
+  n_constraints: 5637
+  logical_qubits: 5427
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.315055
+  Solve Time: 0.09s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_PlotBased_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.366881
+Total Time: 374.46s
+Violations: 6
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Chicken, Egg, Pork, Avocado, Guava, Mango, Orange, Chickpeas, Tempeh ... (15 total)
+  Total Area Allocated: 102.00
+
+Violation Details:
+  One Crop Per Farm: 4 violations
+    Farm Patch17: 2 crops (expected 1)
+    Farm Patch23: 2 crops (expected 1)
+    Farm Patch114: 2 crops (expected 1)
+    Farm Patch115: 2 crops (expected 1)
+  Max Plots Per Crop: 2 violations
+    Food Pork: 45 plots (max: 40)
+    Food Spinach: 104 plots (max: 40)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(5)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.366979
+Total Time: 235.06s
+Violations: 119
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Egg, Avocado, Banana, Durian, Guava, Papaya, Watermelon, Chickpeas, Peanuts, Tempeh ... (15 total)
+  Total Area Allocated: 158.00
+
+Violation Details:
+  One Crop Per Farm: 116 violations
+    Farm Patch1: 2 crops (expected 1)
+    Farm Patch3: 2 crops (expected 1)
+    Farm Patch5: 2 crops (expected 1)
+    Farm Patch6: 2 crops (expected 1)
+    Farm Patch8: 2 crops (expected 1)
+  Food Group Constraints: 3 violations
+    Group Proteins: 1 (range: 2-5)
+    Group Fruits: 6 (range: 2-5)
+    Group Staples: 1 (range: 2-5)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Louvain_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.362922
+Total Time: 375.43s
+Violations: 7
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Egg, Lamb, Avocado, Durian, Guava, Mango, Orange, Potato, Cabbage, Cucumber ... (11 total)
+  Total Area Allocated: 101.50
+
+Violation Details:
+  One Crop Per Farm: 3 violations
+    Farm Patch22: 2 crops (expected 1)
+    Farm Patch73: 2 crops (expected 1)
+    Farm Patch77: 2 crops (expected 1)
+  Food Group Constraints: 2 violations
+    Group Legumes: 0 (range: 2-5)
+    Group Staples: 1 (range: 2-5)
+  Max Plots Per Crop: 2 violations
+    Food Pork: 49 plots (max: 40)
+    Food Spinach: 99 plots (max: 40)
+
+
+--------------------------------------------------------------------------------
+Method: cqm_first_PlotBased
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.284460
+Total Time: 374.62s
+Violations: 3
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Chicken, Lamb, Pork, Apple, Mango, Watermelon, Chickpeas, Tempeh, Corn, Potato ... (13 total)
+  Total Area Allocated: 101.50
+
+Violation Details:
+  One Crop Per Farm: 3 violations
+    Farm Patch12: 2 crops (expected 1)
+    Farm Patch33: 2 crops (expected 1)
+    Farm Patch135: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: coordinated
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.295010
+Total Time: 352.01s
+Violations: 4
+
+Solution Summary:
+  Unique Foods Used: 18
+  Foods: Chicken, Egg, Lamb, Pork, Apple, Avocado, Durian, Mango, Chickpeas, Peanuts ... (18 total)
+  Total Area Allocated: 101.00
+
+Violation Details:
+  One Crop Per Farm: 2 violations
+    Farm Patch18: 2 crops (expected 1)
+    Farm Patch131: 2 crops (expected 1)
+  Max Plots Per Crop: 2 violations
+    Food Pork: 101 plots (max: 40)
+    Food Long bean: 49 plots (max: 40)
+

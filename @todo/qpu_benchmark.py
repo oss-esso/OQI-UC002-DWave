@@ -164,7 +164,7 @@ print(f"  D-Wave imports: {time.time() - dwave_start:.2f}s")
 print("[3/5] Loading configuration...")
 
 # Problem scales
-FARM_SCALES = [25, 50, 100, 200]
+FARM_SCALES = [25, 50, 100, 250, 500, 1000]
 N_FOODS = 27
 
 # QPU parameters
@@ -179,7 +179,7 @@ DEFAULT_CHAIN_STRENGTH = None  # auto-calculated
 
 # Timeouts - CRITICAL: Don't waste QPU time on problems that can't embed
 DIRECT_QPU_TIMEOUT = 200  # seconds for direct QPU (embedding + solving)
-EMBED_TIMEOUT_PER_PARTITION = 60  # seconds for embedding per partition  
+EMBED_TIMEOUT_PER_PARTITION = 300  # seconds for embedding per partition  
 SOLVE_TIMEOUT = 300  # seconds total per method
 
 # Output
@@ -866,17 +866,20 @@ def solve_coordinated_decomposition(cqm: ConstrainedQuadraticModel, data: Dict,
     try:
         total_start = time.time()
         
-        # Default to SimulatedAnnealing (fast and reliable)
-        # QPU embedding takes too long for many small problems
-        sa_sampler = neal.SimulatedAnnealingSampler()
-        result['sampler'] = 'SimulatedAnnealing'
+        # ALWAYS use QPU - no SA fallback
+        if not HAS_QPU:
+            result['success'] = False
+            result['error'] = 'QPU not available - SA removed, QPU required'
+            return result
         
-        # Only try QPU if explicitly requested and available
-        qpu_sampler = None
-        if use_qpu and HAS_QPU:
-            qpu = get_qpu_sampler()
-            if qpu:
-                qpu_sampler = EmbeddingComposite(qpu)
+        qpu = get_qpu_sampler()
+        if qpu is None:
+            result['success'] = False
+            result['error'] = 'Failed to connect to QPU'
+            return result
+        
+        qpu_sampler = EmbeddingComposite(qpu)
+        result['sampler'] = 'QPU'
         
         # ================================================================
         # STEP 1: Solve master problem (U variables with food group constraints)
@@ -885,10 +888,19 @@ def solve_coordinated_decomposition(cqm: ConstrainedQuadraticModel, data: Dict,
         master_bqm = build_master_bqm(data)
         
         master_start = time.time()
-        # Master is small (27 vars) - use SA for speed
-        master_result = sa_sampler.sample(master_bqm, num_reads=num_reads, num_sweeps=1000)
+        # Master problem on QPU
+        master_result = qpu_sampler.sample(
+            master_bqm, 
+            num_reads=num_reads, 
+            annealing_time=annealing_time,
+            label="Coordinated_Master"
+        )
         master_time = time.time() - master_start
         result['timings']['master'] = master_time
+        
+        # Extract QPU timing from master
+        master_timing = master_result.info.get('timing', {})
+        master_qpu_time = master_timing.get('qpu_access_time', 0) / 1e6
         
         # Extract U values
         fixed_u = {k: v for k, v in master_result.first.sample.items()}
@@ -903,28 +915,38 @@ def solve_coordinated_decomposition(cqm: ConstrainedQuadraticModel, data: Dict,
         all_samples = dict(fixed_u)  # Start with U values
         subproblem_times = []
         total_subproblem_time = 0
+        total_subproblem_qpu_time = 0
         
         for farm in data['farm_names']:
             sub_bqm = build_subproblem_bqm(farm, data, fixed_u)
             
             sub_start = time.time()
-            # Subproblems are small (27 vars) - SA is fast enough
-            sub_result = sa_sampler.sample(sub_bqm, num_reads=num_reads // 2, num_sweeps=500)
+            # Subproblems on QPU
+            sub_result = qpu_sampler.sample(
+                sub_bqm, 
+                num_reads=num_reads // 2, 
+                annealing_time=annealing_time,
+                label=f"Coordinated_Sub_{farm}"
+            )
             sub_time = time.time() - sub_start
             subproblem_times.append(sub_time)
             total_subproblem_time += sub_time
+            
+            # Extract QPU timing
+            sub_timing = sub_result.info.get('timing', {})
+            total_subproblem_qpu_time += sub_timing.get('qpu_access_time', 0) / 1e6
             
             # Merge solution
             all_samples.update(sub_result.first.sample)
         
         result['timings']['subproblems_total'] = total_subproblem_time
         result['timings']['solve_time'] = master_time + total_subproblem_time
-        result['timings']['embedding_total'] = 0  # SA doesn't embed
-        result['timings']['qpu_access_total'] = 0  # SA doesn't use QPU
+        result['timings']['qpu_access_total'] = master_qpu_time + total_subproblem_qpu_time
+        result['timings']['embedding_total'] = (master_time - master_qpu_time) + (total_subproblem_time - total_subproblem_qpu_time)  # Estimate
         result['timings']['total'] = time.time() - total_start
         result['total_time'] = result['timings']['total']
         result['wall_time'] = result['timings']['total']
-        result['total_qpu_time'] = 0
+        result['total_qpu_time'] = master_qpu_time + total_subproblem_qpu_time
         
         # Extract full solution
         result['solution'] = extract_solution(all_samples, data)
@@ -932,6 +954,7 @@ def solve_coordinated_decomposition(cqm: ConstrainedQuadraticModel, data: Dict,
         # Calculate objective and violations
         result['objective'] = calculate_objective(all_samples, data)
         result['violations'] = count_violations(all_samples, data)
+        result['violation_details'] = get_detailed_violations(all_samples, data)
         result['feasible'] = result['violations'] == 0
         result['success'] = True
         
@@ -1122,6 +1145,7 @@ def solve_direct_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
         # Calculate objective from solution
         result['objective'] = calculate_objective(best.sample, data)
         result['violations'] = count_violations(best.sample, data)
+        result['violation_details'] = get_detailed_violations(best.sample, data)
         result['feasible'] = result['violations'] == 0
         result['success'] = True
         
@@ -1205,16 +1229,11 @@ def solve_qbsolv(cqm: ConstrainedQuadraticModel, data: Dict,
         result['cqm_to_bqm_time'] = time.time() - t0
         result['bqm_variables'] = len(bqm.variables)
         
-        # Get QPU sampler for subproblems
+        # Get QPU sampler for subproblems - REQUIRED
         qpu = get_qpu_sampler()
-        if qpu:
-            sub_sampler = EmbeddingComposite(qpu)
-        elif HAS_NEAL:
-            # Fallback to simulated annealing
-            sub_sampler = neal.SimulatedAnnealingSampler()
-            result['fallback'] = 'SimulatedAnnealing'
-        else:
-            return {'success': False, 'error': 'No sampler available'}
+        if qpu is None:
+            return {'success': False, 'error': 'QPU not available - SA removed, QPU required'}
+        sub_sampler = EmbeddingComposite(qpu)
         
         # Solve with QBSolv
         t0 = time.time()
@@ -1234,6 +1253,7 @@ def solve_qbsolv(cqm: ConstrainedQuadraticModel, data: Dict,
         # Calculate objective
         result['objective'] = calculate_objective(best.sample, data)
         result['violations'] = count_violations(best.sample, data)
+        result['violation_details'] = get_detailed_violations(best.sample, data)
         result['feasible'] = result['violations'] == 0
         result['success'] = True
         
@@ -1244,115 +1264,7 @@ def solve_qbsolv(cqm: ConstrainedQuadraticModel, data: Dict,
     return result
 
 
-def solve_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
-                            method: str = 'PlotBased',
-                            num_reads: int = 1000,
-                            num_sweeps: int = 1000,
-                            verbose: bool = True) -> Dict:
-    """
-    Decomposition + SimulatedAnnealing: Split problem, solve each partition with SA.
-    
-    This is fast and reliable for benchmarking decomposition quality.
-    """
-    result = {
-        'method': f'decomposition_{method}',
-        'decomposition': method,
-        'solver': 'SimulatedAnnealing',
-        'num_reads': num_reads,
-        'num_sweeps': num_sweeps,
-        'timings': {},
-    }
-    
-    try:
-        total_start = time.time()
-        
-        # Get decomposition function
-        decomp_func = DECOMPOSITION_METHODS.get(method)
-        if decomp_func is None:
-            return {'success': False, 'error': f'Unknown decomposition: {method}'}
-        
-        # Partition with timing
-        if verbose:
-            LOG.info(f"    [{method}] Partitioning...")
-        t0 = time.time()
-        partitions = decomp_func(data)
-        partition_time = time.time() - t0
-        result['timings']['partition'] = partition_time
-        result['n_partitions'] = len(partitions)
-        result['partition_sizes'] = [len(p) for p in partitions]
-        
-        if verbose:
-            LOG.info(f"    [{method}] Created {len(partitions)} partitions in {partition_time:.3f}s")
-            LOG.info(f"    [{method}] Partition sizes: min={min(result['partition_sizes'])}, "
-                    f"max={max(result['partition_sizes'])}, avg={np.mean(result['partition_sizes']):.1f}")
-        
-        # Create sampler
-        sampler = neal.SimulatedAnnealingSampler()
-        
-        # Solve each partition with detailed timing
-        all_samples = {}
-        partition_results = []
-        total_sa_time = 0
-        
-        for i, partition in enumerate(partitions):
-            if len(partition) == 0:
-                continue
-            
-            # Build BQM for partition
-            t0 = time.time()
-            bqm = build_bqm_for_partition(partition, data)
-            bqm_build_time = time.time() - t0
-            
-            # Solve with SA
-            t0 = time.time()
-            sampleset = sampler.sample(bqm, num_reads=num_reads, num_sweeps=num_sweeps)
-            sa_time = time.time() - t0
-            total_sa_time += sa_time
-            
-            # Collect solution
-            best_sample = sampleset.first.sample
-            all_samples.update(best_sample)
-            
-            partition_results.append({
-                'partition': i,
-                'variables': len(partition),
-                'bqm_build_time': bqm_build_time,
-                'sa_time': sa_time,
-                'energy': float(sampleset.first.energy),
-            })
-            
-            if verbose and (i + 1) % 10 == 0:
-                LOG.info(f"    [{method}] Solved {i+1}/{len(partitions)} partitions...")
-        
-        result['partition_results'] = partition_results
-        result['timings']['sa_total'] = total_sa_time
-        result['timings']['solve_time'] = total_sa_time  # Alias for consistency
-        result['timings']['embedding_total'] = 0  # SA doesn't embed
-        result['timings']['qpu_access_total'] = 0  # SA doesn't use QPU
-        result['timings']['total'] = time.time() - total_start
-        result['total_time'] = result['timings']['total']
-        result['wall_time'] = result['timings']['total']
-        
-        # Extract full solution
-        result['solution'] = extract_solution(all_samples, data)
-        
-        # Calculate final objective and violations
-        result['objective'] = calculate_objective(all_samples, data)
-        result['violations'] = count_violations(all_samples, data)
-        result['feasible'] = result['violations'] == 0
-        result['success'] = True
-        
-        if verbose:
-            LOG.info(f"    [{method}] Complete: obj={result['objective']:.4f}, "
-                    f"violations={result['violations']}, time={result['total_time']:.2f}s")
-        
-    except Exception as e:
-        result['success'] = False
-        result['error'] = str(e)
-        import traceback
-        traceback.print_exc()
-    
-    return result
+# REMOVED: solve_decomposition_sa - SA eliminated, QPU only
 
 
 def solve_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
@@ -1400,12 +1312,12 @@ def solve_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
         if verbose:
             LOG.info(f"    [{method}+QPU] Created {len(partitions)} partitions in {partition_time:.3f}s")
         
-        # Get QPU sampler
+        # Get QPU sampler - REQUIRED, no SA fallback
         qpu = get_qpu_sampler()
         if qpu is None:
-            if verbose:
-                LOG.warning(f"    [{method}+QPU] No QPU available, falling back to SA")
-            return solve_decomposition_sa(cqm, data, method, num_reads, verbose=verbose)
+            result['success'] = False
+            result['error'] = 'QPU not available - SA removed, QPU required'
+            return result
         
         sampler = EmbeddingComposite(qpu)
         
@@ -1475,27 +1387,24 @@ def solve_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
                 })
                 
             except Exception as e:
-                # Embedding failed - use SA fallback for this partition
+                # Embedding failed - NO SA FALLBACK, fail the method
                 failed_embeddings += 1
                 if verbose:
-                    LOG.warning(f"    [{method}+QPU] Partition {i} embedding failed: {e}")
-                
-                # Fallback to SA
-                sa_sampler = neal.SimulatedAnnealingSampler()
-                sampleset = sa_sampler.sample(bqm, num_reads=num_reads, num_sweeps=1000)
-                wall_time = time.time() - t0
-                
-                best_sample = sampleset.first.sample
-                all_samples.update(best_sample)
+                    LOG.error(f"    [{method}+QPU] Partition {i} embedding FAILED: {e}")
                 
                 partition_results.append({
                     'partition': i,
                     'variables': len(partition),
-                    'wall_time': wall_time,
-                    'fallback': 'SA',
                     'error': str(e),
                     'success': False,
                 })
+                
+                # Stop processing - method failed
+                result['success'] = False
+                result['error'] = f'Embedding failed for partition {i}: {e}'
+                result['failed_partition'] = i
+                result['failed_embeddings'] = failed_embeddings
+                return result
             
             if verbose and (i + 1) % 5 == 0:
                 LOG.info(f"    [{method}+QPU] Solved {i+1}/{len(partitions)} partitions...")
@@ -1519,6 +1428,7 @@ def solve_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
         # Calculate final objective and violations
         result['objective'] = calculate_objective(all_samples, data)
         result['violations'] = count_violations(all_samples, data)
+        result['violation_details'] = get_detailed_violations(all_samples, data)
         result['feasible'] = result['violations'] == 0
         result['success'] = True
         
@@ -1663,10 +1573,10 @@ def extract_sub_cqm(cqm: ConstrainedQuadraticModel,
     return sub_cqm
 
 
-def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
+def solve_cqm_first_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
                                       method: str = 'PlotBased',
                                       num_reads: int = 1000,
-                                      num_sweeps: int = 1000,
+                                      annealing_time: int = 20,
                                       lagrange: float = 10.0,
                                       verbose: bool = True) -> Dict:
     """
@@ -1676,7 +1586,7 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
     1. Partitioning at the CQM level (variables, not penalty edges)
     2. Extracting sub-CQMs with relevant constraints for each partition
     3. Converting each sub-CQM to BQM (penalties only for that partition's constraints)
-    4. Solving with SA
+    4. Solving with QPU
     
     This avoids the constraint-cutting problem of BQM-first decomposition.
     
@@ -1688,9 +1598,9 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
     result = {
         'method': f'cqm_first_{method}',
         'decomposition': method,
-        'solver': 'SimulatedAnnealing',
+        'solver': 'QPU',
         'num_reads': num_reads,
-        'num_sweeps': num_sweeps,
+        'annealing_time': annealing_time,
         'approach': 'cqm_first',  # Key identifier
         'timings': {},
     }
@@ -1716,8 +1626,20 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
         if verbose:
             LOG.info(f"    [CQM-First {method}] Created {len(partitions)} partitions in {partition_time:.3f}s")
         
-        # Create sampler
-        sa_sampler = neal.SimulatedAnnealingSampler()
+        # QPU ONLY - no SA
+        if not HAS_QPU:
+            result['success'] = False
+            result['error'] = 'QPU not available - SA removed, QPU required'
+            return result
+        
+        qpu = get_qpu_sampler()
+        if qpu is None:
+            result['success'] = False
+            result['error'] = 'Failed to connect to QPU'
+            return result
+        
+        qpu_sampler = EmbeddingComposite(qpu)
+        result['sampler'] = 'QPU'
         
         # Solve partitions in order, using two-stage approach:
         # 1. First solve U partition (master) to get food group feasibility
@@ -1725,8 +1647,10 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
         
         all_samples = {}
         partition_results = []
-        total_sa_time = 0
+        total_solve_time = 0
         total_convert_time = 0
+        total_qpu_time = 0
+        total_embedding_time = 0
         
         # Find the U partition (master)
         u_partition_idx = None
@@ -1751,11 +1675,23 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
             convert_time = time.time() - t0
             total_convert_time += convert_time
             
-            # Solve with SA
+            # Solve with QPU
             t0 = time.time()
-            sampleset = sa_sampler.sample(sub_bqm, num_reads=num_reads, num_sweeps=num_sweeps)
-            sa_time = time.time() - t0
-            total_sa_time += sa_time
+            sampleset = qpu_sampler.sample(
+                sub_bqm, 
+                num_reads=num_reads, 
+                annealing_time=annealing_time,
+                label=f"CQMFirst_{method}_Master"
+            )
+            solve_time = time.time() - t0
+            total_solve_time += solve_time
+            
+            # Extract QPU timing
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            embedding_time = solve_time - qpu_time
+            total_embedding_time += embedding_time
             
             # Collect solution
             best_sample = sampleset.first.sample
@@ -1772,7 +1708,9 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
                 'sub_cqm_constraints': len(sub_cqm.constraints),
                 'sub_bqm_vars': len(sub_bqm.variables),
                 'convert_time': convert_time,
-                'sa_time': sa_time,
+                'solve_time': solve_time,
+                'qpu_time': qpu_time,
+                'embedding_time': embedding_time,
                 'energy': float(sampleset.first.energy),
             })
         
@@ -1824,11 +1762,23 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
             convert_time = time.time() - t0
             total_convert_time += convert_time
             
-            # Solve with SA
+            # Solve with QPU
             t0 = time.time()
-            sampleset = sa_sampler.sample(sub_bqm, num_reads=num_reads, num_sweeps=num_sweeps)
-            sa_time = time.time() - t0
-            total_sa_time += sa_time
+            sampleset = qpu_sampler.sample(
+                sub_bqm, 
+                num_reads=num_reads, 
+                annealing_time=annealing_time,
+                label=f"CQMFirst_{method}_Part{i}"
+            )
+            solve_time = time.time() - t0
+            total_solve_time += solve_time
+            
+            # Extract QPU timing
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            embedding_time = solve_time - qpu_time
+            total_embedding_time += embedding_time
             
             # Collect solution and update food usage
             best_sample = sampleset.first.sample
@@ -1850,7 +1800,9 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
                 'sub_cqm_constraints': len(sub_cqm.constraints),
                 'sub_bqm_vars': len(sub_bqm.variables),
                 'convert_time': convert_time,
-                'sa_time': sa_time,
+                'solve_time': solve_time,
+                'qpu_time': qpu_time,
+                'embedding_time': embedding_time,
                 'energy': float(sampleset.first.energy),
             })
             
@@ -1859,13 +1811,14 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
         
         result['partition_results'] = partition_results
         result['timings']['convert_total'] = total_convert_time
-        result['timings']['sa_total'] = total_sa_time
-        result['timings']['solve_time'] = total_sa_time
-        result['timings']['embedding_total'] = 0  # SA doesn't embed
-        result['timings']['qpu_access_total'] = 0  # SA doesn't use QPU
+        result['timings']['solve_total'] = total_solve_time
+        result['timings']['solve_time'] = total_solve_time
+        result['timings']['embedding_total'] = total_embedding_time
+        result['timings']['qpu_access_total'] = total_qpu_time
         result['timings']['total'] = time.time() - total_start
         result['total_time'] = result['timings']['total']
         result['wall_time'] = result['timings']['total']
+        result['total_qpu_time'] = total_qpu_time
         
         # Extract full solution
         result['solution'] = extract_solution(all_samples, data)
@@ -1873,6 +1826,7 @@ def solve_cqm_first_decomposition_sa(cqm: ConstrainedQuadraticModel, data: Dict,
         # Calculate final objective and violations
         result['objective'] = calculate_objective(all_samples, data)
         result['violations'] = count_violations(all_samples, data)
+        result['violation_details'] = get_detailed_violations(all_samples, data)
         result['feasible'] = result['violations'] == 0
         result['success'] = True
         
@@ -1946,6 +1900,72 @@ def count_violations(sample: Dict, data: Dict) -> int:
     return violations
 
 
+def get_detailed_violations(sample: Dict, data: Dict) -> Dict:
+    """Get detailed constraint violation information."""
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    food_groups = data['food_groups']
+    food_group_constraints = data['food_group_constraints']
+    reverse_mapping = data['reverse_mapping']
+    max_plots_per_crop = data['max_plots_per_crop']
+    
+    violation_details = {
+        'total_violations': 0,
+        'one_crop_per_farm': {'violations': 0, 'details': []},
+        'food_group_constraints': {'violations': 0, 'details': []},
+        'max_plots_per_crop': {'violations': 0, 'details': []}
+    }
+    
+    # One crop per farm
+    for farm in farm_names:
+        count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+        if count != 1:
+            violation_details['one_crop_per_farm']['violations'] += 1
+            violation_details['one_crop_per_farm']['details'].append({
+                'farm': farm,
+                'expected': 1,
+                'actual': count
+            })
+    
+    # Food group constraints
+    for cg, limits in food_group_constraints.items():
+        dg = reverse_mapping.get(cg, cg)
+        foods_in_group = food_groups.get(dg, [])
+        unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
+        violated = False
+        if limits.get('min', 0) > 0 and unique_foods < limits['min']:
+            violated = True
+        if 'max' in limits and unique_foods > limits['max']:
+            violated = True
+        if violated:
+            violation_details['food_group_constraints']['violations'] += 1
+            violation_details['food_group_constraints']['details'].append({
+                'group': cg,
+                'min': limits.get('min', 0),
+                'max': limits.get('max', 999),
+                'actual': unique_foods
+            })
+    
+    # Max plots per crop
+    for food in food_names:
+        count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+        if count > max_plots_per_crop:
+            violation_details['max_plots_per_crop']['violations'] += 1
+            violation_details['max_plots_per_crop']['details'].append({
+                'food': food,
+                'max_allowed': max_plots_per_crop,
+                'actual': count
+            })
+    
+    violation_details['total_violations'] = (
+        violation_details['one_crop_per_farm']['violations'] +
+        violation_details['food_group_constraints']['violations'] +
+        violation_details['max_plots_per_crop']['violations']
+    )
+    
+    return violation_details
+
+
 # ============================================================================
 # BENCHMARK RUNNER
 # ============================================================================
@@ -1960,7 +1980,7 @@ def run_benchmark(scales: List[int] = None,
     
     if methods is None:
         methods = ['ground_truth', 'direct_qpu', 'qbsolv', 
-                   'decomposition_PlotBased', 'decomposition_Multilevel(5)']
+                   'decomposition_PlotBased_QPU', 'decomposition_Multilevel(10)_QPU', 'cqm_first_PlotBased']
     
     results = {
         'timestamp': datetime.now().isoformat(),
@@ -2036,26 +2056,7 @@ def run_benchmark(scales: List[int] = None,
                 if verbose:
                     print(f"\n  [Direct QPU] Skipped (scale too large for direct embedding)")
         
-        # Decomposition methods with SA (fast)
-        for method in methods:
-            if method.startswith('decomposition_') and method.endswith('_SA'):
-                decomp_name = method.replace('decomposition_', '').replace('_SA', '')
-                if verbose:
-                    LOG.info(f"Running {decomp_name} decomposition with SA...")
-                    print(f"\n  [Decomposition: {decomp_name}] Partition + SimulatedAnnealing...")
-                decomp_result = solve_decomposition_sa(cqm, data, method=decomp_name, verbose=verbose)
-                scale_results['method_results'][method] = decomp_result
-                if verbose:
-                    if decomp_result['success']:
-                        gap = ((gt_obj - decomp_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
-                        print(f"    Objective: {decomp_result['objective']:.4f} (gap: {gap:.1f}%)")
-                        print(f"    Partitions: {decomp_result['n_partitions']}")
-                        print(f"    Time: {decomp_result['total_time']:.2f}s")
-                        print(f"    Violations: {decomp_result['violations']}")
-                    else:
-                        print(f"    Failed: {decomp_result.get('error', 'Unknown')}")
-        
-        # Decomposition methods with QPU (slower but real quantum)
+        # Decomposition methods (ALL with QPU - SA removed)
         for method in methods:
             if method.startswith('decomposition_') and method.endswith('_QPU'):
                 decomp_name = method.replace('decomposition_', '').replace('_QPU', '')
@@ -2076,14 +2077,14 @@ def run_benchmark(scales: List[int] = None,
                     else:
                         print(f"    Failed: {decomp_result.get('error', 'Unknown')}")
         
-        # CQM-First decomposition methods (constraint-preserving partition)
+        # CQM-First decomposition methods (constraint-preserving partition with QPU)
         for method in methods:
             if method.startswith('cqm_first_'):
                 decomp_name = method.replace('cqm_first_', '')
                 if verbose:
                     LOG.info(f"Running CQM-First {decomp_name} decomposition...")
-                    print(f"\n  [CQM-First: {decomp_name}] Partition CQM → BQM → SA...")
-                cqm_result = solve_cqm_first_decomposition_sa(cqm, data, method=decomp_name, verbose=verbose)
+                    print(f"\n  [CQM-First: {decomp_name}] Partition CQM → BQM → QPU...")
+                cqm_result = solve_cqm_first_decomposition_qpu(cqm, data, method=decomp_name, verbose=verbose)
                 scale_results['method_results'][method] = cqm_result
                 if verbose:
                     if cqm_result['success']:
@@ -2095,11 +2096,11 @@ def run_benchmark(scales: List[int] = None,
                     else:
                         print(f"    Failed: {cqm_result.get('error', 'Unknown')}")
         
-        # Coordinated decomposition (constraint-preserving)
+        # Coordinated decomposition (constraint-preserving with QPU)
         if 'coordinated' in methods:
             if verbose:
                 LOG.info(f"Running coordinated master-subproblem decomposition...")
-                print(f"\n  [Coordinated] Master-Subproblem (constraint-preserving)...")
+                print(f"\n  [Coordinated] Master-Subproblem (constraint-preserving) with QPU...")
             coord_result = solve_coordinated_decomposition(cqm, data)
             scale_results['method_results']['coordinated'] = coord_result
             if verbose:
@@ -2153,10 +2154,8 @@ def print_summary(results: Dict):
             qpu_time = timings.get('qpu_access_total', timings.get('qpu_access', 0))
             violations = r.get('violations', 0)
             
-            # Determine solver type for display
-            solver_type = r.get('solver', r.get('sampler', ''))
-            is_sa = '_SA' in method or solver_type == 'SimulatedAnnealing' or method == 'coordinated'
-            is_qpu = 'QPU' in method or solver_type == 'QPU' or qpu_time > 0.001
+            # Determine solver type for display (ALL QPU NOW)
+            solver_type = r.get('solver', r.get('sampler', 'QPU'))
             
             if r.get('success'):
                 status = '✓ Feas' if r.get('feasible', True) else f"⚠ {violations}v"
@@ -2165,13 +2164,9 @@ def print_summary(results: Dict):
             
             gap_str = f"{gap:.1f}" if gap > -100 else "N/A"
             
-            # Format embed/QPU columns based on solver type
-            if is_sa and not is_qpu:
-                embed_str = "N/A"
-                qpu_str = "N/A"
-            else:
-                embed_str = f"{embed_time:>8.2f}" if embed_time > 0 else f"{embed_time:>8.2f}"
-                qpu_str = f"{qpu_time:>8.3f}" if qpu_time > 0 else f"{qpu_time:>8.3f}"
+            # All methods now use QPU - format timing columns
+            embed_str = f"{embed_time:>8.2f}" if embed_time > 0 else f"{'N/A':>8}"
+            qpu_str = f"{qpu_time:>8.3f}" if qpu_time > 0 else f"{'N/A':>8}"
             
             print(f"{'':<6} {method:<28} {obj:>8.4f} {gap_str:>7} {wall_time:>8.2f} {solve_time:>8.2f} {embed_str:>8} {qpu_str:>8} {violations:>5} {status:<12}")
         
@@ -2180,14 +2175,14 @@ def print_summary(results: Dict):
     # Legend
     print("\nLegend:")
     print("  Wall  = Total wall-clock time (seconds)")
-    print("  Solve = Solve time (SA sweeps or QPU access + classical decomposition)")
-    print("  Embed = Total embedding time (N/A for SA methods)")
-    print("  QPU   = Total QPU access time (N/A for SA methods)")
+    print("  Solve = Solve time (QPU access + classical decomposition)")
+    print("  Embed = Total embedding time (all methods use QPU)")
+    print("  QPU   = Total QPU access time (all methods use QPU)")
     print("  Viol  = Number of constraint violations")
 
 
 def save_results(results: Dict, filename: str = None) -> Path:
-    """Save results to JSON."""
+    """Save results to JSON and detailed report."""
     if filename is None:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"qpu_benchmark_{ts}.json"
@@ -2197,6 +2192,91 @@ def save_results(results: Dict, filename: str = None) -> Path:
         json.dump(results, f, indent=2, default=str)
     
     print(f"\nResults saved to: {filepath}")
+    
+    # Also save detailed text report
+    report_path = filepath.with_suffix('.txt')
+    with open(report_path, 'w') as f:
+        f.write("="*80 + "\n")
+        f.write("QPU BENCHMARK DETAILED REPORT\n")
+        f.write("="*80 + "\n\n")
+        f.write(f"Timestamp: {results['timestamp']}\n")
+        f.write(f"Scales: {results['scales']}\n")
+        f.write(f"Methods: {results['methods']}\n")
+        f.write(f"QPU Available: {results['qpu_available']}\n\n")
+        
+        for scale_result in results['results']:
+            n_farms = scale_result['n_farms']
+            f.write("\n" + "="*80 + "\n")
+            f.write(f"SCALE: {n_farms} farms\n")
+            f.write("="*80 + "\n\n")
+            
+            f.write(f"Metadata:\n")
+            for key, val in scale_result['metadata'].items():
+                f.write(f"  {key}: {val}\n")
+            f.write("\n")
+            
+            if 'ground_truth' in scale_result:
+                gt = scale_result['ground_truth']
+                f.write(f"Ground Truth (Gurobi):\n")
+                f.write(f"  Success: {gt['success']}\n")
+                if gt['success']:
+                    f.write(f"  Objective: {gt['objective']:.6f}\n")
+                    f.write(f"  Solve Time: {gt['solve_time']:.2f}s\n")
+                    f.write(f"  Violations: {gt.get('violations', 0)}\n")
+                f.write("\n")
+            
+            for method_name, method_result in scale_result.get('method_results', {}).items():
+                f.write(f"\n{"-"*80}\n")
+                f.write(f"Method: {method_name}\n")
+                f.write(f"{"-"*80}\n")
+                f.write(f"Success: {method_result['success']}\n")
+                
+                if method_result['success']:
+                    f.write(f"Objective: {method_result['objective']:.6f}\n")
+                    f.write(f"Total Time: {method_result.get('total_time', 0):.2f}s\n")
+                    f.write(f"Violations: {method_result['violations']}\n")
+                    
+                    if 'solution' in method_result:
+                        sol = method_result['solution']
+                        f.write(f"\nSolution Summary:\n")
+                        f.write(f"  Unique Foods Used: {sol['summary']['n_unique_foods']}\n")
+                        f.write(f"  Foods: {', '.join(sol['summary']['foods_used'][:10])}")
+                        if len(sol['summary']['foods_used']) > 10:
+                            f.write(f" ... ({len(sol['summary']['foods_used'])} total)")
+                        f.write("\n")
+                        f.write(f"  Total Area Allocated: {sol['summary']['total_area_allocated']:.2f}\n")
+                    
+                    if 'violation_details' in method_result:
+                        vd = method_result['violation_details']
+                        if vd['total_violations'] > 0:
+                            f.write(f"\nViolation Details:\n")
+                            if vd['one_crop_per_farm']['violations'] > 0:
+                                f.write(f"  One Crop Per Farm: {vd['one_crop_per_farm']['violations']} violations\n")
+                                for detail in vd['one_crop_per_farm']['details'][:5]:
+                                    f.write(f"    Farm {detail['farm']}: {detail['actual']} crops (expected 1)\n")
+                            if vd['food_group_constraints']['violations'] > 0:
+                                f.write(f"  Food Group Constraints: {vd['food_group_constraints']['violations']} violations\n")
+                                for detail in vd['food_group_constraints']['details'][:5]:
+                                    f.write(f"    Group {detail['group']}: {detail['actual']} (range: {detail['min']}-{detail['max']})\n")
+                            if vd['max_plots_per_crop']['violations'] > 0:
+                                f.write(f"  Max Plots Per Crop: {vd['max_plots_per_crop']['violations']} violations\n")
+                                for detail in vd['max_plots_per_crop']['details'][:5]:
+                                    f.write(f"    Food {detail['food']}: {detail['actual']} plots (max: {detail['max_allowed']})\n")
+                    
+                    if 'embedding_info' in method_result:
+                        ei = method_result['embedding_info']
+                        f.write(f"\nEmbedding Info:\n")
+                        f.write(f"  Embedding Time: {ei.get('embedding_time', 0):.2f}s\n")
+                        f.write(f"  Chain Length: {ei.get('chain_length', {}).get('mean', 0):.2f}\n")
+                        f.write(f"  Max Chain: {ei.get('chain_length', {}).get('max', 0)}\n")
+                        if 'qpu_access_time' in ei:
+                            f.write(f"  QPU Access Time: {ei['qpu_access_time']:.4f}s\n")
+                else:
+                    f.write(f"Error: {method_result.get('error', 'Unknown')}\n")
+                
+                f.write("\n")
+    
+    print(f"Detailed report saved to: {report_path}")
     return filepath
 
 
@@ -2243,25 +2323,19 @@ def main():
     else:
         scales = [25]
     
-    # Methods - use SA versions by default (faster), QPU versions available via --methods
+    # Methods - ALL QPU (SA completely removed)
     methods = args.methods
     if methods is None:
-        # Default: ground truth + all SA decompositions (fast)
+        # Default: ground truth + QPU methods only
         methods = [
             'ground_truth', 
+            'direct_qpu',
             'coordinated',
-            'decomposition_PlotBased_SA',
-            'decomposition_Multilevel(5)_SA',
-            'decomposition_Louvain_SA',
-            'decomposition_Spectral(10)_SA',
+            'decomposition_PlotBased_QPU',
+            'decomposition_Multilevel(5)_QPU',
+            'decomposition_Louvain_QPU',
+            'cqm_first_PlotBased',
         ]
-        if HAS_QPU and not args.no_qpu:
-            # Add QPU methods: direct QPU + decomposition with QPU partitions
-            methods.insert(1, 'direct_qpu')
-            methods.extend([
-                'decomposition_PlotBased_QPU',
-                'decomposition_Multilevel(5)_QPU',
-            ])
     
     print(f"\nScales: {scales}")
     print(f"Methods: {methods}")
