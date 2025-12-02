@@ -2059,7 +2059,56 @@ coordinated & 0.456 (moderate concentration) \\
 \chapter{Comprehensive Visual Analysis}
 \label{ch:figures}
 
-This chapter presents the complete set of benchmark visualizations with detailed analysis. All figures are generated from the QPU benchmark experiments described in \Cref{ch:methodology}.
+This chapter presents the complete set of benchmark visualizations with detailed analysis. All figures are generated from the QPU benchmark experiments described in \Cref{ch:methodology}. The chapter contains \textbf{26 figures} organized into the following categories:
+
+\begin{tcolorbox}[title=Chapter Figure Summary]
+\textbf{Overview Dashboards (4 figures)}
+\begin{itemize}[noitemsep]
+    \item Comprehensive Solver Comparison (\Cref{fig:comprehensive_dashboard})
+    \item Small-Scale QPU Analysis (\Cref{fig:small_scale})
+    \item Large-Scale QPU Analysis (\Cref{fig:large_scale})
+    \item Summary Table (\Cref{fig:summary_table})
+\end{itemize}
+
+\textbf{Solution Quality Analysis (2 figures)}
+\begin{itemize}[noitemsep]
+    \item Quality Metrics Comparison (\Cref{fig:quality_comparison})
+    \item Solution Characteristics Histograms (\Cref{fig:quality_histograms})
+\end{itemize}
+
+\textbf{Crop Allocation Patterns (8 figures)}
+\begin{itemize}[noitemsep]
+    \item Solution Composition Pie Charts (\Cref{fig:composition_pies})
+    \item Solution Composition Histograms (\Cref{fig:composition_histograms})
+    \item Small-Scale Crop Distribution (\Cref{fig:crop_dist_small})
+    \item Large-Scale Crop Distribution (\Cref{fig:crop_dist_large})
+    \item Detailed Allocation at 100 Farms (\Cref{fig:detail_100})
+    \item Detailed Allocation at 500 Farms (\Cref{fig:detail_500})
+    \item Detailed Allocation at 1000 Farms (\Cref{fig:detail_1000})
+\end{itemize}
+
+\textbf{Food Group Analysis (3 figures)}
+\begin{itemize}[noitemsep]
+    \item Food Group Composition by Scale (\Cref{fig:food_groups})
+    \item Land Utilization by Food Group at 1000 Farms (\Cref{fig:land_util_pies})
+    \item Unique Crops Selection Heatmap (\Cref{fig:unique_crops_heatmap})
+\end{itemize}
+
+\textbf{Crop Weight Sensitivity Analysis (9 figures + 1 table)}
+\begin{itemize}[noitemsep]
+    \item Top Crop Frequency Distribution (\Cref{fig:top_crop_distribution})
+    \item Benefit Score Heatmap (\Cref{fig:benefit_heatmap})
+    \item Ranking Variability (\Cref{fig:ranking_variability})
+    \item Sensitivity: Nutritional Value (\Cref{fig:sensitivity_nutr_val})
+    \item Sensitivity: Nutrient Density (\Cref{fig:sensitivity_nutr_den})
+    \item Sensitivity: Environmental Impact (\Cref{fig:sensitivity_env_imp})
+    \item Sensitivity: Affordability (\Cref{fig:sensitivity_afford})
+    \item Sensitivity: Sustainability (\Cref{fig:sensitivity_sustain})
+    \item Spinach Dominance Analysis (\Cref{fig:spinach_analysis})
+    \item Parallel Coordinates (\Cref{fig:parallel_coordinates})
+    \item Crop Ranking Summary Table (\Cref{tab:crop_ranking_summary})
+\end{itemize}
+\end{tcolorbox}
 
 \section{Overview Dashboards}
 
@@ -2389,6 +2438,91 @@ This box plot analysis shows the distribution of rankings (1 = best, 27 = worst)
 \label{fig:ranking_variability}
 \end{figure}
 
+\subsection{Individual Weight Sensitivity Analysis}
+
+The following figures show how crop rankings change as each individual weight is varied from 0 to 1 (while other weights remain proportionally distributed). This analysis identifies which crops benefit or suffer under specific objective priorities.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{../crop_weight_analysis/04_sensitivity_w_nutr_val.png}
+\caption[Sensitivity to Nutritional Value Weight]{
+\textbf{Sensitivity Analysis: Nutritional Value Weight ($w_1$) Variation from 0 to 1.}
+This plot shows how crop benefit rankings change as the weight on Nutritional Value ($w_1$) varies from 0 (no importance) to 1 (sole criterion).
+\textbf{Spinach trajectory}: Spinach ranks \#1 across nearly the entire range, demonstrating its exceptional nutritional value (0.903) creates robust dominance that persists even when this attribute receives minimal weight.
+\textbf{High-nutrition crops rise}: Cabbage, Pumpkin, and leafy vegetables climb in ranking as nutritional value weight increases, reflecting their strong performance on this metric.
+\textbf{Meats decline}: Animal-source foods (Pork, Lamb, Chicken) show declining rankings as nutritional value is prioritized, despite their moderate nutritional scores, because vegetables outperform them on this dimension.
+\textbf{Fruits fall}: Watermelon, Apple, and Banana drop sharply as nutritional value weight increases, confirming these fruits have relatively low nutritional value scores compared to vegetables and legumes.
+\textbf{Implication}: Stakeholders prioritizing nutritional outcomes should expect vegetable-dominated solutions, with Spinach leading regardless of specific nutritional weight value.
+}
+\label{fig:sensitivity_nutr_val}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{../crop_weight_analysis/04_sensitivity_w_nutr_den.png}
+\caption[Sensitivity to Nutrient Density Weight]{
+\textbf{Sensitivity Analysis: Nutrient Density Weight ($w_2$) Variation from 0 to 1.}
+This plot examines how crop rankings shift when nutrient density (nutrients per unit weight/volume) is prioritized.
+\textbf{Spinach dominance intensifies}: With the highest nutrient density score (0.935) among all crops, Spinach's ranking advantage increases as $w_2$ grows. At high nutrient density weights, Spinach's lead over competitors widens substantially.
+\textbf{Vegetable cluster}: Cabbage (0.501), Pumpkin (0.477), and Tomatoes (0.439) form a consistent second tier when nutrient density is weighted, all significantly behind Spinach.
+\textbf{Legumes remain stable}: Tempeh, Chickpeas, and Peanuts maintain middle-tier rankings across all nutrient density weights, reflecting their moderate but consistent scores.
+\textbf{Meats show mixed response}: Pork and Lamb maintain relatively strong positions due to decent nutrient density (0.52-0.53), while Chicken and Beef show more variability.
+\textbf{Low-density crops penalized}: Watermelon (0.071), Apple (0.088), and Banana (0.196) consistently rank lowest as nutrient density importance increases.
+\textbf{Takeaway}: Nutrient density prioritization reinforces Spinach dominance even more strongly than nutritional value, as Spinach's 93.5\% score is nearly double that of the next-best crop.
+}
+\label{fig:sensitivity_nutr_den}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{../crop_weight_analysis/04_sensitivity_w_env_imp.png}
+\caption[Sensitivity to Environmental Impact Weight]{
+\textbf{Sensitivity Analysis: Environmental Impact Weight ($w_3$) Variation from 0 to 1.}
+This plot reveals the dramatic effect of environmental considerations on crop rankings. Note that environmental impact is a penalty term (higher values are worse), so crops with low impact scores benefit when this weight increases.
+\textbf{Beef collapse}: The most striking feature is Beef's dramatic fall from competitive rankings to last place as environmental weight increases. Beef's environmental impact score (0.447) is by far the highest, making it increasingly unviable under environmental constraints.
+\textbf{Spinach resilience}: With an extremely low environmental impact (0.004), Spinach maintains or improves its \#1 ranking as environmental considerations grow---a ``double advantage'' combining high nutrition with minimal environmental footprint.
+\textbf{Vegetable ascent}: Cabbage (0.004), Eggplant (0.003), and Avocado (0.003) all improve in ranking as environmental weight increases, reflecting the generally low environmental footprint of vegetable production.
+\textbf{Meat-vegetable crossover}: At moderate environmental weights ($w_3 \approx 0.3$-$0.4$), the rankings shift from mixed to vegetable-dominated, representing a phase transition in optimal crop selection.
+\textbf{Policy implication}: Organizations prioritizing sustainability should expect solutions that systematically exclude high-impact animal products, particularly beef, favoring vegetables and legumes instead.
+}
+\label{fig:sensitivity_env_imp}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{../crop_weight_analysis/04_sensitivity_w_afford.png}
+\caption[Sensitivity to Affordability Weight]{
+\textbf{Sensitivity Analysis: Affordability Weight ($w_4$) Variation from 0 to 1.}
+This plot shows how economic accessibility considerations reshape crop rankings, revealing which crops offer the best nutritional value per cost.
+\textbf{Corn's dramatic rise}: Corn shows the most pronounced improvement, climbing from low rankings to near the top as affordability is prioritized. With the highest affordability score (0.418), Corn represents excellent value for resource-constrained contexts.
+\textbf{Pork's ascent}: Similarly, Pork (0.374) rises significantly under affordability weighting, reflecting its cost-effective protein delivery compared to other animal products.
+\textbf{Chickpeas emerge}: With affordability score of 0.398, Chickpeas climb to competitive positions, representing an affordable plant-based protein source.
+\textbf{Spinach dethronement}: Notably, Spinach (affordability 0.036) drops in ranking as affordability weight increases. While nutritionally optimal, Spinach is relatively expensive per calorie compared to staples and legumes.
+\textbf{Expensive crops fall}: Beef, Lamb, and exotic fruits (Durian, Mango) consistently rank lowest when affordability is prioritized, as their higher prices make them poor choices for cost-conscious optimization.
+\textbf{Food security insight}: In resource-limited settings (food banks, developing regions), prioritizing affordability produces fundamentally different recommendations than pure nutritional optimization---favoring grains, legumes, and Pork over vegetables and other meats.
+}
+\label{fig:sensitivity_afford}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{../crop_weight_analysis/04_sensitivity_w_sustain.png}
+\caption[Sensitivity to Sustainability Weight]{
+\textbf{Sensitivity Analysis: Sustainability Weight ($w_5$) Variation from 0 to 1.}
+This plot examines how long-term sustainability considerations (soil health, water use, regenerative potential) affect crop rankings.
+\textbf{Guava rises}: Guava shows notable improvement under sustainability weighting (score 0.179), reflecting its perennial nature and lower resource requirements for established orchards.
+\textbf{Papaya and fruits improve}: Tropical fruits generally benefit from sustainability considerations, as tree crops often have better long-term environmental profiles than annual vegetable cultivation.
+\textbf{Chickpeas and legumes}: Nitrogen-fixing legumes (Chickpeas: 0.140, Tempeh/Soybeans: 0.111) maintain or improve rankings, reflecting their soil-building properties.
+\textbf{Tomatoes and vegetables}: Tomatoes (0.104) and other intensive vegetables show moderate sustainability scores, balancing their nutritional value against cultivation intensity.
+\textbf{Spinach moderate decline}: While still competitive, Spinach (0.086) is not a sustainability leader, reflecting the intensive cultivation often required for leafy greens.
+\textbf{Beef's further decline}: Already penalized by environmental impact, Beef (0.004) ranks lowest on sustainability, confirming its unsuitability under any environmentally-conscious objective function.
+\textbf{Agroecological insight}: Long-term agricultural planning should incorporate sustainability to favor crops that maintain soil health and require fewer external inputs over time.
+}
+\label{fig:sensitivity_sustain}
+\end{figure}
+
+\subsection{Spinach Dominance Analysis}
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{../crop_weight_analysis/05_spinach_analysis.png}
@@ -2396,17 +2530,17 @@ This box plot analysis shows the distribution of rankings (1 = best, 27 = worst)
 \textbf{Why Spinach Dominates: Decomposition of Spinach's Benefit Score Advantage.}
 This analysis breaks down Spinach's composite benefit score compared to the average crop and top competitors, revealing the structural sources of its advantage.
 \textbf{Component breakdown}: 
-\begin{itemize}
-\item Nutritional Value: Spinach contributes 0.226 (= 0.25 $\times$ 0.903) vs crop average of 0.12
-\item Nutrient Density: Spinach contributes 0.187 (= 0.20 $\times$ 0.935) vs crop average of 0.07
-\item Environmental Impact: Spinach loses only 0.001 (penalty for 0.004 impact) vs average penalty of 0.02
-\item Combined: Spinach achieves total benefit $\sim$0.43 vs crop average of $\sim$0.28
-\end{itemize}
+(1) Nutritional Value: Spinach contributes 0.226 (= 0.25 $\times$ 0.903) vs crop average of 0.12;
+(2) Nutrient Density: Spinach contributes 0.187 (= 0.20 $\times$ 0.935) vs crop average of 0.07;
+(3) Environmental Impact: Spinach loses only 0.001 (penalty for 0.004 impact) vs average penalty of 0.02;
+(4) Combined: Spinach achieves total benefit $\sim$0.43 vs crop average of $\sim$0.28.
 \textbf{Competitive analysis}: The next-best crops (Cabbage, Pumpkin, Tempeh) trail by 0.10-0.15 benefit points---a 25-35\% disadvantage that compounds across thousands of farm assignments.
 \textbf{Structural advantage}: Spinach's exceptional nutrient density creates a compound advantage when both Nutritional Value and Nutrient Density weights are significant, which they are in most realistic weight configurations.
 }
 \label{fig:spinach_analysis}
 \end{figure}
+
+\subsection{Multi-Dimensional Crop Comparison}
 
 \begin{figure}[H]
 \centering
@@ -2417,16 +2551,66 @@ This parallel coordinates visualization displays all 27 crops as lines crossing 
 \textbf{Reading the plot}: Lines crossing high on an axis indicate good performance on that dimension. Lines that remain consistently high across multiple axes indicate strong overall performers.
 \textbf{Spinach (highlighted in green)}: The Spinach line stays near the top of both Nutritional Value and Nutrient Density axes, drops very low on Environmental Impact (good---minimal environmental harm), then shows moderate performance on Affordability and Sustainability.
 \textbf{Cluster patterns}: 
-\begin{itemize}
-\item \emph{Green vegetables} (Spinach, Cabbage, Pumpkin) cluster high on nutrition axes with low environmental impact
-\item \emph{Meats} (Beef, Pork, Lamb) show high nutrition but cross high on Environmental Impact axis (especially Beef)
-\item \emph{Fruits} form a moderate cluster across all dimensions with no extreme highs or lows
-\item \emph{Legumes} (Chickpeas, Tempeh, Tofu) show balanced profiles with good affordability
-\end{itemize}
+(1) \emph{Green vegetables} (Spinach, Cabbage, Pumpkin) cluster high on nutrition axes with low environmental impact;
+(2) \emph{Meats} (Beef, Pork, Lamb) show high nutrition but cross high on Environmental Impact axis (especially Beef);
+(3) \emph{Fruits} form a moderate cluster across all dimensions with no extreme highs or lows;
+(4) \emph{Legumes} (Chickpeas, Tempeh, Tofu) show balanced profiles with good affordability.
 \textbf{Insight}: The visualization reveals why weight sensitivity matters---small changes in Environmental Impact weighting can dramatically shift whether Meats or Vegetables are preferred, explaining why QPU methods sometimes converge to meat-heavy solutions.
 }
 \label{fig:parallel_coordinates}
 \end{figure}
+
+\subsection{Crop Ranking Summary Statistics}
+
+\Cref{tab:crop_ranking_summary} presents the complete statistical summary of crop rankings across 10,000 random weight configurations, providing quantitative evidence for the patterns observed in the preceding visualizations.
+
+\begin{table}[H]
+\centering
+\caption{Crop Ranking Statistics Across 10,000 Random Weight Configurations}
+\label{tab:crop_ranking_summary}
+\scriptsize
+\begin{tabular}{llcccccc}
+\toprule
+\textbf{Crop} & \textbf{Food Group} & \textbf{Times \#1} & \textbf{Win Rate (\%)} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Rank} & \textbf{Std} \\
+\midrule
+Spinach & Vegetables & 712 & 71.13 & 1 & 15 & 2.77 & 3.54 \\
+Pork & Animal-source & 93 & 9.29 & 1 & 25 & 4.39 & 4.48 \\
+Long bean & Vegetables & 0 & 0.0 & 2 & 14 & 5.15 & 2.85 \\
+Chickpeas & Legumes & 137 & 13.69 & 1 & 23 & 6.24 & 4.60 \\
+Cabbage & Vegetables & 0 & 0.0 & 2 & 17 & 6.58 & 4.06 \\
+Tempeh & Legumes & 0 & 0.0 & 4 & 26 & 7.84 & 2.45 \\
+Tomatoes & Vegetables & 0 & 0.0 & 3 & 19 & 9.21 & 3.00 \\
+Pumpkin & Vegetables & 0 & 0.0 & 3 & 21 & 9.79 & 4.06 \\
+Peanuts & Legumes & 0 & 0.0 & 4 & 22 & 9.83 & 4.45 \\
+Lamb & Animal-source & 1 & 0.1 & 1 & 26 & 10.55 & 6.91 \\
+Guava & Fruits & 19 & 1.9 & 1 & 22 & 11.54 & 4.48 \\
+Egg & Animal-source & 0 & 0.0 & 4 & 24 & 11.91 & 5.11 \\
+Tofu & Legumes & 0 & 0.0 & 7 & 25 & 12.18 & 2.36 \\
+Chicken & Animal-source & 0 & 0.0 & 3 & 24 & 13.45 & 3.87 \\
+Corn & Starchy staples & 39 & 3.9 & 1 & 25 & 13.55 & 8.38 \\
+Potato & Starchy staples & 0 & 0.0 & 5 & 20 & 13.78 & 3.12 \\
+Papaya & Fruits & 0 & 0.0 & 2 & 26 & 14.61 & 4.54 \\
+Orange & Fruits & 0 & 0.0 & 2 & 23 & 17.24 & 3.13 \\
+Beef & Animal-source & 0 & 0.0 & 2 & 27 & 18.97 & 8.36 \\
+Banana & Fruits & 0 & 0.0 & 7 & 24 & 19.34 & 4.26 \\
+Avocado & Fruits & 0 & 0.0 & 6 & 23 & 19.94 & 1.96 \\
+Mango & Fruits & 0 & 0.0 & 8 & 23 & 20.40 & 1.51 \\
+Cucumber & Vegetables & 0 & 0.0 & 8 & 25 & 20.98 & 2.85 \\
+Durian & Fruits & 0 & 0.0 & 4 & 27 & 22.44 & 2.15 \\
+Eggplant & Vegetables & 0 & 0.0 & 9 & 26 & 24.15 & 1.33 \\
+Apple & Fruits & 0 & 0.0 & 7 & 27 & 25.09 & 1.98 \\
+Watermelon & Fruits & 0 & 0.0 & 13 & 27 & 26.06 & 2.19 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key observations from the ranking summary}:
+\begin{itemize}
+\item \textbf{Spinach's dominance is statistically robust}: With a 71.13\% win rate and mean rank of 2.77, Spinach is the clear leader across nearly all weight configurations.
+\item \textbf{Only 6 crops ever rank \#1}: Spinach (712), Chickpeas (137), Pork (93), Corn (39), Guava (19), and Lamb (1) are the only crops that achieve top ranking in any configuration.
+\item \textbf{High variance indicates sensitivity}: Corn (std=8.38), Beef (std=8.36), and Lamb (std=6.91) show the highest ranking variance, meaning their optimality is highly dependent on specific weight choices.
+\item \textbf{Consistent low performers}: Watermelon, Apple, Eggplant, and Durian consistently rank in the bottom 10 regardless of weight configuration, making them rarely optimal choices.
+\end{itemize}
 
 % ============================================================================
 % CHAPTER 11: DISCUSSION
@@ -2774,12 +2958,35 @@ Each result record contains:
 
 \section{Weight Sensitivity Analysis}
 
-An analysis of how crop rankings change with weight variations is available at:
+A comprehensive analysis of how crop rankings change with weight variations is presented in \Cref{ch:figures}, Section ``Crop Benefit and Weight Sensitivity Analysis.'' The complete analysis includes:
+
+\begin{itemize}
+    \item \textbf{Top Crop Distribution} (\Cref{fig:top_crop_distribution}): Frequency of each crop ranking \#1 across 10,000 random weight combinations
+    \item \textbf{Benefit Score Heatmap} (\Cref{fig:benefit_heatmap}): Raw attribute scores across five dimensions
+    \item \textbf{Ranking Variability} (\Cref{fig:ranking_variability}): Box plots showing ranking distributions
+    \item \textbf{Individual Weight Sensitivity} (\Cref{fig:sensitivity_nutr_val}--\Cref{fig:sensitivity_sustain}): How rankings change as each weight varies from 0 to 1
+    \item \textbf{Spinach Dominance Analysis} (\Cref{fig:spinach_analysis}): Decomposition of Spinach's structural advantage
+    \item \textbf{Parallel Coordinates} (\Cref{fig:parallel_coordinates}): Multi-dimensional crop comparison
+    \item \textbf{Complete Ranking Statistics} (\Cref{tab:crop_ranking_summary}): Full statistical summary across all weight configurations
+\end{itemize}
+
+Key finding: Spinach ranks \#1 in 71.1\% of weight combinations, explaining its dominance in optimal solutions. Only 6 crops ever achieve rank \#1 in any configuration: Spinach (71.13\%), Chickpeas (13.69\%), Pork (9.29\%), Corn (3.9\%), Guava (1.9\%), and Lamb (0.1\%).
+
+The raw data and analysis scripts are available in the project repository:
 \begin{verbatim}
 crop_weight_analysis/
+    01_top_crop_distribution.png
+    02_benefit_heatmap.png
+    03_ranking_variability.png
+    04_sensitivity_w_nutr_val.png
+    04_sensitivity_w_nutr_den.png
+    04_sensitivity_w_env_imp.png
+    04_sensitivity_w_afford.png
+    04_sensitivity_w_sustain.png
+    05_spinach_analysis.png
+    06_parallel_coordinates.png
+    crop_ranking_summary.csv
 \end{verbatim}
-
-Key finding: Spinach ranks \#1 in 71.1\% of weight combinations, explaining its dominance in optimal solutions.
 
 \section{Alternative Weight Scenarios}
 
@@ -2797,6 +3004,20 @@ Environment focus & Spinach & 1 & 0.39 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{Sensitivity Implications for Policy}
+
+The weight sensitivity analysis reveals important policy implications:
+
+\begin{enumerate}
+    \item \textbf{Nutritional prioritization}: When nutritional value and density are prioritized (typical for health-focused policies), vegetables dominate, with Spinach as the clear leader.
+    
+    \item \textbf{Environmental prioritization}: High environmental weights ($w_3 > 0.4$) systematically exclude beef and shift toward vegetables and legumes.
+    
+    \item \textbf{Affordability prioritization}: Resource-constrained settings should expect solutions favoring Corn, Chickpeas, and Pork over expensive vegetables and meats.
+    
+    \item \textbf{Balanced objectives}: The default weights (0.25/0.20/0.25/0.15/0.15) represent a balanced stakeholder preference that still strongly favors Spinach.
+\end{enumerate}
 
 \chapter{Implementation Details}
 \label{app:implementation}
