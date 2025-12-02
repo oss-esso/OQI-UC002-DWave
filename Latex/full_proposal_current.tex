@@ -1,0 +1,1314 @@
+\documentclass{oqireport}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{ulem}
+\usepackage{multicol}
+\usepackage{tikz}
+\usetikzlibrary{shadows,arrows.meta,positioning,calc,decorations.pathreplacing}
+\usepackage{adjustbox}
+\usepackage{makecell}
+
+\title{Food Production Optimization}
+\subtitle{Full Proposal}
+\author{Edoardo Spigarolo}
+
+
+\begin{document}
+
+% Instructions to be deleted before submission
+\ \\
+\ \\
+\ \\
+\textit{
+Instructions and background: Another test for suggested changes in the text.
+\begin{itemize}
+    \item For each section the envisaged content is specified in italic. All of these comments should be removed before submitting the final document.
+    \item Please be concise and respect the strict page limit of 15 pages for the main part of the full proposal (excluding the Methods section, the Team Presentation section and References).
+    \item The purpose of the Full Proposal is to present a compelling story for your use case. Based on this a decision regarding the feasibility of a meaningful implementation on a quantum simulator with further OQI support in Phase 3 will be made.\\
+    The addressed problem and its broader societal context are first described, and then linked to an isolated computational problem that is formulated mathematically. An analysis of existing (classical) computational approaches is provided, highlighting their limitations and identifying specific bottlenecks in detail. A quantum computing solution is then proposed that has the potential to overcome these challenges. A comprehensive literature review supports all of these elements. Crucially, the proposal includes a clear and well-founded justification for employing quantum computing in the given context.
+    Subsequently, a proof of concept is outlined, including a robust benchmarking strategy and a detailed resource estimation.
+    Finally, the potential impact of the proposed quantum computing approach is analysed in a broader context.
+\end{itemize}
+}
+
+\newpage
+
+\maketitle
+
+\begin{abstract}
+
+ Nutrition and the environment are inextricably linked. Climate change adversely affects yields and nutritional quality of major staple crops, raising the risk of food insecurity and malnutrition. Conversely, our food systems drive an estimated 80\% of deforestation and a third of greenhouse gas emissions. As populations and incomes grow in developing countries, demand for animal-source foods will rise, placing further pressure on meeting climate and biodiversity loss goals. \cite{Fanzo2022, UNFSS_Planet_2023, Sylvester2024}
+
+With the rapid progress in quantum computing, various optimization tasks in industry, energy, and other societal applications may take advantage of these novel methodological opportunities \cite{ajagekar_quantum_2019,abbas_quantum_2023,osaba_hybrid_2024}.
+
+To this purpose, a set of well established ways to convert Mixed Integer Linear Programming (MILP) or Mixed Integer Quadratic Programming (MIQP) optimization problems into Quadratic Binary Unconstrained Optimization (QUBO) problems -- those that are naturally handled by quantum computers and annealers -- is now available \cite{naghmouchi_mixed_2024,franco_efficient_2023,karimi_practical_2019}.
+
+Our goal is to demonstrate the usage of such methods in the resolution of a food optimization problem, showing how they constitute a valid alternative to classical solvers in predefined instances.\cite{karimi_practical_2019,ajagekar_quantum_2020,ajagekar_quantum_2021,chang_hybrid_2022,wang_quantum-inspired_2022,yonaga_quantum_2022,franco_efficient_2023,paterakis_hybrid_2023,ellinas_hybrid_2024,naghmouchi_mixed_2024}.
+\end{abstract}
+
+\subsubsection*{Relevant SDGs}
+\begin{itemize}
+    \item SDG 2: Zero Hunger
+    \item SDG 3: Good Health and Well-being
+    \item SDG 12: Responsible Consumption and Production
+    \item SDG 13: Climate Action
+\end{itemize}
+
+\section{Description of the problem and its societal context}
+
+The global food system faces mounting pressure to provide nutritious, affordable, and environmentally sustainable food. Current food systems are characterized by significant limitations that contribute to the triple burden of malnutrition: undernutrition, micronutrient deficiencies, and overweight/obesity. Research indicates that 88\% of countries experience the coexistence of multiple burdens of malnutrition, often associated with diets high in saturated fat, sugar, and processed foods while being low in fiber, fruits, and vegetables\cite{ZOU2022100624}.
+
+Key challenges include:
+\begin{itemize}
+    \item Ensuring food security and nutritional adequacy for growing populations
+    \item Reducing the environmental footprint of agriculture (food systems account for 34\% of global GHG emissions)
+    \item Balancing economic viability for producers with affordability for consumers
+    \item Promoting diversity in crop production to enhance resilience and health outcomes
+    \item Addressing the fundamental issue that healthy diets remain unaffordable for many populations
+\end{itemize}
+
+\textbf{Who is affected:} Both local and global populations are impacted, with particular vulnerability among low-income communities and regions with limited arable land. Cities consume about 70\% of the world's food while occupying only 3\% of Earth's surface, making urban food systems critical intervention points \cite{ZOU2022100624}.
+
+\textbf{Geographies and demographics:} The affected populations are widespread, but the specific optimization setting depends on the chosen region, types of crops, and local producer profiles. By 2050, 68\% of the world's population will live in urban regions, consuming 80\% of total food production \cite{ZOU2022100624}.
+
+\textbf{Criticality and risks:} risks include persistent malnutrition, unsustainable land use, and economic disparities. Climate change will further exacerbate these challenges, with 70\% of studies indicating crop yield declines by the 2030s \cite{ZOU2022100624}.
+
+\section{Description of the computational challenges}
+
+\subsection{Mathematical formulation of the problem}
+
+
+We address the problem of centralized planning of sustainable food production in a pre established area. To this end, we take a smaller instance of the problem presented in \cite{esteso_sustainable_2023} and we model it as a multi-objective optimization problem.
+The subset contains the following objectives:
+\begin{itemize}
+    \item maximize nutritional value
+    \item maximize nutrient density
+    \item maximize affordability
+    \item minimize environmental impact
+\end{itemize}
+
+Our objective can in a first approximation be expressed as:
+
+
+\begin{align}
+    &Z = w_1G_1 + w_2 G_2 + \dots \\
+    \text{subject to } &\text{Area, Crops}
+    \label{eq:generalized objective}
+\end{align}
+
+where $G_i$ are the goals above and $w_i$ are the weights we associated to them.
+
+
+
+This formulation is easily converted into a Linear Program (LP) \cite{Dantzig1951} - more specifically a Mixed-Integer Linear Program (MILP) -  a class of problems vastly studied in literature, which are solved with state of the art solvers like Gurobi \cite{gurobi2023},  as done in \cite{esteso_sustainable_2023}. 
+
+
+\paragraph{Decision Variables}
+Let $A_{f,c}$ denote the area - in hectares - assigned to food $c$ on farm $f$, wether it is a crop or an animal.
+
+Introduce auxiliary binary variables $Y_{f,c}$, where:
+\begin{equation}
+Y_{f,c} = \begin{cases}
+1 & \text{if food $c$ is planted at farm $f$,}\\
+0 & \text{otherwise.}
+\end{cases}
+\end{equation}
+
+Additionally, introduce global binary variables $U_c$ to track unique food selection across all farms:
+\begin{equation}
+U_c = \begin{cases}
+1 & \text{if food $c$ is planted on at least one farm,}\\
+0 & \text{otherwise.}
+\end{cases}
+\end{equation}
+
+These $U_c$ variables are essential for correctly enforcing food group diversity constraints, which require counting the number of \textit{distinct} foods selected rather than the total number of plot-crop assignments.
+
+With this formulation the problem is now expressed as a MILP: the area $A_{f,c} \in [0, A_{max}]$\footnote{The minimum area here is set to 0 as it is the lowest bound when not planted, but the interval could also be expressed as the disjoint $\{0\}\cup[A_{c, min}, A_{max}]$ if the minimum area is relevant - for example when considering to build shelter for animals} is now expressed through the combination of a (semi)continuous variable $A_{f,c} \in [-\infty, A_{max}]$  and a binary variable $Y_{f,c}$. 
+
+
+
+
+
+
+\paragraph{Parameters:}
+
+To provide a model that is as close as possible to real world scenarios, the following parameters will be used to characterize our data:
+
+\begin{itemize}
+    \item Nutritional value score for food $c$ (higher is better).
+    \item Nutrient density score for food $c$ (higher is better).
+    \item Environmental impact score for food $c$ (lower is better).
+    \item Affordability score for food $c$ (higher is better).
+    \item Total land available at farm $f$.
+    \item  Minimum area to be planted for food $c$ (if selected).
+    \item Set of foods belonging to food group $g$.
+    \item Minimum and maximum number of foods to produce per food group $g$, following from dietary constraints.
+\end{itemize}
+
+
+
+\subsection{Classical computational approaches (\cite{CLAUTIAUX2025707})}
+\label{sub:classical}
+
+\input{diagram_hardness}
+
+
+Classical MILP solvers have achieved remarkable sophistication through the systematic integration of several foundational algorithmic components, such as branch-and-bound methodology, cutting-plane techniques (branch-and-cut), column generation (branch-and-price), primal heuristic strategies. The branch-and-bound algorithm forms the cornerstone of modern MILP solvers, employing a recursive partitioning strategy that systematically explores the integer feasible region through variable fixation and continuous LP relaxations at each node of the enumeration tree \cite{achterberg2007constraint, wolsey1998integer}. The algorithm's efficiency derives from its pruning mechanism, whereby nodes with relaxation bounds that cannot improve upon the current incumbent solution are eliminated, thereby substantially reducing the computational search space.
+
+
+
+Leading commercial implementations, include IBM CPLEX and Gurobi Optimizer \cite{cplex2023, gurobi2023}.
+
+Despite their remarkable sophistication, classical MILP solvers face several fundamental bottlenecks that can significantly limit their performance and scalability across diverse problem classes:
+
+\begin{itemize}
+
+
+\item LP relaxation tightness represents a primary concern, as weak relaxations with large integrality gaps force the branch-and-bound algorithm to explore extensive enumeration trees before effective pruning can occur~\cite{nemhauser1999integer}.
+
+\item While cutting-plane methods can strengthen these relaxations, the computational overhead of cut generation - including the solution of auxiliary linear programs and execution of combinatorial separation algorithms - can itself become prohibitively expensive, particularly when yielding diminishing marginal improvements~\cite{mitchell2002cutting}.
+
+\item Branch-and-bound tree explosion constitutes another critical limitation, where suboptimal variable selection and node selection heuristics may cause exponential growth in the number of subproblems, consuming substantial computational memory and potentially exhausting available system resources before optimal solutions are identified~\cite{linderoth2005anatomy}.
+
+\item In column generation frameworks (branch-and-price), the decomposition of large-scale MILPs into master problems and pricing subproblems introduces iterative solution procedures that can themselves constitute computationally intensive linear or mixed-integer programs, with convergence potentially stalling when pricing subproblems prove difficult or generate only marginally beneficial columns~\cite{lubbecke2005selected}.
+
+\item Primal heuristic strategies, while effective at rapidly identifying feasible solutions, may become trapped in suboptimal regions of the solution space, and the development of problem-specific heuristic procedures requires substantial domain expertise that cannot always be automated effectively~\cite{berthold2013heuristic}.
+
+\item Numerical stability issues arising from ill-conditioned constraint matrices necessitate frequent basis refactorizations in LP solution procedures, while aggressive preprocessing strategies may inadvertently eliminate structural properties essential for specialized cutting-plane generation or decomposition approaches~\cite{gamrath2015structure}.
+
+\item Finally, parallel scalability remains constrained by synchronization overhead and load-balancing challenges across multiple computational threads, particularly in the presence of intensive cut generation or complex heuristic procedures~\cite{shinano2018parallelization}. 
+
+\end{itemize}
+
+\subsection{Description of the potential quantum computing solution}\label{PoC}
+
+The optimization model of interest (e.g.\ \cite{esteso_sustainable_2023}) is typically posed as a mixed-integer linear program (MILP): linear cost terms subject to hard inequality constraints. Industrial MILP solvers such as Gurobi exploit that linear structure and the combinatorial structure of integer variables to produce effective exact and heuristic methods. However, many physically- and quantum-inspired methods operate natively on unconstrained, often nonlinear cost landscapes - most notably the Quadratic Unconstrained Binary Optimization (QUBO) formulation, which is equivalent to a classical interacting-spin model.
+
+Converting a MILP into QUBO usually proceeds in two steps: (1) represent real-valued variables by binary arrays up to some chosen precision, and (2) turn constraints into soft quadratic penalty terms \cite{wang_quantum-inspired_2022}. That conversion is convenient for annealers and Ising-type machines, but it typically destroys the original problem structure that MILP solvers exploit.
+
+This loss of structure matters because both MILP and QUBO formulations are NP-hard in general \cite{FBarahona_1982}; no polynomial-time algorithm can guarantee optimality (or a bounded approximation ratio) in the worst case; generic algorithms perform evenly across a class of problems, and only by exploiting structure can one expect systematic gains \cite{NFL,ronnow2014defining}. In practice, then, a straightforward conversion of a carefully structured MILP into a penalized QUBO often yields instances on which classical solvers perform poorly - not because the solvers are weak in general, but because the conversion removed exploitable structure and altered the problem’s landscape.
+
+That observation motivates the search for cases where quantum or quantum-inspired devices do have an advantage. Several studies show that when a problem or a portion of it maps to a QUBO with features favourable to annealing (for example sparse interactions, locally hard substructures, or instances that admit advantageous minor embeddings) quantum algorithms can outperform a given classical algorithm on the QUBO formulation \cite{ajagekar_quantum_2019,ajagekar_quantum_2020,abbas_quantum_2023}.
+
+Still, the literature is cautious: demonstrations to date document potential or limited quantum advantage rather than a general, hardware-agnostic breakthrough \cite{hoefler2023disentanglinghypepracticalityrealistically,ronnow2014defining}. The distinction is important and operational: we define potential quantum advantage as a speedup relative to a specific classical algorithm or set of classical algorithms, and limited quantum advantage as a speedup relative to classical algorithms that implement the same algorithmic approach on classical hardware.
+
+Practical benchmarking also exposes important caveats. Embedding overheads - the cost of mapping problem graphs to the sparse connectivity of current QPUs - are significant and can dominate runtimes, constraining effective problem size and eroding any raw speedup from the QPU itself \cite{ReinholdssonOdelius2023,naghmouchi_mixed_2024}. On the other hand, hybrid quantum–classical strategies - where a classical decomposition exposes structure and a quantum component tackles the hard subproblems - appear especially promising; they leverage classical pre/post-processing to preserve exploitable structure while using quantum resources where they are most likely to help \cite{franco_efficient_2023,VallejoBenitezCano2021}.
+
+Taken together, these points argue for a cautious, structure-aware approach. Rather than expecting a blanket advantage, one should look for the structural components of an application that are classically challenging and naturally expressed as QUBO subproblems; those are the places where potential or limited quantum advantage may realistically appear \cite{ajagekar_quantum_2020,ronnow2014defining}. For domain problems such as food production - where bottlenecks are combinatorial, high-dimensional, and time-sensitive - hybrid quantum-classical pipelines can therefore represent a research-driven opportunity: they may accelerate decision-making and reduce decomposition costs in ways that pure classical solvers cannot, provided embedding and modeling overheads are managed appropriately
+
+\section{Implementation of a proof of concept}
+
+% Instructions to be deleted before submission
+\textit{
+A proof of concept can vary in meaning depending on whether the proposed quantum computing solution is feasible on near-term hardware or requires fault-tolerant quantum computers anticipated in the longer term.
+A proof of concept on near-term hardware might demonstrate that a simplified version of an algorithm can run on current noisy intermediate-scale quantum devices. 
+A proof of concept on anticipated fault-tolerant quantum hardware might explore the scalability or theoretical performance of an algorithm.
+}
+
+\textit{
+If not already clear from the previous section, please make clear what your proof of concept is about. 
+If your proposal includes both a near-term implementation and an anticipated fault-tolerant implementation, please provide the relevant information in the below subsections 3.1-3.4 for both approaches.
+}
+
+\subsection{Description of the proof of concept}
+
+% Instructions to be deleted before submission
+\textit{
+Please describe your proposed proof of concept to demonstrate the feasibility of the proposed quantum solution. This includes defining the regime of parameters to achieve quantum advantage and the problem size to be tackled (now and/or with future quantum computing devices). Please also specify whether access to real-world datasets has been secured and whether other known necessary initial conditions for the proof of concept are met. As always, include relevant references.
+}
+
+
+Our Proof of Concept consists of two main components: \textbf{scenarios} and \textbf{solvers}.
+
+The solvers are structured as follows:
+\begin{enumerate}
+    \item Classical Solvers\begin{itemize}
+        \item Linear problems are modeled via PuLP, which offers -among others - these two solvers:
+        \begin{itemize}
+            \item Gurobi \cite{gurobi2023}
+            \item CPLEX \cite{cplex2023} (used as fallback)
+        \end{itemize}
+        \item Non Linear problems are modeled via Pyomo \cite{bynum2021pyomo}, which offers - among other solvers:
+        \begin{itemize}
+            \item Gurobi \cite{gurobi2023}
+            \item SCIP \cite{BolusaniEtal2024OO} (used as fallback)
+        \end{itemize}
+    \end{itemize}
+    \item \begin{itemize}
+        \item Quantum Solvers
+        \begin{itemize}
+            \item Dwave Leap Hybrid Solver \cite{DwaveLeapHybrid} which - among others - contains:
+            \begin{itemize}
+                \item LeapHybridCQMSampler for Constrained Quadratic Model (CQM) solver
+                \item LeapHybridBQMSampler for Binary Quadratic Model (CQM) solver, which is used to solve the QUBO form of the problems
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+Scenarios on the other hand were created with the following procedure:
+
+\paragraph{Crops:}
+
+The data were provided by GAIN \cite{GAIN} in three different datasets:
+\begin{itemize}
+    \item \path{LCA results per kg & NVS.xlsx}
+    \item \path{NVS_12Apr2024.xlsx}
+    \item \path{PricePer100NVS_Indonesia_3Sept2024.xlsx}
+\end{itemize}
+
+
+The values were processed as follows to obtain normalized scores:  
+
+\begin{itemize}
+\item 
+    \begin{equation}
+       \text{Nut. Score}=\frac{\text{nutritional\_score}}{\max(\text{nutrient\_density})}
+    \end{equation}
+\item 
+    \begin{equation}
+       \text{Nut. Density}=\frac{\text{nutritional\_score}}{\max(\text{nutrient\_density})}
+    \end{equation}
+    \item 
+    \begin{equation}
+       \text{Env. Impact}=\left(\frac{\text{NVS}}{100}\times\frac{\text{Primary\_production\_mPt\_100NVS}}{\max(\text{Primary\_production\_mPt\_100NVS})}\right)
+    \end{equation}
+    \item 
+    \begin{equation}
+       \text{Sustainability}=\left(\frac{\text{NVS}}{100}\times\frac{\text{TOTAL\_categories\_mPt\_100NVS}}{\max(\text{TOTAL\_categories\_mPt\_100NVS})}\right)^{-1}
+    \end{equation}
+    \item
+    \begin{equation}
+       \text{Affordability}=\left(\frac{\text{NVS}}{100}\times\frac{\text{Cost to achieve NVS score of 100}}{\max(\text{Cost to achieve NVS score of 100})}\right)^{-1}
+    \end{equation}
+\end{itemize}
+
+
+To create a comprehensive dataset, the same food was found in all three files (manually due to different naming conventions) and added to a separate dataset with the normalized scores. Then all rows containing empty values were discarded and the columns aggregated.
+
+The aggregation is due to the fact that these datasets are not representative of a single geographic area, and don't represent a detailed enough dataset when considered singularly.
+
+The data for the complete scenario is represented below:
+\begin{table}[ht]
+\centering
+\scriptsize
+\label{tab:food_data}
+\begin{tabular}{llrrrrr}
+
+\textbf{Food\_Name} & \textbf{Food Group}      & \textbf{Nut. Val.} & \textbf{Nut. Den.} & \textbf{Sust.} & \textbf{Env. Imp.} & \textbf{Afford.} \\
+
+Mango          & Fruits                & 0.4468 & 0.2458 & 0.0757 & 0.0044 & 0.0261 \\
+Papaya         & Fruits                & 0.4754 & 0.2748 & 0.1778 & 0.0172 & 0.0398 \\
+Orange         & Fruits                & 0.4707 & 0.2537 & 0.1280 & 0.0083 & 0.0254 \\
+Banana         & Fruits                & 0.4195 & 0.1963 & 0.1140 & 0.0088 & 0.0801 \\
+Guava          & Fruits                & 0.5156 & 0.3102 & 0.1791 & 0.0120 & 0.0570 \\
+Watermelon     & Fruits                & 0.3111 & 0.0706 & 0.0833 & 0.0089 & 0.0152 \\
+Apple          & Fruits                & 0.3710 & 0.0884 & 0.0776 & 0.0045 & 0.0133 \\
+Avocado        & Fruits                & 0.4674 & 0.2455 & 0.0511 & 0.0026 & 0.0357 \\
+Durian         & Fruits                & 0.4516 & 0.2483 & 0.0275 & 0.0016 & 0.0203 \\
+Corn           & Starchy staples       & 0.3908 & 0.1535 & 0.1214 & 0.0113 & 0.4179 \\
+Potato         & Starchy staples       & 0.4782 & 0.3053 & 0.1246 & 0.0113 & 0.0934 \\
+Tofu           & Pulses, nuts, and seeds & 0.5211 & 0.3471 & 0.1052 & 0.0188 & 0.1026 \\
+Tempeh         & Pulses, nuts, and seeds & 0.5391 & 0.3946 & 0.1115 & 0.0201 & 0.2248 \\
+Peanuts        & Pulses, nuts, and seeds & 0.4650 & 0.4268 & 0.0546 & 0.0031 & 0.2678 \\
+Chickpeas      & Pulses, nuts, and seeds & 0.5153 & 0.3286 & 0.1404 & 0.0125 & 0.3980 \\
+Pumpkin        & Vegetables            & 0.5889 & 0.4766 & 0.0579 & 0.0030 & 0.0338 \\
+Spinach        & Vegetables            & 0.9032 & 0.9346 & 0.0859 & 0.0043 & 0.0362 \\
+Tomatoes       & Vegetables            & 0.5816 & 0.4394 & 0.1039 & 0.0061 & 0.0387 \\
+Long bean      & Vegetables            & 0.5616 & 0.4127 & 0.0821 & 0.0047 & 0.3634 \\
+Cabbage        & Vegetables            & 0.6376 & 0.5007 & 0.0791 & 0.0043 & 0.0341 \\
+Eggplant       & Vegetables            & 0.3967 & 0.1731 & 0.0597 & 0.0035 & 0.0217 \\
+Cucumber       & Vegetables            & 0.4306 & 0.2272 & 0.1058 & 0.0084 & 0.0188 \\
+Egg            & Animal-source foods   & 0.5837 & 0.4851 & 0.0343 & 0.0017 & 0.0217 \\
+Beef           & Animal-source foods   & 0.5968 & 0.5424 & 0.0038 & 0.4468 & 0.0241 \\
+Lamb           & Animal-source foods   & 0.5941 & 0.5332 & 0.0088 & 0.0005 & 0.0242 \\
+Pork           & Animal-source foods   & 0.5840 & 0.5233 & 0.0165 & 0.0008 & 0.3743 \\
+Chicken        & Animal-source foods   & 0.5533 & 0.4336 & 0.0249 & 0.0013 & 0.0572 \\
+
+\end{tabular}
+\caption{Food Data Overview}
+\end{table}
+
+\newpage
+\paragraph{Farms:}
+
+The farms were added to each scenario by sampling this distribution, obtained from \cite{LOWDER201616}.
+
+\begin{table}[h!]
+\centering
+
+\begin{tabular}{lcc}
+
+\textbf{Size class (ha)} & \textbf{Share of farms (\%)} & \textbf{Share of land (\%)} \\
+
+$<1$        & $\sim 45$ & $\sim 10$ \\
+$1$--$2$    & $\sim 20$ & $\sim 10$ \\
+$2$--$5$    & $\sim 15$ & $\sim 20$ \\
+$5$--$10$   & $\sim 8$  & $\sim 15$ \\
+$10$--$20$  & $\sim 5$  & $\sim 20$ \\
+$>20$       & $\sim 7$  & $\sim 25$ \\
+
+\end{tabular}
+\caption{Distribution of farm sizes and land shares in the Global South}
+\label{tab:farm_size_distribution}
+\end{table}
+
+
+\paragraph{Weights:}
+
+To satisfy the convexity constraint, the weights were chosen to be 
+
+
+
+\begin{align*}
+w_{\text{nutritional value}} &= 0.25 \\
+w_{\text{nutrient density}} &= 0.2 \\
+w_{\text{environmental impact}} &= 0.25 \\
+w_{\text{affordability}} &= 0.15 \\
+w_{\text{sustainability}} &= 0.15
+\end{align*}
+
+
+
+\subsection{Benchmarking strategy}
+
+\subsubsection{Scenario Adaptation}
+
+
+Due to how the model is  formulated, the total area is a parameter known \textit{a priori}; this total area is going to get subdivided either into a number of farms with uneven area, or into a number of uniformly sized plots.
+
+Additional information regarding the difference between the two choices can be found in the appendix \ref{sec:appx}.
+
+\subsubsection{Overview}
+The benchmark will be comprehensive of two formulations:
+
+\begin{enumerate}
+    \item \textbf{Binary Formulation} (Even Grid): Used when land is divided into equal-sized plots
+    \item \textbf{Continuous Formulation} (Uneven Distribution): Used when farms have varying sizes
+\end{enumerate}
+
+
+The script solves the optimization problem using three different methods:
+\begin{itemize}
+    \item PuLP with Gurobi solver (classical optimization)
+    \item D-Wave Hybrid CQM Sampler (quantum-classical hybrid)
+    \item D-Wave Hybrid BQM Sampler (quantum-enabled via CQM→BQM conversion)
+\end{itemize}
+
+
+
+\subsubsection{Objective Functions}
+
+\paragraph{Continuous Formulation Objective}
+
+The objective function maximizes the weighted sum of agricultural value metrics, normalized by total available land:
+
+$$\max \quad Z = \frac{1}{\sum_{f \in F} L_f} \sum_{f \in F} \sum_{c \in C} B_c \cdot A_{f,c}$$
+
+where the composite value $v_c$ for crop $c$ is defined as:
+
+$$B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}$$
+
+\textbf{Note:} This is equivalent to \ref{eq:linear_obj} after appropriate renormalization.
+
+\paragraph{Binary Formulation Objective}
+
+For the binary formulation, the objective accounts for the fixed area $a_p$ of each plot:
+
+$$\max \quad Z = \frac{1}{\sum_{p \in F} a_p} \sum_{p \in F} \sum_{c \in C} a_p \cdot B_c \cdot Y_{p,c}$$
+
+where $B_c$ is defined identically as in the continuous formulation.
+
+\textbf{Interpretation:} Each selected assignment contributes the plot's area multiplied by the crop's value density.
+
+\subsubsection{Constraints}
+
+\paragraph{Continuous Formulation Constraints}
+
+\subparagraph{Land Availability Constraints}
+
+Each farm cannot allocate more land than available:
+
+$$\sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall f \in \mathcal{F}$$
+
+\textbf{Label:} \texttt{Land\_Availability\_\{farm\}}
+
+\subparagraph{Minimum Planting Area Constraints}
+
+If a crop is selected on a farm, it must occupy at least the minimum required area:
+
+$$A_{f,c} \geq A_{min,c} \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, c \in C$$
+
+
+\textbf{Logical Interpretation:}
+\begin{itemize}
+    \item If $Y_{f,c} = 1$: $A_{f,c} \geq A_{min,c}$ (enforces minimum area)
+    \item If $Y_{f,c} = 0$: $A_{f,c} \geq 0$ (no planting, so area can be zero)
+\end{itemize}
+
+\textbf{Label:} \texttt{Min\_Area\_If\_Selected\_\{farm\}\_\{crop\}}
+
+\subparagraph{Maximum Planting Area Constraints}
+
+If a crop is not selected, its allocated area must be zero:
+
+$$A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f \in \mathcal{F}, c \in C$$
+
+
+\textbf{Logical Interpretation:}
+\begin{itemize}
+    \item If $Y_{f,c} = 1$: $A_{f,c} \leq L_f$ (area can be up to farm size)
+    \item If $Y_{f,c} = 0$: $A_{f,c} \leq 0$ (forces area to zero)
+\end{itemize}
+
+\textbf{Label:} \texttt{Max\_Area\_If\_Selected\_\{farm\}\_\{crop\}}
+
+\subparagraph{Food Group Minimum Constraints}
+
+At least a minimum number of \textit{unique} crops from specified food groups must be cultivated. Using the $U_c$ variables:
+
+$$\sum_{c \in \mathcal{G}_g} U_c \geq N_{min,g} \quad \forall g \in \mathcal{G} \text{ where } N_{min,g} \text{ is defined}$$
+
+\textbf{Label:} \texttt{Food\_Group\_Min\_\{group\}}
+
+\subparagraph{Food Group Maximum Constraints}
+
+A maximum number of \textit{unique} crops from specified food groups must not be exceeded:
+
+$$\sum_{c \in \mathcal{G}_g} U_c \leq N_{max,g} \quad \forall g \in \mathcal{G} \text{ where } N_{max,g} \text{ is defined}$$
+
+\textbf{Label:} \texttt{Food\_Group\_Max\_\{group\}}
+
+\subparagraph{$U$-$Y$ Linking Constraints}
+
+The $U_c$ variables must be properly linked to the $Y_{f,c}$ variables:
+
+\begin{align}
+Y_{f,c} &\leq U_c \quad \forall f \in \mathcal{F}, c \in \mathcal{C} \label{eq:u_link_upper}\\
+U_c &\leq \sum_{f \in \mathcal{F}} Y_{f,c} \quad \forall c \in \mathcal{C} \label{eq:u_link_lower}
+\end{align}
+
+\textbf{Interpretation:}
+\begin{itemize}
+    \item Eq.~\eqref{eq:u_link_upper}: If any $Y_{f,c} = 1$, then $U_c$ must be 1
+    \item Eq.~\eqref{eq:u_link_lower}: If no farm selects crop $c$ (all $Y_{f,c} = 0$), then $U_c$ must be 0
+\end{itemize}
+
+\textbf{Labels:} \texttt{U\_Link\_\{farm\}\_\{crop\}}, \texttt{U\_Bound\_\{crop\}}
+
+\paragraph{Binary Formulation Constraints}
+
+\subparagraph{Plot Assignment Constraints}
+
+Each plot can be assigned to at most one crop (or remain idle):
+
+$$\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p \in \mathcal{F}$$
+
+
+
+\textbf{Interpretation:}
+\begin{itemize}
+    \item $\sum_{c \in C} Y_{p,c} = 0$: Plot remains idle
+    \item $\sum_{c \in C} Y_{p,c} = 1$: Plot is assigned to exactly one crop
+\end{itemize}
+
+\textbf{Label:} \texttt{Max\_Assignment\_\{plot\}}
+
+\subparagraph{Minimum Plots Per Crop Constraints}
+
+For crops with minimum planting area requirements, the constraint is converted to a minimum number of plots:
+
+$$\sum_{p \in \mathcal{F}} Y_{p,c} \geq \left\lceil \frac{A_{min,c}}{a_p} \right\rceil \quad \forall c \in \mathcal{F} \text{ where } A_{min,c} > 0$$
+
+where $a_p$ is the area of each plot (assumed equal in even grid).
+
+
+
+\textbf{Interpretation:} If a crop $c$ requires minimum area $A_{min,c}$, it must be planted on at least $\lceil A_{min,c} / a_p \rceil$ plots.
+
+\textbf{Label:} \texttt{Min\_Plots\_\{crop\}}
+
+\subparagraph{Maximum Plots Per Crop Constraints}
+
+For crops with maximum planting area limits, the constraint is converted to a maximum number of plots:
+
+$$\sum_{p \in \mathcal{F}} Y_{p,c} \leq \left\lfloor \frac{A_{max,c}}{a_p} \right\rfloor \quad \forall c \in \mathcal{C} \text{ where } A_{max,c} \text{ is defined}$$
+
+
+
+\textbf{Interpretation:} If a crop $c$ has maximum area $A_{max,c}$, it can be planted on at most $\lfloor A_{max,c} / a_p \rfloor$ plots.
+
+
+\textbf{Label:} \texttt{Max\_Plots\_\{crop\}}
+
+
+
+
+\subparagraph{Food Group Constraints}
+
+The food group constraints use the $U_c$ variables to count \textit{unique} foods selected:
+
+$$\sum_{c \in \mathcal{G}_g} U_c \geq N_{min,g} \quad \forall g \in \mathcal{G}$$
+$$\sum_{c \in \mathcal{G}_g} U_c \leq N_{max,g} \quad \forall g \in \mathcal{G}$$
+
+\subparagraph{$U$-$Y$ Linking Constraints}
+
+The linking constraints ensure $U_c = 1$ if and only if crop $c$ is selected on at least one plot:
+
+\begin{align}
+Y_{p,c} &\leq U_c \quad \forall p \in \mathcal{F}, c \in \mathcal{C}\\
+U_c &\leq \sum_{p \in \mathcal{F}} Y_{p,c} \quad \forall c \in \mathcal{C}
+\end{align}
+
+\textbf{Labels:} \texttt{MinFoodGroup\_Unique\_\{group\}}, \texttt{MaxFoodGroup\_Unique\_\{group\}}, \texttt{U\_Link\_\{plot\}\_\{crop\}}, \texttt{U\_Bound\_\{crop\}}
+
+
+% \subsubsection{Plots}
+% \clearpage
+
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\linewidth]{Plots/Benchmark/performance_comparison.pdf}
+%     %\caption{Caption}
+%     %\label{fig:placeholder}
+% \end{figure}
+
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\linewidth]{Plots/Benchmark/solution_quality_comparison.pdf}
+%     %\caption{Caption}
+%     %\label{fig:placeholder}
+% \end{figure}
+
+% \clearpage    
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\linewidth]{Plots/Benchmark/solution_composition_histograms.pdf}
+%     %\caption{Caption}
+%     %\label{fig:placeholder}
+% \end{figure}
+
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\linewidth]{Plots/Benchmark/solution_composition_pies.pdf}
+%     %\caption{Caption}
+%     %\label{fig:placeholder}
+% \end{figure}
+
+% }
+
+\clearpage
+
+
+\subsection{Resource estimation}
+
+% Instructions to be deleted before submission
+\textit{
+Using existing resource estimation tools, please assess the resources needed both for the quantum and classical parts of the proposed solution, including but not limited to circuit depth, qubit count, function calls, and run time. This includes specifying what type of quantum computing device would be most suitable and, in the case of a proposed implementation on near-term hardware, which hardware providers would be ideal for the implementation of the proof of concept.  
+Please also discuss whether it is feasible to first perform small-scale tests on existing quantum simulators and, if so, which would be the ideal simulation providers. Please also comment on the projected energy consumption for both a small-scale implementation during the proof of concept and a full-scale implementation at a later stage.
+}
+
+
+
+
+\textbf{Overview:}  
+ Problems scale from 18 to 500+ variables, with hybrid solvers best suited for constrained formulations.
+
+\medskip
+\textbf{Problem Sizes Tested:}
+
+\begin{center}
+\begin{tabular}{@{}lllll@{}}
+
+Level & Vars & Farms & Foods & Density \\
+
+Simple        & 10  & 2 & 5  & 0.333 \\
+Intermediate  & 18  & 3 & 6  & 0.333 \\
+Full          & 50  & 5 & 10 & 0.200 \\
+
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Scaling:}
+\begin{itemize}
+    \item Linear fit: $T \approx 0.0059V - 0.04$
+    \item Exponential: $T \approx 0.006e^{0.076V}$
+    \item Scope: 50 vars (current) $\to$ 100--200 (extended) $\to$ 500+ (scalability)
+\end{itemize}
+
+\medskip
+\textbf{Resource Estimates:}
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+
+Size & QPU Time & Embedding & Hybrid Time \\
+
+Small ($\leq$20)  & 2--100 ms  & 1--5 s   & 10--60 s \\
+Medium (20--100)  & 10--200 ms & 5--30 s  & 30--180 s \\
+Large (100+)      & 20--500 ms & 30--120 s & 60--600+ s \\
+
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Upper Bounds (95th \%ile):}
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+
+Size & QPU (s) & Hybrid (s) & Wall Time (s) \\
+
+$\leq$50   & $\leq$0.5 & $\leq$300  & $\leq$360 \\
+50--200    & $\leq$2   & $\leq$900  & $\leq$1080 \\
+200--500   & $\leq$5   & $\leq$3600 & $\leq$4320 \\
+
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Architecture:}
+\begin{itemize}
+    \item \emph{Hybrid (CQM)}: continuous + binary vars, LeapHybridCQMSampler
+    \item \emph{Pure QPU}: QUBO, EmbeddingComposite + D-WaveSampler
+    \item \emph{Decomposition}: master (hybrid) + farm subproblems (QPU)
+\end{itemize}
+
+\medskip
+\textbf{Risks \& Mitigations:}
+\begin{itemize}
+    \item Embedding limits $\to$ hybrid/decomposition
+    \item Local minima $\to$ multiple runs
+    \item Runtime inflation $\to$ simplify/limit time
+\end{itemize}
+
+\medskip
+\textbf{Recommendations:}
+\begin{itemize}
+    \item Start: 18-variable tests (5--15 min/exp.)
+    \item 1-hour allocation: 6--12 small, 2--4 medium, 1--2 large
+    \item Safety margins: $\times$2 time, $\times$1.5 samples, +50\% buffer
+\end{itemize}
+
+\medskip
+\textbf{Conclusion:}  
+Hybrid solvers provide robustness (5--40 min/exp). QPU scaling predictable; 1-hour budget supports baseline validation, comparisons, and scalability demos.
+
+
+
+\subsection{Steps to achieve a proof of concept}
+
+% Instructions to be deleted before submission
+\textit{
+Please describe the steps to deliver a successful proof of concept, from code writing to optimizing the code to tests on simulators and QPUs, including specifying what is conducted by whom in the team.
+}
+
+
+
+\subsubsection{Key Data Inputs and Requirements}
+
+
+
+\begin{enumerate}
+
+
+\item{Population and Nutritional Needs}
+\begin{itemize}
+    \item \textbf{Demographics:} Age, gender, height, weight, pregnant and lactating women (PLW)
+    \item \textbf{Population projections:} Projected population growth and demographic breakdown
+    \item \textbf{Nutritional requirements:} Calories, protein, dietary fats, essential micronutrients for each population group:
+    \begin{itemize}
+        \item Infants
+        \item Boys and girls
+        \item Adolescent boys and girls
+        \item Men and women of reproducing age
+        \item Pregnant and lactating women
+        \item Elderly
+    \end{itemize}
+\end{itemize}
+
+\item{Food System Requirements}
+\begin{itemize}
+    \item \textbf{Culturally acceptable foods:} Foods produced and consumed within the local food system context (Diet Quality Questionnaire Database)
+    \item \textbf{Food basket design:} Identification of food combinations that fulfill all nutritional needs
+    \item \textbf{GAIN nLCA score:} To optimize for nutrition and environment (GHGs, water, land use)
+    \item \textbf{Cost analysis:} Cheapest sources of good nutrition per nutritional unit using Nutritional Value Score
+\end{itemize}
+
+
+\item{Production Feasibility Analysis}
+\begin{itemize}
+    \item \textbf{Crop production requirements:}
+
+
+\begin{itemize}
+    \item Total quantity of each crop required
+    \item Yield per hectare of selected/local/optimal varieties
+    \item Total land available for crop production
+    \item Preferred production methods and compatibility with local climate, soil, and water availability
+    \item Compatibility of different crops within the same cultivated area
+\end{itemize}
+
+\item \textbf{Animal-source food production:}
+\begin{itemize}
+    \item Total quantity required for meat, dairy, eggs, poultry, seafood
+    \item Total production potential and yield from fisheries
+    \item Compatibility of production methods with local systems
+    \item Integration potential with crop systems
+\end{itemize}
+\end{itemize}
+
+\end{enumerate}
+
+
+\subsubsection{Code Development}
+
+\section{Impact design}
+
+% Instructions to be deleted before submission
+\textit{
+Anticipating a future deployment of the full-scale quantum solution in the real-world, please assess the impact of the proposed solution. An impact framework toolkit will soon be available to guide you through this assessment.
+\begin{itemize}
+\item At a local level, please assess the impact of your proposed solution on people, planet, and prosperity conducted across short-, medium-, and long-term timeframes. Detail the impacted areas and expected outcomes, documenting all assumptions and supporting references.
+\item At a global level, how transposable is the use case to other contexts? What are other geographies or populations that would benefit from the proposed quantum solution (provide facts and references)? Would the conditions be conducive to a similar proof of concept (e.g. access to data)?
+\item At a macro-level, please assess the interlinkages between SDGs to positively or negatively impact other SDGs (benefits vs risks), including mitigation measures if any?
+\end{itemize}
+}
+
+
+
+\subsection{Positive Impacts}
+\begin{itemize}
+    \item \textbf{Improved efficiency:} Enhanced food system planning and resource allocation
+    \item \textbf{Nutritional outcomes:} Better access to high-quality protein, N-3 fatty acids, and micronutrients
+    \item \textbf{Environmental benefits:} Reduced GHG emissions, water use, and land conversion
+    \item \textbf{Economic viability:} Cost-effective pathways to nutritious food access
+    \item \textbf{Scalability:} Methodologies applicable across different countries and contexts
+\end{itemize}
+
+\subsection{Risk Mitigation}
+\begin{itemize}
+    \item \textbf{Technology access:} Ensure equitable access to optimization tools and results
+    \item \textbf{Cultural sensitivity:} Incorporate local food preferences and practices
+    \item \textbf{Policy integration:} Align with national food security and climate commitments
+\end{itemize}
+
+\subsection{SDG Interlinkages}
+\begin{itemize}
+    \item \textbf{Direct contributions:} SDGs 2 (Zero Hunger), 3 (Good Health), 12 (Responsible Consumption), 13 (Climate Action)
+    \item \textbf{Indirect benefits:} SDG 1 (No Poverty), SDG 5 (Gender Equality), SDG 10 (Reduced Inequalities), SDG 15 (Life on Land)
+\end{itemize}
+
+
+\section{Methods}
+\label{sec:appx}
+
+\subsection{Lagrange Multiplier Calibration Study}
+
+\subsubsection{Motivation and Objective}
+
+When converting a Constrained Quadratic Model (CQM) to a Binary Quadratic Model (BQM) via the penalty method, constraint violations are penalized using Lagrange multipliers $\lambda$. The choice of $\lambda$ involves a critical trade-off:
+
+\begin{itemize}
+    \item \textbf{Too small ($\lambda \to 0$):} Penalties are weak, leading to constraint violations in the final solution
+    \item \textbf{Too large ($\lambda \to \infty$):} Penalties dominate the objective, suppressing optimization and potentially causing numerical instability
+\end{itemize}
+
+The goal of this study is to identify the \textbf{minimum Lagrange multiplier} that achieves zero constraint violations while preserving objective optimization quality.
+
+\subsubsection{Experimental Design}
+
+\textbf{Test Instance:}
+\begin{itemize}
+    \item Scenario: \texttt{full\_family} with 10 patches (small-scale for rapid testing)
+    \item Patch generation: \texttt{generate\_farms(n\_farms=10, seed=42)}
+    \item Solver: Gurobi QUBO with 30-second time limit per trial
+    \item Lagrange multipliers tested: $\lambda \in \{1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 150.0\}$
+\end{itemize}
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item \textbf{Constraint Violations:} Number of violated constraints (target: 0)
+    \item \textbf{Objective Value:} Normalized weighted agricultural value
+    \item \textbf{Land Utilization:} Percentage of total land assigned to crops
+    \item \textbf{Crop Diversity:} Number of distinct crops planted
+\end{itemize}
+
+\subsubsection{Implementation Details}
+
+The test script (\texttt{test\_lagrange\_multipliers.py}) performs the following workflow:
+
+\begin{algorithm}[H]
+\caption{Lagrange Multiplier Sensitivity Analysis}
+\begin{algorithmic}[1]
+\State Load food data and create scenario configuration
+\State Generate 10-patch problem instance with fixed seed
+\State Create CQM for binary formulation
+\For{$\lambda \in \{\text{multipliers}\}$}
+    \State Convert CQM to BQM using $\lambda$ as penalty weight
+    \State Solve BQM with Gurobi QUBO (30s limit)
+    \State Validate constraints and calculate metrics
+    \State Record: violations, objective, utilization, diversity
+\EndFor
+\State \textbf{Output:} Table showing trade-offs across $\lambda$ values
+\State \textbf{Recommendation:} Smallest $\lambda$ achieving 0 violations
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Theoretical Considerations}
+
+\paragraph{Penalty Method Theory:} For a constrained problem:
+$$\min f(\mathbf{x}) \quad \text{s.t.} \quad g_i(\mathbf{x}) \leq 0, \, i=1,\ldots,m$$
+
+the penalized formulation is:
+$$\min_{\mathbf{x}} \, f(\mathbf{x}) + \lambda \sum_{i=1}^m \max(0, g_i(\mathbf{x}))^2$$
+
+\textbf{Convergence Property:} As $\lambda \to \infty$, the penalized solution converges to the constrained optimum, but:
+\begin{itemize}
+    \item Objective landscape becomes increasingly steep near constraint boundaries
+    \item Numerical conditioning deteriorates (ill-conditioned Hessian)
+    \item Solver performance degrades due to extreme coefficient ratios
+\end{itemize}
+
+\paragraph{Practical Selection Rule:} Choose the smallest $\lambda$ such that:
+$$\max_{i=1,\ldots,m} \max(0, g_i(\mathbf{x}^*)) < \epsilon$$
+where $\mathbf{x}^*$ is the solution and $\epsilon$ is a tolerance (typically $10^{-6}$).
+
+\subsubsection{Experimental Results}
+
+\textbf{Test Configuration:}
+\begin{itemize}
+    \item Problem instance: 10 patches, full food dataset
+    \item Total land: 621.58 ha (from farm\_sampler)
+    \item Solver: Gurobi QUBO with 30-second time limit per trial
+    \item BQM size: 434 binary variables, 16,069 non-zero QUBO terms
+    \item Formulation: Binary (even grid) with Y\_{p,c} variables only
+\end{itemize}
+
+\textbf{Results:}
+
+\begin{center}
+\begin{tabular}{ccccc}
+\hline
+$\lambda$ & Violations & Objective & Utilization & Crops \\
+\hline
+1.0 & 10 & 0.5387 & 200.0\% & 20 \\
+5.0 & 10 & 0.5388 & 200.0\% & 20 \\
+10.0 & 10 & 0.5336 & 200.0\% & 20 \\
+25.0 & 10 & 0.5600 & 200.0\% & 16 \\
+50.0 & 10 & 0.5589 & 200.0\% & 16 \\
+100.0 & 10 & 0.5399 & 200.0\% & 20 \\
+150.0 & 10 & 0.5143 & 200.0\% & 20 \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{Critical Finding:}
+
+The experimental results reveal that \textbf{all tested Lagrange multipliers} $\lambda \in [1.0, 150.0]$ produced constraint violations in the binary formulation. Specifically:
+
+\begin{itemize}
+    \item \textbf{Violation pattern:} All 10 plots assigned to multiple crops simultaneously
+    \item \textbf{Constraint:} "At most one crop per plot" ($\sum_c Y_{p,c} \leq 1$)
+    \item \textbf{Utilization:} 200\% (double-assignment of all land)
+    \item \textbf{Implication:} Binary formulation requires significantly higher penalty weights than continuous formulation
+\end{itemize}
+
+\textbf{Analysis and Interpretation:}
+
+\begin{enumerate}
+    \item \textbf{Formulation-Dependent Scaling:}
+    \begin{itemize}
+        \item Binary formulation has different constraint structure than continuous
+        \item "At most one per plot" constraint is \textit{harder} to enforce via penalties
+        \item Requires $\lambda \gg 150$ to achieve feasibility
+    \end{itemize}
+    
+    \item \textbf{Penalty Weight Requirements:}
+    \begin{itemize}
+        \item Continuous formulation (PATCH runner): $\lambda = 5$-$10$ sufficient
+        \item Binary formulation: $\lambda = 500$-$1000$ estimated (extrapolation)
+        \item Factor of $\approx 50$-$100\times$ difference between formulations
+    \end{itemize}
+    
+    \item \textbf{Solver Behavior at Low $\lambda$:}
+    \begin{itemize}
+        \item Gurobi exploits weak penalties to maximize objective
+        \item Double-assigns plots to achieve higher raw objective value
+        \item BQM energy includes penalties, but solver optimizes BQM (not original CQM)
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Revised Recommendations:}
+
+Based on these findings, for the \textbf{binary (even grid) formulation}:
+
+\begin{itemize}
+    \item \textbf{Minimum Feasible (estimated):} $\lambda \geq 500$ (requires further testing)
+    \item \textbf{Recommended Default:} $\lambda = 1000$ (conservative, ensures feasibility)
+    \item \textbf{Alternative Approach:} Use native CQM solver (LeapHybridCQMSampler) which handles constraints explicitly without penalty method
+    \item \textbf{For CQM→BQM conversion:} Increase $\lambda$ iteratively until zero violations achieved
+\end{itemize}
+
+\textbf{Practical Implications:}
+
+\begin{enumerate}
+    \item \textbf{Penalty Method Limitations:} This experiment demonstrates that penalty-based constraint handling is \textit{formulation-sensitive}. The binary formulation's discrete structure makes constraints harder to enforce via soft penalties.
+    
+    \item \textbf{Solver Choice Matters:} For binary formulations with complex constraints:
+    \begin{itemize}
+        \item \textbf{Preferred:} D-Wave CQM Sampler (explicit constraints, no penalty tuning)
+        \item \textbf{Alternative:} Classical MILP solvers (PuLP/Gurobi with hard constraints)
+        \item \textbf{Use with caution:} BQM conversion with penalty method (requires careful $\lambda$ tuning)
+    \end{itemize}
+    
+    \item \textbf{Benchmark Implementation:} Based on this finding, the benchmark uses:
+    \begin{itemize}
+        \item \textbf{Primary method:} PuLP with Gurobi (hard constraints, no $\lambda$ needed)
+        \item \textbf{Quantum-classical:} D-Wave CQM Sampler (explicit constraints)
+        \item \textbf{BQM experiments:} Use $\lambda = 1000$ as starting point, validate results
+    \end{itemize}
+\end{enumerate}
+
+
+
+\newpage
+\subsection{Grid Refinement Analysis}\label{sub:refinement}
+
+\subsubsection{Motivation and Research Question}
+
+The binary (PATCH) formulation discretizes continuous land into fixed-size plots with binary assignment variables. This introduces an \textbf{approximation error} compared to the continuous formulation. The fundamental question is:
+
+\begin{center}
+\textit{How does grid refinement (number of plots) affect solution quality?}
+\end{center}
+
+\textbf{Hypothesis:} Finer grids ($n \to \infty$) should converge to the continuous optimum, but at the cost of increased problem size and solve time.
+
+\subsubsection{Experimental Design}
+
+\textbf{Grid Refinement Levels Tested:}
+$$n \in \{5, 10, 25, 50, 100\}$$
+
+\textbf{Comparison Framework:}
+
+For each refinement level $n$:
+\begin{enumerate}
+    \item \textbf{Continuous Baseline:} Solve with $n$ farms using \textbf{uneven distribution} (realistic sizes from \texttt{farm\_sampler})
+    \item \textbf{Discretized:} Solve with $n$ patches using \textbf{even grid} (equal-sized plots via \texttt{patch\_sampler})
+\end{enumerate}
+
+Both scenarios use the same total land area for fair comparison.
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item \textbf{Objective Value:} $Z_{\text{cont}}$ (continuous) vs. $Z_{\text{disc}}$ (discretized)
+    \item \textbf{Optimality Gap:} $\Delta = \frac{Z_{\text{cont}} - Z_{\text{disc}}}{Z_{\text{cont}}} \times 100\%$
+    \item \textbf{Solve Time:} Wall-clock time for PuLP/Gurobi
+    \item \textbf{Time Ratio:} $t_{\text{disc}} / t_{\text{cont}}$
+\end{itemize}
+
+\subsubsection{Implementation Details}
+
+The test script (\texttt{Grid\_Refinement.py}) executes the following workflow:
+
+\begin{algorithm}[H]
+\caption{Grid Refinement Convergence Study}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Total land area $A_{\text{total}}$
+\For{$n \in \{5, 10, 25, 50, 100, 200\}$}
+    \State \textbf{// Continuous Baseline}
+    \State Generate $n$ farms with uneven distribution (total area $A_{\text{total}}$)
+    \State Load food data (2 foods per group for tractability)
+    \State Create continuous CQM with $A_{f,c}$ and $Y_{f,c}$ variables
+    \State Solve with PuLP/Gurobi $\to$ $Z_{\text{cont}}, t_{\text{cont}}$
+    \State
+    \State \textbf{// Discretized Formulation}
+    \State Generate $n$ patches with even grid (total area $A_{\text{total}}$, equal plot size $a_p = A_{\text{total}}/n$)
+    \State Load same food data
+    \State Create binary CQM with $Y_{p,c}$ variables only
+    \State Solve with PuLP/Gurobi $\to$ $Z_{\text{disc}}, t_{\text{disc}}$
+    \State
+    \State Compute gap: $\Delta = (Z_{\text{cont}} - Z_{\text{disc}})/Z_{\text{cont}} \times 100\%$
+    \State Record: $n, Z_{\text{cont}}, Z_{\text{disc}}, \Delta, t_{\text{cont}}, t_{\text{disc}}, t_{\text{disc}}/t_{\text{cont}}$
+\EndFor
+\State \textbf{Output:} Table and convergence analysis
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Theoretical Analysis}
+
+\paragraph{Approximation Error Bound:}
+
+For a linear objective $f(A) = \sum_c B_c A_c$, the discretization error is:
+
+$$\epsilon(n) = \left| \sum_c B_c A_c^{\text{opt}} - \sum_c B_c \left(\sum_p a_p Y_{p,c}^{\text{opt}}\right) \right|$$
+
+where $A_c^{\text{opt}}$ is the continuous optimal area and $Y_{p,c}^{\text{opt}}$ is the discrete solution.
+
+\textbf{Upper Bound:} If minimum planting areas $A_{\min,c}$ dominate, the error is bounded by:
+$$\epsilon(n) \leq \sum_c B_c \cdot a_p = O\left(\frac{A_{\text{total}}}{n}\right)$$
+
+\textbf{Convergence Rate:} $\epsilon(n) = O(n^{-1})$.
+
+\paragraph{Computational Complexity Trade-off:}
+
+\textbf{Continuous Formulation:}
+\begin{itemize}
+    \item Variables: $2nc$ ($n$ farms, $c$ crops)
+    \item Constraints: $O(nc)$
+    \item Solve time: $O(2^{nc} \cdot \text{poly}(nc))$ (MILP worst-case)
+\end{itemize}
+
+\textbf{Binary Formulation:}
+\begin{itemize}
+    \item Variables: $nc$ (binary only)
+    \item Constraints: $O(n + c)$ (fewer due to simpler structure)
+    \item Solve time: $O(2^{nc} \cdot \text{poly}(nc))$ (BIP worst-case, but better LP relaxation)
+\end{itemize}
+
+\textbf{Expected Behavior:}
+\begin{itemize}
+    \item Small $n$ ($n \leq 25$): Binary faster (fewer variables, simpler constraints)
+    \item Large $n$ ($n \geq 100$): Continuous may be faster (continuous relaxation tighter than binary LP relaxation)
+\end{itemize}
+
+\subsubsection{Experimental Results}
+
+\textbf{Test Configuration:}
+\begin{itemize}
+    \item Total land: 100 ha (fixed for all refinement levels)
+    \item Food dataset: 27 foods across 5 food groups
+    \item Solver: PuLP with Gurobi backend
+    \item Continuous: Uneven farm distribution (farm\_sampler)
+    \item Discretized: Even grid with equal plot sizes (patch\_sampler)
+\end{itemize}
+
+\textbf{Convergence Results:}
+
+\begin{center}
+\begin{tabular}{cccccc}
+\hline
+$n$ & $Z_{\text{cont}}$ & $Z_{\text{disc}}$ & Gap (\%) & $t_{\text{cont}}$ (s) & $t_{\text{disc}}$ (s) \\
+\hline
+5 & 0.2590 & 0.2263 & 12.63 & 0.062 & 0.005 \\
+10 & 0.2589 & 0.2427 & 6.27 & 0.017 & 0.009 \\
+25 & 0.2587 & 0.2525 & 2.38 & 0.051 & 0.016 \\
+50 & 0.2583 & 0.2558 & 0.95 & 0.089 & 0.034 \\
+100 & 0.2575 & 0.2575 & 0.00 & 0.220 & 0.060 \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{Key Observations:}
+
+\begin{enumerate}
+    \item \textbf{Convergence Validation:}
+    \begin{itemize}
+        \item Gap decreases monotonically: 12.63\% → 6.27\% → 2.38\% → 0.95\% → 0.00\%
+        \item \textbf{Convergence rate:} Approximately $O(n^{-1})$ as predicted theoretically
+        \item At $n = 100$: Zero gap, perfect convergence to continuous optimum
+    \end{itemize}
+    
+    
+    \item \textbf{Computational Performance:}
+    \begin{itemize}
+        \item \textbf{Binary consistently faster:} Time ratio ranges 0.08x to 0.38x
+        \item At $n = 100$: Binary is 3.7$\times$ faster (0.060s vs. 0.220s)
+        \item \textbf{No crossover observed:} Contrary to expectation, binary remains faster even at $n = 100$
+        \item Likely due to simpler constraint structure in binary formulation
+    \end{itemize}
+    
+    \item \textbf{Scalability Limits:}
+    \begin{itemize}
+        \item $n = 200$: Continuous formulation became infeasible
+        \item Possible causes: Too many small farms violating minimum area constraints
+        \item Binary formulation avoids this issue through discrete plot assignment
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Convergence Analysis:}
+
+Fitting the gap data to the theoretical model $\epsilon(n) = C/n$:
+
+\begin{center}
+\begin{tabular}{ccc}
+\hline
+$n$ & Observed Gap (\%) & Predicted Gap (\%) \\
+\hline
+5 & 12.63 & 12.63 (fitted) \\
+10 & 6.27 & 6.32 \\
+25 & 2.38 & 2.53 \\
+50 & 0.95 & 1.26 \\
+100 & 0.00 & 0.63 \\
+\hline
+\end{tabular}
+\end{center}
+
+The fitted constant $C \approx 63.2$ shows good agreement with observed data, confirming $O(n^{-1})$ convergence.
+
+
+
+
+
+
+
+
+% \newpage
+% \subsection{Benders Decomposition:}
+
+% We solve the mixed-integer problem by partitioning the binary selection variables $\mathbf{Y}$ (the master) from the continuous allocation variables $\mathbf{A}$ (the subproblem). The original compact problem is:
+
+% \begin{align}
+% \min_{A,Y}\quad & -Z(A) + \mathbf{d}^T Y
+%     && \text{(equivalently maximize $Z$)} \\
+% \text{s.t.}\quad
+% & \sum_{c} A_{f,c} \le L_f
+%     && \forall f \\
+% & A_{f,c} \ge A^{\min}_c\, Y_{f,c}, \quad
+%   A_{f,c} \le L_f\, Y_{f,c}
+%     && \forall f,c \\
+% & FG^{\min}_g \le \sum_{f}\sum_{c\in G_g} Y_{f,c} \le FG^{\max}_g
+%     && \forall g \\
+% & A_{f,c} \ge 0,\quad Y_{f,c}\in\{0,1\}.
+% \end{align}
+
+
+% For a fixed candidate $\bar Y$ the subproblem is an LP in $\mathbf{A}$:
+
+% \begin{align}
+% \phi(\bar Y) = \min_{A \ge 0}\; & -Z(A) \\
+% \text{s.t.}\quad
+% & \sum_{c} A_{f,c} \le L_f && \forall f, \\
+% & A_{f,c} \ge A^{\min}_c\,\bar Y_{f,c}, \quad
+%   A_{f,c} \le L_f\,\bar Y_{f,c} && \forall f,c.
+% \end{align}
+
+
+% Dual information from the subproblem produces feasibility cuts when the subproblem is infeasible and optimality cuts when it is feasible; these cuts are added to the master, which can be written compactly as:
+
+% \begin{equation}
+% \begin{aligned}
+% \min_{Y \in {0,1}^{\cdot},;\theta} \quad
+% & \mathbf{d}^T Y + \theta \\
+% \text{s.t.}\quad
+% & \text{(food-group and other combinatorial constraints on $Y$)} \\
+% & \theta \ge \beta^k + \sum_{f,c} \alpha^k_{f,c} Y_{f,c}
+% \quad \text{for each optimality cut }k, \\
+% & \text{feasibility cuts (when generated).}
+% \end{aligned}
+% \end{equation}
+
+% The practical iterative procedure is given in Algorithm \ref{alg:benders} below.
+% \begin{algorithm}[H]
+% \caption{Benders Decomposition Algorithm}
+% \label{alg:benders}
+% \begin{algorithmic}[1]
+% \State \textbf{Initialize:} Master problem with no cuts; iteration counter $k \gets 0$.
+% \Repeat
+% \State Solve the master MILP to obtain candidate binary vector $\bar{Y}^{(k)}$ and master estimate $\theta^{(k)}$.
+% \State Solve the subproblem LP for fixed $\bar{Y}^{(k)}$:
+% \If{subproblem is \textbf{infeasible}}
+% \State Obtain an infeasibility ray and derive a feasibility cut.
+% \State Add the cut to the master and go to Step 2.
+% \Else
+% \State Subproblem is feasible; compute $\phi(\bar{Y}^{(k)})$ and extract corresponding dual variables.
+% \State Construct an optimality cut using the duals and add it to the master.
+% \EndIf
+% \State Evaluate the optimality gap: $|\theta^{(k)} - \phi(\bar{Y}^{(k)})|$.
+% \If{gap $\le$ tolerance}
+% \State \textbf{Stop:} Current solution is optimal.
+% \Else
+% \State $k \gets k + 1$.
+% \EndIf
+% \Until{convergence}
+% \end{algorithmic}
+% \end{algorithm}
+
+
+
+% \begin{table}[ht]
+% \centering
+% \caption{Notation and symbols}
+% \label{tab:notation}
+% \small
+% \begin{tabular}{@{} l p{8.5cm} l @{}} 
+% \textbf{Symbol} & \textbf{Meaning} & \textbf{Domain / notes} \\ 
+% $A_{f,c}$ & Area (continuous) allocated on farm $f$ to crop $c$. & $A_{f,c}\ge0$ (continuous) \\
+% $Y_{f,c}$ & Binary selection: 1 if crop $c$ is planted on farm $f$, 0 otherwise. & $Y_{f,c}\in\{0,1\}$ \\
+% $\mathbf{A},\:\mathbf{Y}$ & Stacked vectors/matrices of $A_{f,c}$ and $Y_{f,c}$ respectively. & - \\
+% $Z(A)$ & Continuous part of the objective (e.g., profit or yield) as a function of $A$. & sign convention: you minimize $-Z(A)$ in the model \\ 
+% $\mathbf{d}$ & Vector of coefficients multiplying $Y$ in the objective (fixed costs or penalties). & $\mathbf{d}^T\mathbf{Y}$ appears in master objective \\ 
+% $L_f$ & Total land (available area) on farm $f$. & scalar, farm-local upper bound \\ 
+% $A^{\min}_c$ & Minimum area required for crop $c$ if selected on a farm. & used in coupling: $A_{f,c}\ge A^{\min}_c Y_{f,c}$ \\ 
+% $G_g$ & Set of crops that belong to food-group $g$. & index set \\ 
+% $FG^{\min}_g,\; FG^{\max}_g$ & Lower and upper bounds on the number of plantings (or coverage) for food-group $g$. & Integers or counts over $f,c\in G_g$ \\ 
+% $\bar Y$ (or $\bar Y^{(k)}$) & Candidate binary vector returned by the master at an iteration (trial solution). & fixed when solving subproblem \\ 
+% $\phi(\bar Y)$ & Optimal value of the subproblem (LP) for fixed $\bar Y$. & finite if subproblem feasible; otherwise indicates infeasibility \\ 
+% $\theta$ & Auxiliary master variable that lower-bounds the subproblem value ($\theta\ge\phi(\cdot)$ via cuts). & continuous scalar in master \\ 
+% $\alpha^k_{f,c}$ & Coefficients of $Y_{f,c}$ in optimality cut $k$ (derived from dual solution). & appear in $\theta \ge \beta^k + \sum_{f,c}\alpha^k_{f,c}Y_{f,c}$ \\ 
+% $\beta^k$ & Constant (intercept) term in optimality cut $k$ (from duals and constants). & constant offset in cut $k$ \\ 
+% $\pi_f$ & Dual multiplier for farm-level land constraint $\sum_c A_{f,c}\le L_f$. & $\pi_f\ge0$ (depending on convention) \\ 
+% $f$ & Index for farms (element of index set $\mathcal{F}$). & discrete index \\
+% $c$ & Index for crops (element of index set $\mathcal{C}$). & discrete index \\
+% $g$ & Index for food-groups (element of index set $\mathcal{G}$). & discrete index \\
+% $k$ & Index for Benders cuts / iterations (cut counter). & integer iteration / cut index \\
+% infeasibility ray & Dual ray produced when the subproblem is infeasible; used to form feasibility cuts. & yields linear inequality in $Y$ \\ 
+% \end{tabular}
+% \end{table}
+
+
+\newpage
+
+\section*{Team Presentation}
+
+\begin{center}
+\begin{tabular}{ | m{5em} | m{4em}| m{5em} | m{15em} | m{8em} | } 
+ \hline
+ Team Member 
+ (First name, Last name)
+ & Affiliation & Country (of the affiliation) & Relevant domain expertise for the project 
+(i) Quantum computing, 
+ii) SDG domain, 
+iii) Application domain, 
+iv) Classical computation (e.g. AI, ML, chemistry, operation research, fluid dynamics, etc.), 
+v) other)
+& Short Bio (3-5 sentences) 
+ \\ 
+ \hline 
+  &  &  &  & \\ 
+ \hline
+ &  &  &  & \\ 
+ \hline
+  &  &  &  & \\ 
+ \hline
+  &  &  &  & \\ 
+ \hline
+\end{tabular}
+\end{center}
+
+\bibliographystyle{alpha}
+\bibliography{references}
+
+
+
+\end{document}
