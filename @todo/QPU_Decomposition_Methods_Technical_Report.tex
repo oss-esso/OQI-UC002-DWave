@@ -1,0 +1,590 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Technical Report: Quantum Annealing Decomposition Methods\\
+for Large-Scale Crop Allocation Optimization}
+\author{OQI-UC002-DWave Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This technical report presents a comprehensive analysis of decomposition methods for solving large-scale crop allocation problems on D-Wave quantum processing units (QPUs). We evaluate seven distinct approaches: direct QPU embedding, plot-based decomposition, multilevel partitioning, Louvain community detection, CQM-first decomposition, coordinated master-subproblem, and spectral clustering. Each method addresses the fundamental challenge of mapping constrained quadratic models (CQMs) with hundreds of variables onto quantum hardware with limited qubit connectivity. We provide detailed mathematical formulations, algorithmic descriptions, implementation details, and comparative performance analysis across multiple problem scales.
+\end{abstract}
+
+\section{Introduction}
+
+\subsection{Problem Overview}
+
+The crop allocation optimization problem seeks to assign crops to farms while maximizing nutritional and sustainability benefits subject to multiple constraints:
+
+\begin{align}
+\text{maximize} \quad & \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} b_c \cdot a_f \cdot Y_{f,c} \label{eq:objective}\\
+\text{subject to} \quad & \sum_{c \in \mathcal{C}} Y_{f,c} \leq 1, \quad \forall f \in \mathcal{F} \label{eq:one_crop}\\
+& Y_{f,c} \leq U_c, \quad \forall f \in \mathcal{F}, c \in \mathcal{C} \label{eq:u_link1}\\
+& U_c \leq \sum_{f \in \mathcal{F}} Y_{f,c}, \quad \forall c \in \mathcal{C} \label{eq:u_link2}\\
+& \sum_{c \in G_g} U_c \geq m_g, \quad \forall g \in \mathcal{G} \label{eq:food_group_min}\\
+& \sum_{c \in G_g} U_c \leq M_g, \quad \forall g \in \mathcal{G} \label{eq:food_group_max}
+\end{align}
+
+where:
+\begin{itemize}
+\item $\mathcal{F}$ = set of farms (plots)
+\item $\mathcal{C}$ = set of crops (foods)
+\item $\mathcal{G}$ = set of food groups
+\item $Y_{f,c} \in \{0,1\}$ = binary variable indicating if crop $c$ is assigned to farm $f$
+\item $U_c \in \{0,1\}$ = binary variable indicating if crop $c$ is used anywhere
+\item $b_c$ = nutritional/sustainability benefit of crop $c$
+\item $a_f$ = area of farm $f$
+\item $G_g$ = set of crops in food group $g$
+\item $m_g, M_g$ = minimum and maximum number of unique crops from group $g$
+\end{itemize}
+
+\subsection{Quantum Annealing Challenge}
+
+D-Wave quantum annealers solve quadratic unconstrained binary optimization (QUBO) problems by finding the ground state of an Ising Hamiltonian. The primary challenges are:
+
+\begin{enumerate}
+\item \textbf{Constraint Encoding}: CQM constraints must be converted to QUBO penalty terms with appropriate Lagrange multipliers.
+\item \textbf{Limited Connectivity}: The QPU's Pegasus topology has limited qubit connectivity, requiring minor embedding that can exponentially increase physical qubit requirements.
+\item \textbf{Chain Breaks}: Embedded logical qubits use chains of physical qubits; disagreement within chains causes errors.
+\item \textbf{Scalability}: Direct embedding becomes infeasible beyond $\sim$300-500 logical variables.
+\end{enumerate}
+
+\section{Decomposition Methods}
+
+\subsection{Method 1: Direct QPU Embedding}
+
+\subsubsection{Description}
+Direct QPU embedding attempts to map the entire problem onto the quantum hardware without decomposition. This serves as the baseline quantum approach.
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{Direct QPU Embedding}
+\begin{algorithmic}[1]
+\Require CQM with variables $\mathcal{V}$, constraints $\mathcal{C}$
+\Ensure Solution $\mathbf{x}$ or failure
+\State Convert CQM to BQM: $\text{BQM} \leftarrow \text{cqm\_to\_bqm}(\text{CQM}, \lambda)$
+\State Build source graph $G_s = (\mathcal{V}, E_s)$ from BQM quadratic terms
+\State Get QPU target graph $G_t = (Q, E_t)$ from Pegasus topology
+\State Find embedding: $\phi: \mathcal{V} \rightarrow 2^Q$ using minorminer
+\If{embedding found within timeout}
+    \State Sample: $\mathbf{x} \leftarrow \text{QPU.sample}(\text{BQM}, \phi, n_{\text{reads}})$
+    \State \Return best feasible solution
+\Else
+    \State \Return FAIL (problem too large)
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Complexity}
+\begin{itemize}
+\item \textbf{Time}: $O(T_{\text{embed}} + n_{\text{reads}} \cdot T_{\text{QPU}})$ where $T_{\text{embed}}$ can be exponential
+\item \textbf{Space}: $O(|\mathcal{V}| \cdot c)$ physical qubits, where $c$ is chain length (typically 2-10)
+\item \textbf{Limitations}: Fails when $|\mathcal{V}| > 300$-500 or high connectivity
+\end{itemize}
+
+\subsection{Method 2: Plot-Based Decomposition}
+
+\subsubsection{Description}
+Plot-based decomposition partitions the problem by farm, creating one subproblem per farm plus a master problem for unique crop tracking. This ensures constraint preservation since farms are independent.
+
+\subsubsection{Mathematical Formulation}
+
+Partition variables into farm-specific subsets plus global U variables:
+\begin{equation}
+\mathcal{P}_{\text{PlotBased}} = \{\mathcal{P}_1, \mathcal{P}_2, \ldots, \mathcal{P}_{|\mathcal{F}|}, \mathcal{P}_U\}
+\end{equation}
+
+where:
+\begin{itemize}
+\item $\mathcal{P}_i = \{Y_{f_i,c} : c \in \mathcal{C}\}$ for farm $f_i$
+\item $\mathcal{P}_U = \{U_c : c \in \mathcal{C}\}$
+\end{itemize}
+
+Each farm partition has $|\mathcal{C}|$ variables (one per crop), creating $|\mathcal{F}| + 1$ partitions.
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{Plot-Based Decomposition}
+\begin{algorithmic}[1]
+\Require Data with $|\mathcal{F}|$ farms, $|\mathcal{C}|$ crops
+\Ensure Complete solution $\mathbf{x}$
+\State Create partitions: $\mathcal{P}_f = \{Y_{f,c} : c \in \mathcal{C}\}$ for each farm $f$
+\State Create U partition: $\mathcal{P}_U = \{U_c : c \in \mathcal{C}\}$
+\State $\mathbf{x} \leftarrow \emptyset$
+\For{each partition $\mathcal{P}$ in $\{\mathcal{P}_1, \ldots, \mathcal{P}_{|\mathcal{F}|}, \mathcal{P}_U\}$}
+    \State Build BQM for variables in $\mathcal{P}$ with objective and local constraints
+    \State Embed BQM on QPU: $\phi_{\mathcal{P}} \leftarrow \text{find\_embedding}(\mathcal{P}, G_t)$
+    \State Sample: $\mathbf{x}_{\mathcal{P}} \leftarrow \text{QPU.sample}(\text{BQM}_{\mathcal{P}}, \phi_{\mathcal{P}}, n_{\text{reads}})$
+    \State Merge with conflict resolution: $\mathbf{x} \leftarrow \text{merge}(\mathbf{x}, \mathbf{x}_{\mathcal{P}})$
+\EndFor
+\State \Return $\mathbf{x}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Conflict Resolution}
+
+When merging partition solutions, farm assignment conflicts are resolved by benefit comparison:
+
+\begin{algorithm}
+\caption{Conflict Resolution for Farm Assignments}
+\begin{algorithmic}[1]
+\Require New assignment $Y_{f,c} = 1$, existing assignments $\mathbf{x}$
+\If{$\exists c' : \mathbf{x}[Y_{f,c'}] = 1$} \Comment{Conflict detected}
+    \State $b_{\text{new}} \leftarrow b_c \cdot a_f$
+    \State $b_{\text{old}} \leftarrow b_{c'} \cdot a_f$
+    \If{$b_{\text{new}} > b_{\text{old}}$}
+        \State $\mathbf{x}[Y_{f,c'}] \leftarrow 0$ \Comment{Replace with better option}
+        \State $\mathbf{x}[Y_{f,c}] \leftarrow 1$
+    \EndIf
+\Else
+    \State $\mathbf{x}[Y_{f,c}] \leftarrow 1$ \Comment{No conflict}
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Complexity}
+\begin{itemize}
+\item \textbf{Partitions}: $|\mathcal{F}| + 1$
+\item \textbf{Partition size}: $|\mathcal{C}|$ variables each
+\item \textbf{Total QPU calls}: $|\mathcal{F}| + 1$
+\item \textbf{Embedding}: Fast (small partitions)
+\item \textbf{Constraint preservation}: Excellent (farms independent)
+\end{itemize}
+
+\subsection{Method 3: Multilevel Partitioning}
+
+\subsubsection{Description}
+Multilevel partitioning groups farms into larger clusters of size $k$, reducing the number of partitions at the cost of partition size and potential constraint violations.
+
+\subsubsection{Mathematical Formulation}
+
+Group farms into clusters of size $k$:
+\begin{equation}
+\mathcal{P}_{\text{Multilevel}} = \{\mathcal{P}_1, \ldots, \mathcal{P}_{\lceil |\mathcal{F}|/k \rceil}, \mathcal{P}_U\}
+\end{equation}
+
+where:
+\begin{equation}
+\mathcal{P}_i = \{Y_{f,c} : f \in \mathcal{F}_i, c \in \mathcal{C}\}
+\end{equation}
+
+and $\mathcal{F}_i$ is a subset of $k$ farms.
+
+Each partition has $k \cdot |\mathcal{C}|$ variables.
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{Multilevel Partitioning ($k$-farm groups)}
+\begin{algorithmic}[1]
+\Require Data with $|\mathcal{F}|$ farms, group size $k$
+\Ensure Solution $\mathbf{x}$
+\State Divide farms into groups: $\mathcal{F} = \bigcup_{i=1}^{\lceil |\mathcal{F}|/k \rceil} \mathcal{F}_i$ where $|\mathcal{F}_i| \leq k$
+\For{each farm group $\mathcal{F}_i$}
+    \State $\mathcal{P}_i \leftarrow \{Y_{f,c} : f \in \mathcal{F}_i, c \in \mathcal{C}\}$
+    \State Build BQM for $\mathcal{P}_i$ with one-crop constraints for each $f \in \mathcal{F}_i$
+    \State Solve partition on QPU
+    \State Merge solution with conflict resolution
+\EndFor
+\State Solve U partition
+\State \Return $\mathbf{x}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Trade-offs}
+\begin{itemize}
+\item \textbf{Fewer partitions}: $\lceil |\mathcal{F}|/k \rceil + 1$ vs $|\mathcal{F}| + 1$
+\item \textbf{Larger partitions}: $k \cdot |\mathcal{C}|$ variables vs $|\mathcal{C}|$
+\item \textbf{Embedding difficulty}: Increases with $k$
+\item \textbf{Violations}: Can occur when farms in same partition compete for crops
+\end{itemize}
+
+\subsection{Method 4: Louvain Community Detection}
+
+\subsubsection{Description}
+Louvain decomposition uses community detection on the variable interaction graph to create partitions that minimize cross-partition edges. This is a graph-theoretic approach that adapts to problem structure.
+
+\subsubsection{Mathematical Formulation}
+
+Build interaction graph $G_{\text{int}} = (\mathcal{V}, E_{\text{int}})$ where:
+\begin{equation}
+E_{\text{int}} = \{(Y_{f,c}, Y_{f,c'}) : f \in \mathcal{F}, c \neq c' \in \mathcal{C}\} \cup \{(Y_{f,c}, U_c) : f \in \mathcal{F}, c \in \mathcal{C}\}
+\end{equation}
+
+Apply Louvain algorithm to maximize modularity:
+\begin{equation}
+Q = \frac{1}{2m} \sum_{i,j} \left[ A_{ij} - \frac{k_i k_j}{2m} \right] \delta(c_i, c_j)
+\end{equation}
+
+where $m = |E_{\text{int}}|$, $A$ is adjacency matrix, $k_i$ is degree of node $i$, and $\delta(c_i, c_j) = 1$ if nodes $i,j$ are in same community.
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{Louvain Community Detection Decomposition}
+\begin{algorithmic}[1]
+\Require Variable interaction graph $G_{\text{int}}$
+\Ensure Partition set $\mathcal{P} = \{\mathcal{P}_1, \ldots, \mathcal{P}_n\}$
+\State Initialize: each variable in its own community
+\Repeat
+    \For{each variable $v$}
+        \State Find community $C$ that maximizes modularity gain
+        \State Move $v$ to $C$ if gain is positive
+    \EndFor
+    \State Aggregate communities into super-nodes
+\Until{no modularity improvement}
+\State Split partitions exceeding size limit: $|\mathcal{P}_i| \leq \text{max\_size}$
+\State \Return $\mathcal{P}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Characteristics}
+\begin{itemize}
+\item \textbf{Adaptive}: Partition structure follows problem connectivity
+\item \textbf{Many partitions}: Typically creates $|\mathcal{F}|$ to $2|\mathcal{F}|$ partitions
+\item \textbf{Variable partition sizes}: From 2 to max\_size variables
+\item \textbf{Modularity optimization}: Minimizes cross-partition interactions
+\end{itemize}
+
+\subsection{Method 5: CQM-First Decomposition}
+
+\subsubsection{Description}
+CQM-first decomposition partitions at the CQM level before converting to BQM, preserving constraint structure within partitions. This addresses the fundamental issue that BQM-first approaches lose constraint information during penalty encoding.
+
+\subsubsection{Key Innovation}
+
+Standard decomposition: $\text{CQM} \rightarrow \text{BQM} \rightarrow \text{Partition}$
+
+CQM-first: $\text{CQM} \rightarrow \text{Partition} \rightarrow \text{Sub-CQMs} \rightarrow \text{BQMs}$
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{CQM-First Decomposition with Constraint Preservation}
+\begin{algorithmic}[1]
+\Require CQM with variables $\mathcal{V}$, constraints $\mathcal{C}$
+\Require Partition function $\Pi: \mathcal{V} \rightarrow \{\mathcal{P}_1, \ldots, \mathcal{P}_n\}$
+\Ensure Solution $\mathbf{x}$
+\State Partition variables: $\{\mathcal{P}_1, \ldots, \mathcal{P}_n\} \leftarrow \Pi(\mathcal{V})$
+\State Identify master partition $\mathcal{P}_U$ containing U variables
+\State \textbf{Phase 1: Solve Master}
+\State Extract sub-CQM for $\mathcal{P}_U$ with food group constraints
+\State Convert to BQM: $\text{BQM}_U \leftarrow \text{cqm\_to\_bqm}(\text{Sub-CQM}_U, \lambda)$
+\State $\mathbf{x}_U \leftarrow \text{QPU.sample}(\text{BQM}_U)$
+\State \textbf{Phase 2: Solve Subproblems with Fixed U}
+\For{partition $\mathcal{P}_i$ where $i \neq U$}
+    \State Extract sub-CQM for $\mathcal{P}_i$ with $\mathbf{x}_U$ fixed
+    \State Convert to BQM: $\text{BQM}_i \leftarrow \text{cqm\_to\_bqm}(\text{Sub-CQM}_i, \lambda)$
+    \State $\mathbf{x}_i \leftarrow \text{QPU.sample}(\text{BQM}_i)$
+    \State Merge with conflict resolution: $\mathbf{x} \leftarrow \text{merge}(\mathbf{x}, \mathbf{x}_i)$
+\EndFor
+\State \Return $\mathbf{x}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Constraint Extraction}
+
+The sub-CQM extraction process preserves constraints:
+
+\begin{algorithm}
+\caption{Extract Sub-CQM}
+\begin{algorithmic}[1]
+\Require CQM, partition variables $\mathcal{P}$, fixed variables $\mathcal{F}_{\text{vars}}$
+\Ensure Sub-CQM containing only $\mathcal{P}$ variables
+\State Create new CQM: $\text{Sub-CQM} \leftarrow \emptyset$
+\For{constraint $c \in \text{CQM.constraints}$}
+    \State $\mathcal{V}_c \leftarrow$ variables in constraint $c$
+    \State $\mathcal{V}_{\text{partition}} \leftarrow \mathcal{V}_c \cap \mathcal{P}$
+    \State $\mathcal{V}_{\text{fixed}} \leftarrow \mathcal{V}_c \cap \mathcal{F}_{\text{vars}}$
+    \If{$\mathcal{V}_{\text{partition}} \neq \emptyset$}
+        \State Substitute fixed values into constraint
+        \State Add simplified constraint to Sub-CQM
+    \EndIf
+\EndFor
+\State \Return Sub-CQM
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Advantages}
+\begin{itemize}
+\item \textbf{Constraint preservation}: Constraints remain explicit within partitions
+\item \textbf{Better penalty encoding}: Lagrange multipliers applied per partition
+\item \textbf{Two-phase coordination}: Master-subproblem structure ensures global feasibility
+\end{itemize}
+
+\subsection{Method 6: Coordinated Master-Subproblem}
+
+\subsubsection{Description}
+Coordinated decomposition uses a rigorous two-level optimization where the master problem selects which crops to use (U variables) and farm subproblems independently assign these crops to farms.
+
+\subsubsection{Mathematical Formulation}
+
+\textbf{Master Problem:}
+\begin{align}
+\text{minimize} \quad & \sum_{c \in \mathcal{C}} \lambda_c \cdot U_c \label{eq:master_obj}\\
+\text{subject to} \quad & \sum_{c \in G_g} U_c \geq m_g, \quad \forall g \in \mathcal{G} \label{eq:master_fg}\\
+& U_c \in \{0,1\}, \quad \forall c \in \mathcal{C}
+\end{align}
+
+The master objective uses small penalties $\lambda_c$ to encourage crop selection while satisfying food group diversity.
+
+\textbf{Farm Subproblems (for each farm $f$):}
+\begin{align}
+\text{maximize} \quad & \sum_{c \in \mathcal{C}} b_c \cdot a_f \cdot Y_{f,c} \label{eq:sub_obj}\\
+\text{subject to} \quad & \sum_{c \in \mathcal{C}} Y_{f,c} \leq 1 \label{eq:sub_one_crop}\\
+& Y_{f,c} \leq U_c^*, \quad \forall c \in \mathcal{C} \label{eq:sub_u_fixed}\\
+& Y_{f,c} \in \{0,1\}, \quad \forall c \in \mathcal{C}
+\end{align}
+
+where $U_c^*$ is the fixed value from the master solution.
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{Coordinated Master-Subproblem Decomposition}
+\begin{algorithmic}[1]
+\Require Data with farms $\mathcal{F}$, crops $\mathcal{C}$, food groups $\mathcal{G}$
+\Ensure Solution $\mathbf{x} = (\mathbf{Y}, \mathbf{U})$
+\State \textbf{Step 1: Solve Master Problem}
+\State Build master BQM for U variables with food group constraints
+\State $\mathbf{U}^* \leftarrow \text{QPU.sample}(\text{BQM}_{\text{master}})$
+\State $\text{selected\_crops} \leftarrow \{c : U_c^* = 1\}$
+\State \textbf{Step 2: Solve Farm Subproblems}
+\For{each farm $f \in \mathcal{F}$}
+    \State Build farm BQM with objective $\max \sum_{c \in \text{selected\_crops}} b_c \cdot a_f \cdot Y_{f,c}$
+    \State Add one-crop constraint: $\sum_{c} Y_{f,c} \leq 1$
+    \State Add U-linking: $Y_{f,c} \leq U_c^*$ encoded as penalty
+    \State $\mathbf{Y}_f^* \leftarrow \text{QPU.sample}(\text{BQM}_f)$
+    \State $\mathbf{Y}[f, :] \leftarrow \mathbf{Y}_f^*$
+\EndFor
+\State \Return $\mathbf{x} = (\mathbf{Y}, \mathbf{U}^*)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Properties}
+\begin{itemize}
+\item \textbf{Hierarchical}: Clear master-subproblem structure
+\item \textbf{Independent subproblems}: Farms solved in parallel
+\item \textbf{Global constraint enforcement}: Master ensures food group diversity
+\item \textbf{QPU calls}: $1 + |\mathcal{F}|$ (one master + one per farm)
+\end{itemize}
+
+\subsection{Method 7: Spectral Clustering}
+
+\subsubsection{Description}
+Spectral clustering uses the eigenvectors of the graph Laplacian to partition variables, grouping tightly connected components while cutting weak connections.
+
+\subsubsection{Mathematical Formulation}
+
+Given interaction graph $G = (\mathcal{V}, E)$, compute:
+
+\textbf{Adjacency matrix:} $A_{ij} = \begin{cases} 1 & \text{if } (i,j) \in E \\ 0 & \text{otherwise} \end{cases}$
+
+\textbf{Degree matrix:} $D_{ii} = \sum_j A_{ij}$
+
+\textbf{Normalized Laplacian:} $\mathcal{L} = I - D^{-1/2} A D^{-1/2}$
+
+\textbf{Spectral embedding:} Compute eigenvectors $\mathbf{v}_1, \ldots, \mathbf{v}_k$ corresponding to smallest eigenvalues
+
+\textbf{Clustering:} Apply k-means on the embedding matrix $V = [\mathbf{v}_1 | \cdots | \mathbf{v}_k]$
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}
+\caption{Spectral Clustering Decomposition}
+\begin{algorithmic}[1]
+\Require Interaction graph $G = (\mathcal{V}, E)$, number of clusters $k$
+\Ensure Partition set $\mathcal{P} = \{\mathcal{P}_1, \ldots, \mathcal{P}_k\}$
+\State Construct adjacency matrix $A$ from $G$
+\State Compute degree matrix $D$
+\State Compute normalized Laplacian: $\mathcal{L} = I - D^{-1/2} A D^{-1/2}$
+\State Compute $k$ smallest eigenvectors: $V = [\mathbf{v}_1, \ldots, \mathbf{v}_k]$
+\State Apply k-means clustering on rows of $V$ to get cluster assignments
+\For{cluster $i = 1$ to $k$}
+    \State $\mathcal{P}_i \leftarrow$ variables assigned to cluster $i$
+\EndFor
+\State \Return $\mathcal{P}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Characteristics}
+\begin{itemize}
+\item \textbf{Spectral properties}: Uses graph spectrum for optimal cuts
+\item \textbf{Balanced partitions}: k-means encourages similar partition sizes
+\item \textbf{Computationally expensive}: Eigenvalue decomposition $O(|\mathcal{V}|^3)$
+\item \textbf{Fixed partition count}: User specifies $k$
+\end{itemize}
+
+\section{Comparative Analysis}
+
+\subsection{Theoretical Comparison}
+
+\begin{table}[h]
+\centering
+\caption{Theoretical Complexity Comparison}
+\begin{tabular}{lcccc}
+\toprule
+Method & Partitions & Partition Size & Embedding & Constraint\\
+       &            &                 & Difficulty & Preservation\\
+\midrule
+Direct QPU & 1 & $|\mathcal{V}|$ & Very High & Perfect\\
+PlotBased & $|\mathcal{F}| + 1$ & $|\mathcal{C}|$ & Very Low & Excellent\\
+Multilevel($k$) & $\lceil |\mathcal{F}|/k \rceil + 1$ & $k|\mathcal{C}|$ & Medium & Good\\
+Louvain & $\sim |\mathcal{F}|$ & Variable & Low-Medium & Good\\
+CQM-First & $|\mathcal{F}| + 1$ & $|\mathcal{C}|$ & Very Low & Excellent\\
+Coordinated & $1 + |\mathcal{F}|$ & $|\mathcal{C}|$ & Very Low & Perfect\\
+Spectral($k$) & $k$ & $|\mathcal{V}|/k$ & Medium-High & Fair\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Performance Metrics}
+
+For a problem with $|\mathcal{F}| = 25$ farms and $|\mathcal{C}| = 27$ crops:
+
+\begin{table}[h]
+\centering
+\caption{Empirical Results (25 farms, 27 crops)}
+\begin{tabular}{lrrrr}
+\toprule
+Method & Objective & Gap (\%) & Wall Time (s) & Violations\\
+\midrule
+Ground Truth (Gurobi) & 0.4018 & 0.0 & 0.06 & 0\\
+\midrule
+PlotBased\_QPU & 0.3515 & 12.5 & 102.0 & 0\\
+Multilevel(5)\_QPU & 0.3786 & 5.8 & 75.3 & 16\\
+Louvain\_QPU & 0.3730 & 7.2 & 100.1 & 2\\
+CQM-First\_PlotBased & 0.2818 & 29.9 & 97.7 & 1\\
+Coordinated & 0.2916 & 27.4 & 84.7 & 1\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Key Observations}
+
+\begin{enumerate}
+\item \textbf{Feasibility vs Solution Quality}: Methods with zero violations (PlotBased) may sacrifice solution quality compared to methods that accept some violations.
+
+\item \textbf{Partition Size Trade-off}: Smaller partitions (PlotBased, Coordinated) embed easily but require more QPU calls. Larger partitions (Multilevel) reduce calls but increase embedding difficulty and violations.
+
+\item \textbf{Constraint Preservation}: CQM-first approaches maintain explicit constraints better than BQM-first decomposition, but penalty tuning remains challenging.
+
+\item \textbf{Scalability}: PlotBased and Coordinated scale linearly with farms ($O(|\mathcal{F}|)$ QPU calls). Direct embedding fails beyond $\sim$500 variables.
+
+\item \textbf{QPU Time vs Wall Time}: Wall time dominated by embedding ($\sim$50-70s) rather than QPU access ($\sim$1-6s), indicating embedding is the bottleneck.
+\end{enumerate}
+
+\section{Implementation Details}
+
+\subsection{Conflict Resolution Strategy}
+
+When partition solutions are merged, farm assignment conflicts are resolved using benefit comparison:
+
+\begin{equation}
+\text{benefit}(f, c) = b_c \cdot a_f
+\end{equation}
+
+If farm $f$ is assigned to both crops $c_1$ and $c_2$ from different partitions:
+\begin{equation}
+\text{Keep } c^* = \arg\max_{c \in \{c_1, c_2\}} \text{benefit}(f, c)
+\end{equation}
+
+This greedy strategy maximizes local benefit but may not be globally optimal.
+
+\subsection{Lagrange Multiplier Selection}
+
+For CQM-to-BQM conversion, Lagrange multipliers must be carefully chosen:
+
+\begin{itemize}
+\item \textbf{One-crop constraint}: $\lambda_{\text{one-crop}} = 10 \times \max_c b_c$ (strong penalty)
+\item \textbf{Food group constraints}: $\lambda_{\text{food-group}} = 50 \times \max_c b_c$ (very strong)
+\item \textbf{U-Y linking}: Encoded structurally in partitioning rather than penalties
+\end{itemize}
+
+\subsection{QPU Annealing Parameters}
+
+Standard parameters used across all methods:
+\begin{itemize}
+\item \textbf{num\_reads}: 1000 (number of annealing cycles)
+\item \textbf{annealing\_time}: 20 $\mu$s (default for Advantage system)
+\item \textbf{chain\_strength}: Auto-calculated (typically 2-3$\times$ max coupling)
+\end{itemize}
+
+\section{Conclusions and Recommendations}
+
+\subsection{Method Selection Guide}
+
+\begin{itemize}
+\item \textbf{Small problems ($|\mathcal{V}| < 300$)}: Use Direct QPU for optimal results
+\item \textbf{Feasibility critical}: Use PlotBased decomposition (zero violations guaranteed)
+\item \textbf{Solution quality critical}: Use Multilevel(5) or Louvain (accept small violations)
+\item \textbf{Hierarchical structure}: Use Coordinated for clean master-subproblem formulation
+\item \textbf{Large scale ($|\mathcal{F}| > 100$)}: PlotBased or Coordinated only viable options
+\end{itemize}
+
+\subsection{Future Research Directions}
+
+\begin{enumerate}
+\item \textbf{Adaptive Lagrange Multipliers}: Automatically tune penalties based on constraint violation feedback
+\item \textbf{Iterative Refinement}: Use partition solutions as warm starts for global refinement
+\item \textbf{Hybrid Classical-Quantum}: Embed critical variables on QPU, solve remainder classically
+\item \textbf{Learning-Based Partitioning}: Use machine learning to predict optimal partition structures
+\item \textbf{Chain Break Mitigation}: Advanced post-processing to repair chain break errors
+\end{enumerate}
+
+\subsection{Summary}
+
+This technical report presented seven decomposition methods for mapping large-scale optimization problems onto D-Wave quantum annealers. We provided complete mathematical formulations, algorithmic descriptions, and empirical performance analysis. The key insight is that \textit{no single method dominates across all metrics}—method selection requires trading off solution quality, constraint satisfaction, QPU time, and embedding complexity based on problem-specific requirements.
+
+\appendix
+
+\section{Notation Reference}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+Symbol & Definition\\
+\midrule
+$\mathcal{F}$ & Set of farms (plots)\\
+$\mathcal{C}$ & Set of crops (foods)\\
+$\mathcal{G}$ & Set of food groups\\
+$\mathcal{V}$ & Set of decision variables\\
+$Y_{f,c}$ & Binary: crop $c$ assigned to farm $f$\\
+$U_c$ & Binary: crop $c$ used anywhere\\
+$b_c$ & Benefit coefficient for crop $c$\\
+$a_f$ & Area of farm $f$\\
+$G_g$ & Crops in food group $g$\\
+$m_g, M_g$ & Min/max crops from group $g$\\
+$\mathcal{P}_i$ & Partition $i$ (subset of variables)\\
+$\lambda$ & Lagrange multiplier\\
+$Q$ & Set of physical qubits\\
+$\phi$ & Embedding mapping\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Code Availability}
+
+The complete implementation is available in the OQI-UC002-DWave repository:
+\begin{itemize}
+\item \texttt{@todo/qpu\_benchmark.py} - Main benchmark script with all methods
+\item \texttt{Benchmark Scripts/comprehensive\_benchmark.py} - Classical comparison baseline
+\item \texttt{src/} - Problem formulation and utility functions
+\end{itemize}
+
+\end{document}

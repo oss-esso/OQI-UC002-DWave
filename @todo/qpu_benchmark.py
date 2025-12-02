@@ -274,24 +274,16 @@ def load_problem_data(n_farms: int) -> Dict:
         )
         food_benefits[food] = benefit
     
-    group_name_mapping = {
-        'Animal-source foods': 'Proteins',
-        'Pulses, nuts, and seeds': 'Legumes',
-        'Starchy staples': 'Staples',
-        'Fruits': 'Fruits',
-        'Vegetables': 'Vegetables'
-    }
-    reverse_mapping = {v: k for k, v in group_name_mapping.items()}
-    
+    # Food group constraints: match comprehensive_benchmark.py formulation
+    # Use min_foods: 1 (at least 1 food from each group) - same as comprehensive_benchmark
     food_group_constraints = {
-        'Proteins': {'min': 2, 'max': 5},
-        'Fruits': {'min': 2, 'max': 5},
-        'Legumes': {'min': 2, 'max': 5},
-        'Staples': {'min': 2, 'max': 5},
-        'Vegetables': {'min': 2, 'max': 5}
+        group: {'min_foods': 1, 'max_foods': len(foods_in_group)}
+        for group, foods_in_group in food_groups.items()
     }
     
-    max_plots_per_crop = max(5, n_farms // 5)
+    # No max_plots_per_crop constraint by default (matching comprehensive_benchmark)
+    # This can be enabled via max_planting_area in config if needed
+    max_plots_per_crop = None  # Disabled to match comprehensive_benchmark
     
     return {
         'foods': foods,
@@ -304,8 +296,6 @@ def load_problem_data(n_farms: int) -> Dict:
         'total_area': total_area,
         'food_group_constraints': food_group_constraints,
         'max_plots_per_crop': max_plots_per_crop,
-        'group_name_mapping': group_name_mapping,
-        'reverse_mapping': reverse_mapping,
         'n_farms': n_farms,
         'n_foods': len(food_names)
     }
@@ -316,64 +306,80 @@ def load_problem_data(n_farms: int) -> Dict:
 # ============================================================================
 
 def build_binary_cqm(data: Dict) -> Tuple[ConstrainedQuadraticModel, Dict]:
-    """Build binary CQM for plot assignment."""
+    """Build binary CQM for plot assignment.
+    
+    Aligned with comprehensive_benchmark.py / solver_runner_BINARY.py formulation:
+    - At most one crop per farm (allows idle plots)
+    - Food group constraints use min_foods/max_foods keys
+    - U-Y linking for unique food tracking
+    """
     food_names = data['food_names']
     food_groups = data['food_groups']
     food_benefits = data['food_benefits']
     farm_names = data['farm_names']
     land_availability = data['land_availability']
     food_group_constraints = data['food_group_constraints']
-    max_plots_per_crop = data['max_plots_per_crop']
-    reverse_mapping = data['reverse_mapping']
+    max_plots_per_crop = data.get('max_plots_per_crop')  # May be None
     total_area = data['total_area']
     
     cqm = ConstrainedQuadraticModel()
     
-    # Variables
+    # Variables: Y[farm, food] = 1 if food is planted on farm
     Y = {}
     for farm in farm_names:
         for food in food_names:
             Y[(farm, food)] = Binary(f"Y_{farm}_{food}")
     
+    # U[food] = 1 if food is planted on ANY farm (for unique food tracking)
     U = {}
     for food in food_names:
         U[food] = Binary(f"U_{food}")
     
-    # Objective: maximize benefit
+    # Objective: maximize area-weighted benefit (normalized by total area)
     objective = sum(
         food_benefits[food] * land_availability[farm] * Y[(farm, food)]
         for farm in farm_names for food in food_names
     ) / total_area
     cqm.set_objective(-objective)
     
-    # Constraint: one crop per farm
+    # Constraint 1: At most one crop per farm (matching comprehensive_benchmark <= 1)
+    # This allows farms to be idle (no crop assigned)
     for farm in farm_names:
-        cqm.add_constraint(sum(Y[(farm, food)] for food in food_names) == 1, 
-                          label=f"OneCrop_{farm}")
+        cqm.add_constraint(sum(Y[(farm, food)] for food in food_names) <= 1, 
+                          label=f"Max_Assignment_{farm}")
     
-    # Constraint: U[f] >= Y[p,f]  -->  U[f] - Y[p,f] >= 0
+    # Constraint 2: U-Y linking for unique food tracking
+    # Y[f,c] <= U[c]: if crop is planted anywhere, U must be 1
+    # U[c] <= sum(Y[f,c]): U can only be 1 if crop is planted somewhere
     for food in food_names:
         for farm in farm_names:
-            cqm.add_constraint(U[food] - Y[(farm, food)] >= 0, 
-                              label=f"Link_{farm}_{food}")
+            cqm.add_constraint(Y[(farm, food)] - U[food] <= 0, 
+                              label=f"U_Link_{farm}_{food}")
+        cqm.add_constraint(U[food] - sum(Y[(farm, food)] for farm in farm_names) <= 0,
+                          label=f"U_Bound_{food}")
     
-    # Constraint: food group diversity
-    for constraint_group, limits in food_group_constraints.items():
-        data_group = reverse_mapping.get(constraint_group, constraint_group)
-        foods_in_group = food_groups.get(data_group, [])
+    # Constraint 3: Food group diversity (using min_foods/max_foods keys)
+    for group_name, limits in food_group_constraints.items():
+        foods_in_group = food_groups.get(group_name, [])
         if foods_in_group:
             group_sum = sum(U[f] for f in foods_in_group if f in U)
-            if limits.get('min', 0) > 0:
-                cqm.add_constraint(group_sum >= limits['min'], 
-                                  label=f"FG_Min_{constraint_group}")
-            if 'max' in limits:
-                cqm.add_constraint(group_sum <= limits['max'], 
-                                  label=f"FG_Max_{constraint_group}")
+            group_label = group_name.replace(' ', '_').replace(',', '').replace('-', '_')
+            
+            min_foods = limits.get('min_foods', limits.get('min', 0))
+            max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+            
+            if min_foods > 0:
+                cqm.add_constraint(group_sum >= min_foods, 
+                                  label=f"MinFoodGroup_Unique_{group_label}")
+            if max_foods < len(foods_in_group):
+                cqm.add_constraint(group_sum <= max_foods, 
+                                  label=f"MaxFoodGroup_Unique_{group_label}")
     
-    # Constraint: max plots per crop
-    for food in food_names:
-        cqm.add_constraint(sum(Y[(farm, food)] for farm in farm_names) <= max_plots_per_crop,
-                          label=f"MaxPlots_{food}")
+    # Constraint 4: Max plots per crop (only if specified)
+    if max_plots_per_crop is not None:
+        for food in food_names:
+            cqm.add_constraint(sum(Y[(farm, food)] for farm in farm_names) <= max_plots_per_crop,
+                              label=f"MaxPlots_{food}")
     
     metadata = {
         'n_farms': len(farm_names),
@@ -433,7 +439,13 @@ def build_bqm_for_partition(partition_vars: set, data: Dict, lagrange: float = 1
 # ============================================================================
 
 def solve_ground_truth(data: Dict, timeout: int = 120) -> Dict:
-    """Solve with Gurobi to get ground truth."""
+    """Solve with Gurobi to get ground truth.
+    
+    Aligned with comprehensive_benchmark.py / solver_runner_BINARY.py formulation:
+    - At most one crop per farm (allows idle plots)
+    - Food group constraints use min_foods/max_foods keys
+    - U-Y linking for unique food tracking
+    """
     if not HAS_GUROBI:
         return {'success': False, 'error': 'Gurobi not available'}
     
@@ -445,8 +457,7 @@ def solve_ground_truth(data: Dict, timeout: int = 120) -> Dict:
     farm_names = data['farm_names']
     land_availability = data['land_availability']
     food_group_constraints = data['food_group_constraints']
-    max_plots_per_crop = data['max_plots_per_crop']
-    reverse_mapping = data['reverse_mapping']
+    max_plots_per_crop = data.get('max_plots_per_crop')  # May be None
     total_area = data['total_area']
     
     # Model build time
@@ -458,29 +469,38 @@ def solve_ground_truth(data: Dict, timeout: int = 120) -> Dict:
     Y = {(f, c): model.addVar(vtype=GRB.BINARY) for f in farm_names for c in food_names}
     U = {c: model.addVar(vtype=GRB.BINARY) for c in food_names}
     
+    # Objective: maximize area-weighted benefit
     obj = gp.quicksum(food_benefits[c] * land_availability[f] * Y[(f, c)] 
                       for f in farm_names for c in food_names) / total_area
     model.setObjective(obj, GRB.MAXIMIZE)
     
+    # Constraint 1: At most one crop per farm (matching comprehensive_benchmark <= 1)
     for f in farm_names:
-        model.addConstr(gp.quicksum(Y[(f, c)] for c in food_names) == 1)
+        model.addConstr(gp.quicksum(Y[(f, c)] for c in food_names) <= 1)
     
+    # Constraint 2: U-Y linking for unique food tracking
     for c in food_names:
         for f in farm_names:
-            model.addConstr(U[c] >= Y[(f, c)])
+            model.addConstr(Y[(f, c)] <= U[c])  # Y <= U
+        model.addConstr(U[c] <= gp.quicksum(Y[(f, c)] for f in farm_names))  # U <= sum(Y)
     
-    for cg, limits in food_group_constraints.items():
-        dg = reverse_mapping.get(cg, cg)
-        foods = food_groups.get(dg, [])
-        if foods:
-            gs = gp.quicksum(U[f] for f in foods if f in U)
-            if limits.get('min', 0) > 0:
-                model.addConstr(gs >= limits['min'])
-            if 'max' in limits:
-                model.addConstr(gs <= limits['max'])
+    # Constraint 3: Food group diversity (using min_foods/max_foods keys)
+    for group_name, limits in food_group_constraints.items():
+        foods_in_group = food_groups.get(group_name, [])
+        if foods_in_group:
+            gs = gp.quicksum(U[f] for f in foods_in_group if f in U)
+            min_foods = limits.get('min_foods', limits.get('min', 0))
+            max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+            
+            if min_foods > 0:
+                model.addConstr(gs >= min_foods)
+            if max_foods < len(foods_in_group):
+                model.addConstr(gs <= max_foods)
     
-    for c in food_names:
-        model.addConstr(gp.quicksum(Y[(f, c)] for f in farm_names) <= max_plots_per_crop)
+    # Constraint 4: Max plots per crop (only if specified)
+    if max_plots_per_crop is not None:
+        for c in food_names:
+            model.addConstr(gp.quicksum(Y[(f, c)] for f in farm_names) <= max_plots_per_crop)
     
     build_time = time.time() - build_start
     
@@ -735,7 +755,6 @@ def build_master_bqm(data: Dict, lagrange: float = 50.0) -> BinaryQuadraticModel
     food_names = data['food_names']
     food_groups = data['food_groups']
     food_group_constraints = data['food_group_constraints']
-    reverse_mapping = data['reverse_mapping']
     
     bqm = BinaryQuadraticModel('BINARY')
     
@@ -744,9 +763,8 @@ def build_master_bqm(data: Dict, lagrange: float = 50.0) -> BinaryQuadraticModel
         bqm.add_variable(f"U_{food}", -0.01)  # Small incentive to select foods
     
     # Add food group constraints as QUBO penalties
-    for constraint_group, limits in food_group_constraints.items():
-        data_group = reverse_mapping.get(constraint_group, constraint_group)
-        foods_in_group = food_groups.get(data_group, [])
+    for group_name, limits in food_group_constraints.items():
+        foods_in_group = food_groups.get(group_name, [])
         
         if not foods_in_group:
             continue
@@ -1368,9 +1386,44 @@ def solve_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
                 # Chain break info
                 chain_breaks = float(np.mean(sampleset.record.chain_break_fraction))
                 
-                # Collect solution
+                # Collect solution with conflict resolution
                 best_sample = sampleset.first.sample
-                all_samples.update(best_sample)
+                
+                # Check for farm assignment conflicts (multiple crops for same farm)
+                for var, val in best_sample.items():
+                    if var.startswith("Y_") and val == 1:
+                        # Extract farm name from Y_Farm_Food
+                        parts = var.split("_", 2)
+                        if len(parts) == 3:
+                            farm = parts[1]
+                            # Check if this farm already has a crop assigned
+                            existing_crop = None
+                            for existing_var in all_samples:
+                                if existing_var.startswith(f"Y_{farm}_") and all_samples.get(existing_var, 0) == 1:
+                                    existing_crop = existing_var
+                                    break
+                            
+                            if existing_crop:
+                                # Conflict! Keep the one with better benefit
+                                existing_food = existing_crop.split("_", 2)[2]
+                                new_food = parts[2]
+                                
+                                existing_benefit = data['food_benefits'].get(existing_food, 0) * data['land_availability'].get(farm, 0)
+                                new_benefit = data['food_benefits'].get(new_food, 0) * data['land_availability'].get(farm, 0)
+                                
+                                if new_benefit > existing_benefit:
+                                    # Replace with better option
+                                    all_samples[existing_crop] = 0
+                                    all_samples[var] = 1
+                                else:
+                                    # Keep existing, skip new
+                                    continue
+                            else:
+                                # No conflict, add it
+                                all_samples[var] = val
+                    else:
+                        # Not a Y variable or not assigned, just add it
+                        all_samples[var] = val
                 
                 partition_results.append({
                     'partition': i,
@@ -1718,7 +1771,7 @@ def solve_cqm_first_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict
         # Track food usage for MaxPlots constraint
         fixed_u = {k: v for k, v in all_samples.items() if k.startswith("U_")}
         food_usage_count = {food: 0 for food in data['food_names']}  # Track plots per food
-        max_plots = data['max_plots_per_crop']
+        max_plots = data.get('max_plots_per_crop')
         
         for i, partition in enumerate(partitions):
             if i == u_partition_idx:
@@ -1727,11 +1780,15 @@ def solve_cqm_first_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict
             if len(partition) == 0:
                 continue
             
-            # Build list of foods that have reached max usage
-            full_foods = {food for food, count in food_usage_count.items() if count >= max_plots}
+            # Build list of foods that have reached max usage (only if max_plots is set)
+            full_foods = set()
+            if max_plots is not None:
+                full_foods = {food for food, count in food_usage_count.items() if count >= max_plots}
             
-            # Calculate remaining slots for each food
-            remaining_slots = {food: max_plots - count for food, count in food_usage_count.items()}
+            # Calculate remaining slots for each food (only if max_plots is set)
+            remaining_slots = {}
+            if max_plots is not None:
+                remaining_slots = {food: max_plots - count for food, count in food_usage_count.items()}
             
             # Combine fixed vars: U values + mark full foods as unavailable
             combined_fixed = dict(fixed_u)
@@ -1743,19 +1800,20 @@ def solve_cqm_first_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict
             t0 = time.time()
             sub_cqm = extract_sub_cqm(cqm, partition, fixed_vars=combined_fixed)
             
-            # Adjust MaxPlots constraints for already-used slots
+            # Adjust MaxPlots constraints for already-used slots (only if max_plots is set)
             # The original constraint is: sum(Y[farm,food]) <= max_plots
             # With current usage, it becomes: sum(Y[farm,food]) <= max_plots - usage = remaining_slots
-            for food in data['food_names']:
-                if food not in full_foods and remaining_slots.get(food, max_plots) < max_plots:
-                    label = f"MaxPlots_{food}"
-                    if label in sub_cqm.constraints:
-                        # Modify the RHS of this constraint
-                        constraint = sub_cqm.constraints[label]
-                        new_rhs = remaining_slots[food]
-                        # Remove and re-add with new RHS
-                        del sub_cqm.constraints[label]
-                        sub_cqm.add_constraint(constraint.lhs <= new_rhs, label=label)
+            if max_plots is not None:
+                for food in data['food_names']:
+                    if food not in full_foods and remaining_slots.get(food, max_plots) < max_plots:
+                        label = f"MaxPlots_{food}"
+                        if label in sub_cqm.constraints:
+                            # Modify the RHS of this constraint
+                            constraint = sub_cqm.constraints[label]
+                            new_rhs = remaining_slots[food]
+                            # Remove and re-add with new RHS
+                            del sub_cqm.constraints[label]
+                            sub_cqm.add_constraint(constraint.lhs <= new_rhs, label=label)
             
             # Convert to BQM
             sub_bqm, _ = cqm_to_bqm(sub_cqm, lagrange_multiplier=lagrange)
@@ -1780,17 +1838,48 @@ def solve_cqm_first_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict
             embedding_time = solve_time - qpu_time
             total_embedding_time += embedding_time
             
-            # Collect solution and update food usage
+            # Collect solution with conflict resolution and update food usage
             best_sample = sampleset.first.sample
             for var, val in best_sample.items():
                 if var in cqm.variables:
-                    all_samples[var] = int(val)
-                    # Track food usage for MaxPlots
+                    # Check for farm assignment conflicts (multiple crops for same farm)
                     if var.startswith("Y_") and int(val) == 1:
                         parts = var.split("_", 2)
                         if len(parts) == 3:
+                            farm = parts[1]
                             food = parts[2]
-                            food_usage_count[food] = food_usage_count.get(food, 0) + 1
+                            
+                            # Check if this farm already has a crop assigned
+                            existing_crop = None
+                            for existing_var in all_samples:
+                                if existing_var.startswith(f"Y_{farm}_") and all_samples.get(existing_var, 0) == 1:
+                                    existing_crop = existing_var
+                                    break
+                            
+                            if existing_crop:
+                                # Conflict! Keep the one with better benefit
+                                existing_food = existing_crop.split("_", 2)[2]
+                                
+                                existing_benefit = data['food_benefits'].get(existing_food, 0) * data['land_availability'].get(farm, 0)
+                                new_benefit = data['food_benefits'].get(food, 0) * data['land_availability'].get(farm, 0)
+                                
+                                if new_benefit > existing_benefit:
+                                    # Replace with better option
+                                    all_samples[existing_crop] = 0
+                                    all_samples[var] = int(val)
+                                    # Update food usage tracking
+                                    food_usage_count[food] = food_usage_count.get(food, 0) + 1
+                                    # Decrement old food
+                                    food_usage_count[existing_food] = max(0, food_usage_count.get(existing_food, 0) - 1)
+                                # else: keep existing, don't add new
+                            else:
+                                # No conflict, add it
+                                all_samples[var] = int(val)
+                                # Track food usage for MaxPlots
+                                food_usage_count[food] = food_usage_count.get(food, 0) + 1
+                    else:
+                        # Not a Y variable or not assigned, just add it
+                        all_samples[var] = int(val)
             
             partition_results.append({
                 'partition': i,
@@ -1870,32 +1959,36 @@ def count_violations(sample: Dict, data: Dict) -> int:
     farm_names = data['farm_names']
     food_groups = data['food_groups']
     food_group_constraints = data['food_group_constraints']
-    reverse_mapping = data['reverse_mapping']
-    max_plots_per_crop = data['max_plots_per_crop']
+    max_plots_per_crop = data.get('max_plots_per_crop')
     
     violations = 0
     
-    # One crop per farm
+    # One crop per farm (check for <= 1 since idle plots are allowed)
     for farm in farm_names:
         count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-        if count != 1:
+        if count > 1:  # Changed from != 1 to > 1 (allows 0 or 1)
             violations += 1
     
-    # Food group constraints
-    for cg, limits in food_group_constraints.items():
-        dg = reverse_mapping.get(cg, cg)
-        foods_in_group = food_groups.get(dg, [])
+    # Food group constraints (use food_groups directly, no reverse_mapping)
+    for group_name, limits in food_group_constraints.items():
+        foods_in_group = food_groups.get(group_name, [])
         unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
-        if limits.get('min', 0) > 0 and unique_foods < limits['min']:
+        
+        # Support both min/max and min_foods/max_foods key formats
+        min_foods = limits.get('min_foods', limits.get('min', 0))
+        max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+        
+        if min_foods > 0 and unique_foods < min_foods:
             violations += 1
-        if 'max' in limits and unique_foods > limits['max']:
+        if unique_foods > max_foods:
             violations += 1
     
-    # Max plots per crop
-    for food in food_names:
-        count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-        if count > max_plots_per_crop:
-            violations += 1
+    # Max plots per crop (only check if constraint is set)
+    if max_plots_per_crop is not None:
+        for food in food_names:
+            count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+            if count > max_plots_per_crop:
+                violations += 1
     
     return violations
 
@@ -1906,8 +1999,7 @@ def get_detailed_violations(sample: Dict, data: Dict) -> Dict:
     farm_names = data['farm_names']
     food_groups = data['food_groups']
     food_group_constraints = data['food_group_constraints']
-    reverse_mapping = data['reverse_mapping']
-    max_plots_per_crop = data['max_plots_per_crop']
+    max_plots_per_crop = data.get('max_plots_per_crop')
     
     violation_details = {
         'total_violations': 0,
@@ -1916,46 +2008,51 @@ def get_detailed_violations(sample: Dict, data: Dict) -> Dict:
         'max_plots_per_crop': {'violations': 0, 'details': []}
     }
     
-    # One crop per farm
+    # One crop per farm (check for <= 1 since idle plots are allowed)
     for farm in farm_names:
         count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-        if count != 1:
+        if count > 1:  # Changed from != 1 to > 1 (allows 0 or 1)
             violation_details['one_crop_per_farm']['violations'] += 1
             violation_details['one_crop_per_farm']['details'].append({
                 'farm': farm,
-                'expected': 1,
+                'expected': '0 or 1',
                 'actual': count
             })
     
-    # Food group constraints
-    for cg, limits in food_group_constraints.items():
-        dg = reverse_mapping.get(cg, cg)
-        foods_in_group = food_groups.get(dg, [])
+    # Food group constraints (use food_groups directly, no reverse_mapping)
+    for group_name, limits in food_group_constraints.items():
+        foods_in_group = food_groups.get(group_name, [])
         unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
+        
+        # Support both min/max and min_foods/max_foods key formats
+        min_foods = limits.get('min_foods', limits.get('min', 0))
+        max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+        
         violated = False
-        if limits.get('min', 0) > 0 and unique_foods < limits['min']:
+        if min_foods > 0 and unique_foods < min_foods:
             violated = True
-        if 'max' in limits and unique_foods > limits['max']:
+        if unique_foods > max_foods:
             violated = True
         if violated:
             violation_details['food_group_constraints']['violations'] += 1
             violation_details['food_group_constraints']['details'].append({
-                'group': cg,
-                'min': limits.get('min', 0),
-                'max': limits.get('max', 999),
+                'group': group_name,
+                'min': min_foods,
+                'max': max_foods,
                 'actual': unique_foods
             })
     
-    # Max plots per crop
-    for food in food_names:
-        count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-        if count > max_plots_per_crop:
-            violation_details['max_plots_per_crop']['violations'] += 1
-            violation_details['max_plots_per_crop']['details'].append({
-                'food': food,
-                'max_allowed': max_plots_per_crop,
-                'actual': count
-            })
+    # Max plots per crop (only check if constraint is set)
+    if max_plots_per_crop is not None:
+        for food in food_names:
+            count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+            if count > max_plots_per_crop:
+                violation_details['max_plots_per_crop']['violations'] += 1
+                violation_details['max_plots_per_crop']['details'].append({
+                    'food': food,
+                    'max_allowed': max_plots_per_crop,
+                    'actual': count
+                })
     
     violation_details['total_violations'] = (
         violation_details['one_crop_per_farm']['violations'] +
@@ -2226,9 +2323,9 @@ def save_results(results: Dict, filename: str = None) -> Path:
                 f.write("\n")
             
             for method_name, method_result in scale_result.get('method_results', {}).items():
-                f.write(f"\n{"-"*80}\n")
+                f.write(f"\n{'-'*80}\n")
                 f.write(f"Method: {method_name}\n")
-                f.write(f"{"-"*80}\n")
+                f.write(f"{'-'*80}\n")
                 f.write(f"Success: {method_result['success']}\n")
                 
                 if method_result['success']:
@@ -2310,8 +2407,15 @@ def main():
     default_token = '45FS-23cfb48dca2296ed24550846d2e7356eb6c19551'
     dwave_token = args.token or os.getenv('DWAVE_API_TOKEN') or default_token
     
-    if dwave_token and not args.no_qpu:
+    # Set token UNLESS user explicitly wants to skip QPU methods entirely
+    # Note: --no-qpu doesn't disable QPU; it was for SA fallback (now removed)
+    # To run only ground_truth without token, use: --methods ground_truth
+    if dwave_token:
         set_dwave_token(dwave_token)
+        if args.no_qpu:
+            print(f"  Note: --no-qpu flag present but QPU token configured (QPU methods will attempt to run)")
+    elif not args.no_qpu:
+        print(f"  Warning: No D-Wave token available. Only ground_truth method will work.")
     
     # Scales
     if args.test:
@@ -2333,7 +2437,9 @@ def main():
             'coordinated',
             'decomposition_PlotBased_QPU',
             'decomposition_Multilevel(5)_QPU',
+            'decomposition_Multilevel(10)_QPU',
             'decomposition_Louvain_QPU',
+            'decomposition_Spectral(10)_QPU',
             'cqm_first_PlotBased',
         ]
     

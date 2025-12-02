@@ -143,3 +143,19 @@ applyTo: '**'
   - **Fallback**: Uses `neal.SimulatedAnnealingSampler` when QPU unavailable
   - **Constraint Issue**: Decomposition methods violate global constraints (food group diversity)
   - **Solution**: Need coordinated solving (Benders cuts) or post-processing repair
+- **QPU vs PuLP OBJECTIVE MISMATCH FIXED** (2025-12-01):
+  - **Issue**: QPU benchmark Gurobi ground truth ≠ Patch PuLP results (~23% difference)
+  - **Root Causes Identified**:
+    1. `qpu_benchmark.py` used `min: 2` per group vs `min_foods: 1`
+    2. Different constraint key names (`min`/`max` vs `min_foods`/`max_foods`)
+    3. Different max_plots_per_crop (hardcoded 5 vs disabled)
+    4. One-crop constraint: `== 1` vs `<= 1` (allows idle plots)
+  - **FIX APPLIED** to `@todo/qpu_benchmark.py`:
+    - `food_group_constraints` now uses `min_foods: 1` per group
+    - `max_plots_per_crop` set to `None` (disabled)
+    - One-crop constraint changed to `<= 1` (allows idle plots)
+    - Constraint keys now use `min_foods`/`max_foods`
+    - U-Y linking fixed: `Y <= U` and `U <= sum(Y)`
+    - Removed `reverse_mapping` (use `food_groups` directly)
+  - **Comparison Script**: `@todo/compare_gurobi_pulp_objectives.py`
+  - **Expected**: After re-running qpu_benchmark.py, Gurobi should match Patch PuLP (~0.388)

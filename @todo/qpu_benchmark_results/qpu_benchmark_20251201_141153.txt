@@ -1,0 +1,88 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-01T14:06:47.957988
+Scales: [25]
+Methods: ['ground_truth', 'direct_qpu', 'coordinated', 'decomposition_PlotBased_QPU', 'decomposition_Multilevel(10)_QPU', 'cqm_first_PlotBased']
+QPU Available: True
+
+
+================================================================================
+SCALE: 25 farms
+================================================================================
+
+Metadata:
+  n_farms: 25
+  n_foods: 27
+  n_variables: 702
+  n_constraints: 732
+  logical_qubits: 702
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.401763
+  Solve Time: 0.06s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_PlotBased_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.358667
+Total Time: 86.14s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Egg, Pork, Avocado, Banana, Durian, Mango, Orange, Papaya, Watermelon ... (15 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.275187
+Total Time: 37.54s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Chicken, Lamb, Apple, Avocado, Orange, Papaya, Watermelon, Chickpeas, Tempeh, Potato ... (13 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: cqm_first_PlotBased
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.385762
+Total Time: 98.98s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Egg, Pork, Avocado, Banana, Guava, Orange, Papaya, Watermelon, Chickpeas ... (15 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: coordinated
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.290500
+Total Time: 82.60s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Lamb, Pork, Avocado, Banana, Guava, Orange, Papaya, Peanuts, Tofu ... (15 total)
+  Total Area Allocated: 100.00
+

@@ -1,0 +1,526 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-01T14:30:39.122935
+Scales: [10, 15, 50, 100]
+Methods: ['ground_truth', 'direct_qpu', 'coordinated', 'decomposition_PlotBased_QPU', 'decomposition_Multilevel(5)_QPU', 'decomposition_Multilevel(10)_QPU', 'decomposition_Louvain_QPU', 'decomposition_Spectral(10)_QPU', 'cqm_first_PlotBased']
+QPU Available: True
+
+
+================================================================================
+SCALE: 10 farms
+================================================================================
+
+Metadata:
+  n_farms: 10
+  n_foods: 27
+  n_variables: 297
+  n_constraints: 312
+  logical_qubits: 297
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.359482
+  Solve Time: 0.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu
+--------------------------------------------------------------------------------
+Success: False
+Error: No embedding found within 200s
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_PlotBased_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.364105
+Total Time: 35.29s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Lamb, Pork, Apple, Avocado, Guava, Orange, Papaya, Watermelon, Chickpeas ... (15 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(5)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.231288
+Total Time: 15.61s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Egg, Avocado, Durian, Papaya, Watermelon, Chickpeas, Peanuts, Tempeh, Corn, Potato ... (15 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.269028
+Total Time: 13.48s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 16
+  Foods: Beef, Chicken, Egg, Lamb, Banana, Durian, Guava, Watermelon, Chickpeas, Tempeh ... (16 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Louvain_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.339043
+Total Time: 45.25s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Chicken, Lamb, Pork, Apple, Avocado, Banana, Durian, Papaya, Watermelon ... (15 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Spectral(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.323934
+Total Time: 40.95s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 22
+  Foods: Beef, Chicken, Egg, Lamb, Apple, Avocado, Banana, Durian, Guava, Orange ... (22 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: cqm_first_PlotBased
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.298674
+Total Time: 61.61s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Lamb, Pork, Avocado, Banana, Durian, Guava, Papaya, Tempeh, Tofu ... (15 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: coordinated
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.421236
+Total Time: 44.80s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Lamb, Pork, Banana, Durian, Guava, Mango, Orange, Peanuts, Tofu ... (15 total)
+  Total Area Allocated: 110.00
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Patch6: 2 crops (expected 1)
+
+
+================================================================================
+SCALE: 15 farms
+================================================================================
+
+Metadata:
+  n_farms: 15
+  n_foods: 27
+  n_variables: 432
+  n_constraints: 452
+  logical_qubits: 432
+  total_area: 100.00500000000001
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.382971
+  Solve Time: 0.02s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu
+--------------------------------------------------------------------------------
+Success: False
+Error: No embedding found within 200s
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_PlotBased_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.339807
+Total Time: 52.52s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Chicken, Avocado, Banana, Mango, Orange, Chickpeas, Peanuts, Corn, Potato, Cabbage ... (11 total)
+  Total Area Allocated: 100.01
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(5)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.261592
+Total Time: 55.64s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Lamb, Apple, Banana, Durian, Tempeh, Corn, Cabbage, Eggplant, Pumpkin, Spinach ... (11 total)
+  Total Area Allocated: 100.01
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.241227
+Total Time: 43.57s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Beef, Egg, Avocado, Orange, Papaya, Chickpeas, Peanuts, Tempeh, Tofu, Cucumber ... (13 total)
+  Total Area Allocated: 100.01
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Louvain_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.344756
+Total Time: 72.59s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 10
+  Foods: Chicken, Lamb, Banana, Guava, Orange, Papaya, Tofu, Potato, Cabbage, Tomatoes
+  Total Area Allocated: 100.01
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Spectral(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.282700
+Total Time: 40.19s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Beef, Chicken, Lamb, Avocado, Mango, Papaya, Watermelon, Chickpeas, Peanuts, Tempeh ... (13 total)
+  Total Area Allocated: 100.01
+
+
+--------------------------------------------------------------------------------
+Method: cqm_first_PlotBased
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.390350
+Total Time: 50.98s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 16
+  Foods: Beef, Lamb, Apple, Banana, Mango, Orange, Papaya, Watermelon, Chickpeas, Peanuts ... (16 total)
+  Total Area Allocated: 100.01
+
+
+--------------------------------------------------------------------------------
+Method: coordinated
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.263246
+Total Time: 53.24s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Egg, Lamb, Banana, Durian, Guava, Orange, Watermelon, Peanuts, Tofu ... (15 total)
+  Total Area Allocated: 100.01
+
+
+================================================================================
+SCALE: 50 farms
+================================================================================
+
+Metadata:
+  n_farms: 50
+  n_foods: 27
+  n_variables: 1377
+  n_constraints: 1432
+  logical_qubits: 1377
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.415857
+  Solve Time: 0.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_PlotBased_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.359792
+Total Time: 266.87s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Apple, Banana, Guava, Mango, Orange, Papaya, Watermelon, Chickpeas, Peanuts, Corn ... (13 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Animal-source foods: 0 (range: 1-5)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(5)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.269252
+Total Time: 267.46s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Beef, Egg, Lamb, Pork, Avocado, Mango, Papaya, Watermelon, Cucumber, Eggplant ... (13 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 2 violations
+    Group Pulses, nuts, and seeds: 0 (range: 1-4)
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.270111
+Total Time: 128.56s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 14
+  Foods: Beef, Chicken, Egg, Lamb, Pork, Apple, Banana, Durian, Orange, Chickpeas ... (14 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Louvain_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.355659
+Total Time: 263.06s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Chicken, Egg, Avocado, Banana, Guava, Mango, Orange, Watermelon, Tempeh ... (15 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Spectral(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.262532
+Total Time: 154.18s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Chicken, Pork, Apple, Avocado, Durian, Mango, Papaya, Tempeh, Tofu ... (15 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: cqm_first_PlotBased
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.386634
+Total Time: 236.08s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 12
+  Foods: Lamb, Avocado, Banana, Durian, Guava, Orange, Peanuts, Potato, Cabbage, Eggplant ... (12 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: coordinated
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.382872
+Total Time: 195.59s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Chicken, Lamb, Pork, Avocado, Durian, Guava, Mango, Watermelon, Peanuts, Tofu ... (15 total)
+  Total Area Allocated: 104.00
+
+Violation Details:
+  One Crop Per Farm: 2 violations
+    Farm Patch13: 2 crops (expected 1)
+    Farm Patch49: 2 crops (expected 1)
+
+
+================================================================================
+SCALE: 100 farms
+================================================================================
+
+Metadata:
+  n_farms: 100
+  n_foods: 27
+  n_variables: 2727
+  n_constraints: 2832
+  logical_qubits: 2727
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.422904
+  Solve Time: 0.03s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_PlotBased_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.353145
+Total Time: 397.49s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 14
+  Foods: Beef, Chicken, Egg, Lamb, Apple, Guava, Orange, Papaya, Watermelon, Tofu ... (14 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(5)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.264779
+Total Time: 261.07s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Beef, Lamb, Pork, Banana, Durian, Orange, Papaya, Watermelon, Peanuts, Cabbage ... (13 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.264451
+Total Time: 198.32s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 13
+  Foods: Beef, Chicken, Lamb, Pork, Avocado, Guava, Papaya, Peanuts, Tofu, Corn ... (13 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Louvain_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.349684
+Total Time: 497.48s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 12
+  Foods: Lamb, Apple, Avocado, Banana, Durian, Mango, Watermelon, Chickpeas, Peanuts, Potato ... (12 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Spectral(10)_QPU
+--------------------------------------------------------------------------------
+Success: False
+Error: Embedding failed for partition 0: no embedding found
+
+
+--------------------------------------------------------------------------------
+Method: cqm_first_PlotBased
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.284735
+Total Time: 369.15s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 10
+  Foods: Chicken, Lamb, Avocado, Durian, Papaya, Chickpeas, Tofu, Potato, Eggplant, Long bean
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: coordinated
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.360429
+Total Time: 328.92s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Chicken, Pork, Apple, Durian, Guava, Orange, Papaya, Peanuts, Tofu ... (15 total)
+  Total Area Allocated: 100.00
+
