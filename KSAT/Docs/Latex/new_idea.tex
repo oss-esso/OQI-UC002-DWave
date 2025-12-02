@@ -1,0 +1,91 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\title{Modeling Multi-Species Reserve Design as a SAT Problem}
+\author{Edo}
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+The reserve design problem is a combinatorial optimization problem where conservation planners select spatial units (parcels) to maximize biodiversity protection while respecting spatial and management constraints. In \cite{justeau2018}, a MILP formulation was presented for a single-species rainforest scenario. Here, we extend this to multiple species and reformulate it as a \textbf{k-SAT problem}.
+
+\section{Problem Setup}
+Let:
+\begin{itemize}
+    \item $P = \{1,2,\dots,n\}$ be the set of parcels (decision variables).
+    \item $S = \{1,2,\dots,m\}$ be the set of species.
+    \item $R = \{1,2,\dots,k\}$ be the set of reserve types (e.g., small, medium, large or different management regimes).
+    \item $v_{ijs} \in \{0,1\}$ indicate whether parcel $i$ of reserve type $j$ contains species $s$.
+\end{itemize}
+
+\subsection{Decision Variables}
+Define binary variables:
+\[
+x_{ij} =
+\begin{cases}
+1 & \text{if parcel $i$ is selected as reserve type $j$},\\
+0 & \text{otherwise}.
+\end{cases}
+\]
+
+\subsection{Constraints}
+\begin{enumerate}
+    \item \textbf{Parcel selection:} Each parcel can belong to at most one reserve type:
+    \[
+    \sum_{j=1}^{k} x_{ij} \le 1, \quad \forall i \in P
+    \]
+    
+    \item \textbf{Species coverage:} Each species $s$ must be represented in at least $t_s$ parcels across all reserve types:
+    \[
+    \sum_{i=1}^{n} \sum_{j=1}^{k} v_{ijs} x_{ij} \ge t_s, \quad \forall s \in S
+    \]
+
+    \item \textbf{Spatial adjacency / connectivity (optional):} If spatial contiguity is required, additional SAT clauses encode adjacency using graph edges $E \subseteq P \times P$. For each selected parcel, at least one neighbor must also be selected:
+    \[
+    x_{ij} \Rightarrow \bigvee_{(i,l)\in E} x_{lj}, \quad \forall i \in P, j \in R
+    \]
+
+    \item \textbf{Reserve system limits:} Optional constraints on number of parcels per reserve type or total area can also be encoded as cardinality constraints in SAT:
+    \[
+    N_j^{\min} \le \sum_{i=1}^{n} x_{ij} \le N_j^{\max}, \quad \forall j \in R
+    \]
+\end{enumerate}
+
+\section{SAT Formulation}
+Each of the constraints above can be transformed into Boolean CNF clauses:
+
+\begin{itemize}
+    \item Parcel selection $\sum_{j} x_{ij} \le 1$: encoded as pairwise mutual exclusion clauses:
+    \[
+    \neg x_{ij} \vee \neg x_{il}, \quad \forall j \neq l
+    \]
+
+    \item Species coverage $\sum_{i,j} v_{ijs} x_{ij} \ge t_s$: encoded as \emph{AtLeast-K} clauses.
+
+    \item Connectivity: encoded as OR clauses linking a parcel with at least one neighbor of the same reserve type.
+
+    \item Reserve limits: encoded as \emph{Cardinality Constraints} or sequential counters in CNF.
+\end{itemize}
+
+This results in a \textbf{k-SAT instance}, where $k$ is the maximum clause width determined by the largest number of parcels contributing to a single species or connectivity constraint.
+
+\section{Discussion}
+\begin{itemize}
+    \item The SAT formulation scales naturally to multiple species by extending $v_{ijs}$ to all species.
+    \item Modern SAT solvers or quantum algorithms (QAOA, Grover-based) can then search for satisfying assignments efficiently, even for large landscapes.
+    \item Unlike MILP, SAT-based models handle complex logical interactions (e.g., connectivity + multiple species) without linearization.
+\end{itemize}
+
+\section{Conclusion}
+We have shown how to generalize the single-rainforest MILP of \cite{justeau2018} to a multi-species, multi-reserve SAT formulation. This approach allows flexible incorporation of spatial, ecological, and management constraints in a unified Boolean framework, suitable for classical SAT solvers or emerging quantum computing methods.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
