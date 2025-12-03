@@ -618,6 +618,125 @@ def partition_cutset(data: Dict, farms_per_cut: int = 2) -> List[Set]:
     return partition_multilevel(data, farms_per_cut)
 
 
+def partition_overlapping(data: Dict, group_size: int = 5, overlap: int = 1) -> List[Set]:
+    """
+    Overlapping Multilevel: Groups share boundary farms for better coordination.
+    
+    Key insight: Standard Multilevel loses information at partition boundaries.
+    By overlapping partitions, boundary farms appear in multiple partitions,
+    allowing the solver to consider cross-boundary interactions.
+    
+    Budget impact: Same number of partitions as Multilevel, slightly larger each.
+    Expected improvement: Better boundary coordination → lower gap.
+    """
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    n_farms = len(farm_names)
+    
+    partitions = []
+    i = 0
+    while i < n_farms:
+        # Include farms from i to i+group_size, plus overlap from previous
+        start = max(0, i - overlap) if i > 0 else 0
+        end = min(n_farms, i + group_size)
+        group_farms = farm_names[start:end]
+        partitions.append({f"Y_{f}_{c}" for f in group_farms for c in food_names})
+        i += group_size
+    
+    # U variables in separate partition
+    partitions.append({f"U_{food}" for food in food_names})
+    return partitions
+
+
+def partition_food_grouped(data: Dict, foods_per_partition: int = 9) -> List[Set]:
+    """
+    Food-Grouped: Partition by food groups instead of farms.
+    
+    Key insight: The problem has food GROUP constraints (min/max per group).
+    Grouping by food type keeps constraint-related variables together.
+    Each partition contains ALL farms but only a SUBSET of foods.
+    
+    Budget impact: Fewer partitions (27 foods / 9 = 3 partitions + U).
+    Expected improvement: Better food group constraint satisfaction.
+    """
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    
+    partitions = []
+    for i in range(0, len(food_names), foods_per_partition):
+        food_subset = food_names[i:i+foods_per_partition]
+        # All farms, but only this subset of foods
+        partition = {f"Y_{farm}_{food}" for farm in farm_names for food in food_subset}
+        partitions.append(partition)
+    
+    # U variables for the foods
+    partitions.append({f"U_{food}" for food in food_names})
+    return partitions
+
+
+def partition_hybrid_farm_food(data: Dict, farm_group_size: int = 5, food_group_size: int = 9) -> List[Set]:
+    """
+    Hybrid Farm-Food: 2D grid partitioning.
+    
+    Key insight: Partition both by farms AND by foods to create a grid.
+    Each partition is a "block" of (farm_group × food_group).
+    
+    Budget impact: More partitions but much smaller each (easier to embed).
+    Expected improvement: Better balance of local and global constraints.
+    
+    Example for 100 farms, 27 foods with group_size=5,9:
+    - 20 farm groups × 3 food groups = 60 partitions of ~45 vars each
+    - Much easier to embed than 10 partitions of 270 vars
+    """
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    
+    partitions = []
+    
+    # Create grid of partitions
+    for fi in range(0, len(farm_names), farm_group_size):
+        farm_group = farm_names[fi:fi+farm_group_size]
+        for ci in range(0, len(food_names), food_group_size):
+            food_group = food_names[ci:ci+food_group_size]
+            partition = {f"Y_{f}_{c}" for f in farm_group for c in food_group}
+            partitions.append(partition)
+    
+    # U variables
+    partitions.append({f"U_{food}" for food in food_names})
+    return partitions
+
+
+def partition_random_balanced(data: Dict, n_partitions: int = 20, seed: int = 42) -> List[Set]:
+    """
+    Random Balanced: Randomly assign farms to partitions.
+    
+    Key insight: Deterministic grouping (first 10 farms, next 10, etc.) may
+    create systematic biases. Random assignment breaks these patterns.
+    
+    Budget impact: Same as Multilevel (controlled by n_partitions).
+    Expected improvement: Breaks systematic biases in data ordering.
+    """
+    import random
+    random.seed(seed)
+    
+    food_names = data['food_names']
+    farm_names = list(data['farm_names'])
+    
+    # Shuffle farms
+    random.shuffle(farm_names)
+    
+    # Distribute evenly
+    farms_per_partition = max(1, len(farm_names) // n_partitions)
+    
+    partitions = []
+    for i in range(0, len(farm_names), farms_per_partition):
+        group_farms = farm_names[i:i+farms_per_partition]
+        partitions.append({f"Y_{f}_{c}" for f in group_farms for c in food_names})
+    
+    partitions.append({f"U_{food}" for food in food_names})
+    return partitions
+
+
 def partition_louvain(data: Dict, max_partition_size: int = 100) -> List[Set]:
     """Louvain community detection decomposition."""
     if not HAS_LOUVAIN:
@@ -739,9 +858,22 @@ DECOMPOSITION_METHODS = {
     'PlotBased': partition_plot_based,
     'Multilevel(5)': lambda d: partition_multilevel(d, 5),
     'Multilevel(10)': lambda d: partition_multilevel(d, 10),
+    'Multilevel(20)': lambda d: partition_multilevel(d, 20),
     'Cutset(2)': lambda d: partition_cutset(d, 2),
     'Louvain': partition_louvain,
     'Spectral(10)': lambda d: partition_spectral(d, 10),
+    # New budget-efficient methods
+    'Overlapping(5,1)': lambda d: partition_overlapping(d, 5, 1),
+    'Overlapping(10,2)': lambda d: partition_overlapping(d, 10, 2),
+    'FoodGrouped(9)': lambda d: partition_food_grouped(d, 9),
+    'FoodGrouped(13)': lambda d: partition_food_grouped(d, 13),
+    'HybridGrid(3,9)': lambda d: partition_hybrid_farm_food(d, 3, 9),
+    'HybridGrid(5,9)': lambda d: partition_hybrid_farm_food(d, 5, 9),
+    'HybridGrid(10,9)': lambda d: partition_hybrid_farm_food(d, 10, 9),
+    'HybridGrid(5,13)': lambda d: partition_hybrid_farm_food(d, 5, 13),
+    'HybridGrid(3,13)': lambda d: partition_hybrid_farm_food(d, 3, 13),
+    'RandomBalanced(10)': lambda d: partition_random_balanced(d, 10),
+    'RandomBalanced(20)': lambda d: partition_random_balanced(d, 20),
 }
 
 

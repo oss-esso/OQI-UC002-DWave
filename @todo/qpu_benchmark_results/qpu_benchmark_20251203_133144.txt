@@ -1,0 +1,79 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-03T13:18:14.528708
+Scales: [500, 1000]
+Methods: ['ground_truth', 'decomposition_HybridGrid(10,9)_QPU']
+QPU Available: True
+
+
+================================================================================
+SCALE: 500 farms
+================================================================================
+
+Metadata:
+  n_farms: 500
+  n_foods: 27
+  n_variables: 13527
+  n_constraints: 14032
+  logical_qubits: 13527
+  total_area: 100.00000000000088
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.428542
+  Solve Time: 0.28s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_HybridGrid(10,9)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.351998
+Total Time: 234.43s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 12
+  Foods: Beef, Chicken, Apple, Avocado, Papaya, Watermelon, Peanuts, Tempeh, Cabbage, Long bean ... (12 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+================================================================================
+SCALE: 1000 farms
+================================================================================
+
+Metadata:
+  n_farms: 1000
+  n_foods: 27
+  n_variables: 27027
+  n_constraints: 28032
+  logical_qubits: 27027
+  total_area: 99.9999999999986
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.429246
+  Solve Time: 0.33s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_HybridGrid(10,9)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.351696
+Total Time: 549.07s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Beef, Lamb, Pork, Avocado, Banana, Durian, Guava, Orange, Watermelon, Peanuts ... (15 total)
+  Total Area Allocated: 100.00
+

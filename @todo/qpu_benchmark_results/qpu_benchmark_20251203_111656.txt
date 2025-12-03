@@ -1,0 +1,70 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-03T11:09:39.193096
+Scales: [100]
+Methods: ['ground_truth', 'decomposition_Multilevel(10)_QPU', 'decomposition_HybridGrid(5,9)_QPU', 'decomposition_RandomBalanced(10)_QPU']
+QPU Available: True
+
+
+================================================================================
+SCALE: 100 farms
+================================================================================
+
+Metadata:
+  n_farms: 100
+  n_foods: 27
+  n_variables: 2727
+  n_constraints: 2832
+  logical_qubits: 2727
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.422904
+  Solve Time: 0.08s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.263667
+Total Time: 175.09s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Egg, Lamb, Apple, Avocado, Banana, Mango, Tofu, Potato, Cucumber, Eggplant ... (11 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_HybridGrid(5,9)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.382487
+Total Time: 71.96s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 12
+  Foods: Chicken, Lamb, Mango, Papaya, Watermelon, Chickpeas, Peanuts, Tofu, Potato, Eggplant ... (12 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_RandomBalanced(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.254584
+Total Time: 189.24s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 15
+  Foods: Egg, Avocado, Banana, Durian, Guava, Papaya, Watermelon, Chickpeas, Tempeh, Corn ... (15 total)
+  Total Area Allocated: 100.00
+

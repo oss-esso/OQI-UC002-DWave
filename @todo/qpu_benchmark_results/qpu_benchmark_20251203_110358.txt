@@ -1,0 +1,92 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-03T11:01:12.691071
+Scales: [25]
+Methods: ['ground_truth', 'decomposition_Multilevel(10)_QPU', 'decomposition_Multilevel(5)_QPU', 'decomposition_HybridGrid(5,9)_QPU', 'decomposition_RandomBalanced(10)_QPU']
+QPU Available: True
+
+
+================================================================================
+SCALE: 25 farms
+================================================================================
+
+Metadata:
+  n_farms: 25
+  n_foods: 27
+  n_variables: 702
+  n_constraints: 732
+  logical_qubits: 702
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.401763
+  Solve Time: 0.05s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.259293
+Total Time: 37.65s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Beef, Pork, Banana, Durian, Watermelon, Tempeh, Corn, Cabbage, Eggplant, Long bean ... (11 total)
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_Multilevel(5)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.249797
+Total Time: 55.40s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 14
+  Foods: Lamb, Avocado, Durian, Guava, Mango, Orange, Watermelon, Peanuts, Tofu, Cabbage ... (14 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_HybridGrid(5,9)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.389634
+Total Time: 18.13s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 9
+  Foods: Chicken, Banana, Guava, Orange, Papaya, Peanuts, Potato, Long bean, Pumpkin
+  Total Area Allocated: 100.00
+
+
+--------------------------------------------------------------------------------
+Method: decomposition_RandomBalanced(10)_QPU
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.281264
+Total Time: 53.96s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Chicken, Apple, Avocado, Durian, Guava, Tempeh, Tofu, Cucumber, Eggplant, Pumpkin ... (11 total)
+  Total Area Allocated: 100.00
+
+Violation Details:
+  Food Group Constraints: 1 violations
+    Group Starchy staples: 0 (range: 1-2)
+
