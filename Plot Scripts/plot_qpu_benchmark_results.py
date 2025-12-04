@@ -438,6 +438,7 @@ def plot_small_scale_comparison(qpu_metrics, classical_metrics, output_path):
     ax.set_title('Solution Quality', fontsize=14)
     ax.legend(loc='best', fontsize=8, ncol=2)
     ax.grid(True, alpha=0.3)
+    ax.set_yscale('log')
     
     # ===== Plot 2: Optimality Gap =====
     ax = axes[0, 1]
@@ -599,6 +600,7 @@ def plot_large_scale_comparison(qpu_metrics, classical_metrics, output_path):
     ax.set_title('Solution Quality at Scale', fontsize=14)
     ax.legend(loc='best', fontsize=10)
     ax.grid(True, alpha=0.3)
+    ax.set_yscale('log')
     
     # ===== Plot 2: Optimality Gap (includes hybrid methods) =====
     ax = axes[0, 1]
@@ -934,6 +936,7 @@ def plot_comprehensive_solver_comparison(qpu_metrics_small, qpu_metrics_large, c
     ax.set_title('Solution Quality Comparison', fontsize=14)
     ax.legend(loc='best', fontsize=7, ncol=2)
     ax.grid(True, alpha=0.3)
+    ax.set_yscale('log')
     
     # Plot 5: Gap from Optimal - All QPU methods
     ax = axes[1, 1]

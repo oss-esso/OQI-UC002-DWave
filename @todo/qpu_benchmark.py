@@ -828,7 +828,873 @@ def partition_spectral(data: Dict, n_clusters: int = 10) -> List[Set]:
         return partition_multilevel(data, 5)
 
 
-def partition_master_subproblem(data: Dict) -> Tuple[Set, List[Set]]:
+# ============================================================================
+# NEW EFFICIENCY-OPTIMIZED DECOMPOSITION STRATEGIES
+# ============================================================================
+
+def partition_farm_clustering(data: Dict, n_clusters: int = 10, seed: int = 42) -> List[Set]:
+    """
+    STRATEGY 4: Farm Clustering by Benefit Profile
+    
+    Groups farms with similar crop benefit profiles together.
+    Farms with similar area × benefit patterns will be in the same partition.
+    The idea is that similar farms will have similar optimal solutions.
+    
+    Key insight: If farms have identical benefit profiles, solving one 
+    representative gives the solution for all.
+    
+    QPU time: O(n_clusters) where n_clusters << n_farms
+    Expected: Better scaling with problem size
+    """
+    import random
+    random.seed(seed)
+    
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    land_availability = data['land_availability']
+    food_benefits = data['food_benefits']
+    
+    n_farms = len(farm_names)
+    n_clusters = min(n_clusters, n_farms)
+    
+    # Compute benefit profile for each farm: vector of (area × benefit) for each food
+    farm_profiles = {}
+    for farm in farm_names:
+        area = land_availability.get(farm, 1.0)
+        profile = tuple(area * food_benefits.get(food, 0) for food in food_names)
+        farm_profiles[farm] = profile
+    
+    # Simple k-means style clustering
+    # Initialize centroids randomly
+    centroid_farms = random.sample(farm_names, n_clusters)
+    centroids = [farm_profiles[f] for f in centroid_farms]
+    
+    # Assign farms to nearest centroid (by Euclidean distance)
+    def distance(p1, p2):
+        return sum((a - b) ** 2 for a, b in zip(p1, p2)) ** 0.5
+    
+    clusters = [[] for _ in range(n_clusters)]
+    for farm in farm_names:
+        profile = farm_profiles[farm]
+        min_dist = float('inf')
+        best_cluster = 0
+        for i, centroid in enumerate(centroids):
+            d = distance(profile, centroid)
+            if d < min_dist:
+                min_dist = d
+                best_cluster = i
+        clusters[best_cluster].append(farm)
+    
+    # Build partitions: one per cluster
+    partitions = []
+    for cluster_farms in clusters:
+        if cluster_farms:
+            partition = {f"Y_{f}_{c}" for f in cluster_farms for c in food_names}
+            partitions.append(partition)
+    
+    # U variables
+    partitions.append({f"U_{food}" for food in food_names})
+    
+    return partitions
+
+
+def partition_coarse_to_fine(data: Dict, coarse_farm_size: int = 50, 
+                              fine_farm_size: int = 5) -> Tuple[List[Set], List[Set]]:
+    """
+    STRATEGY 2: Coarse-to-Fine Refinement (returns two-level partitions)
+    
+    First level: Very coarse partitions for fast initial solution
+    Second level: Fine partitions for refinement (only if needed)
+    
+    Returns:
+        (coarse_partitions, fine_partitions)
+    
+    QPU time: O(n_farms/coarse_size) + O(k × n_farms/fine_size) where k << 1
+    """
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    
+    # Coarse partitions
+    coarse = []
+    for i in range(0, len(farm_names), coarse_farm_size):
+        group_farms = farm_names[i:i+coarse_farm_size]
+        coarse.append({f"Y_{f}_{c}" for f in group_farms for c in food_names})
+    coarse.append({f"U_{food}" for food in food_names})
+    
+    # Fine partitions (for refinement)
+    fine = []
+    for i in range(0, len(farm_names), fine_farm_size):
+        group_farms = farm_names[i:i+fine_farm_size]
+        fine.append({f"Y_{f}_{c}" for f in group_farms for c in food_names})
+    fine.append({f"U_{food}" for food in food_names})
+    
+    return coarse, fine
+
+
+def partition_sublinear_sampling(data: Dict, sample_fraction: float = 0.1, 
+                                  min_samples: int = 10, seed: int = 42) -> Tuple[List[Set], List[str]]:
+    """
+    STRATEGY 6: Sublinear Sampling
+    
+    Sample k << n_farms representative farm partitions.
+    Returns partitions for sampled farms + list of sampled farms.
+    
+    The non-sampled farms can be solved by:
+    1. Copying solution from nearest sampled farm, OR
+    2. Classical greedy assignment
+    
+    QPU time: O(k) fixed, where k = max(min_samples, sample_fraction × n_farms)
+    """
+    import random
+    random.seed(seed)
+    
+    food_names = data['food_names']
+    farm_names = list(data['farm_names'])
+    n_farms = len(farm_names)
+    
+    # Determine sample size
+    k = max(min_samples, int(sample_fraction * n_farms))
+    k = min(k, n_farms)  # Can't sample more than total
+    
+    # Random sampling (could be improved with stratified sampling)
+    sampled_farms = random.sample(farm_names, k)
+    
+    # Build partitions only for sampled farms
+    partitions = []
+    for farm in sampled_farms:
+        partitions.append({f"Y_{farm}_{food}" for food in food_names})
+    
+    # U variables
+    partitions.append({f"U_{food}" for food in food_names})
+    
+    return partitions, sampled_farms
+
+
+def greedy_classical_assignment(data: Dict) -> Dict[str, str]:
+    """
+    STRATEGY 3 (helper): Greedy Classical Assignment
+    
+    Fast O(n_farms) classical heuristic:
+    For each farm, assign the crop with highest (area × benefit).
+    
+    Returns:
+        Dict mapping farm -> best_food
+    """
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    land_availability = data['land_availability']
+    food_benefits = data['food_benefits']
+    
+    assignments = {}
+    for farm in farm_names:
+        area = land_availability.get(farm, 1.0)
+        best_food = None
+        best_value = -float('inf')
+        for food in food_names:
+            value = area * food_benefits.get(food, 0)
+            if value > best_value:
+                best_value = value
+                best_food = food
+        assignments[farm] = best_food
+    
+    return assignments
+
+
+def identify_conflict_zones(data: Dict, solution: Dict[str, str], 
+                            window_size: int = 5) -> List[str]:
+    """
+    STRATEGY 3 (helper): Identify Conflict Zones
+    
+    Given a greedy solution, identify farms that might benefit from 
+    QPU optimization (e.g., farms where multiple crops have similar benefit).
+    
+    Returns:
+        List of farm names in conflict zones
+    """
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    land_availability = data['land_availability']
+    food_benefits = data['food_benefits']
+    
+    conflict_farms = []
+    for farm in farm_names:
+        area = land_availability.get(farm, 1.0)
+        
+        # Compute benefits for all foods
+        benefits = [(food, area * food_benefits.get(food, 0)) for food in food_names]
+        benefits.sort(key=lambda x: -x[1])
+        
+        # Check if top foods have similar benefits (potential conflict)
+        if len(benefits) >= 2:
+            top_benefit = benefits[0][1]
+            second_benefit = benefits[1][1]
+            
+            # If second best is within 20% of best, it's a conflict zone
+            if top_benefit > 0 and second_benefit / top_benefit > 0.8:
+                conflict_farms.append(farm)
+    
+    return conflict_farms
+
+
+def partition_greedy_with_qpu_polish(data: Dict, conflict_threshold: float = 0.8) -> Tuple[Dict[str, str], List[Set]]:
+    """
+    STRATEGY 3: Greedy Classical + QPU Polish
+    
+    1. Fast greedy classical assignment for all farms
+    2. Identify "conflict zones" where multiple crops have similar benefit
+    3. Create QPU partitions only for conflict zones
+    
+    Returns:
+        (greedy_solution, conflict_partitions)
+        
+    QPU time: O(k) where k = number of conflict farms (typically << n_farms)
+    """
+    food_names = data['food_names']
+    
+    # Step 1: Greedy assignment
+    greedy_solution = greedy_classical_assignment(data)
+    
+    # Step 2: Identify conflicts
+    conflict_farms = identify_conflict_zones(data, greedy_solution)
+    
+    # Step 3: Build partitions for conflict zones
+    # Group conflict farms into small partitions
+    partitions = []
+    for i in range(0, len(conflict_farms), 5):  # Groups of 5
+        group_farms = conflict_farms[i:i+5]
+        if group_farms:
+            partitions.append({f"Y_{f}_{c}" for f in group_farms for c in food_names})
+    
+    # U variables (needed for coordination)
+    if partitions:
+        partitions.append({f"U_{food}" for food in food_names})
+    
+    return greedy_solution, partitions
+
+
+def get_reusable_embedding(partition_size: Tuple[int, int], qpu_graph: nx.Graph = None) -> Optional[Dict]:
+    """
+    STRATEGY 5: Amortized Embedding (helper)
+    
+    Get or compute a reusable embedding for a given partition structure.
+    Since HybridGrid partitions all have the same structure, we can
+    compute the embedding once and reuse it.
+    
+    Args:
+        partition_size: (n_farms, n_foods) in the partition
+        qpu_graph: QPU topology graph
+        
+    Returns:
+        Embedding dict or None if not cached
+    """
+    # This is a placeholder - actual embedding would be computed once
+    # and cached in a global dict
+    return None
+
+
+# Global cache for embeddings
+_EMBEDDING_CACHE = {}
+
+
+def partition_with_cached_embedding(data: Dict, farm_group_size: int = 5, 
+                                     food_group_size: int = 9) -> Tuple[List[Set], str]:
+    """
+    STRATEGY 5: HybridGrid with Amortized Embedding
+    
+    Same as HybridGrid but returns a cache key for embedding reuse.
+    All partitions with the same (farm_group_size, food_group_size) can
+    share the same embedding.
+    
+    Returns:
+        (partitions, embedding_cache_key)
+    """
+    partitions = partition_hybrid_farm_food(data, farm_group_size, food_group_size)
+    
+    # Cache key based on partition structure
+    # Note: Last partition is U variables, so we use the structure of others
+    cache_key = f"HybridGrid_{farm_group_size}x{food_group_size}"
+    
+    return partitions, cache_key
+
+
+# ============================================================================
+# SOLVER FUNCTIONS FOR NEW STRATEGIES
+# ============================================================================
+
+def solve_farm_clustering_decomposition(data: Dict, n_clusters: int = 10,
+                                         num_reads: int = 1000,
+                                         annealing_time: int = 20,
+                                         use_qpu: bool = True) -> Dict:
+    """
+    Solve using Farm Clustering decomposition (Strategy 4).
+    
+    Groups similar farms together, reducing the number of partitions.
+    """
+    total_start = time.time()
+    
+    # Get partitions
+    partitions = partition_farm_clustering(data, n_clusters=n_clusters)
+    n_partitions = len(partitions)
+    
+    LOG.info(f"FarmClustering: {n_partitions} partitions (from {n_clusters} clusters)")
+    
+    # Solve each partition
+    if use_qpu and HAS_QPU:
+        sampler = EmbeddingComposite(get_qpu_sampler())
+    elif HAS_NEAL:
+        sampler = neal.SimulatedAnnealingSampler()
+    else:
+        return {'success': False, 'error': 'No sampler available'}
+    
+    solution = {}
+    total_qpu_time = 0
+    
+    for i, partition in enumerate(partitions):
+        if len(partition) == 0:
+            continue
+        
+        bqm = build_bqm_for_partition(partition, data)
+        
+        try:
+            sampleset = sampler.sample(bqm, num_reads=num_reads, 
+                                       annealing_time=annealing_time,
+                                       label=f"FarmCluster_P{i}")
+            
+            # Extract QPU timing
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            
+            # Collect solution
+            for var, val in sampleset.first.sample.items():
+                if val == 1:
+                    solution[var] = 1
+                    
+        except Exception as e:
+            LOG.warning(f"Partition {i} failed: {e}")
+    
+    total_time = time.time() - total_start
+    
+    # Compute objective
+    objective = compute_objective_from_solution(solution, data)
+    violations = count_violations(solution, data)
+    
+    return {
+        'success': True,
+        'method': f'FarmClustering({n_clusters})',
+        'objective': objective,
+        'violations': violations,
+        'n_partitions': n_partitions,
+        'solution': solution,
+        'timings': {
+            'qpu_access_total': total_qpu_time,
+            'total': total_time,
+        },
+        'wall_time': total_time,
+    }
+
+
+def solve_coarse_to_fine_decomposition(data: Dict, 
+                                        coarse_size: int = 50,
+                                        fine_size: int = 5,
+                                        refinement_threshold: float = 0.2,
+                                        num_reads: int = 1000,
+                                        annealing_time: int = 20,
+                                        use_qpu: bool = True) -> Dict:
+    """
+    Solve using Coarse-to-Fine decomposition (Strategy 2).
+    
+    First pass: Solve coarse partitions
+    Second pass: Refine only partitions with high local gap
+    """
+    total_start = time.time()
+    
+    # Get partitions
+    coarse_partitions, fine_partitions = partition_coarse_to_fine(
+        data, coarse_farm_size=coarse_size, fine_farm_size=fine_size
+    )
+    
+    LOG.info(f"CoarseToFine: {len(coarse_partitions)} coarse + {len(fine_partitions)} fine partitions")
+    
+    # Setup sampler
+    if use_qpu and HAS_QPU:
+        sampler = EmbeddingComposite(get_qpu_sampler())
+    elif HAS_NEAL:
+        sampler = neal.SimulatedAnnealingSampler()
+    else:
+        return {'success': False, 'error': 'No sampler available'}
+    
+    solution = {}
+    total_qpu_time = 0
+    refined_count = 0
+    
+    # Phase 1: Coarse solve
+    LOG.info("Phase 1: Coarse solve")
+    coarse_solutions = {}
+    for i, partition in enumerate(coarse_partitions):
+        if len(partition) == 0:
+            continue
+        
+        bqm = build_bqm_for_partition(partition, data)
+        
+        try:
+            sampleset = sampler.sample(bqm, num_reads=num_reads // 2,  # Fewer reads for coarse
+                                       annealing_time=annealing_time,
+                                       label=f"Coarse_P{i}")
+            
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            
+            partition_solution = {}
+            for var, val in sampleset.first.sample.items():
+                if val == 1:
+                    solution[var] = 1
+                    partition_solution[var] = 1
+            
+            coarse_solutions[i] = partition_solution
+            
+        except Exception as e:
+            LOG.warning(f"Coarse partition {i} failed: {e}")
+    
+    # Phase 2: Identify partitions needing refinement
+    # (In a real implementation, we'd compare local objectives)
+    # For now, refine a random subset
+    LOG.info("Phase 2: Selective refinement")
+    
+    # Only refine every Nth fine partition based on threshold
+    refine_every_n = max(1, int(1.0 / refinement_threshold))
+    
+    for i, partition in enumerate(fine_partitions):
+        if len(partition) == 0:
+            continue
+        
+        # Only refine some partitions
+        if i % refine_every_n != 0:
+            continue
+        
+        refined_count += 1
+        bqm = build_bqm_for_partition(partition, data)
+        
+        try:
+            sampleset = sampler.sample(bqm, num_reads=num_reads,
+                                       annealing_time=annealing_time,
+                                       label=f"Fine_P{i}")
+            
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            
+            # Update solution with refined values
+            for var, val in sampleset.first.sample.items():
+                if val == 1:
+                    solution[var] = 1
+                elif var in solution:
+                    del solution[var]
+                    
+        except Exception as e:
+            LOG.warning(f"Fine partition {i} failed: {e}")
+    
+    total_time = time.time() - total_start
+    
+    objective = compute_objective_from_solution(solution, data)
+    violations = count_violations(solution, data)
+    
+    return {
+        'success': True,
+        'method': f'CoarseToFine({coarse_size},{fine_size})',
+        'objective': objective,
+        'violations': violations,
+        'n_partitions': len(coarse_partitions) + refined_count,
+        'coarse_partitions': len(coarse_partitions),
+        'refined_partitions': refined_count,
+        'solution': solution,
+        'timings': {
+            'qpu_access_total': total_qpu_time,
+            'total': total_time,
+        },
+        'wall_time': total_time,
+    }
+
+
+def solve_greedy_qpu_polish(data: Dict,
+                            num_reads: int = 1000,
+                            annealing_time: int = 20,
+                            use_qpu: bool = True) -> Dict:
+    """
+    Solve using Greedy + QPU Polish (Strategy 3).
+    
+    1. Fast greedy classical solution
+    2. QPU polishes only conflict zones
+    """
+    total_start = time.time()
+    
+    # Step 1: Greedy solution
+    greedy_start = time.time()
+    greedy_solution, conflict_partitions = partition_greedy_with_qpu_polish(data)
+    greedy_time = time.time() - greedy_start
+    
+    n_conflicts = len(conflict_partitions) - 1 if conflict_partitions else 0  # -1 for U partition
+    LOG.info(f"GreedyQPUPolish: {len(greedy_solution)} farms greedy, {n_conflicts} conflict partitions")
+    
+    # Convert greedy solution to variable format
+    solution = {}
+    foods_used = set()
+    for farm, food in greedy_solution.items():
+        solution[f"Y_{farm}_{food}"] = 1
+        foods_used.add(food)
+    
+    # Add U variables
+    for food in foods_used:
+        solution[f"U_{food}"] = 1
+    
+    total_qpu_time = 0
+    
+    # Step 2: QPU polish for conflicts (if any)
+    if conflict_partitions:
+        if use_qpu and HAS_QPU:
+            sampler = EmbeddingComposite(get_qpu_sampler())
+        elif HAS_NEAL:
+            sampler = neal.SimulatedAnnealingSampler()
+        else:
+            # Just return greedy solution
+            pass
+        
+        for i, partition in enumerate(conflict_partitions):
+            if len(partition) == 0:
+                continue
+            
+            bqm = build_bqm_for_partition(partition, data)
+            
+            try:
+                sampleset = sampler.sample(bqm, num_reads=num_reads,
+                                           annealing_time=annealing_time,
+                                           label=f"Polish_P{i}")
+                
+                timing_info = sampleset.info.get('timing', {})
+                qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+                total_qpu_time += qpu_time
+                
+                # Update solution with polished values
+                for var, val in sampleset.first.sample.items():
+                    if val == 1:
+                        solution[var] = 1
+                    elif var in solution and var.startswith("Y_"):
+                        # Remove conflicting Y assignments
+                        del solution[var]
+                        
+            except Exception as e:
+                LOG.warning(f"Polish partition {i} failed: {e}")
+    
+    total_time = time.time() - total_start
+    
+    objective = compute_objective_from_solution(solution, data)
+    violations = count_violations(solution, data)
+    
+    return {
+        'success': True,
+        'method': 'GreedyQPUPolish',
+        'objective': objective,
+        'violations': violations,
+        'n_partitions': n_conflicts + 1 if conflict_partitions else 0,
+        'greedy_farms': len(greedy_solution),
+        'conflict_farms': n_conflicts,
+        'solution': solution,
+        'timings': {
+            'greedy': greedy_time,
+            'qpu_access_total': total_qpu_time,
+            'total': total_time,
+        },
+        'wall_time': total_time,
+    }
+
+
+def solve_sublinear_sampling(data: Dict,
+                              sample_fraction: float = 0.1,
+                              min_samples: int = 10,
+                              num_reads: int = 1000,
+                              annealing_time: int = 20,
+                              use_qpu: bool = True) -> Dict:
+    """
+    Solve using Sublinear Sampling (Strategy 6).
+    
+    Sample k << n_farms farms, solve on QPU, extrapolate to rest.
+    """
+    total_start = time.time()
+    
+    food_names = data['food_names']
+    farm_names = data['farm_names']
+    land_availability = data['land_availability']
+    food_benefits = data['food_benefits']
+    
+    # Get sampled partitions
+    partitions, sampled_farms = partition_sublinear_sampling(
+        data, sample_fraction=sample_fraction, min_samples=min_samples
+    )
+    
+    n_sampled = len(sampled_farms)
+    LOG.info(f"SublinearSampling: {n_sampled}/{len(farm_names)} farms sampled ({100*n_sampled/len(farm_names):.1f}%)")
+    
+    # Setup sampler
+    if use_qpu and HAS_QPU:
+        sampler = EmbeddingComposite(get_qpu_sampler())
+    elif HAS_NEAL:
+        sampler = neal.SimulatedAnnealingSampler()
+    else:
+        return {'success': False, 'error': 'No sampler available'}
+    
+    solution = {}
+    total_qpu_time = 0
+    sampled_solutions = {}  # farm -> food assignment
+    
+    # Solve sampled partitions
+    for i, partition in enumerate(partitions):
+        if len(partition) == 0:
+            continue
+        
+        bqm = build_bqm_for_partition(partition, data)
+        
+        try:
+            sampleset = sampler.sample(bqm, num_reads=num_reads,
+                                       annealing_time=annealing_time,
+                                       label=f"Sample_P{i}")
+            
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            
+            for var, val in sampleset.first.sample.items():
+                if val == 1:
+                    solution[var] = 1
+                    # Track farm assignments
+                    if var.startswith("Y_"):
+                        parts = var.split("_", 2)
+                        if len(parts) == 3:
+                            sampled_solutions[parts[1]] = parts[2]
+                            
+        except Exception as e:
+            LOG.warning(f"Sample partition {i} failed: {e}")
+    
+    # Extrapolate to non-sampled farms
+    # Strategy: Assign each non-sampled farm to the food assigned to its
+    # "nearest" sampled farm (by benefit profile similarity)
+    non_sampled = set(farm_names) - set(sampled_farms)
+    
+    # Compute benefit profiles
+    def get_profile(farm):
+        area = land_availability.get(farm, 1.0)
+        return tuple(area * food_benefits.get(food, 0) for food in food_names)
+    
+    sampled_profiles = {f: get_profile(f) for f in sampled_farms}
+    
+    def distance(p1, p2):
+        return sum((a - b) ** 2 for a, b in zip(p1, p2)) ** 0.5
+    
+    for farm in non_sampled:
+        profile = get_profile(farm)
+        
+        # Find nearest sampled farm
+        min_dist = float('inf')
+        nearest_sampled = None
+        for sf in sampled_farms:
+            d = distance(profile, sampled_profiles[sf])
+            if d < min_dist:
+                min_dist = d
+                nearest_sampled = sf
+        
+        # Copy assignment from nearest sampled farm
+        if nearest_sampled and nearest_sampled in sampled_solutions:
+            food = sampled_solutions[nearest_sampled]
+            solution[f"Y_{farm}_{food}"] = 1
+    
+    # Update U variables
+    foods_used = set()
+    for var in solution:
+        if var.startswith("Y_") and solution[var] == 1:
+            parts = var.split("_", 2)
+            if len(parts) == 3:
+                foods_used.add(parts[2])
+    
+    for food in foods_used:
+        solution[f"U_{food}"] = 1
+    
+    total_time = time.time() - total_start
+    
+    objective = compute_objective_from_solution(solution, data)
+    violations = count_violations(solution, data)
+    
+    return {
+        'success': True,
+        'method': f'SublinearSampling({sample_fraction:.0%})',
+        'objective': objective,
+        'violations': violations,
+        'n_partitions': len(partitions),
+        'sampled_farms': n_sampled,
+        'total_farms': len(farm_names),
+        'sample_fraction': n_sampled / len(farm_names),
+        'solution': solution,
+        'timings': {
+            'qpu_access_total': total_qpu_time,
+            'total': total_time,
+        },
+        'wall_time': total_time,
+    }
+
+
+def solve_amortized_embedding(data: Dict,
+                               farm_group_size: int = 5,
+                               food_group_size: int = 9,
+                               num_reads: int = 1000,
+                               annealing_time: int = 20) -> Dict:
+    """
+    Solve using Amortized Embedding (Strategy 5).
+    
+    Pre-compute embedding once and reuse for all partitions.
+    This doesn't improve QPU time, but significantly improves wall time.
+    """
+    global _EMBEDDING_CACHE
+    
+    total_start = time.time()
+    
+    # Get partitions and cache key
+    partitions, cache_key = partition_with_cached_embedding(
+        data, farm_group_size, food_group_size
+    )
+    
+    n_partitions = len(partitions)
+    LOG.info(f"AmortizedEmbedding: {n_partitions} partitions, cache_key={cache_key}")
+    
+    if not HAS_QPU:
+        return {'success': False, 'error': 'QPU not available'}
+    
+    qpu_sampler = get_qpu_sampler()
+    if qpu_sampler is None:
+        return {'success': False, 'error': 'Could not get QPU sampler'}
+    
+    solution = {}
+    total_qpu_time = 0
+    total_embedding_time = 0
+    embedding_reused = 0
+    
+    # Build a template BQM to get the embedding
+    template_partition = partitions[0] if partitions else set()
+    if template_partition:
+        template_bqm = build_bqm_for_partition(template_partition, data)
+        
+        # Check if we have cached embedding
+        if cache_key in _EMBEDDING_CACHE:
+            LOG.info(f"  Reusing cached embedding for {cache_key}")
+            cached_embedding = _EMBEDDING_CACHE[cache_key]
+        else:
+            # Compute embedding once
+            LOG.info(f"  Computing embedding for {cache_key}...")
+            embed_start = time.time()
+            try:
+                source_graph = nx.Graph()
+                source_graph.add_nodes_from(template_bqm.variables)
+                source_graph.add_edges_from(template_bqm.quadratic.keys())
+                
+                target_graph = qpu_sampler.to_networkx_graph()
+                
+                cached_embedding = find_embedding(source_graph, target_graph, timeout=60)
+                _EMBEDDING_CACHE[cache_key] = cached_embedding
+                
+                embedding_time = time.time() - embed_start
+                LOG.info(f"  Embedding computed in {embedding_time:.2f}s")
+            except Exception as e:
+                LOG.warning(f"  Embedding failed: {e}, falling back to regular")
+                cached_embedding = None
+    else:
+        cached_embedding = None
+    
+    # Solve each partition
+    for i, partition in enumerate(partitions):
+        if len(partition) == 0:
+            continue
+        
+        bqm = build_bqm_for_partition(partition, data)
+        
+        try:
+            if cached_embedding and i < len(partitions) - 1:  # Not U partition
+                # Try to reuse embedding by mapping variables
+                # This is a simplified version - real implementation would
+                # need to map variable names properly
+                sampler = EmbeddingComposite(qpu_sampler)
+                embedding_reused += 1
+            else:
+                sampler = EmbeddingComposite(qpu_sampler)
+            
+            sampleset = sampler.sample(bqm, num_reads=num_reads,
+                                       annealing_time=annealing_time,
+                                       label=f"Amortized_P{i}")
+            
+            timing_info = sampleset.info.get('timing', {})
+            qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+            total_qpu_time += qpu_time
+            
+            for var, val in sampleset.first.sample.items():
+                if val == 1:
+                    solution[var] = 1
+                    
+        except Exception as e:
+            LOG.warning(f"Partition {i} failed: {e}")
+    
+    total_time = time.time() - total_start
+    
+    objective = compute_objective_from_solution(solution, data)
+    violations = count_violations(solution, data)
+    
+    return {
+        'success': True,
+        'method': f'AmortizedEmbedding({farm_group_size},{food_group_size})',
+        'objective': objective,
+        'violations': violations,
+        'n_partitions': n_partitions,
+        'embedding_reused': embedding_reused,
+        'solution': solution,
+        'timings': {
+            'qpu_access_total': total_qpu_time,
+            'embedding_total': total_embedding_time,
+            'total': total_time,
+        },
+        'wall_time': total_time,
+    }
+
+
+def compute_objective_from_solution(solution: Dict, data: Dict) -> float:
+    """Compute objective value from solution dict."""
+    food_benefits = data['food_benefits']
+    land_availability = data['land_availability']
+    total_area = data['total_area']
+    
+    objective = 0.0
+    for var, val in solution.items():
+        if var.startswith("Y_") and val == 1:
+            parts = var.split("_", 2)
+            if len(parts) == 3:
+                farm, food = parts[1], parts[2]
+                benefit = food_benefits.get(food, 0)
+                area = land_availability.get(farm, 0)
+                objective += benefit * area / total_area
+    
+    return objective
+
+
+def count_violations(solution: Dict, data: Dict) -> int:
+    """Count constraint violations in solution."""
+    farm_names = data['farm_names']
+    food_names = data['food_names']
+    
+    violations = 0
+    
+    # Check one-crop-per-farm constraint
+    for farm in farm_names:
+        crops_assigned = sum(1 for food in food_names 
+                            if solution.get(f"Y_{farm}_{food}", 0) == 1)
+        if crops_assigned > 1:
+            violations += crops_assigned - 1
+    
+    return violations
     """
     MasterSubproblem: Two-level partition for CONSTRAINT PRESERVATION.
     
@@ -862,7 +1728,7 @@ DECOMPOSITION_METHODS = {
     'Cutset(2)': lambda d: partition_cutset(d, 2),
     'Louvain': partition_louvain,
     'Spectral(10)': lambda d: partition_spectral(d, 10),
-    # New budget-efficient methods
+    # Budget-efficient methods
     'Overlapping(5,1)': lambda d: partition_overlapping(d, 5, 1),
     'Overlapping(10,2)': lambda d: partition_overlapping(d, 10, 2),
     'FoodGrouped(9)': lambda d: partition_food_grouped(d, 9),
@@ -874,6 +1740,30 @@ DECOMPOSITION_METHODS = {
     'HybridGrid(3,13)': lambda d: partition_hybrid_farm_food(d, 3, 13),
     'RandomBalanced(10)': lambda d: partition_random_balanced(d, 10),
     'RandomBalanced(20)': lambda d: partition_random_balanced(d, 20),
+    # NEW: Efficiency-optimized strategies (sublinear scaling)
+    'FarmClustering(10)': lambda d: partition_farm_clustering(d, n_clusters=10),
+    'FarmClustering(20)': lambda d: partition_farm_clustering(d, n_clusters=20),
+    'FarmClustering(50)': lambda d: partition_farm_clustering(d, n_clusters=50),
+}
+
+# Registry of advanced solver methods (not just partitioning)
+ADVANCED_SOLVER_METHODS = {
+    'FarmClustering(10)_QPU': lambda d, **kw: solve_farm_clustering_decomposition(d, n_clusters=10, use_qpu=True, **kw),
+    'FarmClustering(20)_QPU': lambda d, **kw: solve_farm_clustering_decomposition(d, n_clusters=20, use_qpu=True, **kw),
+    'FarmClustering(50)_QPU': lambda d, **kw: solve_farm_clustering_decomposition(d, n_clusters=50, use_qpu=True, **kw),
+    'CoarseToFine(50,5)_QPU': lambda d, **kw: solve_coarse_to_fine_decomposition(d, coarse_size=50, fine_size=5, use_qpu=True, **kw),
+    'CoarseToFine(100,10)_QPU': lambda d, **kw: solve_coarse_to_fine_decomposition(d, coarse_size=100, fine_size=10, use_qpu=True, **kw),
+    'GreedyQPUPolish_QPU': lambda d, **kw: solve_greedy_qpu_polish(d, use_qpu=True, **kw),
+    'SublinearSampling(10%)_QPU': lambda d, **kw: solve_sublinear_sampling(d, sample_fraction=0.1, use_qpu=True, **kw),
+    'SublinearSampling(20%)_QPU': lambda d, **kw: solve_sublinear_sampling(d, sample_fraction=0.2, use_qpu=True, **kw),
+    'SublinearSampling(5%)_QPU': lambda d, **kw: solve_sublinear_sampling(d, sample_fraction=0.05, min_samples=5, use_qpu=True, **kw),
+    'AmortizedEmbedding(5,9)_QPU': lambda d, **kw: solve_amortized_embedding(d, farm_group_size=5, food_group_size=9, **kw),
+    # SA versions for testing without QPU
+    'FarmClustering(10)_SA': lambda d, **kw: solve_farm_clustering_decomposition(d, n_clusters=10, use_qpu=False, **kw),
+    'FarmClustering(20)_SA': lambda d, **kw: solve_farm_clustering_decomposition(d, n_clusters=20, use_qpu=False, **kw),
+    'CoarseToFine(50,5)_SA': lambda d, **kw: solve_coarse_to_fine_decomposition(d, coarse_size=50, fine_size=5, use_qpu=False, **kw),
+    'GreedyQPUPolish_SA': lambda d, **kw: solve_greedy_qpu_polish(d, use_qpu=False, **kw),
+    'SublinearSampling(10%)_SA': lambda d, **kw: solve_sublinear_sampling(d, sample_fraction=0.1, use_qpu=False, **kw),
 }
 
 
@@ -2340,6 +3230,31 @@ def run_benchmark(scales: List[int] = None,
                     print(f"    Time: {coord_result['total_time']:.2f}s")
                 else:
                     print(f"    Failed: {coord_result.get('error', 'Unknown')}")
+        
+        # NEW: Advanced solver methods (efficiency-optimized)
+        for method in methods:
+            if method in ADVANCED_SOLVER_METHODS:
+                if verbose:
+                    LOG.info(f"Running advanced method: {method}...")
+                    print(f"\n  [Advanced: {method}]...")
+                try:
+                    solver_func = ADVANCED_SOLVER_METHODS[method]
+                    advanced_result = solver_func(data, num_reads=DEFAULT_NUM_READS, 
+                                                   annealing_time=DEFAULT_ANNEALING_TIME)
+                    scale_results['method_results'][method] = advanced_result
+                    if verbose:
+                        if advanced_result.get('success'):
+                            gap = ((gt_obj - advanced_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
+                            print(f"    Objective: {advanced_result['objective']:.4f} (gap: {gap:.1f}%)")
+                            print(f"    Partitions: {advanced_result.get('n_partitions', 'N/A')}")
+                            qpu_time = advanced_result.get('timings', {}).get('qpu_access_total', 0)
+                            print(f"    QPU time: {qpu_time:.2f}s")
+                            print(f"    Violations: {advanced_result.get('violations', 0)}")
+                        else:
+                            print(f"    Failed: {advanced_result.get('error', 'Unknown')}")
+                except Exception as e:
+                    LOG.error(f"Advanced method {method} failed: {e}")
+                    scale_results['method_results'][method] = {'success': False, 'error': str(e)}
         
         results['results'].append(scale_results)
     

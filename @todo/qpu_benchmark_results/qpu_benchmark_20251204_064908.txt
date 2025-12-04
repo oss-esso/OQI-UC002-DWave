@@ -1,0 +1,45 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-04T06:49:07.522280
+Scales: [50]
+Methods: ['ground_truth', 'FarmClustering(10)_SA', 'GreedyQPUPolish_SA', 'SublinearSampling(10%)_SA']
+QPU Available: True
+
+
+================================================================================
+SCALE: 50 farms
+================================================================================
+
+Metadata:
+  n_farms: 50
+  n_foods: 27
+  n_variables: 1377
+  n_constraints: 1432
+  logical_qubits: 1377
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.415857
+  Solve Time: 0.06s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: FarmClustering(10)_SA
+--------------------------------------------------------------------------------
+Success: False
+Error: name 'SimulatedAnnealingSampler' is not defined
+
+
+--------------------------------------------------------------------------------
+Method: GreedyQPUPolish_SA
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.429951
+Total Time: 0.00s
+Violations: 4
+
+Solution Summary:
