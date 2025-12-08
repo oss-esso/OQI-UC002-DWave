@@ -1,0 +1,90 @@
+================================================================================
+ROTATION SCENARIOS - BENCHMARK ANALYSIS
+================================================================================
+
+CRITICAL FINDING: Still Too Easy for Classical Solvers
+-------------------------------------------------------
+
+Despite implementing quantum-friendly features (bounded degree, frustration,
+spatial locality), Gurobi still solves ALL instances optimally with:
+
+• 0-0.09% integrality gap (LP finds near-integer solutions)
+• < 6 seconds for all instances  
+• Only 1 branch-and-bound node (solved at root!)
+• 0-16% fractional LP variables
+
+WHAT WORKED (Quantum Tractability):
+------------------------------------
+✅ Bounded max degree: ~29 (embeddable on Pegasus with chains ~2)
+✅ Reduced variables: 90-900 vs 2700+ in original
+✅ Spatial locality: k=4 neighbors (sparse coupling)
+✅ High frustration: 61-75% negative synergies
+
+WHAT DIDN'T WORK (Classical Hardness):
+--------------------------------------
+❌ Integrality gap: 0-0.09% (target was >5%)
+❌ LP relaxation: Finds integer solution directly
+❌ Branch-and-bound: No branching needed (1 node)
+❌ Fractional variables: 0% in 3/4 scenarios
+
+WHY STILL TOO EASY:
+------------------
+1. ONE-CROP-PER-PERIOD CONSTRAINT TOO STRONG
+   The constraint "sum(Y[f,c,t] for c) == 1" forces exactly one crop per farm
+   per period. LP naturally respects this with values 0 or 1.
+
+2. QUADRATIC TERMS HELP LP
+   Gurobi converts quadratic to bilinear constraints, which LP handles well
+   with modern cutting planes (RLT, BQP).
+
+3. SMALL SEARCH SPACE
+   With only 6 crop families and binary decisions, the feasible region is
+   small enough for LP to find integer optimum at root.
+
+COMPARISON TO TARGET:
+--------------------
+                    Target      Achieved    Status
+Integrality Gap:    >5%         0-0.09%     ❌ FAIL
+Max Degree:         <50         ~29         ✅ PASS
+Solve Time (n=200): >60s        6s          ❌ FAIL
+Frustration:        50-70%      61-75%      ✅ PASS
+Embeddable:         Yes         Yes         ✅ PASS
+
+CONCLUSION:
+----------
+The rotation formulation is:
+• EXCELLENT for quantum (bounded, sparse, embeddable)
+• STILL TOO EASY for classical (LP dominates)
+
+This is NOT the sweet spot for quantum advantage!
+
+NEXT STEPS:
+----------
+Option 1: ACCEPT LIMITED HARDNESS
+  - Focus on QPU feasibility demonstration
+  - Compare quantum vs classical at SCALE (n=1000+)
+  - Acknowledge classical wins for n<1000
+
+Option 2: FURTHER INCREASE HARDNESS
+  - Remove one-hot constraint, use penalty instead
+  - Increase frustration to 80-90%
+  - Add non-local constraints (global diversity, budgets)
+  - Use NP-hard planted instances (3-SAT reduction)
+
+Option 3: HYBRID APPROACH
+  - Use rotation formulation for subproblems
+  - Decompose large instances spatially
+  - Solve subproblems on QPU
+  - Coordinate with classical outer loop
+
+RECOMMENDATION: Pursue Option 3 (Hybrid Decomposition)
+------------------------------------------------------
+Your rotation formulation is perfect for:
+• Spatially decomposed subproblems (10-20 farms each)
+• QPU-solvable chunks (bounded degree)
+• Meaningful agricultural structure preserved
+
+Let classical solver handle coordination, QPU handle local optimization.
+This is a PRACTICAL path to demonstrating quantum utility!
+
+================================================================================

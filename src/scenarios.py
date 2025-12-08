@@ -61,11 +61,21 @@ def load_food_data(complexity_level: str = 'simple') -> Tuple[List[str], Dict[st
         return _load_medium_120_food_data()
     elif complexity_level == 'medium_160':
         return _load_medium_160_food_data()
+    # Rotation scenarios with quantum-friendly characteristics
+    elif complexity_level == 'rotation_micro_25':
+        return _load_rotation_micro_25_food_data()
+    elif complexity_level == 'rotation_small_50':
+        return _load_rotation_small_50_food_data()
+    elif complexity_level == 'rotation_medium_100':
+        return _load_rotation_medium_100_food_data()
+    elif complexity_level == 'rotation_large_200':
+        return _load_rotation_large_200_food_data()
     else:
         raise ValueError(
             f"Invalid complexity level: {complexity_level}. Must be one of: simple, intermediate, custom, "
             f"30farms, 60farms, 90farms, 250farms, 350farms, 500farms_full, 1000farms_full, 2000farms_full, "
-            f"full, full_family, micro_6, micro_12, tiny_24, tiny_40, small_60, small_80, small_100, medium_120, medium_160")
+            f"full, full_family, micro_6, micro_12, tiny_24, tiny_40, small_60, small_80, small_100, medium_120, medium_160, "
+            f"rotation_micro_25, rotation_small_50, rotation_medium_100, rotation_large_200")
 
 
 def _load_30farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
@@ -2032,16 +2042,324 @@ def _load_medium_160_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]]
     return farms, foods, food_groups, config
 
 
+# ============================================================================
+# ROTATION SCENARIOS WITH QUANTUM-FRIENDLY CHARACTERISTICS
+# ============================================================================
+# These scenarios are designed for 3-period rotation optimization with:
+# - Reduced crop families (6-8 instead of 27 crops) for bounded degree
+# - Enhanced rotation matrix with negative synergies (frustration)
+# - Spatial neighbor structure (k-nearest for local interactions)
+# - Target: 5-15% integrality gap, embeddable on QPU with chains ~2-3
+# ============================================================================
+
+def _load_rotation_micro_25_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Micro rotation scenario for quantum advantage testing.
+    
+    Configuration (3-period rotation):
+    - 5 farms × 6 crop families × 3 periods = 90 Y variables + 18 U variables = 108 total
+    - Crop families: Fruits, Grains, Legumes, Leafy-Veg, Root-Veg, Proteins (6 total)
+    - Spatial structure: Grid layout with k=4 nearest neighbors
+    - Enhanced rotation matrix: 40% negative synergies for frustration
+    - Target variables: ~100 (embeddable on QPU)
+    
+    Quantum-friendly features:
+    - Reduced choices per farm (6 families vs 27 crops)
+    - Bounded max degree: (6-1) + 4×6 = 29 per variable
+    - Frustrated interactions from negative rotation synergies
+    - Sparse spatial interactions (k=4 neighbors only)
+    """
+    import sys as _sys
+    import os as _os
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+    
+    # Generate farms with spatial structure
+    n_farms = 5
+    L = generate_farms(n_farms=n_farms, seed=2501)
+    farms = list(L.keys())
+    
+    # Define crop families (aggregated from full crop list)
+    crop_families = {
+        'Fruits': {'nutritional_value': 0.7, 'nutrient_density': 0.6, 'environmental_impact': 0.3, 
+                   'affordability': 0.8, 'sustainability': 0.7},
+        'Grains': {'nutritional_value': 0.8, 'nutrient_density': 0.7, 'environmental_impact': 0.4,
+                   'affordability': 0.9, 'sustainability': 0.6},
+        'Legumes': {'nutritional_value': 0.9, 'nutrient_density': 0.8, 'environmental_impact': 0.2,
+                    'affordability': 0.85, 'sustainability': 0.9},
+        'Leafy_Vegetables': {'nutritional_value': 0.75, 'nutrient_density': 0.9, 'environmental_impact': 0.25,
+                             'affordability': 0.7, 'sustainability': 0.8},
+        'Root_Vegetables': {'nutritional_value': 0.65, 'nutrient_density': 0.6, 'environmental_impact': 0.35,
+                            'affordability': 0.75, 'sustainability': 0.75},
+        'Proteins': {'nutritional_value': 0.95, 'nutrient_density': 0.85, 'environmental_impact': 0.6,
+                     'affordability': 0.6, 'sustainability': 0.5}
+    }
+    
+    # Food groups mapping
+    food_groups = {
+        'Plant_Foods': ['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables'],
+        'Proteins': ['Proteins', 'Legumes']
+    }
+    
+    # Config with rotation-specific parameters
+    config = {
+        'parameters': {
+            'land_availability': L,
+            'weights': {
+                'nutritional_value': 0.25,
+                'nutrient_density': 0.25,
+                'environmental_impact': 0.20,
+                'affordability': 0.15,
+                'sustainability': 0.15
+            },
+            'minimum_planting_area': {crop: 0.5 for crop in crop_families},
+            'food_group_constraints': {
+                'Plant_Foods': {'min': 3, 'max': 5},
+                'Proteins': {'min': 1, 'max': 2}
+            },
+            'rotation_gamma': 0.20,  # Synergy weight
+            'spatial_k_neighbors': 4,  # k-nearest neighbors
+            'frustration_ratio': 0.70,  # 70% negative synergies (HIGH)
+            'negative_synergy_strength': -0.8,  # Strong penalties
+            'use_soft_one_hot': True,  # Soft constraint for LP gap
+            'one_hot_penalty': 3.0,  # Penalty weight (lower = harder)
+            'diversity_bonus': 0.15  # Competing objective
+        }
+    }
+    
+    logger.info(f"Loaded rotation_micro_25: {n_farms} farms × {len(crop_families)} families × 3 periods")
+    logger.info(f"  Variables: ~{n_farms * len(crop_families) * 3 + len(crop_families) * 3} (Y + U)")
+    logger.info(f"  Max degree: ~{(len(crop_families)-1) + 4 * len(crop_families)} (bounded for QPU)")
+    
+    return farms, crop_families, food_groups, config
+
+
+def _load_rotation_small_50_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Small rotation scenario for scaling analysis.
+    
+    Configuration (3-period rotation):
+    - 10 farms × 6 crop families × 3 periods = 180 Y variables + 18 U variables = 198 total
+    - Same crop families as micro_25
+    - Spatial grid with k=4 neighbors
+    - 40% frustration ratio
+    """
+    import sys as _sys
+    import os as _os
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+    
+    n_farms = 10
+    L = generate_farms(n_farms=n_farms, seed=5001)
+    farms = list(L.keys())
+    
+    crop_families = {
+        'Fruits': {'nutritional_value': 0.7, 'nutrient_density': 0.6, 'environmental_impact': 0.3, 
+                   'affordability': 0.8, 'sustainability': 0.7},
+        'Grains': {'nutritional_value': 0.8, 'nutrient_density': 0.7, 'environmental_impact': 0.4,
+                   'affordability': 0.9, 'sustainability': 0.6},
+        'Legumes': {'nutritional_value': 0.9, 'nutrient_density': 0.8, 'environmental_impact': 0.2,
+                    'affordability': 0.85, 'sustainability': 0.9},
+        'Leafy_Vegetables': {'nutritional_value': 0.75, 'nutrient_density': 0.9, 'environmental_impact': 0.25,
+                             'affordability': 0.7, 'sustainability': 0.8},
+        'Root_Vegetables': {'nutritional_value': 0.65, 'nutrient_density': 0.6, 'environmental_impact': 0.35,
+                            'affordability': 0.75, 'sustainability': 0.75},
+        'Proteins': {'nutritional_value': 0.95, 'nutrient_density': 0.85, 'environmental_impact': 0.6,
+                     'affordability': 0.6, 'sustainability': 0.5}
+    }
+    
+    food_groups = {
+        'Plant_Foods': ['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables'],
+        'Proteins': ['Proteins', 'Legumes']
+    }
+    
+    config = {
+        'parameters': {
+            'land_availability': L,
+            'weights': {
+                'nutritional_value': 0.25,
+                'nutrient_density': 0.25,
+                'environmental_impact': 0.20,
+                'affordability': 0.15,
+                'sustainability': 0.15
+            },
+            'minimum_planting_area': {crop: 0.5 for crop in crop_families},
+            'food_group_constraints': {
+                'Plant_Foods': {'min': 3, 'max': 5},
+                'Proteins': {'min': 1, 'max': 2}
+            },
+            'rotation_gamma': 0.25,
+            'spatial_k_neighbors': 4,
+            'frustration_ratio': 0.75,  # 75% negative
+            'negative_synergy_strength': -1.0,  # Stronger
+            'use_soft_one_hot': True,
+            'one_hot_penalty': 2.5,
+            'diversity_bonus': 0.18
+        }
+    }
+    
+    logger.info(f"Loaded rotation_small_50: {n_farms} farms × {len(crop_families)} families × 3 periods")
+    
+    return farms, crop_families, food_groups, config
+
+
+def _load_rotation_medium_100_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Medium rotation scenario with increased frustration.
+    
+    Configuration (3-period rotation):
+    - 20 farms × 6 crop families × 3 periods = 360 Y variables + 18 U variables = 378 total
+    - Increased frustration: 50% negative synergies
+    - Stronger negative coupling: -0.5
+    - Target: >5% integrality gap
+    """
+    import sys as _sys
+    import os as _os
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+    
+    n_farms = 20
+    L = generate_farms(n_farms=n_farms, seed=10001)
+    farms = list(L.keys())
+    
+    crop_families = {
+        'Fruits': {'nutritional_value': 0.7, 'nutrient_density': 0.6, 'environmental_impact': 0.3, 
+                   'affordability': 0.8, 'sustainability': 0.7},
+        'Grains': {'nutritional_value': 0.8, 'nutrient_density': 0.7, 'environmental_impact': 0.4,
+                   'affordability': 0.9, 'sustainability': 0.6},
+        'Legumes': {'nutritional_value': 0.9, 'nutrient_density': 0.8, 'environmental_impact': 0.2,
+                    'affordability': 0.85, 'sustainability': 0.9},
+        'Leafy_Vegetables': {'nutritional_value': 0.75, 'nutrient_density': 0.9, 'environmental_impact': 0.25,
+                             'affordability': 0.7, 'sustainability': 0.8},
+        'Root_Vegetables': {'nutritional_value': 0.65, 'nutrient_density': 0.6, 'environmental_impact': 0.35,
+                            'affordability': 0.75, 'sustainability': 0.75},
+        'Proteins': {'nutritional_value': 0.95, 'nutrient_density': 0.85, 'environmental_impact': 0.6,
+                     'affordability': 0.6, 'sustainability': 0.5}
+    }
+    
+    food_groups = {
+        'Plant_Foods': ['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables'],
+        'Proteins': ['Proteins', 'Legumes']
+    }
+    
+    config = {
+        'parameters': {
+            'land_availability': L,
+            'weights': {
+                'nutritional_value': 0.25,
+                'nutrient_density': 0.25,
+                'environmental_impact': 0.20,
+                'affordability': 0.15,
+                'sustainability': 0.15
+            },
+            'minimum_planting_area': {crop: 0.5 for crop in crop_families},
+            'food_group_constraints': {
+                'Plant_Foods': {'min': 3, 'max': 5},
+                'Proteins': {'min': 1, 'max': 2}
+            },
+            'rotation_gamma': 0.30,  # Strong rotation effect
+            'spatial_k_neighbors': 4,
+            'frustration_ratio': 0.82,  # 82% negative synergies
+            'negative_synergy_strength': -1.2,  # Very strong penalties
+            'use_soft_one_hot': True,
+            'one_hot_penalty': 2.0,
+            'diversity_bonus': 0.22
+        }
+    }
+    
+    logger.info(f"Loaded rotation_medium_100: {n_farms} farms × {len(crop_families)} families × 3 periods")
+    logger.info(f"  Frustration: 82% of rotation edges have negative synergies")
+    
+    return farms, crop_families, food_groups, config
+
+
+def _load_rotation_large_200_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Large rotation scenario for classical hardness testing.
+    
+    Configuration (3-period rotation):
+    - 50 farms × 6 crop families × 3 periods = 900 Y variables + 18 U variables = 918 total
+    - High frustration: 60% negative synergies
+    - Strong coupling: -0.7
+    - Expected: Gurobi struggles (>10% gap or timeout)
+    """
+    import sys as _sys
+    import os as _os
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+    
+    n_farms = 50
+    L = generate_farms(n_farms=n_farms, seed=20001)
+    farms = list(L.keys())
+    
+    crop_families = {
+        'Fruits': {'nutritional_value': 0.7, 'nutrient_density': 0.6, 'environmental_impact': 0.3, 
+                   'affordability': 0.8, 'sustainability': 0.7},
+        'Grains': {'nutritional_value': 0.8, 'nutrient_density': 0.7, 'environmental_impact': 0.4,
+                   'affordability': 0.9, 'sustainability': 0.6},
+        'Legumes': {'nutritional_value': 0.9, 'nutrient_density': 0.8, 'environmental_impact': 0.2,
+                    'affordability': 0.85, 'sustainability': 0.9},
+        'Leafy_Vegetables': {'nutritional_value': 0.75, 'nutrient_density': 0.9, 'environmental_impact': 0.25,
+                             'affordability': 0.7, 'sustainability': 0.8},
+        'Root_Vegetables': {'nutritional_value': 0.65, 'nutrient_density': 0.6, 'environmental_impact': 0.35,
+                            'affordability': 0.75, 'sustainability': 0.75},
+        'Proteins': {'nutritional_value': 0.95, 'nutrient_density': 0.85, 'environmental_impact': 0.6,
+                     'affordability': 0.6, 'sustainability': 0.5}
+    }
+    
+    food_groups = {
+        'Plant_Foods': ['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables'],
+        'Proteins': ['Proteins', 'Legumes']
+    }
+    
+    config = {
+        'parameters': {
+            'land_availability': L,
+            'weights': {
+                'nutritional_value': 0.25,
+                'nutrient_density': 0.25,
+                'environmental_impact': 0.20,
+                'affordability': 0.15,
+                'sustainability': 0.15
+            },
+            'minimum_planting_area': {crop: 0.5 for crop in crop_families},
+            'food_group_constraints': {
+                'Plant_Foods': {'min': 3, 'max': 5},
+                'Proteins': {'min': 1, 'max': 2}
+            },
+            'rotation_gamma': 0.35,  # Maximum rotation effect
+            'spatial_k_neighbors': 4,
+            'frustration_ratio': 0.88,  # 88% negative synergies (extreme)
+            'negative_synergy_strength': -1.5,  # Maximum penalties
+            'use_soft_one_hot': True,
+            'one_hot_penalty': 1.5,  # Weakest penalty = hardest
+            'diversity_bonus': 0.25  # Strong competing objective
+        }
+    }
+    
+    logger.info(f"Loaded rotation_large_200: {n_farms} farms × {len(crop_families)} families × 3 periods")
+    logger.info(f"  Frustration: 88% negative synergies (extreme classical hardness)")
+    
+    return farms, crop_families, food_groups, config
+
+
 # Test scenario output
 if __name__ == "__main__":
-    complexity = 'intermediate'
+    complexity = 'rotation_micro_25'  # Test rotation scenario
     farms, foods, food_groups, config = load_food_data(complexity)
 
     # Display scenario details
     num_farms = len(farms)
     num_foods = len(foods)
-    problem_size = "N/A"  # Placeholder for problem size
-    print(f"Scenario Details:")
-    print(f"  Farms: {num_farms} ({farms})")
-    print(f"  Foods: {num_foods} ({list(foods.keys())})")
-    print(f"  Problem Size: {problem_size} variables")
+    problem_size = num_farms * num_foods * 3 + num_foods * 3  # 3-period rotation
+    print(f"Rotation Scenario Details:")
+    print(f"  Farms: {num_farms} ({farms[:5]}...)")
+    print(f"  Crop Families: {num_foods} ({list(foods.keys())})")
+    print(f"  Problem Size: ~{problem_size} variables (3-period rotation)")
+    print(f"  Rotation gamma: {config['parameters']['rotation_gamma']}")
+    print(f"  Frustration ratio: {config['parameters']['frustration_ratio']}")
+    print(f"  Spatial k-neighbors: {config['parameters']['spatial_k_neighbors']}")
