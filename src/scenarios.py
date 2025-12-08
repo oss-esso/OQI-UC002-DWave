@@ -42,9 +42,30 @@ def load_food_data(complexity_level: str = 'simple') -> Tuple[List[str], Dict[st
         return _load_full_food_data()
     elif complexity_level == 'full_family':
         return _load_full_family_food_data()
+    # Synthetic small-scale scenarios for QPU embedding testing (6-160 variables)
+    elif complexity_level == 'micro_6':
+        return _load_micro_6_food_data()
+    elif complexity_level == 'micro_12':
+        return _load_micro_12_food_data()
+    elif complexity_level == 'tiny_24':
+        return _load_tiny_24_food_data()
+    elif complexity_level == 'tiny_40':
+        return _load_tiny_40_food_data()
+    elif complexity_level == 'small_60':
+        return _load_small_60_food_data()
+    elif complexity_level == 'small_80':
+        return _load_small_80_food_data()
+    elif complexity_level == 'small_100':
+        return _load_small_100_food_data()
+    elif complexity_level == 'medium_120':
+        return _load_medium_120_food_data()
+    elif complexity_level == 'medium_160':
+        return _load_medium_160_food_data()
     else:
         raise ValueError(
-            f"Invalid complexity level: {complexity_level}. Must be one of: simple, intermediate, custom, 30farms, 60farms, 90farms, 250farms, 350farms, 500farms_full, 1000farms_full, 2000farms_full, full, full_family")
+            f"Invalid complexity level: {complexity_level}. Must be one of: simple, intermediate, custom, "
+            f"30farms, 60farms, 90farms, 250farms, 350farms, 500farms_full, 1000farms_full, 2000farms_full, "
+            f"full, full_family, micro_6, micro_12, tiny_24, tiny_40, small_60, small_80, small_100, medium_120, medium_160")
 
 
 def _load_30farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
@@ -1601,6 +1622,413 @@ def _load_full_family_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]
     logger.info(
         f"Loaded full_family data for {len(farms)} farms (from sampler) and {len(foods)} foods")
 
+    return farms, foods, food_groups, config
+
+
+# ============================================================================
+# SYNTHETIC SMALL-SCALE SCENARIOS FOR QPU EMBEDDING TESTING (6-160 variables)
+# ============================================================================
+# 
+# These scenarios are designed to test direct QPU embedding at scales where
+# embedding might succeed or fail on Pegasus/Zephyr architectures.
+# 
+# Variable count formula: n_vars = n_plots × n_foods + n_foods (for U variables)
+# 
+# Scenarios maintain meaningful constraints:
+# - Food groups with min_foods constraints
+# - Diversity requirements 
+# - Realistic food benefit values
+# ============================================================================
+
+
+def _create_synthetic_foods(n_foods_per_group: Dict[str, int], seed: int = 42) -> Tuple[Dict[str, Dict[str, float]], Dict[str, List[str]]]:
+    """
+    Create synthetic foods with realistic nutritional attributes.
+    
+    Args:
+        n_foods_per_group: Dictionary mapping group name to number of foods
+        seed: Random seed for reproducibility
+        
+    Returns:
+        Tuple of (foods dict, food_groups dict)
+    """
+    import numpy as np
+    np.random.seed(seed)
+    
+    # Base nutritional profiles by food group (realistic ranges)
+    group_profiles = {
+        'Grains': {
+            'nutritional_value': (0.6, 0.8),
+            'nutrient_density': (0.5, 0.7),
+            'environmental_impact': (0.3, 0.5),
+            'affordability': (0.7, 0.9),
+            'sustainability': (0.5, 0.7)
+        },
+        'Legumes': {
+            'nutritional_value': (0.7, 0.9),
+            'nutrient_density': (0.7, 0.9),
+            'environmental_impact': (0.2, 0.4),
+            'affordability': (0.6, 0.8),
+            'sustainability': (0.7, 0.9)
+        },
+        'Vegetables': {
+            'nutritional_value': (0.5, 0.8),
+            'nutrient_density': (0.6, 0.9),
+            'environmental_impact': (0.2, 0.4),
+            'affordability': (0.5, 0.8),
+            'sustainability': (0.6, 0.8)
+        },
+        'Fruits': {
+            'nutritional_value': (0.6, 0.8),
+            'nutrient_density': (0.5, 0.8),
+            'environmental_impact': (0.2, 0.4),
+            'affordability': (0.4, 0.7),
+            'sustainability': (0.6, 0.8)
+        },
+        'Proteins': {
+            'nutritional_value': (0.7, 0.9),
+            'nutrient_density': (0.6, 0.8),
+            'environmental_impact': (0.4, 0.7),
+            'affordability': (0.4, 0.7),
+            'sustainability': (0.4, 0.7)
+        }
+    }
+    
+    # Food name templates by group
+    food_names_templates = {
+        'Grains': ['Wheat', 'Rice', 'Corn', 'Barley', 'Oats', 'Millet', 'Sorghum', 'Rye'],
+        'Legumes': ['Soybeans', 'Lentils', 'Chickpeas', 'BlackBeans', 'PintoBeans', 'KidneyBeans'],
+        'Vegetables': ['Potatoes', 'Carrots', 'Tomatoes', 'Onions', 'Cabbage', 'Spinach', 'Broccoli'],
+        'Fruits': ['Apples', 'Oranges', 'Bananas', 'Grapes', 'Berries', 'Mangoes', 'Pears'],
+        'Proteins': ['Eggs', 'Chicken', 'Fish', 'Beef', 'Pork', 'Turkey']
+    }
+    
+    foods = {}
+    food_groups = {}
+    
+    for group, n_foods in n_foods_per_group.items():
+        if group not in group_profiles:
+            # Use vegetables as default profile
+            profile = group_profiles['Vegetables']
+        else:
+            profile = group_profiles[group]
+        
+        templates = food_names_templates.get(group, [f'{group}Food'])
+        group_foods = []
+        
+        for i in range(n_foods):
+            # Generate food name
+            if i < len(templates):
+                food_name = templates[i]
+            else:
+                food_name = f'{group}_{i+1}'
+            
+            # Generate realistic attributes within group ranges
+            foods[food_name] = {
+                'nutritional_value': round(np.random.uniform(*profile['nutritional_value']), 2),
+                'nutrient_density': round(np.random.uniform(*profile['nutrient_density']), 2),
+                'environmental_impact': round(np.random.uniform(*profile['environmental_impact']), 2),
+                'affordability': round(np.random.uniform(*profile['affordability']), 2),
+                'sustainability': round(np.random.uniform(*profile['sustainability']), 2)
+            }
+            group_foods.append(food_name)
+        
+        food_groups[group] = group_foods
+    
+    return foods, food_groups
+
+
+def _create_synthetic_farms(n_farms: int, total_area: float = 100.0, seed: int = 42) -> Dict[str, float]:
+    """
+    Create synthetic farm land availability.
+    
+    Args:
+        n_farms: Number of farms/plots
+        total_area: Total area to distribute (hectares)
+        seed: Random seed for reproducibility
+        
+    Returns:
+        Dictionary mapping farm names to land availability
+    """
+    import numpy as np
+    np.random.seed(seed)
+    
+    # Generate variable farm sizes (log-normal distribution for realism)
+    raw_sizes = np.random.lognormal(mean=1.0, sigma=0.5, size=n_farms)
+    # Normalize to total_area
+    sizes = raw_sizes / raw_sizes.sum() * total_area
+    
+    return {f'Plot{i+1}': round(float(s), 2) for i, s in enumerate(sizes)}
+
+
+def _create_synthetic_config(farms: List[str], foods: Dict, food_groups: Dict[str, List[str]], 
+                             land_availability: Dict[str, float], min_foods_per_group: int = 1) -> Dict:
+    """
+    Create configuration for synthetic scenarios.
+    
+    Args:
+        farms: List of farm names
+        foods: Dictionary of food data
+        food_groups: Dictionary mapping groups to foods
+        land_availability: Dictionary mapping farms to areas
+        min_foods_per_group: Minimum foods required per group
+        
+    Returns:
+        Configuration dictionary
+    """
+    # Food group constraints - require diversity
+    food_group_constraints = {
+        g: {'min_foods': min(min_foods_per_group, len(lst)), 'max_foods': len(lst)}
+        for g, lst in food_groups.items()
+    }
+    
+    parameters = {
+        'land_availability': land_availability,
+        'minimum_planting_area': {food: 0.01 for food in foods.keys()},
+        'max_percentage_per_crop': {food: 0.5 for food in foods},
+        'social_benefit': {farm: 0.2 for farm in farms},
+        'food_group_constraints': food_group_constraints,
+        'weights': {
+            'nutritional_value': 0.25,
+            'nutrient_density': 0.2,
+            'environmental_impact': 0.25,
+            'affordability': 0.15,
+            'sustainability': 0.15
+        }
+    }
+    
+    return {
+        'parameters': parameters,
+        'benders_tolerance': 1e-3,
+        'benders_max_iterations': 50,
+        'pulp_time_limit': 60,
+        'use_multi_cut': True,
+        'use_trust_region': True,
+        'use_anticycling': True,
+        'use_norm_cuts': True,
+        'quantum_settings': {
+            'max_qubits': 20,
+            'use_qaoa_squared': True,
+            'force_qaoa_squared': True
+        }
+    }
+
+
+def _load_micro_6_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Micro scenario with ~6 variables for minimal QPU testing.
+    
+    Configuration:
+    - 2 plots × 2 foods = 4 Y variables + 2 U variables = 6 total
+    - 1 food group with 2 foods (min 1 required)
+    
+    This is the smallest meaningful problem that maintains constraints.
+    """
+    n_plots = 2
+    foods_per_group = {'Grains': 2}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=6)
+    land_availability = _create_synthetic_farms(n_plots, total_area=20.0, seed=6)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods  # Y vars + U vars
+    logger.info(f"Loaded micro_6: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_micro_12_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Micro scenario with ~12 variables.
+    
+    Configuration:
+    - 3 plots × 3 foods = 9 Y variables + 3 U variables = 12 total
+    - 2 food groups: Grains (2), Legumes (1) with min 1 each
+    """
+    n_plots = 3
+    foods_per_group = {'Grains': 2, 'Legumes': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=12)
+    land_availability = _create_synthetic_farms(n_plots, total_area=30.0, seed=12)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded micro_12: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_tiny_24_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Tiny scenario with ~24 variables.
+    
+    Configuration:
+    - 4 plots × 5 foods = 20 Y variables + 5 U variables = 25 total (~24)
+    - 3 food groups: Grains (2), Legumes (2), Vegetables (1)
+    """
+    n_plots = 4
+    foods_per_group = {'Grains': 2, 'Legumes': 2, 'Vegetables': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=24)
+    land_availability = _create_synthetic_farms(n_plots, total_area=40.0, seed=24)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded tiny_24: {n_plots} plots × {n_foods} foods = {n_vars} variables (actual: {n_vars})")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_tiny_40_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Tiny scenario with ~40 variables.
+    
+    Configuration:
+    - 5 plots × 6 foods = 30 Y variables + 6 U variables = 36 total (~40)
+    - 4 food groups: Grains (2), Legumes (1), Vegetables (2), Fruits (1)
+    """
+    n_plots = 5
+    foods_per_group = {'Grains': 2, 'Legumes': 1, 'Vegetables': 2, 'Fruits': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=40)
+    land_availability = _create_synthetic_farms(n_plots, total_area=50.0, seed=40)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded tiny_40: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_small_60_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Small scenario with ~60 variables.
+    
+    Configuration:
+    - 6 plots × 8 foods = 48 Y variables + 8 U variables = 56 total (~60)
+    - 4 food groups: Grains (3), Legumes (2), Vegetables (2), Fruits (1)
+    """
+    n_plots = 6
+    foods_per_group = {'Grains': 3, 'Legumes': 2, 'Vegetables': 2, 'Fruits': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=60)
+    land_availability = _create_synthetic_farms(n_plots, total_area=60.0, seed=60)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded small_60: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_small_80_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Small scenario with ~80 variables.
+    
+    Configuration:
+    - 7 plots × 10 foods = 70 Y variables + 10 U variables = 80 total
+    - 5 food groups: Grains (3), Legumes (2), Vegetables (2), Fruits (2), Proteins (1)
+    """
+    n_plots = 7
+    foods_per_group = {'Grains': 3, 'Legumes': 2, 'Vegetables': 2, 'Fruits': 2, 'Proteins': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=80)
+    land_availability = _create_synthetic_farms(n_plots, total_area=70.0, seed=80)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded small_80: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_small_100_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Small scenario with ~100 variables.
+    
+    Configuration:
+    - 8 plots × 11 foods = 88 Y variables + 11 U variables = 99 total (~100)
+    - 5 food groups: Grains (3), Legumes (2), Vegetables (3), Fruits (2), Proteins (1)
+    """
+    n_plots = 8
+    foods_per_group = {'Grains': 3, 'Legumes': 2, 'Vegetables': 3, 'Fruits': 2, 'Proteins': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=100)
+    land_availability = _create_synthetic_farms(n_plots, total_area=80.0, seed=100)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded small_100: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_medium_120_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Medium scenario with ~120 variables.
+    
+    Configuration:
+    - 9 plots × 12 foods = 108 Y variables + 12 U variables = 120 total
+    - 5 food groups: Grains (4), Legumes (2), Vegetables (3), Fruits (2), Proteins (1)
+    """
+    n_plots = 9
+    foods_per_group = {'Grains': 4, 'Legumes': 2, 'Vegetables': 3, 'Fruits': 2, 'Proteins': 1}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=120)
+    land_availability = _create_synthetic_farms(n_plots, total_area=90.0, seed=120)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded medium_120: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_medium_160_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Medium scenario with ~160 variables (near embedding failure threshold).
+    
+    Configuration:
+    - 10 plots × 14 foods = 140 Y variables + 14 U variables = 154 total (~160)
+    - 5 food groups: Grains (4), Legumes (3), Vegetables (3), Fruits (2), Proteins (2)
+    """
+    n_plots = 10
+    foods_per_group = {'Grains': 4, 'Legumes': 3, 'Vegetables': 3, 'Fruits': 2, 'Proteins': 2}
+    
+    foods, food_groups = _create_synthetic_foods(foods_per_group, seed=160)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=160)
+    farms = list(land_availability.keys())
+    
+    config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
+    
+    n_foods = len(foods)
+    n_vars = n_plots * n_foods + n_foods
+    logger.info(f"Loaded medium_160: {n_plots} plots × {n_foods} foods = {n_vars} variables")
+    
     return farms, foods, food_groups, config
 
 

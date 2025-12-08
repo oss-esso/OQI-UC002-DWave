@@ -1,0 +1,245 @@
+{
+  "description": "Comprehensive ILP vs BQM Hardness Analysis for Crop Allocation Problem",
+  "problem": "Binary Crop-Plot Assignment with Food Group Diversity Constraints",
+  "n_foods": 27,
+  "scales_analyzed": [
+    10,
+    15,
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "summary": {
+    "classical_hardness": "EASY for all scales (0% integrality gap, solved at LP root)",
+    "quantum_hardness": "FEASIBLE only for n_plots <= 15, IMPOSSIBLE for n_plots >= 500",
+    "key_finding": "Problem is trivial for classical solvers but intractable for QPU due to high BQM degree",
+    "recommendation": "Not a good candidate for quantum advantage - need harder classical problems with sparser BQM structure"
+  },
+  "scaling_analysis": {
+    "ilp_density_trend": "Decreases as O(1/n) - very sparse",
+    "bqm_density_trend": "Decreases slower - still creates dense interactions",
+    "bqm_max_degree_trend": "Grows linearly as ~2\u00d7n_plots",
+    "density_ratio_trend": "Grows from 2.3x to 65x (BQM increasingly denser relative to ILP)"
+  },
+  "results": [
+    {
+      "n_plots": 10,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 297,
+        "constrs": 312,
+        "nonzeros": 1134,
+        "density": 0.012237762237762238,
+        "lp_obj": 0.3594816101011599,
+        "mip_obj": 0.3594816101011599,
+        "integrality_gap": 0.0,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 698,
+        "linear_terms": 698,
+        "quadratic_terms": 7324,
+        "density": 0.030108570089577517,
+        "max_degree": 42,
+        "avg_degree": 20.98567335243553,
+        "density_ratio_vs_ilp": 2.3484684669870464,
+        "qpu_hardness_level": "FEASIBLE",
+        "qpu_hardness_score": 2
+      }
+    },
+    {
+      "n_plots": 15,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 432,
+        "constrs": 452,
+        "nonzeros": 1674,
+        "density": 0.008573008849557522,
+        "lp_obj": 0.3829713706060755,
+        "mip_obj": 0.3829713706060754,
+        "integrality_gap": 1.1102230246251565e-16,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 973,
+        "linear_terms": 973,
+        "quadratic_terms": 11779,
+        "density": 0.02490917319054809,
+        "max_degree": 47,
+        "avg_degree": 24.211716341212743,
+        "density_ratio_vs_ilp": 2.8147365705319345,
+        "qpu_hardness_level": "FEASIBLE",
+        "qpu_hardness_score": 2
+      }
+    },
+    {
+      "n_plots": 25,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 702,
+        "constrs": 732,
+        "nonzeros": 2754,
+        "density": 0.005359394703656999,
+        "lp_obj": 0.40176317901000835,
+        "mip_obj": 0.40176317901000835,
+        "integrality_gap": 0.0,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 1550,
+        "linear_terms": 1550,
+        "quadratic_terms": 23524,
+        "density": 0.019595576750869446,
+        "max_degree": 67,
+        "avg_degree": 30.353548387096776,
+        "density_ratio_vs_ilp": 3.5859905454091088,
+        "qpu_hardness_level": "MODERATE",
+        "qpu_hardness_score": 4
+      }
+    },
+    {
+      "n_plots": 50,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 1377,
+        "constrs": 1432,
+        "nonzeros": 5454,
+        "density": 0.0027659108336071858,
+        "lp_obj": 0.41585703531295776,
+        "mip_obj": 0.4158570353129577,
+        "integrality_gap": 5.551115123125783e-17,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 2952,
+        "linear_terms": 2952,
+        "quadratic_terms": 64861,
+        "density": 0.014891144336722933,
+        "max_degree": 118,
+        "avg_degree": 43.94376693766937,
+        "density_ratio_vs_ilp": 5.331029672546809,
+        "qpu_hardness_level": "HARD",
+        "qpu_hardness_score": 6
+      }
+    },
+    {
+      "n_plots": 100,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 2727,
+        "constrs": 2832,
+        "nonzeros": 10854,
+        "density": 0.00140543715388488,
+        "lp_obj": 0.42290396346443143,
+        "mip_obj": 0.42290396346443143,
+        "integrality_gap": 0.0,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 5729,
+        "linear_terms": 5729,
+        "quadratic_terms": 199375,
+        "density": 0.01215119147803345,
+        "max_degree": 219,
+        "avg_degree": 69.6020247861756,
+        "density_ratio_vs_ilp": 8.603043566447683,
+        "qpu_hardness_level": "VERY_HARD",
+        "qpu_hardness_score": 8
+      }
+    },
+    {
+      "n_plots": 200,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 5427,
+        "constrs": 5632,
+        "nonzeros": 21654,
+        "density": 0.0007084605382180009,
+        "lp_obj": 0.4264274275401678,
+        "mip_obj": 0.42642742754016777,
+        "integrality_gap": 5.551115123125783e-17,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 11256,
+        "linear_terms": 11256,
+        "quadratic_terms": 673441,
+        "density": 0.010631632722975211,
+        "max_degree": 420,
+        "avg_degree": 119.659026297086,
+        "density_ratio_vs_ilp": 14.969338873949097,
+        "qpu_hardness_level": "VERY_HARD",
+        "qpu_hardness_score": 8
+      }
+    },
+    {
+      "n_plots": 500,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 13527,
+        "constrs": 14032,
+        "nonzeros": 54054,
+        "density": 0.000284778220070691,
+        "lp_obj": 0.42854150598560997,
+        "mip_obj": 0.42854150598560997,
+        "integrality_gap": 0.0,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 27783,
+        "linear_terms": 27783,
+        "quadratic_terms": 3720634,
+        "density": 0.009640605246726178,
+        "max_degree": 1021,
+        "avg_degree": 267.8352949645467,
+        "density_ratio_vs_ilp": 33.81924320551543,
+        "qpu_hardness_level": "IMPOSSIBLE",
+        "qpu_hardness_score": 10
+      }
+    },
+    {
+      "n_plots": 1000,
+      "n_foods": 27,
+      "ilp": {
+        "vars": 27027,
+        "constrs": 28032,
+        "nonzeros": 108054,
+        "density": 0.00014262278817073337,
+        "lp_obj": 0.42924619880075726,
+        "mip_obj": 0.42924619880075726,
+        "integrality_gap": 0.0,
+        "fractional_count": 0,
+        "hardness_level": "EASY",
+        "hardness_score": 0
+      },
+      "bqm": {
+        "vars": 55310,
+        "linear_terms": 55310,
+        "quadratic_terms": 14217154,
+        "density": 0.009294867399679241,
+        "max_degree": 2022,
+        "avg_degree": 514.0898210088592,
+        "density_ratio_vs_ilp": 65.13843073695213,
+        "qpu_hardness_level": "IMPOSSIBLE",
+        "qpu_hardness_score": 10
+      }
+    }
+  ]
+}

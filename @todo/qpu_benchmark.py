@@ -301,6 +301,93 @@ def load_problem_data(n_farms: int) -> Dict:
     }
 
 
+def load_problem_data_from_scenario(scenario_name: str) -> Dict:
+    """
+    Load problem data from a named scenario (synthetic or standard).
+    
+    This function allows loading small-scale synthetic scenarios for QPU embedding testing.
+    
+    Args:
+        scenario_name: Name of the scenario (e.g., 'micro_6', 'tiny_24', 'small_60', etc.)
+        
+    Returns:
+        Dictionary with problem data compatible with benchmark functions.
+    """
+    farms, foods, food_groups, config_loaded = load_food_data(scenario_name)
+    
+    params = config_loaded.get('parameters', {})
+    weights = params.get('weights', {
+        'nutritional_value': 0.25,
+        'nutrient_density': 0.2,
+        'environmental_impact': 0.25,
+        'affordability': 0.15,
+        'sustainability': 0.15
+    })
+    
+    land_availability = params.get('land_availability', {f: 10.0 for f in farms})
+    farm_names = list(land_availability.keys())
+    total_area = sum(land_availability.values())
+    
+    food_names = list(foods.keys())
+    food_benefits = {}
+    for food in food_names:
+        benefit = (
+            weights.get('nutritional_value', 0) * foods[food].get('nutritional_value', 0) +
+            weights.get('nutrient_density', 0) * foods[food].get('nutrient_density', 0) -
+            weights.get('environmental_impact', 0) * foods[food].get('environmental_impact', 0) +
+            weights.get('affordability', 0) * foods[food].get('affordability', 0) +
+            weights.get('sustainability', 0) * foods[food].get('sustainability', 0)
+        )
+        food_benefits[food] = benefit
+    
+    # Food group constraints from config or default
+    food_group_constraints = params.get('food_group_constraints', {
+        group: {'min_foods': 1, 'max_foods': len(foods_in_group)}
+        for group, foods_in_group in food_groups.items()
+    })
+    
+    # No max_plots_per_crop by default
+    max_plots_per_crop = None
+    
+    n_farms = len(farm_names)
+    n_foods = len(food_names)
+    n_vars = n_farms * n_foods + n_foods  # Y vars + U vars
+    
+    LOG.info(f"Loaded scenario '{scenario_name}': {n_farms} plots × {n_foods} foods = {n_vars} variables")
+    LOG.info(f"  Food groups: {list(food_groups.keys())}")
+    LOG.info(f"  Total area: {total_area:.2f} ha")
+    
+    return {
+        'foods': foods,
+        'food_names': food_names,
+        'food_groups': food_groups,
+        'food_benefits': food_benefits,
+        'weights': weights,
+        'land_availability': land_availability,
+        'farm_names': farm_names,
+        'total_area': total_area,
+        'food_group_constraints': food_group_constraints,
+        'max_plots_per_crop': max_plots_per_crop,
+        'n_farms': n_farms,
+        'n_foods': n_foods,
+        'scenario_name': scenario_name
+    }
+
+
+# Synthetic scenario names for small-scale QPU testing (6-160 variables)
+SYNTHETIC_SCENARIOS = [
+    'micro_6',      # 2 plots × 2 foods = 6 vars
+    'micro_12',     # 3 plots × 3 foods = 12 vars
+    'tiny_24',      # 4 plots × 5 foods = 25 vars
+    'tiny_40',      # 5 plots × 6 foods = 36 vars
+    'small_60',     # 6 plots × 8 foods = 56 vars
+    'small_80',     # 7 plots × 10 foods = 80 vars
+    'small_100',    # 8 plots × 11 foods = 99 vars
+    'medium_120',   # 9 plots × 12 foods = 120 vars
+    'medium_160',   # 10 plots × 14 foods = 154 vars
+]
+
+
 # ============================================================================
 # CQM / BQM BUILDING
 # ============================================================================
