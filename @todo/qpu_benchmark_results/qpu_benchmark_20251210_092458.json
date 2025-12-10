@@ -1,0 +1,183 @@
+{
+  "timestamp": "2025-12-10T09:23:21.059846",
+  "scales": [],
+  "scenarios": [
+    "rotation_micro_25"
+  ],
+  "methods": [
+    "ground_truth",
+    "direct_qpu"
+  ],
+  "reads_configs": [
+    100
+  ],
+  "qpu_available": true,
+  "qbsolv_available": false,
+  "results": [
+    {
+      "n_farms": 5,
+      "scenario": "rotation_micro_25",
+      "metadata": {
+        "n_farms": 5,
+        "n_foods": 6,
+        "n_periods": 3,
+        "n_variables": 90,
+        "n_constraints": 15,
+        "logical_qubits": 90,
+        "total_area": 100.0,
+        "rotation_gamma": 0.2,
+        "frustration_ratio": 0.7,
+        "formulation": "rotation_3period"
+      },
+      "timings": {
+        "data_load": 0.022639036178588867,
+        "cqm_build": 0.4536101818084717
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 100,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.011411905288696289,
+            "embedding": 83.55439686775208,
+            "sampling": 0.03074502944946289,
+            "qpu_access": 0.034405160000000004,
+            "qpu_programming": 0.01576316,
+            "qpu_sampling": 0.018642,
+            "qpu_total_real": 0.0,
+            "embedding_total": 83.55439686775208,
+            "qpu_access_total": 0.034405160000000004,
+            "solve_time": 83.58880202775208,
+            "total": 88.64001512527466
+          },
+          "bqm_variables": 120,
+          "bqm_interactions": 1860,
+          "lagrange_multiplier": null,
+          "chain_strength": 275.210625,
+          "physical_qubits": 651,
+          "max_chain_length": 9,
+          "chain_break_fraction": 0.0003333333333333333,
+          "best_energy": 29.884185371394324,
+          "n_samples": 100,
+          "solution": {
+            "Y": {
+              "Farm1": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm2": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm3": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm4": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm5": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              }
+            },
+            "U": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 0,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "allocations": {},
+            "summary": {
+              "n_farms": 5,
+              "n_foods": 6,
+              "foods_used": [],
+              "total_area_allocated": 0,
+              "n_unique_foods": 0
+            }
+          },
+          "objective": 0.0,
+          "violations": 2,
+          "violation_details": {
+            "total_violations": 2,
+            "one_crop_per_farm": {
+              "violations": 0,
+              "details": []
+            },
+            "food_group_constraints": {
+              "violations": 2,
+              "details": [
+                {
+                  "group": "Plant_Foods",
+                  "min": 3,
+                  "max": 5,
+                  "actual": 0
+                },
+                {
+                  "group": "Proteins",
+                  "min": 1,
+                  "max": 2,
+                  "actual": 0
+                }
+              ]
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 88.64001512527466,
+          "wall_time": 88.64001512527466
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi_rotation",
+        "timings": {
+          "build": 0.08080005645751953,
+          "solve": 7.847364902496338,
+          "total": 7.928583145141602,
+          "solve_time": 7.847364902496338,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 7.847364902496338,
+        "total_time": 7.928583145141602,
+        "wall_time": 7.928583145141602,
+        "n_variables": 90,
+        "n_constraints": 15,
+        "success": false,
+        "objective": 0,
+        "violations": -1,
+        "feasible": false,
+        "status": 11
+      }
+    }
+  ]
+}

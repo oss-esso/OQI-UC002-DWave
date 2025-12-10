@@ -1,0 +1,146 @@
+11:26:07 [INFO] Loading scenario 'rotation_micro_25'...
+11:26:07 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+11:26:07 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+11:26:07 [INFO]   Total area: 100.00 ha
+11:26:07 [INFO] Building CQM...
+11:26:07 [INFO]   Detected rotation scenario - using 3-period formulation
+11:26:07 [INFO] Building rotation CQM with 5 farms × 6 families × 3 periods
+11:26:07 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+11:26:07 [INFO]   Rotation matrix: 86.1% negative synergies
+11:26:07 [INFO]   Spatial graph: 10 neighbor pairs (k=4)
+11:26:07 [INFO]   CQM built: 90 variables, 15 constraints
+11:26:07 [INFO] Solving ground truth with Gurobi...
+11:28:08 [INFO] Attempting direct QPU (n_vars=36, num_reads=100)...
+11:28:08 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=50.0)...
+11:28:08 [INFO]   [DirectQPU] BQM: 120 vars, 1860 interactions
+11:28:08 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+11:29:23 [INFO]   [DirectQPU] Found embedding: 651 physical qubits, max chain 9, in 74.0s
+11:29:23 [INFO]   [DirectQPU] Sampling on QPU (100 reads)...
+11:29:25 [INFO]   [DirectQPU] Success! obj=2.4794, QPU_access=0.034s, embed=73.98s
+11:29:25 [INFO] Attempting clique decomposition (100 reads per subproblem)...
+11:29:25 [INFO]   [CliqueDecomp] Decomposing 5 farms into independent subproblems...
+11:29:25 [INFO]   [CliqueDecomp] Each farm: 6 families × 3 periods = 18 variables
+11:29:25 [INFO]   [CliqueDecomp] Iterations: 1 (1=independent, 3+=coordinated)
+11:29:27 [INFO]   [CliqueDecomp] Farm 1/5: 18 vars, QPU=0.036s, embed=0.0000s
+11:29:29 [INFO]   [CliqueDecomp] Farm 2/5: 18 vars, QPU=0.036s, embed=0.0000s
+11:29:31 [INFO]   [CliqueDecomp] Farm 3/5: 18 vars, QPU=0.036s, embed=0.0000s
+11:29:33 [INFO]   [CliqueDecomp] Farm 4/5: 18 vars, QPU=0.036s, embed=0.0000s
+11:29:35 [INFO]   [CliqueDecomp] Farm 5/5: 18 vars, QPU=0.036s, embed=0.0000s
+11:29:35 [INFO]   [CliqueDecomp] Iteration 1: obj=1.8010 (improved!)
+11:29:35 [INFO]   [CliqueDecomp] Complete! 5 subproblems, total QPU=0.178s, embed=0.000s
+11:29:35 [INFO]   [CliqueDecomp] Combined objective: 1.8010, violations: 0
+11:29:35 [INFO] Running Multilevel(5) decomposition with QPU (100 reads)...
+11:29:35 [INFO]     [Multilevel(5)+QPU] Partitioning...
+11:29:35 [INFO]     [Multilevel(5)+QPU] Created 2 partitions in 0.000s
+11:29:38 [INFO]     [Multilevel(5)+QPU] Complete: obj=0.6244, violations=1
+11:29:38 [INFO]     [Multilevel(5)+QPU] Timing: total=3.79s, QPU_access=0.054s, embed=0.16s
+11:29:38 [INFO] Running PlotBased decomposition with QPU (100 reads)...
+11:29:38 [INFO]     [PlotBased+QPU] Partitioning...
+11:29:38 [INFO]     [PlotBased+QPU] Created 6 partitions in 0.000s
+11:29:44 [INFO]     [PlotBased+QPU] Solved 5/6 partitions...
+11:29:45 [INFO]     [PlotBased+QPU] Complete: obj=0.6475, violations=1
+11:29:45 [INFO]     [PlotBased+QPU] Timing: total=6.54s, QPU_access=0.171s, embed=0.32s
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark.py", line 4683, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark.py", line 4676, in main
+    save_results(results, args.output)
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark.py", line 4512, in save_results
+    if vd['one_crop_per_farm']['violations'] > 0:
+       ~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'one_crop_per_farm'
+
+ERROR conda.cli.main_run:execute(127): `conda run python qpu_benchmark.py --scenario rotation_micro_25 --methods ground_truth,direct_qpu,clique_decomp,decomposition_Multilevel(5)_QPU,decomposition_PlotBased_QPU --reads 100` failed. (See above for error)
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.98s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+  ✓ neal (SimulatedAnnealing) available for comparison
+  ✓ Louvain community detection available
+  ✓ Spectral clustering available
+  D-Wave imports: 2.73s
+[3/5] Loading configuration...
+  Output directory: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results
+[4/5] Setting up data loading...
+[5/5] Starting benchmark...
+  D-Wave token configured (length: 45)
+
+Using scenarios: ['rotation_micro_25']
+Methods: ['ground_truth', 'direct_qpu', 'clique_decomp', 'decomposition_Multilevel(5)_QPU', 'decomposition_PlotBased_QPU']
+QPU Available: True
+Louvain Available: True
+Spectral Available: True
+Num reads configurations: [100]
+
+================================================================================
+SCENARIO: rotation_micro_25
+================================================================================
+  Data load: 0.01s
+  CQM build: 0.23s
+  CQM: 90 vars, 15 constraints
+
+  [Ground Truth] Solving with Gurobi...
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+    Objective: 4.0782 in 120.00s
+
+  [Direct QPU] CQM → BQM → QPU (100 reads)...
+  Connected to QPU: Advantage_system4.1
+  QPU topology: 5627 qubits
+    Objective: 2.4794 (gap: 39.2%)
+    QPU access time: 0.000s
+    Chain breaks: 0.03%
+
+  [Clique Decomp] Farm-by-farm decomposition + DWaveCliqueSampler (100 reads)...
+    Objective: 1.8010 (gap: 55.8%)
+    Subproblems: 5 × 18 vars
+    Total QPU time: 0.178s
+    Total embedding time: 0.000s
+    Violations: 0
+
+  [Decomposition: Multilevel(5)] Partition + QPU (100 reads)...
+    Objective: 0.6244 (gap: 84.7%)
+    Partitions: 2
+    Total time: 3.79s
+    QPU access time: 0.054s
+    Violations: 1
+
+  [Decomposition: PlotBased] Partition + QPU (100 reads)...
+    Objective: 0.6475 (gap: 84.1%)
+    Partitions: 6
+    Total time: 6.54s
+    QPU access time: 0.171s
+    Violations: 1
+
+============================================================================================================================================
+BENCHMARK SUMMARY (Pure QPU - No Hybrid)
+============================================================================================================================================
+
+Scale                Method                            Obj    Gap%     Wall    Solve    Embed      QPU  Viol Status      
+--------------------------------------------------------------------------------------------------------------------------------------------
+rotation_micro_25    Ground Truth (Gurobi)          4.0782     0.0  120.102  120.005      N/A      N/A     0 ✓ Opt       
+                     direct_qpu                     2.4794    39.2    77.07    74.01    73.98    0.034     1 ⚠ 1v        
+                     clique_decomp                  1.8010    55.8     9.71     0.18      N/A    0.178     0 ✓ Feas      
+                     decomposition_Multilevel(5)_QPU   0.6244    84.7     3.79     0.05     0.16    0.054     1 ⚠ 1v        
+                     decomposition_PlotBased_QPU    0.6475    84.1     6.54     0.17     0.32    0.171     1 ⚠ 1v        
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Wall  = Total wall-clock time (seconds)
+  Solve = Solve time (QPU access + classical decomposition)
+  Embed = Total embedding time (all methods use QPU)
+  QPU   = Total QPU access time (all methods use QPU)
+  Viol  = Number of constraint violations
+
+Results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/qpu_benchmark_20251210_112945.json
+

@@ -1,0 +1,77 @@
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/run_mohseni_standalone.py", line 146, in <module>
+    naeimeh_graph = data[agent_count][inst_idx]
+                    ~~~~^^^^^^^^^^^^^
+KeyError: 10
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/run_mohseni_standalone.py", line 146, in <module>
+    naeimeh_graph = data[agent_count][inst_idx]
+                    ~~~~^^^^^^^^^^^^^
+KeyError: 10
+================================================================================
+MOHSENI ET AL. COALITION FORMATION - STANDALONE VERSION
+================================================================================
+
+Loading data: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/external/Benchmark_Naeimeh/Data/data_forfig2.pkl
+✓ Data loaded: [4, 8, 12, 16, 20, 24, 28, 30, 35, 40, 45, 50] agent sizes available
+
+Configuration:
+  Agent sizes: [10, 12]
+  Instances per size: 2
+  Total problems: 4
+
+Connecting to QPU...
+✓ Connected
+
+================================================================================
+AGENT COUNT: 10
+================================================================================
+
+  Instance 1/2:
+    ✗ Error: 10
+
+  Instance 2/2:
+    ✗ Error: 10
+
+================================================================================
+AGENT COUNT: 12
+================================================================================
+
+  Instance 1/2:
+    Graph: 66 edges
+    ✓ Success!
+      Coalitions: 2 (sizes: [11, 1])
+      Total value: 0.6150
+      Wall time: 3.927s
+      QPU calls: 2
+      First QPU time: 0.031s
+
+  Instance 2/2:
+    Graph: 66 edges
+    ✓ Success!
+      Coalitions: 3 (sizes: [1, 4, 7])
+      Total value: 1.0824
+      Wall time: 6.344s
+      QPU calls: 4
+      First QPU time: 0.031s
+
+
+================================================================================
+FINAL RESULTS
+================================================================================
+
+Successful: 2/4
+
+Per-instance:
+  n=12, inst=0: 2 coalitions [11, 1], value=0.6150, time=3.927s, QPU calls=2
+  n=12, inst=1: 3 coalitions [1, 4, 7], value=1.0824, time=6.344s, QPU calls=4
+
+Averages:
+  Coalitions: 2.5
+  Value: 0.8487
+  Time: 5.135s
+  QPU calls: 3.0
+
+================================================================================
+✅ Complete!
+================================================================================

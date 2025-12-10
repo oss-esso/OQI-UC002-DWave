@@ -1,0 +1,4699 @@
+{
+  "timestamp": "2025-12-09T11:11:11.870487",
+  "scales": [],
+  "scenarios": [
+    "micro_6",
+    "micro_12",
+    "tiny_24",
+    "tiny_40",
+    "small_60",
+    "small_80",
+    "small_100",
+    "medium_120",
+    "medium_160",
+    "rotation_micro_25",
+    "rotation_small_50",
+    "rotation_medium_100",
+    "rotation_large_200"
+  ],
+  "methods": [
+    "ground_truth",
+    "direct_qpu"
+  ],
+  "reads_configs": [
+    1000
+  ],
+  "qpu_available": true,
+  "qbsolv_available": false,
+  "results": [
+    {
+      "n_farms": 2,
+      "scenario": "micro_6",
+      "metadata": {
+        "n_farms": 2,
+        "n_foods": 2,
+        "n_variables": 6,
+        "n_constraints": 9,
+        "logical_qubits": 6,
+        "total_area": 20.0
+      },
+      "timings": {
+        "data_load": 0.0025179386138916016,
+        "cqm_build": 0.006701946258544922
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.0024161338806152344,
+            "embedding": 0.13766074180603027,
+            "sampling": 0.010523796081542969,
+            "qpu_access": 0.13395716,
+            "qpu_programming": 0.01575716,
+            "qpu_sampling": 0.1182,
+            "qpu_total_real": 0.0,
+            "embedding_total": 0.13766074180603027,
+            "qpu_access_total": 0.13395716,
+            "solve_time": 0.2716179018060303,
+            "total": 3.844219923019409
+          },
+          "bqm_variables": 17,
+          "bqm_interactions": 37,
+          "lagrange_multiplier": null,
+          "chain_strength": 11.723332499999998,
+          "physical_qubits": 21,
+          "max_chain_length": 2,
+          "chain_break_fraction": 0.0,
+          "best_energy": -0.4155000000000033,
+          "n_samples": 406,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 1
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 1
+              }
+            },
+            "U": {
+              "Wheat": 0,
+              "Rice": 1
+            },
+            "allocations": {
+              "Plot1_Rice": 7.46,
+              "Plot2_Rice": 12.54
+            },
+            "summary": {
+              "n_farms": 2,
+              "n_foods": 2,
+              "foods_used": [
+                "Rice"
+              ],
+              "total_area_allocated": 20.0,
+              "n_unique_foods": 1
+            }
+          },
+          "objective": 0.4154999999999999,
+          "violations": 0,
+          "violation_details": {
+            "total_violations": 0,
+            "one_crop_per_farm": {
+              "violations": 0,
+              "details": []
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": true,
+          "success": true,
+          "total_time": 3.844219923019409,
+          "wall_time": 3.844219923019409
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.045495033264160156,
+          "solve": 0.02388286590576172,
+          "total": 0.0693819522857666,
+          "solve_time": 0.02388286590576172,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.02388286590576172,
+        "total_time": 0.0693819522857666,
+        "wall_time": 0.0693819522857666,
+        "n_variables": 6,
+        "n_constraints": 9,
+        "success": true,
+        "objective": 0.4155,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 1
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 1
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 1
+          },
+          "allocations": {
+            "Plot1_Rice": 7.46,
+            "Plot2_Rice": 12.54
+          },
+          "summary": {
+            "n_farms": 2,
+            "n_foods": 2,
+            "foods_used": [
+              "Rice"
+            ],
+            "total_area_allocated": 20.0,
+            "n_unique_foods": 1
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 3,
+      "scenario": "micro_12",
+      "metadata": {
+        "n_farms": 3,
+        "n_foods": 3,
+        "n_variables": 12,
+        "n_constraints": 17,
+        "logical_qubits": 12,
+        "total_area": 30.0
+      },
+      "timings": {
+        "data_load": 0.0006830692291259766,
+        "cqm_build": 0.001711130142211914
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.0051190853118896484,
+            "embedding": 0.20500612258911133,
+            "sampling": 0.011336326599121094,
+            "qpu_access": 0.10341876,
+            "qpu_programming": 0.01575876,
+            "qpu_sampling": 0.08766,
+            "qpu_total_real": 0.0,
+            "embedding_total": 0.20500612258911133,
+            "qpu_access_total": 0.10341876,
+            "solve_time": 0.3084248825891113,
+            "total": 2.435842752456665
+          },
+          "bqm_variables": 31,
+          "bqm_interactions": 84,
+          "lagrange_multiplier": null,
+          "chain_strength": 11.667419999999998,
+          "physical_qubits": 45,
+          "max_chain_length": 3,
+          "chain_break_fraction": 0.0,
+          "best_energy": -0.4731849999999982,
+          "n_samples": 965,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 1
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 1
+              },
+              "Plot3": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Soybeans": 0
+              }
+            },
+            "U": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Soybeans": 1
+            },
+            "allocations": {
+              "Plot1_Soybeans": 12.23,
+              "Plot2_Soybeans": 6.87,
+              "Plot3_Rice": 10.9
+            },
+            "summary": {
+              "n_farms": 3,
+              "n_foods": 3,
+              "foods_used": [
+                "Rice",
+                "Soybeans"
+              ],
+              "total_area_allocated": 30.0,
+              "n_unique_foods": 2
+            }
+          },
+          "objective": 0.4731849999999999,
+          "violations": 0,
+          "violation_details": {
+            "total_violations": 0,
+            "one_crop_per_farm": {
+              "violations": 0,
+              "details": []
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": true,
+          "success": true,
+          "total_time": 2.435842752456665,
+          "wall_time": 2.435842752456665
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.0012578964233398438,
+          "solve": 0.001390218734741211,
+          "total": 0.002650022506713867,
+          "solve_time": 0.001390218734741211,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.001390218734741211,
+        "total_time": 0.002650022506713867,
+        "wall_time": 0.002650022506713867,
+        "n_variables": 12,
+        "n_constraints": 17,
+        "success": true,
+        "objective": 0.47459549999999995,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 1
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Soybeans": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 1
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 1,
+            "Soybeans": 1
+          },
+          "allocations": {
+            "Plot1_Soybeans": 12.23,
+            "Plot2_Rice": 6.87,
+            "Plot3_Soybeans": 10.9
+          },
+          "summary": {
+            "n_farms": 3,
+            "n_foods": 3,
+            "foods_used": [
+              "Rice",
+              "Soybeans"
+            ],
+            "total_area_allocated": 30.0,
+            "n_unique_foods": 2
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 4,
+      "scenario": "tiny_24",
+      "metadata": {
+        "n_farms": 4,
+        "n_foods": 5,
+        "n_variables": 25,
+        "n_constraints": 32,
+        "logical_qubits": 25,
+        "total_area": 40.0
+      },
+      "timings": {
+        "data_load": 0.0009129047393798828,
+        "cqm_build": 0.003442049026489258
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.009220123291015625,
+            "embedding": 1.2989223003387451,
+            "sampling": 0.018136978149414062,
+            "qpu_access": 0.16929796,
+            "qpu_programming": 0.015757959999999998,
+            "qpu_sampling": 0.15354,
+            "qpu_total_real": 0.0,
+            "embedding_total": 1.2989223003387451,
+            "qpu_access_total": 0.16929796,
+            "solve_time": 1.468220260338745,
+            "total": 3.428358316421509
+          },
+          "bqm_variables": 66,
+          "bqm_interactions": 246,
+          "lagrange_multiplier": null,
+          "chain_strength": 14.678684999999998,
+          "physical_qubits": 134,
+          "max_chain_length": 5,
+          "chain_break_fraction": 4.545454545454546e-05,
+          "best_energy": 4.268117749999993,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Potatoes": 0
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 1,
+                "Lentils": 1,
+                "Potatoes": 0
+              },
+              "Plot3": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0
+              },
+              "Plot4": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 1
+              }
+            },
+            "U": {
+              "Wheat": 1,
+              "Rice": 0,
+              "Soybeans": 1,
+              "Lentils": 1,
+              "Potatoes": 1
+            },
+            "allocations": {
+              "Plot1_Lentils": 19.02,
+              "Plot2_Soybeans": 6.66,
+              "Plot2_Lentils": 6.66,
+              "Plot3_Wheat": 8.36,
+              "Plot4_Wheat": 5.96,
+              "Plot4_Potatoes": 5.96
+            },
+            "summary": {
+              "n_farms": 4,
+              "n_foods": 5,
+              "foods_used": [
+                "Wheat",
+                "Soybeans",
+                "Lentils",
+                "Potatoes"
+              ],
+              "total_area_allocated": 52.620000000000005,
+              "n_unique_foods": 4
+            }
+          },
+          "objective": 0.62477725,
+          "violations": 2,
+          "violation_details": {
+            "total_violations": 2,
+            "one_crop_per_farm": {
+              "violations": 2,
+              "details": [
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 2
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 3.428358316421509,
+          "wall_time": 3.428358316421509
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.003650188446044922,
+          "solve": 0.030356884002685547,
+          "total": 0.03400993347167969,
+          "solve_time": 0.030356884002685547,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.030356884002685547,
+        "total_time": 0.03400993347167969,
+        "wall_time": 0.03400993347167969,
+        "n_variables": 25,
+        "n_constraints": 32,
+        "success": true,
+        "objective": 0.49451349999999994,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 1
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 0
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 1,
+            "Soybeans": 0,
+            "Lentils": 1,
+            "Potatoes": 1
+          },
+          "allocations": {
+            "Plot1_Lentils": 19.02,
+            "Plot2_Potatoes": 6.66,
+            "Plot3_Lentils": 8.36,
+            "Plot4_Rice": 5.96
+          },
+          "summary": {
+            "n_farms": 4,
+            "n_foods": 5,
+            "foods_used": [
+              "Rice",
+              "Lentils",
+              "Potatoes"
+            ],
+            "total_area_allocated": 40.0,
+            "n_unique_foods": 3
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 5,
+      "scenario": "tiny_40",
+      "metadata": {
+        "n_farms": 5,
+        "n_foods": 6,
+        "n_variables": 36,
+        "n_constraints": 45,
+        "logical_qubits": 36,
+        "total_area": 49.99
+      },
+      "timings": {
+        "data_load": 0.00036215782165527344,
+        "cqm_build": 0.003579854965209961
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.005943775177001953,
+            "embedding": 3.1928539276123047,
+            "sampling": 0.006055116653442383,
+            "qpu_access": 0.23207956,
+            "qpu_programming": 0.01575956,
+            "qpu_sampling": 0.21632,
+            "qpu_total_real": 0.0,
+            "embedding_total": 3.1928539276123047,
+            "qpu_access_total": 0.23207956,
+            "solve_time": 3.4249334876123045,
+            "total": 5.495146036148071
+          },
+          "bqm_variables": 91,
+          "bqm_interactions": 387,
+          "lagrange_multiplier": null,
+          "chain_strength": 14.087772554510906,
+          "physical_qubits": 231,
+          "max_chain_length": 6,
+          "chain_break_fraction": 9.89010989010989e-05,
+          "best_energy": 6.856038507701497,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Soybeans": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 1,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Apples": 0
+              },
+              "Plot3": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 1
+              },
+              "Plot4": {
+                "Wheat": 1,
+                "Rice": 1,
+                "Soybeans": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              },
+              "Plot5": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Soybeans": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              }
+            },
+            "U": {
+              "Wheat": 1,
+              "Rice": 1,
+              "Soybeans": 1,
+              "Potatoes": 0,
+              "Carrots": 1,
+              "Apples": 1
+            },
+            "allocations": {
+              "Plot1_Wheat": 8.43,
+              "Plot2_Soybeans": 10.73,
+              "Plot2_Carrots": 10.73,
+              "Plot3_Apples": 8.11,
+              "Plot4_Wheat": 18.18,
+              "Plot4_Rice": 18.18,
+              "Plot5_Soybeans": 4.54
+            },
+            "summary": {
+              "n_farms": 5,
+              "n_foods": 6,
+              "foods_used": [
+                "Wheat",
+                "Rice",
+                "Soybeans",
+                "Carrots",
+                "Apples"
+              ],
+              "total_area_allocated": 78.9,
+              "n_unique_foods": 5
+            }
+          },
+          "objective": 0.6574401880376076,
+          "violations": 2,
+          "violation_details": {
+            "total_violations": 2,
+            "one_crop_per_farm": {
+              "violations": 2,
+              "details": [
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 2
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 5.495146036148071,
+          "wall_time": 5.495146036148071
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.0007550716400146484,
+          "solve": 0.0017609596252441406,
+          "total": 0.0025191307067871094,
+          "solve_time": 0.0017609596252441406,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.0017609596252441406,
+        "total_time": 0.0025191307067871094,
+        "wall_time": 0.0025191307067871094,
+        "n_variables": 36,
+        "n_constraints": 45,
+        "success": true,
+        "objective": 0.4855517103420685,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 0,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 1
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Soybeans": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot5": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Soybeans": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 1,
+            "Soybeans": 1,
+            "Potatoes": 1,
+            "Carrots": 0,
+            "Apples": 1
+          },
+          "allocations": {
+            "Plot1_Potatoes": 8.43,
+            "Plot2_Soybeans": 10.73,
+            "Plot3_Apples": 8.11,
+            "Plot4_Soybeans": 18.18,
+            "Plot5_Rice": 4.54
+          },
+          "summary": {
+            "n_farms": 5,
+            "n_foods": 6,
+            "foods_used": [
+              "Rice",
+              "Soybeans",
+              "Potatoes",
+              "Apples"
+            ],
+            "total_area_allocated": 49.99,
+            "n_unique_foods": 4
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 6,
+      "scenario": "small_60",
+      "metadata": {
+        "n_farms": 6,
+        "n_foods": 8,
+        "n_variables": 56,
+        "n_constraints": 66,
+        "logical_qubits": 56,
+        "total_area": 60.0
+      },
+      "timings": {
+        "data_load": 0.00039505958557128906,
+        "cqm_build": 0.015952110290527344
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.013237953186035156,
+            "embedding": 7.124217748641968,
+            "sampling": 0.01160287857055664,
+            "qpu_access": 0.19995796,
+            "qpu_programming": 0.015757959999999998,
+            "qpu_sampling": 0.1842,
+            "qpu_total_real": 0.0,
+            "embedding_total": 7.124217748641968,
+            "qpu_access_total": 0.19995796,
+            "solve_time": 7.324175708641968,
+            "total": 9.411009073257446
+          },
+          "bqm_variables": 138,
+          "bqm_interactions": 688,
+          "lagrange_multiplier": null,
+          "chain_strength": 22.56400125,
+          "physical_qubits": 484,
+          "max_chain_length": 11,
+          "chain_break_fraction": 0.00018115942028985507,
+          "best_energy": 34.24934491666667,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 1,
+                "Carrots": 0,
+                "Apples": 0
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 1,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              },
+              "Plot3": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              },
+              "Plot4": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 1,
+                "Carrots": 1,
+                "Apples": 0
+              },
+              "Plot5": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 1,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              },
+              "Plot6": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 1,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0
+              }
+            },
+            "U": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Corn": 1,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Apples": 1
+            },
+            "allocations": {
+              "Plot1_Wheat": 6.31,
+              "Plot1_Potatoes": 6.31,
+              "Plot2_Corn": 7.46,
+              "Plot2_Soybeans": 7.46,
+              "Plot3_Wheat": 17.91,
+              "Plot3_Lentils": 17.91,
+              "Plot4_Potatoes": 5.38,
+              "Plot4_Carrots": 5.38,
+              "Plot5_Corn": 3.71,
+              "Plot6_Rice": 19.23,
+              "Plot6_Corn": 19.23
+            },
+            "summary": {
+              "n_farms": 6,
+              "n_foods": 8,
+              "foods_used": [
+                "Rice",
+                "Corn",
+                "Lentils",
+                "Potatoes",
+                "Apples"
+              ],
+              "total_area_allocated": 116.28999999999999,
+              "n_unique_foods": 5
+            }
+          },
+          "objective": 0.8502125833333335,
+          "violations": 5,
+          "violation_details": {
+            "total_violations": 5,
+            "one_crop_per_farm": {
+              "violations": 5,
+              "details": [
+                {
+                  "farm": "Plot1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot3",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot6",
+                  "expected": "0 or 1",
+                  "actual": 2
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 9.411009073257446,
+          "wall_time": 9.411009073257446
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.00197601318359375,
+          "solve": 0.0031991004943847656,
+          "total": 0.005178928375244141,
+          "solve_time": 0.0031991004943847656,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.0031991004943847656,
+        "total_time": 0.005178928375244141,
+        "wall_time": 0.005178928375244141,
+        "n_variables": 56,
+        "n_constraints": 66,
+        "success": true,
+        "objective": 0.49864375,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 1,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            },
+            "Plot5": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 1
+            },
+            "Plot6": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 0,
+            "Corn": 1,
+            "Soybeans": 1,
+            "Lentils": 0,
+            "Potatoes": 1,
+            "Carrots": 0,
+            "Apples": 1
+          },
+          "allocations": {
+            "Plot1_Potatoes": 6.31,
+            "Plot2_Soybeans": 7.46,
+            "Plot3_Soybeans": 17.91,
+            "Plot4_Corn": 5.38,
+            "Plot5_Apples": 3.71,
+            "Plot6_Soybeans": 19.23
+          },
+          "summary": {
+            "n_farms": 6,
+            "n_foods": 8,
+            "foods_used": [
+              "Corn",
+              "Soybeans",
+              "Potatoes",
+              "Apples"
+            ],
+            "total_area_allocated": 60.0,
+            "n_unique_foods": 4
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 7,
+      "scenario": "small_80",
+      "metadata": {
+        "n_farms": 7,
+        "n_foods": 10,
+        "n_variables": 80,
+        "n_constraints": 92,
+        "logical_qubits": 80,
+        "total_area": 70.00999999999999
+      },
+      "timings": {
+        "data_load": 0.00040221214294433594,
+        "cqm_build": 0.012419939041137695
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.010906219482421875,
+            "embedding": 19.85221791267395,
+            "sampling": 0.01897287368774414,
+            "qpu_access": 0.17429996,
+            "qpu_programming": 0.01575996,
+            "qpu_sampling": 0.15854,
+            "qpu_total_real": 0.0,
+            "embedding_total": 19.85221791267395,
+            "qpu_access_total": 0.17429996,
+            "solve_time": 20.02651787267395,
+            "total": 21.37134575843811
+          },
+          "bqm_variables": 192,
+          "bqm_interactions": 1094,
+          "lagrange_multiplier": null,
+          "chain_strength": 35.482908155977725,
+          "physical_qubits": 766,
+          "max_chain_length": 12,
+          "chain_break_fraction": 0.0001875,
+          "best_energy": 78.93288908727341,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1
+              },
+              "Plot3": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 1,
+                "Carrots": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot4": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Apples": 1,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot5": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot6": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 1,
+                "Oranges": 1,
+                "Eggs": 0
+              },
+              "Plot7": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 0
+              }
+            },
+            "U": {
+              "Wheat": 1,
+              "Rice": 1,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 1,
+              "Apples": 0,
+              "Oranges": 1,
+              "Eggs": 1
+            },
+            "allocations": {
+              "Plot1_Rice": 20.04,
+              "Plot1_Eggs": 20.04,
+              "Plot2_Rice": 8.6,
+              "Plot2_Eggs": 8.6,
+              "Plot3_Wheat": 12.13,
+              "Plot3_Potatoes": 12.13,
+              "Plot4_Soybeans": 4.3,
+              "Plot4_Carrots": 4.3,
+              "Plot4_Apples": 4.3,
+              "Plot5_Wheat": 8.89,
+              "Plot5_Carrots": 8.89,
+              "Plot6_Rice": 10.48,
+              "Plot6_Apples": 10.48,
+              "Plot6_Oranges": 10.48,
+              "Plot7_Oranges": 5.57
+            },
+            "summary": {
+              "n_farms": 7,
+              "n_foods": 10,
+              "foods_used": [
+                "Wheat",
+                "Rice",
+                "Soybeans",
+                "Carrots",
+                "Oranges",
+                "Eggs"
+              ],
+              "total_area_allocated": 149.22999999999996,
+              "n_unique_foods": 6
+            }
+          },
+          "objective": 0.9036542636766178,
+          "violations": 6,
+          "violation_details": {
+            "total_violations": 6,
+            "one_crop_per_farm": {
+              "violations": 6,
+              "details": [
+                {
+                  "farm": "Plot1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot3",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot5",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot6",
+                  "expected": "0 or 1",
+                  "actual": 3
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 21.37134575843811,
+          "wall_time": 21.37134575843811
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.0035288333892822266,
+          "solve": 0.002081155776977539,
+          "total": 0.00561213493347168,
+          "solve_time": 0.002081155776977539,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.002081155776977539,
+        "total_time": 0.00561213493347168,
+        "wall_time": 0.00561213493347168,
+        "n_variables": 80,
+        "n_constraints": 92,
+        "success": true,
+        "objective": 0.49409877160405663,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 1
+            },
+            "Plot5": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 1,
+              "Eggs": 0
+            },
+            "Plot6": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot7": {
+              "Wheat": 1,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            }
+          },
+          "U": {
+            "Wheat": 1,
+            "Rice": 0,
+            "Corn": 0,
+            "Soybeans": 0,
+            "Lentils": 1,
+            "Potatoes": 1,
+            "Carrots": 0,
+            "Apples": 0,
+            "Oranges": 1,
+            "Eggs": 1
+          },
+          "allocations": {
+            "Plot1_Lentils": 20.04,
+            "Plot2_Potatoes": 8.6,
+            "Plot3_Lentils": 12.13,
+            "Plot4_Eggs": 4.3,
+            "Plot5_Oranges": 8.89,
+            "Plot6_Lentils": 10.48,
+            "Plot7_Wheat": 5.57
+          },
+          "summary": {
+            "n_farms": 7,
+            "n_foods": 10,
+            "foods_used": [
+              "Wheat",
+              "Lentils",
+              "Potatoes",
+              "Oranges",
+              "Eggs"
+            ],
+            "total_area_allocated": 70.00999999999999,
+            "n_unique_foods": 5
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 8,
+      "scenario": "small_100",
+      "metadata": {
+        "n_farms": 8,
+        "n_foods": 11,
+        "n_variables": 99,
+        "n_constraints": 112,
+        "logical_qubits": 99,
+        "total_area": 80.00999999999999
+      },
+      "timings": {
+        "data_load": 0.0006477832794189453,
+        "cqm_build": 0.01192021369934082
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.010417938232421875,
+            "embedding": 53.32761597633362,
+            "sampling": 0.03341484069824219,
+            "qpu_access": 0.24951956,
+            "qpu_programming": 0.01575956,
+            "qpu_sampling": 0.23376,
+            "qpu_total_real": 0.0,
+            "embedding_total": 53.32761597633362,
+            "qpu_access_total": 0.24951956,
+            "solve_time": 53.57713553633362,
+            "total": 56.566591024398804
+          },
+          "bqm_variables": 245,
+          "bqm_interactions": 1588,
+          "lagrange_multiplier": null,
+          "chain_strength": 27.181582302212234,
+          "physical_qubits": 1200,
+          "max_chain_length": 15,
+          "chain_break_fraction": 0.00035510204081632654,
+          "best_energy": 83.89263854518205,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 1,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 1,
+                "Soybeans": 1,
+                "Lentils": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot3": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1
+              },
+              "Plot4": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 0
+              },
+              "Plot5": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 1,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot6": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 1
+              },
+              "Plot7": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot8": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 1,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              }
+            },
+            "U": {
+              "Wheat": 1,
+              "Rice": 1,
+              "Corn": 1,
+              "Soybeans": 1,
+              "Lentils": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 1,
+              "Eggs": 1
+            },
+            "allocations": {
+              "Plot1_Carrots": 3.75,
+              "Plot1_Tomatoes": 3.75,
+              "Plot2_Corn": 10.68,
+              "Plot2_Soybeans": 10.68,
+              "Plot2_Lentils": 10.68,
+              "Plot3_Rice": 16.01,
+              "Plot3_Carrots": 16.01,
+              "Plot3_Eggs": 16.01,
+              "Plot4_Rice": 7.93,
+              "Plot4_Lentils": 7.93,
+              "Plot4_Oranges": 7.93,
+              "Plot5_Tomatoes": 14.69,
+              "Plot6_Rice": 11.63,
+              "Plot6_Oranges": 11.63,
+              "Plot6_Eggs": 11.63,
+              "Plot7_Lentils": 10.05,
+              "Plot8_Rice": 5.27,
+              "Plot8_Corn": 5.27,
+              "Plot8_Soybeans": 5.27
+            },
+            "summary": {
+              "n_farms": 8,
+              "n_foods": 11,
+              "foods_used": [
+                "Wheat",
+                "Rice",
+                "Corn",
+                "Soybeans",
+                "Lentils",
+                "Oranges",
+                "Eggs"
+              ],
+              "total_area_allocated": 186.80000000000004,
+              "n_unique_foods": 7
+            }
+          },
+          "objective": 1.0498061492313464,
+          "violations": 7,
+          "violation_details": {
+            "total_violations": 7,
+            "one_crop_per_farm": {
+              "violations": 6,
+              "details": [
+                {
+                  "farm": "Plot1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot3",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot6",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot8",
+                  "expected": "0 or 1",
+                  "actual": 3
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 1,
+              "details": [
+                {
+                  "group": "Vegetables",
+                  "min": 1,
+                  "max": 3,
+                  "actual": 0
+                }
+              ]
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 56.566591024398804,
+          "wall_time": 56.566591024398804
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.002567291259765625,
+          "solve": 0.0016829967498779297,
+          "total": 0.004251956939697266,
+          "solve_time": 0.0016829967498779297,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.0016829967498779297,
+        "total_time": 0.004251956939697266,
+        "wall_time": 0.004251956939697266,
+        "n_variables": 99,
+        "n_constraints": 112,
+        "success": true,
+        "objective": 0.5341591676040496,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 1,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 1,
+              "Eggs": 0
+            },
+            "Plot5": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot6": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot7": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 1,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot8": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 1
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 0,
+            "Corn": 1,
+            "Soybeans": 1,
+            "Lentils": 0,
+            "Potatoes": 0,
+            "Carrots": 0,
+            "Tomatoes": 1,
+            "Apples": 0,
+            "Oranges": 1,
+            "Eggs": 1
+          },
+          "allocations": {
+            "Plot1_Corn": 3.75,
+            "Plot2_Soybeans": 10.68,
+            "Plot3_Soybeans": 16.01,
+            "Plot4_Oranges": 7.93,
+            "Plot5_Soybeans": 14.69,
+            "Plot6_Soybeans": 11.63,
+            "Plot7_Tomatoes": 10.05,
+            "Plot8_Eggs": 5.27
+          },
+          "summary": {
+            "n_farms": 8,
+            "n_foods": 11,
+            "foods_used": [
+              "Corn",
+              "Soybeans",
+              "Tomatoes",
+              "Oranges",
+              "Eggs"
+            ],
+            "total_area_allocated": 80.00999999999999,
+            "n_unique_foods": 5
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 9,
+      "scenario": "medium_120",
+      "metadata": {
+        "n_farms": 9,
+        "n_foods": 12,
+        "n_variables": 120,
+        "n_constraints": 134,
+        "logical_qubits": 120,
+        "total_area": 90.01
+      },
+      "timings": {
+        "data_load": 0.000560760498046875,
+        "cqm_build": 0.015552997589111328
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.02074122428894043,
+            "embedding": 90.51162123680115,
+            "sampling": 0.035941123962402344,
+            "qpu_access": 0.24551636,
+            "qpu_programming": 0.01575636,
+            "qpu_sampling": 0.22976,
+            "qpu_total_real": 0.0,
+            "embedding_total": 90.51162123680115,
+            "qpu_access_total": 0.24551636,
+            "solve_time": 90.75713759680114,
+            "total": 94.55641603469849
+          },
+          "bqm_variables": 291,
+          "bqm_interactions": 2041,
+          "lagrange_multiplier": null,
+          "chain_strength": 28.761830907676924,
+          "physical_qubits": 1728,
+          "max_chain_length": 20,
+          "chain_break_fraction": 0.0004467353951890035,
+          "best_energy": 128.22136057104842,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 0
+              },
+              "Plot2": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 1,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1
+              },
+              "Plot3": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 0,
+                "Apples": 1,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot4": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 0
+              },
+              "Plot5": {
+                "Wheat": 1,
+                "Rice": 1,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 1,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot6": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 1,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot7": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 1,
+                "Oranges": 1,
+                "Eggs": 0
+              },
+              "Plot8": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 1,
+                "Carrots": 1,
+                "Tomatoes": 1,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              },
+              "Plot9": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 1,
+                "Barley": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 1,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0
+              }
+            },
+            "U": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 1,
+              "Potatoes": 1,
+              "Carrots": 1,
+              "Tomatoes": 1,
+              "Apples": 1,
+              "Oranges": 1,
+              "Eggs": 1
+            },
+            "allocations": {
+              "Plot1_Lentils": 7.57,
+              "Plot1_Oranges": 7.57,
+              "Plot2_Wheat": 19.34,
+              "Plot2_Barley": 19.34,
+              "Plot2_Soybeans": 19.34,
+              "Plot2_Eggs": 19.34,
+              "Plot3_Soybeans": 5.68,
+              "Plot3_Carrots": 5.68,
+              "Plot3_Apples": 5.68,
+              "Plot4_Carrots": 22.31,
+              "Plot4_Oranges": 22.31,
+              "Plot5_Wheat": 9.62,
+              "Plot5_Rice": 9.62,
+              "Plot5_Potatoes": 9.62,
+              "Plot6_Carrots": 6.84,
+              "Plot6_Tomatoes": 6.84,
+              "Plot7_Lentils": 3.63,
+              "Plot7_Apples": 3.63,
+              "Plot7_Oranges": 3.63,
+              "Plot8_Soybeans": 8.61,
+              "Plot8_Potatoes": 8.61,
+              "Plot8_Carrots": 8.61,
+              "Plot8_Tomatoes": 8.61,
+              "Plot9_Corn": 6.41,
+              "Plot9_Soybeans": 6.41,
+              "Plot9_Tomatoes": 6.41
+            },
+            "summary": {
+              "n_farms": 9,
+              "n_foods": 12,
+              "foods_used": [
+                "Rice",
+                "Lentils",
+                "Potatoes",
+                "Carrots",
+                "Tomatoes",
+                "Apples",
+                "Oranges",
+                "Eggs"
+              ],
+              "total_area_allocated": 261.2600000000001,
+              "n_unique_foods": 8
+            }
+          },
+          "objective": 1.2068785134985003,
+          "violations": 9,
+          "violation_details": {
+            "total_violations": 9,
+            "one_crop_per_farm": {
+              "violations": 9,
+              "details": [
+                {
+                  "farm": "Plot1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Plot3",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot5",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot6",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot7",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot8",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Plot9",
+                  "expected": "0 or 1",
+                  "actual": 3
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 94.55641603469849,
+          "wall_time": 94.55641603469849
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.002052783966064453,
+          "solve": 0.009678125381469727,
+          "total": 0.0117340087890625,
+          "solve_time": 0.009678125381469727,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.009678125381469727,
+        "total_time": 0.0117340087890625,
+        "wall_time": 0.0117340087890625,
+        "n_variables": 120,
+        "n_constraints": 134,
+        "success": true,
+        "objective": 0.4646242639706699,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot5": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot6": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 1,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot7": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 1
+            },
+            "Plot8": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 1,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            },
+            "Plot9": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 1,
+            "Corn": 0,
+            "Barley": 0,
+            "Soybeans": 1,
+            "Lentils": 0,
+            "Potatoes": 1,
+            "Carrots": 0,
+            "Tomatoes": 0,
+            "Apples": 1,
+            "Oranges": 0,
+            "Eggs": 1
+          },
+          "allocations": {
+            "Plot1_Soybeans": 7.57,
+            "Plot2_Soybeans": 19.34,
+            "Plot3_Potatoes": 5.68,
+            "Plot4_Soybeans": 22.31,
+            "Plot5_Soybeans": 9.62,
+            "Plot6_Apples": 6.84,
+            "Plot7_Eggs": 3.63,
+            "Plot8_Soybeans": 8.61,
+            "Plot9_Rice": 6.41
+          },
+          "summary": {
+            "n_farms": 9,
+            "n_foods": 12,
+            "foods_used": [
+              "Rice",
+              "Soybeans",
+              "Potatoes",
+              "Apples",
+              "Eggs"
+            ],
+            "total_area_allocated": 90.01,
+            "n_unique_foods": 5
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 10,
+      "scenario": "medium_160",
+      "metadata": {
+        "n_farms": 10,
+        "n_foods": 14,
+        "n_variables": 154,
+        "n_constraints": 169,
+        "logical_qubits": 154,
+        "total_area": 100.0
+      },
+      "timings": {
+        "data_load": 0.0006170272827148438,
+        "cqm_build": 0.033434152603149414
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.0262300968170166,
+            "embedding": 125.12450313568115,
+            "sampling": 0.051177024841308594,
+            "qpu_access": 0.27283756,
+            "qpu_programming": 0.01575756,
+            "qpu_sampling": 0.25708,
+            "qpu_total_real": 0.0,
+            "embedding_total": 125.12450313568115,
+            "qpu_access_total": 0.27283756,
+            "solve_time": 125.39734069568115,
+            "total": 129.00779628753662
+          },
+          "bqm_variables": 368,
+          "bqm_interactions": 2841,
+          "lagrange_multiplier": null,
+          "chain_strength": 28.88064,
+          "physical_qubits": 2525,
+          "max_chain_length": 24,
+          "chain_break_fraction": 0.0012826086956521739,
+          "best_energy": 183.86353250000005,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Chickpeas": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0,
+                "Chicken": 0
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 1,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Chickpeas": 0,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 0,
+                "Apples": 1,
+                "Oranges": 0,
+                "Eggs": 0,
+                "Chicken": 1
+              },
+              "Plot3": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 1,
+                "Chickpeas": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 1,
+                "Oranges": 0,
+                "Eggs": 0,
+                "Chicken": 0
+              },
+              "Plot4": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 1,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Chickpeas": 0,
+                "Potatoes": 1,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 0,
+                "Chicken": 0
+              },
+              "Plot5": {
+                "Wheat": 1,
+                "Rice": 0,
+                "Corn": 1,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Chickpeas": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1,
+                "Chicken": 0
+              },
+              "Plot6": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Chickpeas": 1,
+                "Potatoes": 1,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1,
+                "Chicken": 0
+              },
+              "Plot7": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 1,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Chickpeas": 1,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 0,
+                "Chicken": 0
+              },
+              "Plot8": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 1,
+                "Lentils": 0,
+                "Chickpeas": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 0,
+                "Eggs": 1,
+                "Chicken": 0
+              },
+              "Plot9": {
+                "Wheat": 0,
+                "Rice": 1,
+                "Corn": 0,
+                "Barley": 1,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Chickpeas": 0,
+                "Potatoes": 0,
+                "Carrots": 0,
+                "Tomatoes": 0,
+                "Apples": 1,
+                "Oranges": 0,
+                "Eggs": 1,
+                "Chicken": 0
+              },
+              "Plot10": {
+                "Wheat": 0,
+                "Rice": 0,
+                "Corn": 0,
+                "Barley": 0,
+                "Soybeans": 0,
+                "Lentils": 0,
+                "Chickpeas": 1,
+                "Potatoes": 0,
+                "Carrots": 1,
+                "Tomatoes": 0,
+                "Apples": 0,
+                "Oranges": 1,
+                "Eggs": 0,
+                "Chicken": 0
+              }
+            },
+            "U": {
+              "Wheat": 0,
+              "Rice": 1,
+              "Corn": 1,
+              "Barley": 1,
+              "Soybeans": 1,
+              "Lentils": 1,
+              "Chickpeas": 1,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Tomatoes": 1,
+              "Apples": 1,
+              "Oranges": 1,
+              "Eggs": 1,
+              "Chicken": 0
+            },
+            "allocations": {
+              "Plot1_Rice": 7.12,
+              "Plot1_Soybeans": 7.12,
+              "Plot2_Barley": 14.58,
+              "Plot2_Carrots": 14.58,
+              "Plot2_Apples": 14.58,
+              "Plot2_Chicken": 14.58,
+              "Plot3_Wheat": 4.29,
+              "Plot3_Lentils": 4.29,
+              "Plot3_Apples": 4.29,
+              "Plot4_Rice": 5.71,
+              "Plot4_Corn": 5.71,
+              "Plot4_Potatoes": 5.71,
+              "Plot5_Wheat": 22.08,
+              "Plot5_Corn": 22.08,
+              "Plot5_Eggs": 22.08,
+              "Plot6_Soybeans": 12.27,
+              "Plot6_Chickpeas": 12.27,
+              "Plot6_Potatoes": 12.27,
+              "Plot6_Eggs": 12.27,
+              "Plot7_Rice": 7.49,
+              "Plot7_Corn": 7.49,
+              "Plot7_Chickpeas": 7.49,
+              "Plot7_Oranges": 7.49,
+              "Plot8_Soybeans": 5.06,
+              "Plot8_Eggs": 5.06,
+              "Plot9_Rice": 15.59,
+              "Plot9_Barley": 15.59,
+              "Plot9_Apples": 15.59,
+              "Plot9_Eggs": 15.59,
+              "Plot10_Chickpeas": 5.81,
+              "Plot10_Carrots": 5.81,
+              "Plot10_Oranges": 5.81
+            },
+            "summary": {
+              "n_farms": 10,
+              "n_foods": 14,
+              "foods_used": [
+                "Rice",
+                "Corn",
+                "Barley",
+                "Soybeans",
+                "Lentils",
+                "Chickpeas",
+                "Potatoes",
+                "Tomatoes",
+                "Apples",
+                "Oranges",
+                "Eggs"
+              ],
+              "total_area_allocated": 337.75,
+              "n_unique_foods": 11
+            }
+          },
+          "objective": 1.4539075,
+          "violations": 10,
+          "violation_details": {
+            "total_violations": 10,
+            "one_crop_per_farm": {
+              "violations": 10,
+              "details": [
+                {
+                  "farm": "Plot1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot2",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Plot3",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot4",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot5",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Plot6",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Plot7",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Plot8",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Plot9",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Plot10",
+                  "expected": "0 or 1",
+                  "actual": 3
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 129.00779628753662,
+          "wall_time": 129.00779628753662
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.0055081844329833984,
+          "solve": 0.005090951919555664,
+          "total": 0.010601997375488281,
+          "solve_time": 0.005090951919555664,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.005090951919555664,
+        "total_time": 0.010601997375488281,
+        "wall_time": 0.010601997375488281,
+        "n_variables": 154,
+        "n_constraints": 169,
+        "success": true,
+        "objective": 0.52174465,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot3": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 1
+            },
+            "Plot4": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 1,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot5": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot6": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot7": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot8": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 1,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 0,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot9": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 1,
+              "Potatoes": 0,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            },
+            "Plot10": {
+              "Wheat": 0,
+              "Rice": 0,
+              "Corn": 0,
+              "Barley": 0,
+              "Soybeans": 0,
+              "Lentils": 0,
+              "Chickpeas": 0,
+              "Potatoes": 1,
+              "Carrots": 0,
+              "Tomatoes": 0,
+              "Apples": 0,
+              "Oranges": 0,
+              "Eggs": 0,
+              "Chicken": 0
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 0,
+            "Corn": 1,
+            "Barley": 0,
+            "Soybeans": 0,
+            "Lentils": 0,
+            "Chickpeas": 1,
+            "Potatoes": 1,
+            "Carrots": 0,
+            "Tomatoes": 0,
+            "Apples": 1,
+            "Oranges": 0,
+            "Eggs": 0,
+            "Chicken": 1
+          },
+          "allocations": {
+            "Plot1_Chickpeas": 7.12,
+            "Plot2_Chickpeas": 14.58,
+            "Plot3_Chicken": 4.29,
+            "Plot4_Apples": 5.71,
+            "Plot5_Chickpeas": 22.08,
+            "Plot6_Chickpeas": 12.27,
+            "Plot7_Chickpeas": 7.49,
+            "Plot8_Corn": 5.06,
+            "Plot9_Chickpeas": 15.59,
+            "Plot10_Potatoes": 5.81
+          },
+          "summary": {
+            "n_farms": 10,
+            "n_foods": 14,
+            "foods_used": [
+              "Corn",
+              "Chickpeas",
+              "Potatoes",
+              "Apples",
+              "Chicken"
+            ],
+            "total_area_allocated": 100.0,
+            "n_unique_foods": 5
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 5,
+      "scenario": "rotation_micro_25",
+      "metadata": {
+        "n_farms": 5,
+        "n_foods": 6,
+        "n_variables": 36,
+        "n_constraints": 43,
+        "logical_qubits": 36,
+        "total_area": 3.1500000000000004
+      },
+      "timings": {
+        "data_load": 0.029033184051513672,
+        "cqm_build": 0.0069768428802490234
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.005854129791259766,
+            "embedding": 3.633111000061035,
+            "sampling": 0.00795888900756836,
+            "qpu_access": 0.15013676,
+            "qpu_programming": 0.01575676,
+            "qpu_sampling": 0.13438,
+            "qpu_total_real": 0.0,
+            "embedding_total": 3.633111000061035,
+            "qpu_access_total": 0.15013676,
+            "solve_time": 3.7832477600610352,
+            "total": 5.92294716835022
+          },
+          "bqm_variables": 92,
+          "bqm_interactions": 405,
+          "lagrange_multiplier": null,
+          "chain_strength": 43.567499999999995,
+          "physical_qubits": 242,
+          "max_chain_length": 6,
+          "chain_break_fraction": 0.00011956521739130435,
+          "best_energy": 31.610571428571486,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Farm1": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm2": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm3": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm4": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm5": {
+                "Fruits": 0,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              }
+            },
+            "U": {
+              "Fruits": 1,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 1,
+              "Proteins": 0
+            },
+            "allocations": {
+              "Farm1_Fruits": 0.49,
+              "Farm2_Legumes": 0.22,
+              "Farm3_Legumes": 0.08,
+              "Farm4_Leafy_Vegetables": 0.79,
+              "Farm4_Root_Vegetables": 0.79,
+              "Farm5_Grains": 1.57
+            },
+            "summary": {
+              "n_farms": 5,
+              "n_foods": 6,
+              "foods_used": [
+                "Fruits",
+                "Legumes",
+                "Leafy_Vegetables",
+                "Root_Vegetables"
+              ],
+              "total_area_allocated": 3.9400000000000004,
+              "n_unique_foods": 4
+            }
+          },
+          "objective": 0.6616507936507936,
+          "violations": 1,
+          "violation_details": {
+            "total_violations": 1,
+            "one_crop_per_farm": {
+              "violations": 1,
+              "details": [
+                {
+                  "farm": "Farm4",
+                  "expected": "0 or 1",
+                  "actual": 2
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 5.92294716835022,
+          "wall_time": 5.92294716835022
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.0008718967437744141,
+          "solve": 0.00156402587890625,
+          "total": 0.0024390220642089844,
+          "solve_time": 0.00156402587890625,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.00156402587890625,
+        "total_time": 0.0024390220642089844,
+        "wall_time": 0.0024390220642089844,
+        "n_variables": 36,
+        "n_constraints": 43,
+        "success": true,
+        "objective": 0.6400714285714286,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Farm1": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm2": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 0,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm3": {
+              "Fruits": 0,
+              "Grains": 1,
+              "Legumes": 0,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm4": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm5": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            }
+          },
+          "U": {
+            "Fruits": 0,
+            "Grains": 1,
+            "Legumes": 1,
+            "Leafy_Vegetables": 1,
+            "Root_Vegetables": 0,
+            "Proteins": 0
+          },
+          "allocations": {
+            "Farm1_Legumes": 0.49,
+            "Farm2_Leafy_Vegetables": 0.22,
+            "Farm3_Grains": 0.08,
+            "Farm4_Legumes": 0.79,
+            "Farm5_Legumes": 1.57
+          },
+          "summary": {
+            "n_farms": 5,
+            "n_foods": 6,
+            "foods_used": [
+              "Grains",
+              "Legumes",
+              "Leafy_Vegetables"
+            ],
+            "total_area_allocated": 3.1500000000000004,
+            "n_unique_foods": 3
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 10,
+      "scenario": "rotation_small_50",
+      "metadata": {
+        "n_farms": 10,
+        "n_foods": 6,
+        "n_variables": 66,
+        "n_constraints": 78,
+        "logical_qubits": 66,
+        "total_area": 45.3
+      },
+      "timings": {
+        "data_load": 0.0025038719177246094,
+        "cqm_build": 0.009281158447265625
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.00988316535949707,
+            "embedding": 28.933130979537964,
+            "sampling": 0.04583406448364258,
+            "qpu_access": 0.18855835999999998,
+            "qpu_programming": 0.01575836,
+            "qpu_sampling": 0.1728,
+            "qpu_total_real": 0.0,
+            "embedding_total": 28.933130979537964,
+            "qpu_access_total": 0.18855835999999998,
+            "solve_time": 29.121689339537962,
+            "total": 31.589237213134766
+          },
+          "bqm_variables": 163,
+          "bqm_interactions": 984,
+          "lagrange_multiplier": null,
+          "chain_strength": 48.5753642384106,
+          "physical_qubits": 671,
+          "max_chain_length": 13,
+          "chain_break_fraction": 0.00015950920245398774,
+          "best_energy": 67.90033830022028,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Farm1": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm2": {
+                "Fruits": 0,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm3": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm4": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm5": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm6": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 1
+              },
+              "Farm7": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm8": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm9": {
+                "Fruits": 1,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm10": {
+                "Fruits": 1,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              }
+            },
+            "U": {
+              "Fruits": 1,
+              "Grains": 1,
+              "Legumes": 0,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 1,
+              "Proteins": 1
+            },
+            "allocations": {
+              "Farm1_Fruits": 0.54,
+              "Farm1_Root_Vegetables": 0.54,
+              "Farm2_Grains": 1.85,
+              "Farm2_Leafy_Vegetables": 1.85,
+              "Farm3_Leafy_Vegetables": 1.33,
+              "Farm3_Root_Vegetables": 1.33,
+              "Farm4_Leafy_Vegetables": 1.94,
+              "Farm5_Root_Vegetables": 3.35,
+              "Farm6_Root_Vegetables": 2.31,
+              "Farm6_Proteins": 2.31,
+              "Farm7_Root_Vegetables": 5.64,
+              "Farm8_Legumes": 5.69,
+              "Farm8_Leafy_Vegetables": 5.69,
+              "Farm9_Fruits": 8.49,
+              "Farm9_Grains": 8.49,
+              "Farm10_Fruits": 14.16,
+              "Farm10_Grains": 14.16
+            },
+            "summary": {
+              "n_farms": 10,
+              "n_foods": 6,
+              "foods_used": [
+                "Fruits",
+                "Grains",
+                "Leafy_Vegetables",
+                "Root_Vegetables",
+                "Proteins"
+              ],
+              "total_area_allocated": 79.67,
+              "n_unique_foods": 5
+            }
+          },
+          "objective": 0.9147610375275937,
+          "violations": 7,
+          "violation_details": {
+            "total_violations": 7,
+            "one_crop_per_farm": {
+              "violations": 7,
+              "details": [
+                {
+                  "farm": "Farm1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm2",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm3",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm6",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm8",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm9",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm10",
+                  "expected": "0 or 1",
+                  "actual": 2
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 31.589237213134766,
+          "wall_time": 31.589237213134766
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.001135110855102539,
+          "solve": 0.0034689903259277344,
+          "total": 0.004606962203979492,
+          "solve_time": 0.0034689903259277344,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.0034689903259277344,
+        "total_time": 0.004606962203979492,
+        "wall_time": 0.004606962203979492,
+        "n_variables": 66,
+        "n_constraints": 78,
+        "success": true,
+        "objective": 0.6442185430463576,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Farm1": {
+              "Fruits": 0,
+              "Grains": 1,
+              "Legumes": 0,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm2": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm3": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 0,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm4": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm5": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm6": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm7": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm8": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm9": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm10": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            }
+          },
+          "U": {
+            "Fruits": 0,
+            "Grains": 1,
+            "Legumes": 1,
+            "Leafy_Vegetables": 1,
+            "Root_Vegetables": 0,
+            "Proteins": 0
+          },
+          "allocations": {
+            "Farm1_Grains": 0.54,
+            "Farm2_Legumes": 1.85,
+            "Farm3_Leafy_Vegetables": 1.33,
+            "Farm4_Legumes": 1.94,
+            "Farm5_Legumes": 3.35,
+            "Farm6_Legumes": 2.31,
+            "Farm7_Legumes": 5.64,
+            "Farm8_Legumes": 5.69,
+            "Farm9_Legumes": 8.49,
+            "Farm10_Legumes": 14.16
+          },
+          "summary": {
+            "n_farms": 10,
+            "n_foods": 6,
+            "foods_used": [
+              "Grains",
+              "Legumes",
+              "Leafy_Vegetables"
+            ],
+            "total_area_allocated": 45.3,
+            "n_unique_foods": 3
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 20,
+      "scenario": "rotation_medium_100",
+      "metadata": {
+        "n_farms": 20,
+        "n_foods": 6,
+        "n_variables": 126,
+        "n_constraints": 148,
+        "logical_qubits": 126,
+        "total_area": 73.69
+      },
+      "timings": {
+        "data_load": 0.0019898414611816406,
+        "cqm_build": 0.01643681526184082
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.021685123443603516,
+            "embedding": 76.74164986610413,
+            "sampling": 0.05564522743225098,
+            "qpu_access": 0.27988476,
+            "qpu_programming": 0.01576476,
+            "qpu_sampling": 0.26412,
+            "qpu_total_real": 0.0,
+            "embedding_total": 76.74164986610413,
+            "qpu_access_total": 0.27988476,
+            "solve_time": 77.02153462610413,
+            "total": 80.41462397575378
+          },
+          "bqm_variables": 299,
+          "bqm_interactions": 2634,
+          "lagrange_multiplier": null,
+          "chain_strength": 155.46326502917626,
+          "physical_qubits": 1970,
+          "max_chain_length": 26,
+          "chain_break_fraction": 0.0007993311036789299,
+          "best_energy": 238.8686375356211,
+          "n_samples": 1000,
+          "solution": {
+            "Y": {
+              "Farm1": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm2": {
+                "Fruits": 1,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 1
+              },
+              "Farm3": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm4": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm5": {
+                "Fruits": 0,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm6": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm7": {
+                "Fruits": 0,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm8": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm9": {
+                "Fruits": 1,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 1
+              },
+              "Farm10": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm11": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm12": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 1
+              },
+              "Farm13": {
+                "Fruits": 1,
+                "Grains": 1,
+                "Legumes": 1,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm14": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm15": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 1,
+                "Proteins": 0
+              },
+              "Farm16": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 1
+              },
+              "Farm17": {
+                "Fruits": 0,
+                "Grains": 1,
+                "Legumes": 0,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm18": {
+                "Fruits": 1,
+                "Grains": 0,
+                "Legumes": 1,
+                "Leafy_Vegetables": 1,
+                "Root_Vegetables": 0,
+                "Proteins": 1
+              },
+              "Farm19": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 0
+              },
+              "Farm20": {
+                "Fruits": 0,
+                "Grains": 0,
+                "Legumes": 0,
+                "Leafy_Vegetables": 0,
+                "Root_Vegetables": 0,
+                "Proteins": 1
+              }
+            },
+            "U": {
+              "Fruits": 1,
+              "Grains": 1,
+              "Legumes": 1,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 1,
+              "Proteins": 1
+            },
+            "allocations": {
+              "Farm1_Leafy_Vegetables": 1.06,
+              "Farm1_Root_Vegetables": 1.06,
+              "Farm2_Fruits": 0.26,
+              "Farm2_Grains": 0.26,
+              "Farm2_Root_Vegetables": 0.26,
+              "Farm2_Proteins": 0.26,
+              "Farm3_Fruits": 0.94,
+              "Farm3_Leafy_Vegetables": 0.94,
+              "Farm4_Leafy_Vegetables": 0.73,
+              "Farm5_Grains": 0.31,
+              "Farm5_Leafy_Vegetables": 0.31,
+              "Farm6_Fruits": 1.16,
+              "Farm6_Leafy_Vegetables": 1.16,
+              "Farm7_Grains": 0.93,
+              "Farm7_Leafy_Vegetables": 0.93,
+              "Farm8_Root_Vegetables": 1.17,
+              "Farm9_Fruits": 0.8,
+              "Farm9_Grains": 0.8,
+              "Farm9_Leafy_Vegetables": 0.8,
+              "Farm9_Proteins": 0.8,
+              "Farm10_Fruits": 1.77,
+              "Farm10_Root_Vegetables": 1.77,
+              "Farm11_Fruits": 1.82,
+              "Farm12_Fruits": 1.73,
+              "Farm12_Legumes": 1.73,
+              "Farm12_Proteins": 1.73,
+              "Farm13_Fruits": 2.04,
+              "Farm13_Grains": 2.04,
+              "Farm13_Legumes": 2.04,
+              "Farm14_Legumes": 3.17,
+              "Farm14_Leafy_Vegetables": 3.17,
+              "Farm14_Root_Vegetables": 3.17,
+              "Farm15_Legumes": 6.01,
+              "Farm15_Root_Vegetables": 6.01,
+              "Farm16_Proteins": 5.56,
+              "Farm17_Grains": 5.39,
+              "Farm17_Leafy_Vegetables": 5.39,
+              "Farm18_Fruits": 5.67,
+              "Farm18_Legumes": 5.67,
+              "Farm18_Leafy_Vegetables": 5.67,
+              "Farm18_Proteins": 5.67,
+              "Farm20_Proteins": 18.43
+            },
+            "summary": {
+              "n_farms": 20,
+              "n_foods": 6,
+              "foods_used": [
+                "Fruits",
+                "Grains",
+                "Legumes",
+                "Leafy_Vegetables",
+                "Root_Vegetables",
+                "Proteins"
+              ],
+              "total_area_allocated": 110.59,
+              "n_unique_foods": 6
+            }
+          },
+          "objective": 0.8038960510245624,
+          "violations": 14,
+          "violation_details": {
+            "total_violations": 14,
+            "one_crop_per_farm": {
+              "violations": 14,
+              "details": [
+                {
+                  "farm": "Farm1",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm2",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Farm3",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm5",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm6",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm7",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm9",
+                  "expected": "0 or 1",
+                  "actual": 4
+                },
+                {
+                  "farm": "Farm10",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm12",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Farm13",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Farm14",
+                  "expected": "0 or 1",
+                  "actual": 3
+                },
+                {
+                  "farm": "Farm15",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm17",
+                  "expected": "0 or 1",
+                  "actual": 2
+                },
+                {
+                  "farm": "Farm18",
+                  "expected": "0 or 1",
+                  "actual": 4
+                }
+              ]
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": false,
+          "success": true,
+          "total_time": 80.41462397575378,
+          "wall_time": 80.41462397575378
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.001920938491821289,
+          "solve": 0.004579067230224609,
+          "total": 0.006501913070678711,
+          "solve_time": 0.004579067230224609,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.004579067230224609,
+        "total_time": 0.006501913070678711,
+        "wall_time": 0.006501913070678711,
+        "n_variables": 126,
+        "n_constraints": 148,
+        "success": true,
+        "objective": 0.646797733749491,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Farm1": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm2": {
+              "Fruits": 0,
+              "Grains": 1,
+              "Legumes": 0,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm3": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm4": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm5": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 0,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm6": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm7": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm8": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm9": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm10": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm11": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm12": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm13": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm14": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm15": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm16": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm17": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm18": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm19": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm20": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            }
+          },
+          "U": {
+            "Fruits": 0,
+            "Grains": 1,
+            "Legumes": 1,
+            "Leafy_Vegetables": 1,
+            "Root_Vegetables": 0,
+            "Proteins": 0
+          },
+          "allocations": {
+            "Farm1_Legumes": 1.06,
+            "Farm2_Grains": 0.26,
+            "Farm3_Legumes": 0.94,
+            "Farm4_Legumes": 0.73,
+            "Farm5_Leafy_Vegetables": 0.31,
+            "Farm6_Legumes": 1.16,
+            "Farm7_Legumes": 0.93,
+            "Farm8_Legumes": 1.17,
+            "Farm9_Legumes": 0.8,
+            "Farm10_Legumes": 1.77,
+            "Farm11_Legumes": 1.82,
+            "Farm12_Legumes": 1.73,
+            "Farm13_Legumes": 2.04,
+            "Farm14_Legumes": 3.17,
+            "Farm15_Legumes": 6.01,
+            "Farm16_Legumes": 5.56,
+            "Farm17_Legumes": 5.39,
+            "Farm18_Legumes": 5.67,
+            "Farm19_Legumes": 14.74,
+            "Farm20_Legumes": 18.43
+          },
+          "summary": {
+            "n_farms": 20,
+            "n_foods": 6,
+            "foods_used": [
+              "Grains",
+              "Legumes",
+              "Leafy_Vegetables"
+            ],
+            "total_area_allocated": 73.69,
+            "n_unique_foods": 3
+          }
+        },
+        "status": "optimal"
+      }
+    },
+    {
+      "n_farms": 50,
+      "scenario": "rotation_large_200",
+      "metadata": {
+        "n_farms": 50,
+        "n_foods": 6,
+        "n_variables": 306,
+        "n_constraints": 358,
+        "logical_qubits": 306,
+        "total_area": 234.51000000000002
+      },
+      "timings": {
+        "data_load": 0.003647327423095703,
+        "cqm_build": 0.07502222061157227
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.036347150802612305,
+            "embedding": 213.22377395629883,
+            "total": 213.27739310264587
+          },
+          "bqm_variables": 695,
+          "bqm_interactions": 11250,
+          "lagrange_multiplier": null,
+          "chain_strength": 365.40801458359977,
+          "success": false,
+          "error": "No embedding found within 200s",
+          "total_time": 213.27739310264587
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.00446319580078125,
+          "solve": 0.008491992950439453,
+          "total": 0.01295781135559082,
+          "solve_time": 0.008491992950439453,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.008491992950439453,
+        "total_time": 0.01295781135559082,
+        "wall_time": 0.01295781135559082,
+        "n_variables": 306,
+        "n_constraints": 358,
+        "success": true,
+        "objective": 0.6471945759242674,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Farm1": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm2": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm3": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm4": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm5": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm6": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm7": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm8": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm9": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm10": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm11": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm12": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm13": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm14": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 0,
+              "Leafy_Vegetables": 1,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm15": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm16": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm17": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm18": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm19": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm20": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm21": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm22": {
+              "Fruits": 0,
+              "Grains": 1,
+              "Legumes": 0,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm23": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm24": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm25": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm26": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm27": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm28": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm29": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm30": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm31": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm32": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm33": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm34": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm35": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm36": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm37": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm38": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm39": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm40": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm41": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm42": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm43": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm44": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm45": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm46": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm47": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm48": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm49": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            },
+            "Farm50": {
+              "Fruits": 0,
+              "Grains": 0,
+              "Legumes": 1,
+              "Leafy_Vegetables": 0,
+              "Root_Vegetables": 0,
+              "Proteins": 0
+            }
+          },
+          "U": {
+            "Fruits": 0,
+            "Grains": 1,
+            "Legumes": 1,
+            "Leafy_Vegetables": 1,
+            "Root_Vegetables": 0,
+            "Proteins": 0
+          },
+          "allocations": {
+            "Farm1_Legumes": 1.7,
+            "Farm2_Legumes": 0.7,
+            "Farm3_Legumes": 1.91,
+            "Farm4_Legumes": 1.25,
+            "Farm5_Legumes": 0.88,
+            "Farm6_Legumes": 1.09,
+            "Farm7_Legumes": 1.15,
+            "Farm8_Legumes": 1.92,
+            "Farm9_Legumes": 1.39,
+            "Farm10_Legumes": 1.57,
+            "Farm11_Legumes": 1.15,
+            "Farm12_Legumes": 0.61,
+            "Farm13_Legumes": 0.57,
+            "Farm14_Leafy_Vegetables": 0.45,
+            "Farm15_Legumes": 0.5,
+            "Farm16_Legumes": 0.73,
+            "Farm17_Legumes": 0.62,
+            "Farm18_Legumes": 0.72,
+            "Farm19_Legumes": 1.89,
+            "Farm20_Legumes": 0.94,
+            "Farm21_Legumes": 1.37,
+            "Farm22_Grains": 0.35,
+            "Farm23_Legumes": 2.26,
+            "Farm24_Legumes": 1.92,
+            "Farm25_Legumes": 2.33,
+            "Farm26_Legumes": 2.68,
+            "Farm27_Legumes": 3.0,
+            "Farm28_Legumes": 2.33,
+            "Farm29_Legumes": 2.67,
+            "Farm30_Legumes": 2.09,
+            "Farm31_Legumes": 2.56,
+            "Farm32_Legumes": 1.61,
+            "Farm33_Legumes": 3.93,
+            "Farm34_Legumes": 9.1,
+            "Farm35_Legumes": 6.12,
+            "Farm36_Legumes": 3.82,
+            "Farm37_Legumes": 8.54,
+            "Farm38_Legumes": 3.89,
+            "Farm39_Legumes": 6.51,
+            "Farm40_Legumes": 5.0,
+            "Farm41_Legumes": 7.81,
+            "Farm42_Legumes": 9.14,
+            "Farm43_Legumes": 8.61,
+            "Farm44_Legumes": 9.61,
+            "Farm45_Legumes": 22.46,
+            "Farm46_Legumes": 24.44,
+            "Farm47_Legumes": 13.13,
+            "Farm48_Legumes": 11.89,
+            "Farm49_Legumes": 15.54,
+            "Farm50_Legumes": 18.06
+          },
+          "summary": {
+            "n_farms": 50,
+            "n_foods": 6,
+            "foods_used": [
+              "Grains",
+              "Legumes",
+              "Leafy_Vegetables"
+            ],
+            "total_area_allocated": 234.51000000000002,
+            "n_unique_foods": 3
+          }
+        },
+        "status": "optimal"
+      }
+    }
+  ]
+}

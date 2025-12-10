@@ -1,0 +1,160 @@
+{
+  "timestamp": "2025-12-09T08:47:30.507209",
+  "scales": [],
+  "scenarios": [
+    "micro_6"
+  ],
+  "methods": [
+    "ground_truth",
+    "direct_qpu"
+  ],
+  "qpu_available": true,
+  "qbsolv_available": false,
+  "results": [
+    {
+      "n_farms": 2,
+      "scenario": "micro_6",
+      "metadata": {
+        "n_farms": 2,
+        "n_foods": 2,
+        "n_variables": 6,
+        "n_constraints": 9,
+        "logical_qubits": 6,
+        "total_area": 20.0
+      },
+      "timings": {
+        "data_load": 0.0011420249938964844,
+        "cqm_build": 0.004361152648925781
+      },
+      "method_results": {
+        "direct_qpu": {
+          "method": "direct_qpu",
+          "num_reads": 1000,
+          "annealing_time": 20,
+          "timeout": 200,
+          "timings": {
+            "cqm_to_bqm": 0.0017099380493164062,
+            "embedding": 0.10630297660827637,
+            "sampling": 0.004865884780883789,
+            "qpu_access": 0.13396316,
+            "qpu_programming": 0.01576316,
+            "qpu_sampling": 0.1182,
+            "qpu_total_real": 0.0,
+            "embedding_total": 0.10630297660827637,
+            "qpu_access_total": 0.13396316,
+            "solve_time": 0.24026613660827636,
+            "total": 3.673552989959717
+          },
+          "bqm_variables": 17,
+          "bqm_interactions": 37,
+          "chain_strength": 11.723332499999998,
+          "physical_qubits": 21,
+          "max_chain_length": 2,
+          "chain_break_fraction": 0.0,
+          "best_energy": -0.4155000000000033,
+          "n_samples": 444,
+          "solution": {
+            "Y": {
+              "Plot1": {
+                "Wheat": 0,
+                "Rice": 1
+              },
+              "Plot2": {
+                "Wheat": 0,
+                "Rice": 1
+              }
+            },
+            "U": {
+              "Wheat": 0,
+              "Rice": 1
+            },
+            "allocations": {
+              "Plot1_Rice": 7.46,
+              "Plot2_Rice": 12.54
+            },
+            "summary": {
+              "n_farms": 2,
+              "n_foods": 2,
+              "foods_used": [
+                "Rice"
+              ],
+              "total_area_allocated": 20.0,
+              "n_unique_foods": 1
+            }
+          },
+          "objective": 0.4154999999999999,
+          "violations": 0,
+          "violation_details": {
+            "total_violations": 0,
+            "one_crop_per_farm": {
+              "violations": 0,
+              "details": []
+            },
+            "food_group_constraints": {
+              "violations": 0,
+              "details": []
+            },
+            "max_plots_per_crop": {
+              "violations": 0,
+              "details": []
+            }
+          },
+          "feasible": true,
+          "success": true,
+          "total_time": 3.673552989959717,
+          "wall_time": 3.673552989959717
+        }
+      },
+      "ground_truth": {
+        "method": "gurobi",
+        "timings": {
+          "build": 0.06114792823791504,
+          "solve": 0.02526116371154785,
+          "total": 0.08641362190246582,
+          "solve_time": 0.02526116371154785,
+          "embedding_total": 0,
+          "qpu_access_total": 0
+        },
+        "solve_time": 0.02526116371154785,
+        "total_time": 0.08641362190246582,
+        "wall_time": 0.08641362190246582,
+        "n_variables": 6,
+        "n_constraints": 9,
+        "success": true,
+        "objective": 0.4155,
+        "violations": 0,
+        "feasible": true,
+        "solution": {
+          "Y": {
+            "Plot1": {
+              "Wheat": 0,
+              "Rice": 1
+            },
+            "Plot2": {
+              "Wheat": 0,
+              "Rice": 1
+            }
+          },
+          "U": {
+            "Wheat": 0,
+            "Rice": 1
+          },
+          "allocations": {
+            "Plot1_Rice": 7.46,
+            "Plot2_Rice": 12.54
+          },
+          "summary": {
+            "n_farms": 2,
+            "n_foods": 2,
+            "foods_used": [
+              "Rice"
+            ],
+            "total_area_allocated": 20.0,
+            "n_unique_foods": 1
+          }
+        },
+        "status": "optimal"
+      }
+    }
+  ]
+}

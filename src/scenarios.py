@@ -1838,7 +1838,7 @@ def _load_micro_6_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
     foods_per_group = {'Grains': 2}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=6)
-    land_availability = _create_synthetic_farms(n_plots, total_area=20.0, seed=6)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=6)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -1862,7 +1862,7 @@ def _load_micro_12_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
     foods_per_group = {'Grains': 2, 'Legumes': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=12)
-    land_availability = _create_synthetic_farms(n_plots, total_area=30.0, seed=12)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=12)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -1886,7 +1886,7 @@ def _load_tiny_24_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
     foods_per_group = {'Grains': 2, 'Legumes': 2, 'Vegetables': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=24)
-    land_availability = _create_synthetic_farms(n_plots, total_area=40.0, seed=24)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=24)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -1910,7 +1910,7 @@ def _load_tiny_40_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
     foods_per_group = {'Grains': 2, 'Legumes': 1, 'Vegetables': 2, 'Fruits': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=40)
-    land_availability = _create_synthetic_farms(n_plots, total_area=50.0, seed=40)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=40)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -1934,7 +1934,7 @@ def _load_small_60_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
     foods_per_group = {'Grains': 3, 'Legumes': 2, 'Vegetables': 2, 'Fruits': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=60)
-    land_availability = _create_synthetic_farms(n_plots, total_area=60.0, seed=60)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=60)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -1958,7 +1958,7 @@ def _load_small_80_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
     foods_per_group = {'Grains': 3, 'Legumes': 2, 'Vegetables': 2, 'Fruits': 2, 'Proteins': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=80)
-    land_availability = _create_synthetic_farms(n_plots, total_area=70.0, seed=80)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=80)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -1982,7 +1982,7 @@ def _load_small_100_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]],
     foods_per_group = {'Grains': 3, 'Legumes': 2, 'Vegetables': 3, 'Fruits': 2, 'Proteins': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=100)
-    land_availability = _create_synthetic_farms(n_plots, total_area=80.0, seed=100)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=100)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -2006,7 +2006,7 @@ def _load_medium_120_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]]
     foods_per_group = {'Grains': 4, 'Legumes': 2, 'Vegetables': 3, 'Fruits': 2, 'Proteins': 1}
     
     foods, food_groups = _create_synthetic_foods(foods_per_group, seed=120)
-    land_availability = _create_synthetic_farms(n_plots, total_area=90.0, seed=120)
+    land_availability = _create_synthetic_farms(n_plots, total_area=100.0, seed=120)
     farms = list(land_availability.keys())
     
     config = _create_synthetic_config(farms, foods, food_groups, land_availability, min_foods_per_group=1)
@@ -2075,9 +2075,9 @@ def _load_rotation_micro_25_food_data() -> Tuple[List[str], Dict[str, Dict[str, 
     _sys.path.insert(0, _project_root)
     from Utils.farm_sampler import generate_farms
     
-    # Generate farms with spatial structure
+    # Generate farms with spatial structure (100ha total)
     n_farms = 5
-    L = generate_farms(n_farms=n_farms, seed=2501)
+    L = generate_farms(n_farms=n_farms, total_area=100.0, seed=2501)
     farms = list(L.keys())
     
     # Define crop families (aggregated from full crop list)
@@ -2152,7 +2152,7 @@ def _load_rotation_small_50_food_data() -> Tuple[List[str], Dict[str, Dict[str, 
     from Utils.farm_sampler import generate_farms
     
     n_farms = 10
-    L = generate_farms(n_farms=n_farms, seed=5001)
+    L = generate_farms(n_farms=n_farms, total_area=100.0, seed=5001)
     farms = list(L.keys())
     
     crop_families = {
@@ -2222,7 +2222,7 @@ def _load_rotation_medium_100_food_data() -> Tuple[List[str], Dict[str, Dict[str
     from Utils.farm_sampler import generate_farms
     
     n_farms = 20
-    L = generate_farms(n_farms=n_farms, seed=10001)
+    L = generate_farms(n_farms=n_farms, total_area=100.0, seed=10001)
     farms = list(L.keys())
     
     crop_families = {
@@ -2293,7 +2293,7 @@ def _load_rotation_large_200_food_data() -> Tuple[List[str], Dict[str, Dict[str,
     from Utils.farm_sampler import generate_farms
     
     n_farms = 50
-    L = generate_farms(n_farms=n_farms, seed=20001)
+    L = generate_farms(n_farms=n_farms, total_area=100.0, seed=20001)
     farms = list(L.keys())
     
     crop_families = {

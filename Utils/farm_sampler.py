@@ -20,13 +20,14 @@ classes = [
     {"label": ">20",    "min": 20., "max": 50.,  "farm_share": 0.07, "land_share": 0.25},
 ]
 
-def generate_farms(n_farms: int, seed: int = 42) -> Dict[str, float]:
+def generate_farms(n_farms: int, seed: int = 42, total_area: float = None) -> Dict[str, float]:
     """
     Generate farm land availability compatible with pulp_2.py format.
     
     Args:
         n_farms: Number of farms to generate
         seed: Random seed for reproducibility
+        total_area: Optional total area in hectares to normalize to (default: use natural distribution)
         
     Returns:
         Dictionary mapping farm names to land availability (hectares)
@@ -54,14 +55,14 @@ def generate_farms(n_farms: int, seed: int = 42) -> Dict[str, float]:
                 })
     
     farms = pd.DataFrame(farm_records)
-    total_area = farms["area_ha"].sum()
+    current_total = farms["area_ha"].sum()
     
     # Scale to match expected land shares
     expected_total_area = sum(cls["land_share"] for cls in classes)
     for cls in classes:
         cls["target_area"] = cls["land_share"] / expected_total_area
     
-    current_shares = farms.groupby("size_class")["area_ha"].sum() / total_area
+    current_shares = farms.groupby("size_class")["area_ha"].sum() / current_total
     
     scale_factors = {
         cls["label"]: cls["target_area"] / current_shares[cls["label"]]
@@ -72,6 +73,12 @@ def generate_farms(n_farms: int, seed: int = 42) -> Dict[str, float]:
         lambda row: row["area_ha"] * scale_factors[row["size_class"]],
         axis=1
     )
+    
+    # If total_area specified, normalize to that total
+    if total_area is not None:
+        scaled_total = farms["area_ha_scaled"].sum()
+        normalization_factor = total_area / scaled_total
+        farms["area_ha_scaled"] = farms["area_ha_scaled"] * normalization_factor
     
     # Create pulp_2.py compatible format: {'Farm1': area, 'Farm2': area, ...}
     L = {}

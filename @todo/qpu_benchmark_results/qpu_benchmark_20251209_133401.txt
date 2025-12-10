@@ -1,0 +1,205 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-09T13:07:50.223601
+Scales: []
+Methods: ['ground_truth', 'direct_qpu']
+QPU Available: True
+
+
+================================================================================
+SCALE: 5 farms
+================================================================================
+
+Metadata:
+  n_farms: 5
+  n_foods: 6
+  n_periods: 3
+  n_variables: 90
+  n_constraints: 15
+  logical_qubits: 90
+  total_area: 100.0
+  rotation_gamma: 0.2
+  frustration_ratio: 0.7
+  formulation: rotation_3period
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 4.078209
+  Solve Time: 120.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.000000
+Total Time: 48.45s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 0
+  Foods: 
+  Total Area Allocated: 0.00
+
+Violation Details:
+  Food Group Constraints: 2 violations
+    Group Plant_Foods: 0 (range: 3-5)
+    Group Proteins: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.000000
+Total Time: 43.99s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 0
+  Foods: 
+  Total Area Allocated: 0.00
+
+Violation Details:
+  Food Group Constraints: 2 violations
+    Group Plant_Foods: 0 (range: 3-5)
+    Group Proteins: 0 (range: 1-2)
+
+
+================================================================================
+SCALE: 10 farms
+================================================================================
+
+Metadata:
+  n_farms: 10
+  n_foods: 6
+  n_periods: 3
+  n_variables: 180
+  n_constraints: 30
+  logical_qubits: 180
+  total_area: 99.99
+  rotation_gamma: 0.25
+  frustration_ratio: 0.75
+  formulation: rotation_3period
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 7.174692
+  Solve Time: 120.00s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.000000
+Total Time: 72.49s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 0
+  Foods: 
+  Total Area Allocated: 0.00
+
+Violation Details:
+  Food Group Constraints: 2 violations
+    Group Plant_Foods: 0 (range: 3-5)
+    Group Proteins: 0 (range: 1-2)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.000000
+Total Time: 73.29s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 0
+  Foods: 
+  Total Area Allocated: 0.00
+
+Violation Details:
+  Food Group Constraints: 2 violations
+    Group Plant_Foods: 0 (range: 3-5)
+    Group Proteins: 0 (range: 1-2)
+
+
+================================================================================
+SCALE: 20 farms
+================================================================================
+
+Metadata:
+  n_farms: 20
+  n_foods: 6
+  n_periods: 3
+  n_variables: 360
+  n_constraints: 60
+  logical_qubits: 360
+  total_area: 100.0
+  rotation_gamma: 0.3
+  frustration_ratio: 0.82
+  formulation: rotation_3period
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 14.893787
+  Solve Time: 120.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: False
+Error: No embedding found within 200s
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: False
+Error: No embedding found within 200s
+
+
+================================================================================
+SCALE: 50 farms
+================================================================================
+
+Metadata:
+  n_farms: 50
+  n_foods: 6
+  n_periods: 3
+  n_variables: 900
+  n_constraints: 150
+  logical_qubits: 900
+  total_area: 99.98
+  rotation_gamma: 0.35
+  frustration_ratio: 0.88
+  formulation: rotation_3period
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 38.981269
+  Solve Time: 120.03s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: False
+Error: No embedding found within 200s
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: False
+Error: No embedding found within 200s
+

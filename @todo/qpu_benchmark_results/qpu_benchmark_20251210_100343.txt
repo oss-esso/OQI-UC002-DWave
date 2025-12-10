@@ -1,0 +1,39 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-10T10:01:40.441258
+Scales: []
+Methods: ['ground_truth', 'direct_qpu']
+QPU Available: True
+
+
+================================================================================
+SCALE: 5 farms
+================================================================================
+
+Metadata:
+  n_farms: 5
+  n_foods: 6
+  n_periods: 3
+  n_variables: 90
+  n_constraints: 15
+  logical_qubits: 90
+  total_area: 100.0
+  rotation_gamma: 0.2
+  frustration_ratio: 0.7
+  formulation: rotation_3period
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 4.078209
+  Solve Time: 120.17s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu
+--------------------------------------------------------------------------------
+Success: False
+Error: cannot access local variable 'lagrange_multiplier' where it is not associated with a value
+

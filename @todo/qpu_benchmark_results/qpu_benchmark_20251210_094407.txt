@@ -1,0 +1,51 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-10T09:41:19.852093
+Scales: []
+Methods: ['ground_truth', 'direct_qpu']
+QPU Available: True
+
+
+================================================================================
+SCALE: 5 farms
+================================================================================
+
+Metadata:
+  n_farms: 5
+  n_foods: 6
+  n_periods: 3
+  n_variables: 90
+  n_constraints: 15
+  logical_qubits: 90
+  total_area: 100.0
+  rotation_gamma: 0.2
+  frustration_ratio: 0.7
+  formulation: rotation_3period
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 4.078209
+  Solve Time: 120.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.564862
+Total Time: 46.71s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 0
+  Foods: 
+  Total Area Allocated: 0.00
+
+Violation Details:
+  Food Group Constraints: 2 violations
+    Group Plant_Foods: 0 (range: 3-5)
+    Group Proteins: 0 (range: 1-2)
+

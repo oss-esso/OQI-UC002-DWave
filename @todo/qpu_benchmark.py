@@ -102,6 +102,7 @@ HAS_QBSOLV = False
 HAS_EMBEDDING = False
 HAS_LOUVAIN = False
 HAS_SPECTRAL = False
+HAS_CLIQUE = False
 
 # Direct QPU sampler
 try:
@@ -110,6 +111,14 @@ try:
     print("  ✓ DWaveSampler (direct QPU) available")
 except ImportError:
     print("  ✗ DWaveSampler not available")
+
+# Clique sampler (for small problems n<=16)
+try:
+    from dwave.system.samplers import DWaveCliqueSampler
+    HAS_CLIQUE = True
+    print("  ✓ DWaveCliqueSampler (hardware cliques) available")
+except ImportError:
+    print("  ✗ DWaveCliqueSampler not available")
 
 # QBSolv is deprecated and incompatible with Python 3.12+
 HAS_QBSOLV = False
@@ -370,7 +379,8 @@ def load_problem_data_from_scenario(scenario_name: str) -> Dict:
         'max_plots_per_crop': max_plots_per_crop,
         'n_farms': n_farms,
         'n_foods': n_foods,
-        'scenario_name': scenario_name
+        'scenario_name': scenario_name,
+        'config': config_loaded  # Pass through for rotation scenarios
     }
 
 
@@ -387,10 +397,195 @@ SYNTHETIC_SCENARIOS = [
     'medium_160',   # 10 plots × 14 foods = 154 vars
 ]
 
+# Rotation scenario names for 3-period rotation optimization with quantum-friendly characteristics
+ROTATION_SCENARIOS = [
+    'rotation_micro_25',    # 5 farms × 6 crop families × 3 periods = ~108 vars
+    'rotation_small_50',    # 10 farms × 6 crop families × 3 periods = ~198 vars
+    'rotation_medium_100',  # 20 farms × 6 crop families × 3 periods = ~378 vars
+    'rotation_large_200',   # 40 farms × 6 crop families × 3 periods = ~738 vars
+]
+
+# All available scenarios (synthetic + rotation)
+ALL_SCENARIOS = SYNTHETIC_SCENARIOS + ROTATION_SCENARIOS
+
 
 # ============================================================================
 # CQM / BQM BUILDING
 # ============================================================================
+
+def build_rotation_cqm(data: Dict, n_periods: int = 3) -> Tuple[ConstrainedQuadraticModel, Dict]:
+    """
+    Build CQM for multi-period rotation optimization with quadratic objective.
+    
+    This implements the ACTUAL rotation formulation with:
+    - 3-period temporal dimension
+    - Quadratic rotation synergies (temporal coupling)
+    - Spatial neighbor interactions  
+    - Soft one-hot penalties (in objective, not as hard constraints)
+    - Diversity bonus
+    
+    WARNING: This creates a QUBO with quadratic terms that will be
+    converted to penalty-based BQM for QPU solving.
+    """
+    # Extract data
+    food_names = data['food_names']  # These are crop FAMILIES (6 total)
+    farm_names = data['farm_names']
+    land_availability = data['land_availability']
+    total_area = data['total_area']
+    
+    # Get rotation-specific parameters from config
+    foods_dict = data.get('foods', {})
+    config = data.get('config', {})
+    params = config.get('parameters', {})
+    weights = params.get('weights', data.get('weights', {}))
+    
+    rotation_gamma = params.get('rotation_gamma', 0.2)
+    k_neighbors = params.get('spatial_k_neighbors', 4)
+    frustration_ratio = params.get('frustration_ratio', 0.7)
+    negative_strength = params.get('negative_synergy_strength', -0.8)
+    one_hot_penalty = params.get('one_hot_penalty', 3.0)
+    diversity_bonus = params.get('diversity_bonus', 0.15)
+    
+    LOG.info(f"Building rotation CQM with {len(farm_names)} farms × {len(food_names)} families × {n_periods} periods")
+    LOG.info(f"  Rotation gamma: {rotation_gamma}, Frustration: {frustration_ratio:.0%}, One-hot penalty: {one_hot_penalty}")
+    
+    # Create rotation synergy matrix
+    n_families = len(food_names)
+    families_list = list(food_names)
+    
+    np.random.seed(42)
+    R = np.zeros((n_families, n_families))
+    for i in range(n_families):
+        for j in range(n_families):
+            if i == j:
+                R[i, j] = negative_strength * 1.5
+            elif np.random.random() < frustration_ratio:
+                R[i, j] = np.random.uniform(negative_strength * 1.2, negative_strength * 0.3)
+            else:
+                R[i, j] = np.random.uniform(0.02, 0.20)
+    
+    # Create spatial neighbor graph (k-nearest on grid)
+    n_farms = len(farm_names)
+    side = int(np.ceil(np.sqrt(n_farms)))
+    positions = {}
+    for i, farm in enumerate(farm_names):
+        row, col = i // side, i % side
+        positions[farm] = (row, col)
+    
+    neighbor_edges = []
+    for f1 in farm_names:
+        distances = []
+        for f2 in farm_names:
+            if f1 != f2:
+                dist = np.sqrt((positions[f1][0] - positions[f2][0])**2 + 
+                             (positions[f1][1] - positions[f2][1])**2)
+                distances.append((dist, f2))
+        distances.sort()
+        for _, f2 in distances[:k_neighbors]:
+            if (f2, f1) not in neighbor_edges:
+                neighbor_edges.append((f1, f2))
+    
+    LOG.info(f"  Rotation matrix: {(R < 0).sum() / R.size:.1%} negative synergies")
+    LOG.info(f"  Spatial graph: {len(neighbor_edges)} neighbor pairs (k={k_neighbors})")
+    
+    # Build CQM
+    cqm = ConstrainedQuadraticModel()
+    
+    # Variables: Y[f,c,t] for each farm, family, period
+    Y = {}
+    for f in farm_names:
+        for c in families_list:
+            for t in range(1, n_periods + 1):
+                Y[(f, c, t)] = Binary(f"Y_{f}_{c}_t{t}")
+    
+    # Compute food benefits
+    food_benefits = {}
+    for food in families_list:
+        crop_data = foods_dict.get(food, {})
+        benefit = (
+            weights.get('nutritional_value', 0) * crop_data.get('nutritional_value', 0) +
+            weights.get('nutrient_density', 0) * crop_data.get('nutrient_density', 0) -
+            weights.get('environmental_impact', 0) * crop_data.get('environmental_impact', 0) +
+            weights.get('affordability', 0) * crop_data.get('affordability', 0) +
+            weights.get('sustainability', 0) * crop_data.get('sustainability', 0)
+        )
+        food_benefits[food] = benefit
+    
+    # Build objective
+    objective = 0
+    
+    # Part 1: Linear crop benefits
+    for f in farm_names:
+        farm_area = land_availability[f]
+        for c in families_list:
+            B_c = food_benefits[c]
+            for t in range(1, n_periods + 1):
+                objective += (B_c * farm_area * Y[(f, c, t)]) / total_area
+    
+    # Part 2: Rotation synergies (temporal quadratic terms)
+    for f in farm_names:
+        farm_area = land_availability[f]
+        for t in range(2, n_periods + 1):
+            for c1_idx, c1 in enumerate(families_list):
+                for c2_idx, c2 in enumerate(families_list):
+                    synergy = R[c1_idx, c2_idx]
+                    if abs(synergy) > 1e-6:
+                        objective += (rotation_gamma * synergy * farm_area * 
+                                    Y[(f, c1, t-1)] * Y[(f, c2, t)]) / total_area
+    
+    # Part 3: Spatial interactions (neighbor quadratic terms)
+    spatial_gamma = rotation_gamma * 0.5
+    for (f1, f2) in neighbor_edges:
+        for t in range(1, n_periods + 1):
+            for c1_idx, c1 in enumerate(families_list):
+                for c2_idx, c2 in enumerate(families_list):
+                    spatial_synergy = R[c1_idx, c2_idx] * 0.3
+                    if abs(spatial_synergy) > 1e-6:
+                        objective += (spatial_gamma * spatial_synergy * 
+                                    Y[(f1, c1, t)] * Y[(f2, c2, t)]) / total_area
+    
+    # Part 4: Soft one-hot penalty (quadratic penalty in objective)
+    for f in farm_names:
+        for t in range(1, n_periods + 1):
+            crop_count = sum(Y[(f, c, t)] for c in families_list)
+            # Penalty for (count - 1)^2
+            # Expand: count^2 - 2*count + 1
+            objective -= one_hot_penalty * (crop_count * crop_count - 2 * crop_count + 1)
+    
+    # Part 5: Diversity bonus
+    for f in farm_names:
+        for c in families_list:
+            crop_used = sum(Y[(f, c, t)] for t in range(1, n_periods + 1))
+            objective += diversity_bonus * crop_used
+    
+    # Set objective (negate for minimization)
+    cqm.set_objective(-objective)
+    
+    # Constraints: Only soft upper bound (allow 0-2 crops per period)
+    for f in farm_names:
+        for t in range(1, n_periods + 1):
+            cqm.add_constraint(
+                sum(Y[(f, c, t)] for c in families_list) <= 2,
+                label=f"MaxCrops_{f}_t{t}"
+            )
+    
+    metadata = {
+        'n_farms': len(farm_names),
+        'n_foods': len(families_list),
+        'n_periods': n_periods,
+        'n_variables': len(cqm.variables),
+        'n_constraints': len(cqm.constraints),
+        'logical_qubits': len(Y),
+        'total_area': total_area,
+        'rotation_gamma': rotation_gamma,
+        'frustration_ratio': frustration_ratio,
+        'formulation': 'rotation_3period'
+    }
+    
+    LOG.info(f"  CQM built: {metadata['n_variables']} variables, {metadata['n_constraints']} constraints")
+    
+    return cqm, metadata
+
 
 def build_binary_cqm(data: Dict) -> Tuple[ConstrainedQuadraticModel, Dict]:
     """Build binary CQM for plot assignment.
@@ -525,16 +720,252 @@ def build_bqm_for_partition(partition_vars: set, data: Dict, lagrange: float = 1
 # GROUND TRUTH (GUROBI)
 # ============================================================================
 
-def solve_ground_truth(data: Dict, timeout: int = 120) -> Dict:
-    """Solve with Gurobi to get ground truth.
+def solve_ground_truth_rotation(data: Dict, timeout: int = 120) -> Dict:
+    """
+    Solve rotation scenario with Gurobi using correct 3-period formulation.
     
-    Aligned with comprehensive_benchmark.py / solver_runner_BINARY.py formulation:
-    - At most one crop per farm (allows idle plots)
-    - Food group constraints use min_foods/max_foods keys
-    - U-Y linking for unique food tracking
+    Implements the same formulation as benchmark_rotation_gurobi.py.
     """
     if not HAS_GUROBI:
         return {'success': False, 'error': 'Gurobi not available'}
+    
+    total_start = time.time()
+    
+    # Extract data
+    food_names = data['food_names']  # Crop families
+    farm_names = data['farm_names']
+    land_availability = data['land_availability']
+    total_area = data['total_area']
+    
+    # Get rotation parameters
+    foods_dict = data.get('foods', {})
+    config = data.get('config', {})
+    params = config.get('parameters', {})
+    weights = params.get('weights', data.get('weights', {}))
+    
+    rotation_gamma = params.get('rotation_gamma', 0.2)
+    k_neighbors = params.get('spatial_k_neighbors', 4)
+    frustration_ratio = params.get('frustration_ratio', 0.7)
+    negative_strength = params.get('negative_synergy_strength', -0.8)
+    one_hot_penalty = params.get('one_hot_penalty', 3.0)
+    diversity_bonus = params.get('diversity_bonus', 0.15)
+    use_soft_constraint = params.get('use_soft_one_hot', True)
+    
+    n_periods = 3
+    n_farms = len(farm_names)
+    n_families = len(food_names)
+    families_list = list(food_names)
+    
+    # Create rotation matrix
+    np.random.seed(42)
+    R = np.zeros((n_families, n_families))
+    for i in range(n_families):
+        for j in range(n_families):
+            if i == j:
+                R[i, j] = negative_strength * 1.5
+            elif np.random.random() < frustration_ratio:
+                R[i, j] = np.random.uniform(negative_strength * 1.2, negative_strength * 0.3)
+            else:
+                R[i, j] = np.random.uniform(0.02, 0.20)
+    
+    # Create spatial neighbor graph
+    side = int(np.ceil(np.sqrt(n_farms)))
+    positions = {}
+    for i, farm in enumerate(farm_names):
+        row, col = i // side, i % side
+        positions[farm] = (row, col)
+    
+    neighbor_edges = []
+    for f1 in farm_names:
+        distances = []
+        for f2 in farm_names:
+            if f1 != f2:
+                dist = np.sqrt((positions[f1][0] - positions[f2][0])**2 + 
+                             (positions[f1][1] - positions[f2][1])**2)
+                distances.append((dist, f2))
+        distances.sort()
+        for _, f2 in distances[:k_neighbors]:
+            if (f2, f1) not in neighbor_edges:
+                neighbor_edges.append((f1, f2))
+    
+    # Build model
+    build_start = time.time()
+    model = gp.Model("GroundTruth_Rotation")
+    model.Params.OutputFlag = 0
+    model.Params.TimeLimit = timeout
+    
+    # Variables: Y[f,c,t]
+    Y = {}
+    for f in farm_names:
+        for c in families_list:
+            for t in range(1, n_periods + 1):
+                Y[(f, c, t)] = model.addVar(vtype=GRB.BINARY, name=f"Y_{f}_{c}_t{t}")
+    
+    model.update()
+    
+    # Compute food benefits
+    food_benefits = {}
+    for food in families_list:
+        crop_data = foods_dict.get(food, {})
+        benefit = (
+            weights.get('nutritional_value', 0) * crop_data.get('nutritional_value', 0) +
+            weights.get('nutrient_density', 0) * crop_data.get('nutrient_density', 0) -
+            weights.get('environmental_impact', 0) * crop_data.get('environmental_impact', 0) +
+            weights.get('affordability', 0) * crop_data.get('affordability', 0) +
+            weights.get('sustainability', 0) * crop_data.get('sustainability', 0)
+        )
+        food_benefits[food] = benefit
+    
+    # Build objective
+    obj = 0
+    
+    # Part 1: Linear benefits
+    for f in farm_names:
+        farm_area = land_availability[f]
+        for c in families_list:
+            B_c = food_benefits[c]
+            for t in range(1, n_periods + 1):
+                obj += (B_c * farm_area * Y[(f, c, t)]) / total_area
+    
+    # Part 2: Rotation synergies
+    for f in farm_names:
+        farm_area = land_availability[f]
+        for t in range(2, n_periods + 1):
+            for c1_idx, c1 in enumerate(families_list):
+                for c2_idx, c2 in enumerate(families_list):
+                    synergy = R[c1_idx, c2_idx]
+                    if abs(synergy) > 1e-6:
+                        obj += (rotation_gamma * synergy * farm_area * 
+                               Y[(f, c1, t-1)] * Y[(f, c2, t)]) / total_area
+    
+    # Part 3: Spatial interactions
+    spatial_gamma = rotation_gamma * 0.5
+    for (f1, f2) in neighbor_edges:
+        for t in range(1, n_periods + 1):
+            for c1_idx, c1 in enumerate(families_list):
+                for c2_idx, c2 in enumerate(families_list):
+                    spatial_synergy = R[c1_idx, c2_idx] * 0.3
+                    if abs(spatial_synergy) > 1e-6:
+                        obj += (spatial_gamma * spatial_synergy * 
+                               Y[(f1, c1, t)] * Y[(f2, c2, t)]) / total_area
+    
+    # Part 4: Soft one-hot penalty
+    if use_soft_constraint:
+        for f in farm_names:
+            for t in range(1, n_periods + 1):
+                crop_count = gp.quicksum(Y[(f, c, t)] for c in families_list)
+                obj -= one_hot_penalty * (crop_count - 1) * (crop_count - 1)
+    
+    # Part 5: Diversity bonus
+    for f in farm_names:
+        for c in families_list:
+            crop_used = gp.quicksum(Y[(f, c, t)] for t in range(1, n_periods + 1))
+            obj += diversity_bonus * crop_used
+    
+    model.setObjective(obj, GRB.MAXIMIZE)
+    
+    # Constraints
+    if use_soft_constraint:
+        for f in farm_names:
+            for t in range(1, n_periods + 1):
+                model.addConstr(
+                    gp.quicksum(Y[(f, c, t)] for c in families_list) <= 2,
+                    name=f"max_crops_{f}_t{t}"
+                )
+    else:
+        for f in farm_names:
+            for t in range(1, n_periods + 1):
+                model.addConstr(
+                    gp.quicksum(Y[(f, c, t)] for c in families_list) == 1,
+                    name=f"one_crop_{f}_t{t}"
+                )
+    
+    build_time = time.time() - build_start
+    
+    # Solve
+    solve_start = time.time()
+    model.optimize()
+    solve_time = time.time() - solve_start
+    total_time = time.time() - total_start
+    
+    result = {
+        'method': 'gurobi_rotation',
+        'timings': {
+            'build': build_time,
+            'solve': solve_time,
+            'total': total_time,
+            'solve_time': solve_time,
+            'embedding_total': 0,
+            'qpu_access_total': 0,
+        },
+        'solve_time': solve_time,
+        'total_time': total_time,
+        'wall_time': total_time,
+        'n_variables': model.NumVars,
+        'n_constraints': model.NumConstrs,
+    }
+    
+    if model.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL] and model.SolCount > 0:
+        # Extract solution
+        solution = {
+            'Y': {},
+            'allocations': {},
+            'summary': {
+                'n_farms': n_farms,
+                'n_foods': n_families,
+                'n_periods': n_periods,
+                'total_area_allocated': 0,
+            }
+        }
+        
+        for f in farm_names:
+            solution['Y'][f] = {}
+            for c in families_list:
+                solution['Y'][f][c] = {}
+                for t in range(1, n_periods + 1):
+                    y_val = int(Y[(f, c, t)].X + 0.5)
+                    solution['Y'][f][c][t] = y_val
+                    if y_val == 1:
+                        area = land_availability.get(f, 0)
+                        solution['allocations'][f"{f}_{c}_t{t}"] = area
+                        solution['summary']['total_area_allocated'] += area
+        
+        result.update({
+            'success': True,
+            'objective': model.ObjVal,
+            'violations': 0,
+            'feasible': True,
+            'solution': solution,
+            'status': 'optimal' if model.Status == GRB.OPTIMAL else 'suboptimal',
+        })
+    else:
+        result.update({
+            'success': False,
+            'objective': 0,
+            'violations': -1,
+            'feasible': False,
+            'status': model.Status,
+        })
+    
+    return result
+
+
+def solve_ground_truth(data: Dict, timeout: int = 120) -> Dict:
+    """Solve with Gurobi to get ground truth.
+    
+    Detects rotation scenarios and uses appropriate formulation:
+    - Rotation scenarios: Multi-period with quadratic objective
+    - Standard scenarios: Single-period with linear objective
+    """
+    if not HAS_GUROBI:
+        return {'success': False, 'error': 'Gurobi not available'}
+    
+    # Check if this is a rotation scenario
+    scenario_name = data.get('scenario_name', '')
+    is_rotation = scenario_name.startswith('rotation_')
+    
+    if is_rotation:
+        return solve_ground_truth_rotation(data, timeout)
     
     total_start = time.time()
     
@@ -2170,15 +2601,31 @@ def solve_direct_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
     }
     
     total_start = time.time()
+
+    lagrange_multiplier = None  # Let auto-select by default
     
     try:
-        # Convert CQM to BQM
-        LOG.info(f"  [DirectQPU] Converting CQM to BQM...")
+        # Convert CQM to BQM with tuned Lagrange multipliers
+        # For rotation formulation:
+        # - Objectives are ~0.5-5.0 (normalized by total_area=100)
+        # - Rotation gamma=0.2, synergies -0.8 to +0.2
+        # - One-hot penalty coefficient=3.0
+        # - Need penalty >> objective but not so large it dominates QPU dynamics
+        # 
+        # Strategy: Let D-Wave auto-select first, but use moderate custom multiplier
+        # Auto-selection often works well for balanced problems
+        if lagrange_multiplier is None:
+            # For rotation: Use moderate penalty (10x typical objective range)
+            # This balances constraint satisfaction with objective optimization
+            lagrange_multiplier = 50.0  # Moderate penalty for rotation (obj ~0.5-5.0)
+        
+        LOG.info(f"  [DirectQPU] Converting CQM to BQM (lagrange={lagrange_multiplier:.1f})...")
         t0 = time.time()
-        bqm, info = cqm_to_bqm(cqm)
+        bqm, info = cqm_to_bqm(cqm, lagrange_multiplier=lagrange_multiplier)
         result['timings']['cqm_to_bqm'] = time.time() - t0
         result['bqm_variables'] = len(bqm.variables)
         result['bqm_interactions'] = len(bqm.quadratic)
+        result['lagrange_multiplier'] = lagrange_multiplier
         LOG.info(f"  [DirectQPU] BQM: {result['bqm_variables']} vars, {result['bqm_interactions']} interactions")
         
         # Auto chain strength
@@ -2291,6 +2738,360 @@ def solve_direct_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
         result['total_time'] = result['timings']['total']
         result['wall_time'] = result['timings']['total']
         LOG.error(f"  [DirectQPU] Error: {e}")
+    
+    return result
+
+
+def solve_clique_qpu(cqm: ConstrainedQuadraticModel, data: Dict,
+                     num_reads: int = 1000, annealing_time: int = 20) -> Dict:
+    """
+    Clique QPU: CQM → BQM → DWaveCliqueSampler (zero embedding overhead)
+    
+    Uses DWaveCliqueSampler which maps directly to hardware cliques (n<=16).
+    **Critical**: Problem must be small enough to fit in a clique!
+    """
+    if not HAS_CLIQUE:
+        return {'success': False, 'error': 'DWaveCliqueSampler not available'}
+    
+    result = {
+        'method': 'clique_qpu',
+        'num_reads': num_reads,
+        'annealing_time': annealing_time,
+        'timings': {},
+    }
+    
+    total_start = time.time()
+    lagrange_multiplier = 50.0  # Same as direct QPU for fair comparison
+    
+    try:
+        # Convert CQM to BQM
+        LOG.info(f"  [CliqueQPU] Converting CQM to BQM (lagrange={lagrange_multiplier:.1f})...")
+        t0 = time.time()
+        bqm, info = cqm_to_bqm(cqm, lagrange_multiplier=lagrange_multiplier)
+        result['timings']['cqm_to_bqm'] = time.time() - t0
+        result['bqm_variables'] = len(bqm.variables)
+        result['bqm_interactions'] = len(bqm.quadratic)
+        result['lagrange_multiplier'] = lagrange_multiplier
+        
+        LOG.info(f"  [CliqueQPU] BQM: {result['bqm_variables']} vars, {result['bqm_interactions']} interactions")
+        
+        # Check if problem fits in clique (typically n<=16 for Pegasus)
+        n_vars = len(bqm.variables)
+        if n_vars > 20:
+            LOG.warning(f"  [CliqueQPU] Problem too large ({n_vars} vars) for guaranteed clique embedding")
+            LOG.warning(f"  [CliqueQPU] DWaveCliqueSampler works best for n<=16, may use chains for n>16")
+        
+        # Sample with DWaveCliqueSampler (automatic clique detection + embedding)
+        LOG.info(f"  [CliqueQPU] Sampling with DWaveCliqueSampler ({num_reads} reads)...")
+        
+        sampler = DWaveCliqueSampler()
+        
+        sample_start = time.time()
+        sampleset = sampler.sample(
+            bqm,
+            num_reads=num_reads,
+            annealing_time=annealing_time,
+            label=f"CliqueQPU_{data['n_farms']}farms"
+        )
+        result['timings']['sampling'] = time.time() - sample_start
+        
+        # Extract timing info
+        timing_info = sampleset.info.get('timing', {})
+        qpu_access_us = timing_info.get('qpu_access_time', 0)
+        qpu_programming_us = timing_info.get('qpu_programming_time', 0)
+        qpu_sampling_us = timing_info.get('qpu_sampling_time', 0)
+        total_real_us = timing_info.get('total_real_time', 0)
+        
+        result['timings']['qpu_access'] = qpu_access_us / 1e6
+        result['timings']['qpu_programming'] = qpu_programming_us / 1e6
+        result['timings']['qpu_sampling'] = qpu_sampling_us / 1e6
+        result['timings']['qpu_total_real'] = total_real_us / 1e6
+        
+        # Embedding info (cliques have minimal embedding overhead)
+        embedding_info = sampleset.info.get('embedding_context', {})
+        embedding_time = embedding_info.get('embedding_time', 0)
+        chain_strength_used = embedding_info.get('chain_strength', 0)
+        
+        result['timings']['embedding'] = embedding_time / 1e6 if embedding_time else 0
+        result['timings']['embedding_total'] = result['timings']['embedding']
+        result['timings']['qpu_access_total'] = result['timings']['qpu_access']
+        result['timings']['solve_time'] = result['timings']['qpu_access'] + result['timings']['embedding']
+        result['chain_strength'] = chain_strength_used
+        
+        # Check for chain breaks (should be minimal/zero for cliques)
+        if hasattr(sampleset.record, 'chain_break_fraction'):
+            result['chain_break_fraction'] = float(np.mean(sampleset.record.chain_break_fraction))
+        else:
+            result['chain_break_fraction'] = 0.0
+        
+        # Extract embedding details if available
+        if 'embedding' in embedding_info:
+            embedding = embedding_info['embedding']
+            result['physical_qubits'] = sum(len(chain) for chain in embedding.values())
+            result['max_chain_length'] = max(len(chain) for chain in embedding.values()) if embedding else 1
+            LOG.info(f"  [CliqueQPU] Embedding: {result['physical_qubits']} physical qubits, "
+                    f"max chain {result['max_chain_length']}")
+        else:
+            result['physical_qubits'] = n_vars  # Assume 1:1 for cliques
+            result['max_chain_length'] = 1
+        
+        # Best solution
+        best = sampleset.first
+        result['best_energy'] = float(best.energy)
+        result['n_samples'] = len(sampleset)
+        
+        # Extract and evaluate solution
+        result['solution'] = extract_solution(best.sample, data)
+        result['objective'] = calculate_objective(best.sample, data)
+        result['violations'] = count_violations(best.sample, data)
+        result['violation_details'] = get_detailed_violations(best.sample, data)
+        result['feasible'] = result['violations'] == 0
+        result['success'] = True
+        
+        result['timings']['total'] = time.time() - total_start
+        result['total_time'] = result['timings']['total']
+        result['wall_time'] = result['timings']['total']
+        
+        LOG.info(f"  [CliqueQPU] Success! obj={result['objective']:.4f}, "
+                f"QPU_access={result['timings']['qpu_access']:.3f}s, "
+                f"embed={result['timings']['embedding']:.3f}s, "
+                f"chains={result['chain_break_fraction']:.2%}")
+        
+    except Exception as e:
+        result['success'] = False
+        result['error'] = str(e)
+        result['timings']['total'] = time.time() - total_start
+        result['total_time'] = result['timings']['total']
+        result['wall_time'] = result['timings']['total']
+        LOG.error(f"  [CliqueQPU] Error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    return result
+
+
+def solve_rotation_clique_decomposition(data: Dict, cqm: ConstrainedQuadraticModel,
+                                        num_reads: int = 100, num_iterations: int = 1) -> Dict:
+    """
+    Decompose rotation problem farm-by-farm, solve each with clique sampler.
+    
+    Strategy (Mohseni et al. style):
+    1. For each farm: 6 families × 3 periods = 18 variables
+    2. Solve each farm independently with DWaveCliqueSampler (fits in clique!)
+    3. Optional: Iterate to incorporate neighbor solutions (coordination)
+    
+    Args:
+        num_iterations: Number of refinement iterations (1=no coordination, 3+=good coordination)
+    """
+    if not HAS_CLIQUE:
+        return {'success': False, 'error': 'DWaveCliqueSampler not available'}
+    
+    result = {
+        'method': 'clique_decomposition',
+        'num_reads': num_reads,
+        'num_iterations': num_iterations,
+        'timings': {},
+        'subproblem_results': []
+    }
+    
+    total_start = time.time()
+    
+    farm_names = data['farm_names']
+    food_names = data['food_names']  # Crop families
+    land_availability = data['land_availability']
+    food_benefits = data['food_benefits']
+    total_area = data['total_area']
+    n_periods = 3
+    
+    LOG.info(f"  [CliqueDecomp] Decomposing {len(farm_names)} farms into independent subproblems...")
+    LOG.info(f"  [CliqueDecomp] Each farm: {len(food_names)} families × {n_periods} periods = {len(food_names) * n_periods} variables")
+    LOG.info(f"  [CliqueDecomp] Iterations: {num_iterations} (1=independent, 3+=coordinated)")
+    
+    # Check if subproblems fit in cliques
+    vars_per_farm = len(food_names) * n_periods
+    if vars_per_farm > 20:
+        LOG.warning(f"  [CliqueDecomp] Subproblem size ({vars_per_farm} vars) may exceed clique size (16)!")
+    
+    sampler = DWaveCliqueSampler()
+    
+    # Get neighbor relationships for spatial coordination
+    neighbor_map = {}
+    if 'neighbor_pairs' in data:
+        for f1, f2 in data['neighbor_pairs']:
+            neighbor_map.setdefault(f1, []).append(f2)
+            neighbor_map.setdefault(f2, []).append(f1)
+    
+    # Iterative refinement (like Mohseni et al.'s coalition formation)
+    farm_solutions = {}
+    best_global_objective = -np.inf
+    best_global_solution = None
+    
+    for iteration in range(num_iterations):
+        iteration_start = time.time()
+        total_qpu_time = 0
+        total_embedding_time = 0
+        
+        if iteration > 0:
+            LOG.info(f"  [CliqueDecomp] Iteration {iteration+1}/{num_iterations}: Refining with neighbor context...")
+        
+        # Solve each farm
+        for farm_idx, farm in enumerate(farm_names):
+            # Build BQM for this farm
+            bqm = BinaryQuadraticModel('BINARY')
+            farm_area = land_availability[farm]
+            
+            # Linear benefits
+            for c in food_names:
+                B_c = food_benefits[c]
+                for t in range(1, n_periods + 1):
+                    var = (c, t)
+                    bqm.add_variable(var, -(B_c * farm_area) / total_area)
+            
+            # Rotation synergies (temporal coupling within farm)
+            rotation_gamma = 0.2
+            for t in range(2, n_periods + 1):
+                for c1 in food_names:
+                    for c2 in food_names:
+                        synergy = -0.5 if c1 == c2 else 0.1
+                        if abs(synergy) > 1e-6:
+                            var1 = (c1, t-1)
+                            var2 = (c2, t)
+                            interaction = -(rotation_gamma * synergy * farm_area) / total_area
+                            bqm.add_interaction(var1, var2, interaction)
+            
+            # Spatial coupling bias (coordinate with neighbors from previous iteration)
+            if iteration > 0 and farm in neighbor_map and farm in farm_solutions:
+                spatial_gamma = rotation_gamma * 0.3  # Weaker than temporal
+                neighbors = neighbor_map[farm]
+                
+                for neighbor in neighbors:
+                    if neighbor not in farm_solutions:
+                        continue
+                    
+                    # Get neighbor's solution from previous iteration
+                    neighbor_sol = farm_solutions[neighbor]
+                    
+                    # Add bias to align with neighbor's crops
+                    for t in range(1, n_periods + 1):
+                        for c in food_names:
+                            # Check what neighbor is growing in period t
+                            neighbor_var = f"Y_{neighbor}_{c}_t{t}"
+                            if neighbor_sol.get(neighbor_var, 0) == 1:
+                                # Neighbor is growing crop c in period t
+                                # Add small bias to encourage similar choice (positive synergy)
+                                var = (c, t)
+                                bonus = spatial_gamma * 0.2 * farm_area / total_area
+                                bqm.add_variable(var, -bonus)  # Negate for minimization
+            
+            # Soft one-hot penalty
+            one_hot_penalty = 3.0
+            for t in range(1, n_periods + 1):
+                for c1 in food_names:
+                    for c2 in food_names:
+                        if c1 != c2:
+                            var1 = (c1, t)
+                            var2 = (c2, t)
+                            bqm.add_interaction(var1, var2, one_hot_penalty)
+                        else:
+                            var = (c1, t)
+                            bqm.add_variable(var, -one_hot_penalty)
+            
+            # Sample with clique sampler
+            try:
+                sample_start = time.time()
+                sampleset = sampler.sample(
+                    bqm,
+                    num_reads=num_reads,
+                    label=f"CliqueDecomp_farm{farm_idx}_iter{iteration}"
+                )
+                sample_time = time.time() - sample_start
+                
+                # Extract timing
+                timing_info = sampleset.info.get('timing', {})
+                qpu_time = timing_info.get('qpu_access_time', 0) / 1e6
+                total_qpu_time += qpu_time
+                
+                embedding_info = sampleset.info.get('embedding_context', {})
+                embed_time = embedding_info.get('embedding_time', 0) / 1e6 if embedding_info else 0
+                total_embedding_time += embed_time
+                
+                # Best solution for this farm
+                best = sampleset.first
+                farm_solution = {}
+                for c in food_names:
+                    for t in range(1, n_periods + 1):
+                        var_name = f"Y_{farm}_{c}_t{t}"
+                        farm_solution[var_name] = best.sample.get((c, t), 0)
+                
+                farm_solutions[farm] = farm_solution
+                
+                if iteration == 0:  # Only log first iteration details
+                    subproblem_result = {
+                        'farm': farm,
+                        'variables': len(bqm.variables),
+                        'qpu_time': qpu_time,
+                        'embedding_time': embed_time,
+                        'sample_time': sample_time,
+                        'success': True
+                    }
+                    result['subproblem_results'].append(subproblem_result)
+                
+                if (farm_idx + 1) % max(1, len(farm_names) // 5) == 0 or farm_idx == 0:
+                    if iteration == 0:
+                        LOG.info(f"  [CliqueDecomp] Farm {farm_idx+1}/{len(farm_names)}: "
+                                f"{len(bqm.variables)} vars, QPU={qpu_time:.3f}s, embed={embed_time:.4f}s")
+                
+            except Exception as e:
+                LOG.error(f"  [CliqueDecomp] Farm {farm} failed: {e}")
+                farm_solution = {f"Y_{farm}_{c}_t{t}": 0 
+                               for c in food_names for t in range(1, n_periods + 1)}
+                farm_solutions[farm] = farm_solution
+                if iteration == 0:
+                    result['subproblem_results'].append({
+                        'farm': farm,
+                        'success': False,
+                        'error': str(e)
+                    })
+        
+        # Evaluate iteration
+        combined_solution = {}
+        for farm in farm_names:
+            combined_solution.update(farm_solutions[farm])
+        
+        iter_obj = calculate_objective(combined_solution, data)
+        
+        if iter_obj > best_global_objective:
+            best_global_objective = iter_obj
+            best_global_solution = combined_solution
+            LOG.info(f"  [CliqueDecomp] Iteration {iteration+1}: obj={iter_obj:.4f} (improved!)")
+        else:
+            LOG.info(f"  [CliqueDecomp] Iteration {iteration+1}: obj={iter_obj:.4f} (no improvement)")
+    
+    # Use best solution found
+    result['objective'] = calculate_objective(best_global_solution, data)
+    result['violations'] = count_violations(best_global_solution, data)
+    result['violation_details'] = get_detailed_violations(best_global_solution, data)
+    result['feasible'] = result['violations'] == 0
+    result['solution'] = extract_solution(best_global_solution, data)
+    
+    # Timing summary
+    result['timings']['total'] = time.time() - total_start
+    result['timings']['qpu_access'] = total_qpu_time
+    result['timings']['embedding'] = total_embedding_time
+    result['timings']['qpu_access_total'] = total_qpu_time
+    result['timings']['embedding_total'] = total_embedding_time
+    result['timings']['solve_time'] = total_qpu_time + total_embedding_time
+    result['total_time'] = result['timings']['total']
+    result['wall_time'] = result['timings']['total']
+    
+    result['success'] = True
+    result['n_subproblems'] = len(farm_names)
+    result['avg_subproblem_size'] = vars_per_farm
+    
+    LOG.info(f"  [CliqueDecomp] Complete! {len(farm_names)} subproblems, "
+            f"total QPU={total_qpu_time:.3f}s, embed={total_embedding_time:.3f}s")
+    LOG.info(f"  [CliqueDecomp] Combined objective: {result['objective']:.4f}, "
+            f"violations: {result['violations']}")
     
     return result
 
@@ -3046,110 +3847,219 @@ def solve_cqm_first_decomposition_qpu(cqm: ConstrainedQuadraticModel, data: Dict
 # ============================================================================
 
 def calculate_objective(sample: Dict, data: Dict) -> float:
-    """Calculate objective value from solution."""
+    """Calculate objective value from solution.
+    
+    Handles both standard (Y_farm_food) and rotation (Y_farm_food_tX) formats.
+    For rotation formulation, averages across periods to avoid over-counting.
+    """
     food_benefits = data['food_benefits']
     land_availability = data['land_availability']
     total_area = data['total_area']
     
+    # Detect if this is a rotation scenario by checking variable names
+    is_rotation = any(key.startswith("Y_") and "_t" in key for key in sample.keys())
+    
     objective = 0.0
+    counted_farms = {}  # Track farms to average across periods in rotation
+    
     for key, val in sample.items():
         if key.startswith("Y_") and val == 1:
-            parts = key.split("_", 2)
-            farm, food = parts[1], parts[2]
+            # Parse variable name
+            if "_t" in key and is_rotation:
+                # Rotation format: Y_farm_food_tX
+                var_part, period_part = key.rsplit("_t", 1)  # Split from right
+                parts = var_part.split("_", 2)  # ["Y", "farm", "food"]
+                if len(parts) >= 3:
+                    farm, food = parts[1], parts[2]
+                else:
+                    continue
+            else:
+                # Standard format: Y_farm_food
+                parts = key.split("_", 2)
+                if len(parts) >= 3:
+                    farm, food = parts[1], parts[2]
+                else:
+                    continue
+            
             if farm in land_availability and food in food_benefits:
-                objective += food_benefits[food] * land_availability[farm]
+                # Calculate contribution matching the formulation:
+                # CQM/Gurobi use: (B_c * farm_area * Y) / total_area
+                # So we accumulate B_c * farm_area, then divide by total_area at end
+                benefit = food_benefits[food] * land_availability[farm]
+                objective += benefit
     
+    # Normalize by total area to match CQM/Gurobi formulation
+    # Note: NO division by periods - the formulation already sums across all periods
     return objective / total_area
 
 
 def count_violations(sample: Dict, data: Dict) -> int:
-    """Count constraint violations."""
+    """Count constraint violations.
+    
+    Handles both standard and rotation formulations:
+    - Standard: Y_farm_food, U_food variables with food group constraints
+    - Rotation: Y_farm_food_tX variables with ≤2 crops per period constraint
+    """
     food_names = data['food_names']
     farm_names = data['farm_names']
-    food_groups = data['food_groups']
-    food_group_constraints = data['food_group_constraints']
-    max_plots_per_crop = data.get('max_plots_per_crop')
     
-    violations = 0
+    # Detect formulation type
+    is_rotation = any(key.startswith("Y_") and "_t" in key for key in sample.keys())
     
-    # One crop per farm (check for <= 1 since idle plots are allowed)
-    for farm in farm_names:
-        count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-        if count > 1:  # Changed from != 1 to > 1 (allows 0 or 1)
-            violations += 1
-    
-    # Food group constraints (use food_groups directly, no reverse_mapping)
-    for group_name, limits in food_group_constraints.items():
-        foods_in_group = food_groups.get(group_name, [])
-        unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
+    if is_rotation:
+        # Rotation formulation: Check ≤2 crops per farm per period
+        violations = 0
+        n_periods = 3  # Rotation always uses 3 periods
         
-        # Support both min/max and min_foods/max_foods key formats
-        min_foods = limits.get('min_foods', limits.get('min', 0))
-        max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+        for farm in farm_names:
+            for t in range(1, n_periods + 1):
+                # Count active crops in this period
+                count = sum(1 for food in food_names 
+                          if sample.get(f"Y_{farm}_{food}_t{t}", 0) == 1)
+                if count > 2:  # Violates ≤2 constraint
+                    violations += 1
         
-        if min_foods > 0 and unique_foods < min_foods:
-            violations += 1
-        if unique_foods > max_foods:
-            violations += 1
+        return violations
     
-    # Max plots per crop (only check if constraint is set)
-    if max_plots_per_crop is not None:
-        for food in food_names:
-            count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-            if count > max_plots_per_crop:
+    else:
+        # Standard formulation: Original logic
+        food_groups = data['food_groups']
+        food_group_constraints = data['food_group_constraints']
+        max_plots_per_crop = data.get('max_plots_per_crop')
+        
+        violations = 0
+        
+        # One crop per farm (check for <= 1 since idle plots are allowed)
+        for farm in farm_names:
+            count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+            if count > 1:  # Changed from != 1 to > 1 (allows 0 or 1)
                 violations += 1
-    
-    return violations
+        
+        # Food group constraints (use food_groups directly, no reverse_mapping)
+        for group_name, limits in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
+            
+            # Support both min/max and min_foods/max_foods key formats
+            min_foods = limits.get('min_foods', limits.get('min', 0))
+            max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+            
+            if min_foods > 0 and unique_foods < min_foods:
+                violations += 1
+            if unique_foods > max_foods:
+                violations += 1
+        
+        # Max plots per crop (only check if constraint is set)
+        if max_plots_per_crop is not None:
+            for food in food_names:
+                count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+                if count > max_plots_per_crop:
+                    violations += 1
+        
+        return violations
 
 
 def get_detailed_violations(sample: Dict, data: Dict) -> Dict:
-    """Get detailed constraint violation information."""
+    """Get detailed constraint violation information.
+    
+    Handles both standard and rotation formulations.
+    """
     food_names = data['food_names']
     farm_names = data['farm_names']
-    food_groups = data['food_groups']
-    food_group_constraints = data['food_group_constraints']
-    max_plots_per_crop = data.get('max_plots_per_crop')
     
-    violation_details = {
-        'total_violations': 0,
-        'one_crop_per_farm': {'violations': 0, 'details': []},
-        'food_group_constraints': {'violations': 0, 'details': []},
-        'max_plots_per_crop': {'violations': 0, 'details': []}
-    }
+    # Detect formulation type
+    is_rotation = any(key.startswith("Y_") and "_t" in key for key in sample.keys())
     
-    # One crop per farm (check for <= 1 since idle plots are allowed)
-    for farm in farm_names:
-        count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
-        if count > 1:  # Changed from != 1 to > 1 (allows 0 or 1)
-            violation_details['one_crop_per_farm']['violations'] += 1
-            violation_details['one_crop_per_farm']['details'].append({
-                'farm': farm,
-                'expected': '0 or 1',
-                'actual': count
-            })
-    
-    # Food group constraints (use food_groups directly, no reverse_mapping)
-    for group_name, limits in food_group_constraints.items():
-        foods_in_group = food_groups.get(group_name, [])
-        unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
+    if is_rotation:
+        # Rotation formulation: Check ≤2 crops per farm per period
+        n_periods = 3
+        violation_details = {
+            'total_violations': 0,
+            'max_crops_per_period': {'violations': 0, 'details': []}
+        }
         
-        # Support both min/max and min_foods/max_foods key formats
-        min_foods = limits.get('min_foods', limits.get('min', 0))
-        max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+        for farm in farm_names:
+            for t in range(1, n_periods + 1):
+                count = sum(1 for food in food_names 
+                          if sample.get(f"Y_{farm}_{food}_t{t}", 0) == 1)
+                if count > 2:
+                    violation_details['max_crops_per_period']['violations'] += 1
+                    violation_details['max_crops_per_period']['details'].append({
+                        'farm': farm,
+                        'period': t,
+                        'expected': '≤2',
+                        'actual': count
+                    })
         
-        violated = False
-        if min_foods > 0 and unique_foods < min_foods:
-            violated = True
-        if unique_foods > max_foods:
-            violated = True
-        if violated:
-            violation_details['food_group_constraints']['violations'] += 1
-            violation_details['food_group_constraints']['details'].append({
-                'group': group_name,
-                'min': min_foods,
-                'max': max_foods,
-                'actual': unique_foods
-            })
+        violation_details['total_violations'] = violation_details['max_crops_per_period']['violations']
+        return violation_details
+    
+    else:
+        # Standard formulation: Original logic
+        food_groups = data['food_groups']
+        food_group_constraints = data['food_group_constraints']
+        max_plots_per_crop = data.get('max_plots_per_crop')
+        
+        violation_details = {
+            'total_violations': 0,
+            'one_crop_per_farm': {'violations': 0, 'details': []},
+            'food_group_constraints': {'violations': 0, 'details': []},
+            'max_plots_per_crop': {'violations': 0, 'details': []}
+        }
+        
+        # One crop per farm (check for <= 1 since idle plots are allowed)
+        for farm in farm_names:
+            count = sum(1 for food in food_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+            if count > 1:  # Changed from != 1 to > 1 (allows 0 or 1)
+                violation_details['one_crop_per_farm']['violations'] += 1
+                violation_details['one_crop_per_farm']['details'].append({
+                    'farm': farm,
+                    'expected': '0 or 1',
+                    'actual': count
+                })
+        
+        # Food group constraints (use food_groups directly, no reverse_mapping)
+        for group_name, limits in food_group_constraints.items():
+            foods_in_group = food_groups.get(group_name, [])
+            unique_foods = sum(1 for f in foods_in_group if sample.get(f"U_{f}", 0) == 1)
+            
+            # Support both min/max and min_foods/max_foods key formats
+            min_foods = limits.get('min_foods', limits.get('min', 0))
+            max_foods = limits.get('max_foods', limits.get('max', len(foods_in_group)))
+            
+            violated = False
+            if min_foods > 0 and unique_foods < min_foods:
+                violated = True
+            if unique_foods > max_foods:
+                violated = True
+            if violated:
+                violation_details['food_group_constraints']['violations'] += 1
+                violation_details['food_group_constraints']['details'].append({
+                    'group': group_name,
+                    'min': min_foods,
+                    'max': max_foods,
+                    'actual': unique_foods
+                })
+        
+        # Max plots per crop (only check if constraint is set)
+        if max_plots_per_crop is not None:
+            for food in food_names:
+                count = sum(1 for farm in farm_names if sample.get(f"Y_{farm}_{food}", 0) == 1)
+                if count > max_plots_per_crop:
+                    violation_details['max_plots_per_crop']['violations'] += 1
+                    violation_details['max_plots_per_crop']['details'].append({
+                        'food': food,
+                        'max_allowed': max_plots_per_crop,
+                        'actual': count
+                    })
+        
+        violation_details['total_violations'] = (
+            violation_details['one_crop_per_farm']['violations'] +
+            violation_details['food_group_constraints']['violations'] +
+            violation_details['max_plots_per_crop']['violations']
+        )
+        
+        return violation_details
     
     # Max plots per crop (only check if constraint is set)
     if max_plots_per_crop is not None:
@@ -3178,10 +4088,20 @@ def get_detailed_violations(sample: Dict, data: Dict) -> Dict:
 
 def run_benchmark(scales: List[int] = None,
                   methods: List[str] = None,
-                  verbose: bool = True) -> Dict:
-    """Run QPU benchmark (no hybrid solvers)."""
+                  verbose: bool = True,
+                  scenarios: List[str] = None,
+                  reads_configs: List[int] = None) -> Dict:
+    """Run QPU benchmark (no hybrid solvers).
     
-    if scales is None:
+    Args:
+        scales: List of farm counts for standard scenarios (e.g., [25, 50, 100])
+        methods: List of solver methods to test
+        verbose: Enable detailed logging
+        scenarios: List of scenario names (e.g., ['micro_6', 'tiny_24']) - takes precedence over scales
+        reads_configs: List of num_reads values to test (e.g., [100, 250, 500]). If None, uses defaults
+    """
+    
+    if scales is None and scenarios is None:
         scales = FARM_SCALES
     
     if methods is None:
@@ -3190,29 +4110,69 @@ def run_benchmark(scales: List[int] = None,
     
     results = {
         'timestamp': datetime.now().isoformat(),
-        'scales': scales,
+        'scales': scales if scenarios is None else [],
+        'scenarios': scenarios if scenarios is not None else [],
         'methods': methods,
+        'reads_configs': reads_configs if reads_configs else 'default',
         'qpu_available': HAS_QPU,
         'qbsolv_available': HAS_QBSOLV,
         'results': []
     }
     
-    for n_farms in scales:
-        if verbose:
-            print(f"\n{'='*80}")
-            print(f"SCALE: {n_farms} farms ({n_farms * N_FOODS} Y variables + {N_FOODS} U variables)")
-            print('='*80)
-        
-        # Load data with timing
-        LOG.info(f"Loading problem data for {n_farms} farms...")
-        t0 = time.time()
-        data = load_problem_data(n_farms)
-        data_load_time = time.time() - t0
+    # Determine what to iterate over: scenarios or scales
+    if scenarios is not None:
+        # Use scenario-based loading
+        items = scenarios
+        use_scenarios = True
+    else:
+        # Use scale-based loading (traditional)
+        items = scales
+        use_scenarios = False
+    
+    for item in items:
+        if use_scenarios:
+            scenario_name = item
+            if verbose:
+                print(f"\n{'='*80}")
+                print(f"SCENARIO: {scenario_name}")
+                print('='*80)
+            
+            # Load scenario data with timing
+            LOG.info(f"Loading scenario '{scenario_name}'...")
+            t0 = time.time()
+            data = load_problem_data_from_scenario(scenario_name)
+            data_load_time = time.time() - t0
+            
+            n_farms = data['n_farms']
+            n_foods = data['n_foods']
+            n_vars = n_farms * n_foods + n_foods
+        else:
+            n_farms = item
+            if verbose:
+                print(f"\n{'='*80}")
+                print(f"SCALE: {n_farms} farms ({n_farms * N_FOODS} Y variables + {N_FOODS} U variables)")
+                print('='*80)
+            
+            # Load data with timing
+            LOG.info(f"Loading problem data for {n_farms} farms...")
+            t0 = time.time()
+            data = load_problem_data(n_farms)
+            data_load_time = time.time() - t0
+            n_foods = data['n_foods']
+            n_vars = n_farms * n_foods + n_foods
         
         # Build CQM with timing
         LOG.info(f"Building CQM...")
         t0 = time.time()
-        cqm, metadata = build_binary_cqm(data)
+        
+        # Detect rotation scenarios and use appropriate builder
+        is_rotation = use_scenarios and scenario_name.startswith('rotation_')
+        if is_rotation:
+            LOG.info(f"  Detected rotation scenario - using 3-period formulation")
+            cqm, metadata = build_rotation_cqm(data, n_periods=3)
+        else:
+            cqm, metadata = build_binary_cqm(data)
+        
         cqm_build_time = time.time() - t0
         
         if verbose:
@@ -3222,6 +4182,7 @@ def run_benchmark(scales: List[int] = None,
         
         scale_results = {
             'n_farms': n_farms,
+            'scenario': scenario_name if use_scenarios else None,
             'metadata': metadata,
             'timings': {
                 'data_load': data_load_time,
@@ -3242,81 +4203,146 @@ def run_benchmark(scales: List[int] = None,
         
         gt_obj = scale_results.get('ground_truth', {}).get('objective', 0)
         
-        # Direct QPU (only for very small scales - embedding takes forever for larger)
-        if 'direct_qpu' in methods:
-            if n_farms <= 15:  # Only attempt for very small problems
-                if verbose:
-                    LOG.info(f"Attempting direct QPU...")
-                    print(f"\n  [Direct QPU] CQM → BQM → QPU...")
-                qpu_result = solve_direct_qpu(cqm, data)
-                scale_results['method_results']['direct_qpu'] = qpu_result
-                if verbose:
-                    if qpu_result['success']:
-                        gap = ((gt_obj - qpu_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
-                        print(f"    Objective: {qpu_result['objective']:.4f} (gap: {gap:.1f}%)")
-                        print(f"    QPU access time: {qpu_result.get('qpu_access_time', 0):.3f}s")
-                        print(f"    Chain breaks: {qpu_result.get('chain_break_fraction', 0):.2%}")
-                    else:
-                        print(f"    Failed: {qpu_result.get('error', 'Unknown')}")
-            else:
-                if verbose:
-                    print(f"\n  [Direct QPU] Skipped (scale too large for direct embedding)")
+        # Determine reads configurations to test
+        if reads_configs is not None:
+            # User specified custom reads configs
+            reads_list = reads_configs
+        else:
+            # Use defaults: 500 for small scenarios, 1000 for others
+            is_small_scenario = use_scenarios and scenario_name in ALL_SCENARIOS
+            default_reads = 500 if is_small_scenario else DEFAULT_NUM_READS
+            reads_list = [default_reads]
         
-        # Decomposition methods (ALL with QPU - SA removed)
-        for method in methods:
-            if method.startswith('decomposition_') and method.endswith('_QPU'):
-                decomp_name = method.replace('decomposition_', '').replace('_QPU', '')
+        # Test each reads configuration
+        for num_reads in reads_list:
+            # Suffix for method name if multiple reads configs
+            reads_suffix = f"_r{num_reads}" if len(reads_list) > 1 else ""
+            
+            # Direct QPU: allow for small scenarios OR very small scales
+            # Small scenarios (micro_6 to medium_160) have 6-160 variables - very embeddable
+            # Rotation scenarios (rotation_micro_25 to rotation_large_200) have 108-738 variables
+            if 'direct_qpu' in methods:
+                is_small_scenario = use_scenarios and scenario_name in ALL_SCENARIOS
+                is_tiny_scale = n_farms <= 15
+                attempt_direct_qpu = is_small_scenario or is_tiny_scale
+                
+                if attempt_direct_qpu:
+                    if verbose:
+                        LOG.info(f"Attempting direct QPU (n_vars={n_vars}, num_reads={num_reads})...")
+                        print(f"\n  [Direct QPU] CQM → BQM → QPU ({num_reads} reads)...")
+                    qpu_result = solve_direct_qpu(cqm, data, num_reads=num_reads)
+                    method_key = f'direct_qpu{reads_suffix}'
+                    scale_results['method_results'][method_key] = qpu_result
+                    if verbose:
+                        if qpu_result['success']:
+                            gap = ((gt_obj - qpu_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
+                            print(f"    Objective: {qpu_result['objective']:.4f} (gap: {gap:.1f}%)")
+                            print(f"    QPU access time: {qpu_result.get('qpu_access_time', 0):.3f}s")
+                            print(f"    Chain breaks: {qpu_result.get('chain_break_fraction', 0):.2%}")
+                        else:
+                            print(f"    Failed: {qpu_result.get('error', 'Unknown')}")
+                else:
+                    if verbose:
+                        print(f"\n  [Direct QPU] Skipped (scale too large for direct embedding)")
+            
+            # Clique QPU: for testing hardware clique embedding
+            if 'clique_qpu' in methods:
                 if verbose:
-                    LOG.info(f"Running {decomp_name} decomposition with QPU...")
-                    print(f"\n  [Decomposition: {decomp_name}] Partition + QPU...")
-                decomp_result = solve_decomposition_qpu(cqm, data, method=decomp_name, verbose=verbose)
-                scale_results['method_results'][method] = decomp_result
+                    LOG.info(f"Attempting clique QPU (n_vars={n_vars}, num_reads={num_reads})...")
+                    print(f"\n  [Clique QPU] CQM → BQM → DWaveCliqueSampler ({num_reads} reads)...")
+                clique_result = solve_clique_qpu(cqm, data, num_reads=num_reads)
+                method_key = f'clique_qpu{reads_suffix}'
+                scale_results['method_results'][method_key] = clique_result
+                if verbose:
+                    if clique_result['success']:
+                        gap = ((gt_obj - clique_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
+                        print(f"    Objective: {clique_result['objective']:.4f} (gap: {gap:.1f}%)")
+                        print(f"    QPU access time: {clique_result.get('qpu_access_time', 0):.3f}s")
+                        print(f"    Embedding time: {clique_result.get('timings', {}).get('embedding', 0):.3f}s")
+                        print(f"    Chain breaks: {clique_result.get('chain_break_fraction', 0):.2%}")
+                    else:
+                        print(f"    Failed: {clique_result.get('error', 'Unknown')}")
+            
+            # Clique Decomposition: Mohseni et al. style hierarchical decomposition
+            if 'clique_decomp' in methods:
+                # Use 3 iterations for better coordination (Mohseni et al. style)
+                num_iterations = 3
+                if verbose:
+                    LOG.info(f"Attempting clique decomposition ({num_reads} reads per subproblem, {num_iterations} iterations)...")
+                    print(f"\n  [Clique Decomp] Farm-by-farm decomposition + DWaveCliqueSampler ({num_reads} reads, {num_iterations} iters)...")
+                decomp_result = solve_rotation_clique_decomposition(data, cqm, num_reads=num_reads, num_iterations=num_iterations)
+                method_key = f'clique_decomp{reads_suffix}'
+                scale_results['method_results'][method_key] = decomp_result
                 if verbose:
                     if decomp_result['success']:
                         gap = ((gt_obj - decomp_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
                         print(f"    Objective: {decomp_result['objective']:.4f} (gap: {gap:.1f}%)")
-                        print(f"    Partitions: {decomp_result['n_partitions']}")
-                        print(f"    Total time: {decomp_result['total_time']:.2f}s")
-                        if 'total_qpu_time' in decomp_result:
-                            print(f"    QPU access time: {decomp_result['total_qpu_time']:.3f}s")
-                        print(f"    Violations: {decomp_result['violations']}")
+                        print(f"    Iterations: {num_iterations}")
+                        print(f"    Subproblems: {decomp_result.get('n_subproblems', 0)} × {decomp_result.get('avg_subproblem_size', 0)} vars")
+                        print(f"    Total QPU time: {decomp_result.get('timings', {}).get('qpu_access', 0):.3f}s")
+                        print(f"    Total embedding time: {decomp_result.get('timings', {}).get('embedding', 0):.3f}s")
+                        print(f"    Violations: {decomp_result.get('violations', 0)}")
                     else:
                         print(f"    Failed: {decomp_result.get('error', 'Unknown')}")
-        
-        # CQM-First decomposition methods (constraint-preserving partition with QPU)
-        for method in methods:
-            if method.startswith('cqm_first_'):
-                decomp_name = method.replace('cqm_first_', '')
+            
+            # Decomposition methods (ALL with QPU - SA removed)
+            for method in methods:
+                if method.startswith('decomposition_') and method.endswith('_QPU'):
+                    decomp_name = method.replace('decomposition_', '').replace('_QPU', '')
+                    if verbose:
+                        LOG.info(f"Running {decomp_name} decomposition with QPU ({num_reads} reads)...")
+                        print(f"\n  [Decomposition: {decomp_name}] Partition + QPU ({num_reads} reads)...")
+                    decomp_result = solve_decomposition_qpu(cqm, data, method=decomp_name, num_reads=num_reads, verbose=verbose)
+                    method_key = f'{method}{reads_suffix}'
+                    scale_results['method_results'][method_key] = decomp_result
+                    if verbose:
+                        if decomp_result['success']:
+                            gap = ((gt_obj - decomp_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
+                            print(f"    Objective: {decomp_result['objective']:.4f} (gap: {gap:.1f}%)")
+                            print(f"    Partitions: {decomp_result['n_partitions']}")
+                            print(f"    Total time: {decomp_result['total_time']:.2f}s")
+                            if 'total_qpu_time' in decomp_result:
+                                print(f"    QPU access time: {decomp_result['total_qpu_time']:.3f}s")
+                            print(f"    Violations: {decomp_result['violations']}")
+                        else:
+                            print(f"    Failed: {decomp_result.get('error', 'Unknown')}")
+            
+            # CQM-First decomposition methods (constraint-preserving partition with QPU)
+            for method in methods:
+                if method.startswith('cqm_first_'):
+                    decomp_name = method.replace('cqm_first_', '')
+                    if verbose:
+                        LOG.info(f"Running CQM-First {decomp_name} decomposition ({num_reads} reads)...")
+                        print(f"\n  [CQM-First: {decomp_name}] Partition CQM → BQM → QPU ({num_reads} reads)...")
+                    cqm_result = solve_cqm_first_decomposition_qpu(cqm, data, method=decomp_name, num_reads=num_reads, verbose=verbose)
+                    method_key = f'{method}{reads_suffix}'
+                    scale_results['method_results'][method_key] = cqm_result
+                    if verbose:
+                        if cqm_result['success']:
+                            gap = ((gt_obj - cqm_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
+                            print(f"    Objective: {cqm_result['objective']:.4f} (gap: {gap:.1f}%)")
+                            print(f"    Partitions: {cqm_result['n_partitions']}")
+                            print(f"    Time: {cqm_result['total_time']:.2f}s")
+                            print(f"    Violations: {cqm_result['violations']} {'✓ FEASIBLE' if cqm_result['violations'] == 0 else '✗ INFEASIBLE'}")
+                        else:
+                            print(f"    Failed: {cqm_result.get('error', 'Unknown')}")
+            
+            # Coordinated decomposition (constraint-preserving with QPU)
+            if 'coordinated' in methods:
                 if verbose:
-                    LOG.info(f"Running CQM-First {decomp_name} decomposition...")
-                    print(f"\n  [CQM-First: {decomp_name}] Partition CQM → BQM → QPU...")
-                cqm_result = solve_cqm_first_decomposition_qpu(cqm, data, method=decomp_name, verbose=verbose)
-                scale_results['method_results'][method] = cqm_result
+                    LOG.info(f"Running coordinated master-subproblem decomposition ({num_reads} reads)...")
+                    print(f"\n  [Coordinated] Master-Subproblem (constraint-preserving) with QPU ({num_reads} reads)...")
+                coord_result = solve_coordinated_decomposition(cqm, data, num_reads=num_reads)
+                method_key = f'coordinated{reads_suffix}'
+                scale_results['method_results'][method_key] = coord_result
                 if verbose:
-                    if cqm_result['success']:
-                        gap = ((gt_obj - cqm_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
-                        print(f"    Objective: {cqm_result['objective']:.4f} (gap: {gap:.1f}%)")
-                        print(f"    Partitions: {cqm_result['n_partitions']}")
-                        print(f"    Time: {cqm_result['total_time']:.2f}s")
-                        print(f"    Violations: {cqm_result['violations']} {'✓ FEASIBLE' if cqm_result['violations'] == 0 else '✗ INFEASIBLE'}")
+                    if coord_result['success']:
+                        gap = ((gt_obj - coord_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
+                        print(f"    Objective: {coord_result['objective']:.4f} (gap: {gap:.1f}%)")
+                        print(f"    Violations: {coord_result['violations']}")
+                        print(f"    Time: {coord_result['total_time']:.2f}s")
                     else:
-                        print(f"    Failed: {cqm_result.get('error', 'Unknown')}")
-        
-        # Coordinated decomposition (constraint-preserving with QPU)
-        if 'coordinated' in methods:
-            if verbose:
-                LOG.info(f"Running coordinated master-subproblem decomposition...")
-                print(f"\n  [Coordinated] Master-Subproblem (constraint-preserving) with QPU...")
-            coord_result = solve_coordinated_decomposition(cqm, data)
-            scale_results['method_results']['coordinated'] = coord_result
-            if verbose:
-                if coord_result['success']:
-                    gap = ((gt_obj - coord_result['objective']) / gt_obj * 100) if gt_obj > 0 else 0
-                    print(f"    Objective: {coord_result['objective']:.4f} (gap: {gap:.1f}%)")
-                    print(f"    Violations: {coord_result['violations']}")
-                    print(f"    Time: {coord_result['total_time']:.2f}s")
-                else:
-                    print(f"    Failed: {coord_result.get('error', 'Unknown')}")
+                        print(f"    Failed: {coord_result.get('error', 'Unknown')}")
         
         # NEW: Advanced solver methods (efficiency-optimized)
         for method in methods:
@@ -3355,11 +4381,16 @@ def print_summary(results: Dict):
     print("=" * 140)
     
     # Detailed timing table
-    print(f"\n{'Scale':<6} {'Method':<28} {'Obj':>8} {'Gap%':>7} {'Wall':>8} {'Solve':>8} {'Embed':>8} {'QPU':>8} {'Viol':>5} {'Status':<12}")
+    print(f"\n{'Scale':<20} {'Method':<28} {'Obj':>8} {'Gap%':>7} {'Wall':>8} {'Solve':>8} {'Embed':>8} {'QPU':>8} {'Viol':>5} {'Status':<12}")
     print("-" * 140)
     
     for sr in results['results']:
         n_farms = sr['n_farms']
+        scenario_name = sr.get('scenario')
+        
+        # Scale label: use scenario name if available, else farm count
+        scale_label = scenario_name if scenario_name else f"{n_farms}farms"
+        
         gt_obj = sr.get('ground_truth', {}).get('objective', 0)
         
         # Ground truth (Gurobi)
@@ -3370,7 +4401,7 @@ def print_summary(results: Dict):
             gt_solve = gt_timings.get('solve', gt.get('solve_time', 0))
             viol = gt.get('violations', 0)
             status = '✓ Opt' if gt.get('success') else '✗ Fail'
-            print(f"{n_farms:<6} {'Ground Truth (Gurobi)':<28} {gt.get('objective', 0):>8.4f} {'0.0':>7} {gt_wall:>8.3f} {gt_solve:>8.3f} {'N/A':>8} {'N/A':>8} {viol:>5} {status:<12}")
+            print(f"{scale_label:<20} {'Ground Truth (Gurobi)':<28} {gt.get('objective', 0):>8.4f} {'0.0':>7} {gt_wall:>8.3f} {gt_solve:>8.3f} {'N/A':>8} {'N/A':>8} {viol:>5} {status:<12}")
         
         # Methods
         for method, r in sr.get('method_results', {}).items():
@@ -3399,7 +4430,7 @@ def print_summary(results: Dict):
             embed_str = f"{embed_time:>8.2f}" if embed_time > 0 else f"{'N/A':>8}"
             qpu_str = f"{qpu_time:>8.3f}" if qpu_time > 0 else f"{'N/A':>8}"
             
-            print(f"{'':<6} {method:<28} {obj:>8.4f} {gap_str:>7} {wall_time:>8.2f} {solve_time:>8.2f} {embed_str:>8} {qpu_str:>8} {violations:>5} {status:<12}")
+            print(f"{'':<20} {method:<28} {obj:>8.4f} {gap_str:>7} {wall_time:>8.2f} {solve_time:>8.2f} {embed_str:>8} {qpu_str:>8} {violations:>5} {status:<12}")
         
         print("-" * 140)
     
@@ -3523,6 +4554,17 @@ def main():
                         help='Full benchmark (25, 50, 100, 200 farms)')
     parser.add_argument('--scale', type=int, nargs='+',
                         help='Specific scales')
+    parser.add_argument('--scenario', '--scenarios', nargs='+', dest='scenarios',
+                        help='Test small synthetic scenarios (e.g., micro_6 tiny_24 small_60). '
+                             'Available: micro_6, micro_12, tiny_24, tiny_40, small_60, small_80, '
+                             'small_100, medium_120, medium_160')
+    parser.add_argument('--all-small', action='store_true',
+                        help='Test all small synthetic scenarios (micro_6 through medium_160)')
+    parser.add_argument('--all-small-rotation', action='store_true',
+                        help='Test all rotation scenarios (rotation_micro_25 through rotation_large_200)')
+    parser.add_argument('--reads', type=int, nargs='+',
+                        help='Number of reads for QPU sampling (e.g., 100 250 500). '
+                             'If multiple values, runs benchmark for each. Default: 500 for small scenarios, 1000 for others')
     parser.add_argument('--methods', nargs='+',
                         help='Specific methods')
     parser.add_argument('--output', type=str,
@@ -3551,40 +4593,84 @@ def main():
     elif not args.no_qpu:
         print(f"  Warning: No D-Wave token available. Only ground_truth method will work.")
     
-    # Scales
-    if args.test:
-        scales = [args.test]
-    elif args.full:
-        scales = FARM_SCALES
-    elif args.scale:
-        scales = args.scale
+    # Determine if using scenarios or scales
+    scenarios = None
+    scales = None
+    
+    if args.all_small:
+        # All small synthetic scenarios (including rotation scenarios)
+        scenarios = ALL_SCENARIOS
+        print(f"\nUsing all small scenarios: {scenarios}")
+    elif args.all_small_rotation:
+        # All rotation scenarios only
+        scenarios = ROTATION_SCENARIOS
+        print(f"\nUsing all rotation scenarios: {scenarios}")
+    elif args.scenarios:
+        # Specific scenarios
+        scenarios = args.scenarios
+        # Validate scenario names
+        invalid = [s for s in scenarios if s not in ALL_SCENARIOS]
+        if invalid:
+            print(f"\nWarning: Unknown scenarios: {invalid}")
+            print(f"Available scenarios: {ALL_SCENARIOS}")
+            scenarios = [s for s in scenarios if s in ALL_SCENARIOS]
+        print(f"\nUsing scenarios: {scenarios}")
     else:
-        scales = [25]
+        # Use scales (traditional)
+        if args.test:
+            scales = [args.test]
+        elif args.full:
+            scales = FARM_SCALES
+        elif args.scale:
+            scales = args.scale
+        else:
+            scales = [25]
+        print(f"\nScales: {scales}")
     
     # Methods - ALL QPU (SA completely removed)
     methods = args.methods
-    if methods is None:
-        # Default: ground truth + QPU methods only
-        methods = [
-            'ground_truth', 
-            'direct_qpu',
-            'coordinated',
-            'decomposition_PlotBased_QPU',
-            'decomposition_Multilevel(5)_QPU',
-            'decomposition_Multilevel(10)_QPU',
-            'decomposition_Louvain_QPU',
-            'decomposition_Spectral(10)_QPU',
-            'cqm_first_PlotBased',
-        ]
+    if methods is not None:
+        # Handle comma-separated methods (e.g., --methods ground_truth,direct_qpu,clique_qpu)
+        if len(methods) == 1 and ',' in methods[0]:
+            methods = methods[0].split(',')
+        # Strip whitespace from each method
+        methods = [m.strip() for m in methods]
     
-    print(f"\nScales: {scales}")
+    if methods is None:
+        # For small scenarios, default to direct_qpu + ground_truth (most relevant)
+        if scenarios is not None:
+            methods = [
+                'ground_truth',
+                'direct_qpu',  # Small scenarios should embed directly
+            ]
+        else:
+            # For larger scales, use decomposition methods
+            methods = [
+                'ground_truth', 
+                'direct_qpu',
+                'coordinated',
+                'decomposition_PlotBased_QPU',
+                'decomposition_Multilevel(5)_QPU',
+                'decomposition_Multilevel(10)_QPU',
+                'decomposition_Louvain_QPU',
+                'decomposition_Spectral(10)_QPU',
+                'cqm_first_PlotBased',
+            ]
+    
     print(f"Methods: {methods}")
     print(f"QPU Available: {HAS_QPU}")
     print(f"Louvain Available: {HAS_LOUVAIN}")
     print(f"Spectral Available: {HAS_SPECTRAL}")
     
+    # Reads configuration
+    reads_configs = args.reads if args.reads else None
+    if reads_configs:
+        print(f"Num reads configurations: {reads_configs}")
+    else:
+        print(f"Using default reads (500 for small scenarios, 1000 for others)")
+    
     # Run
-    results = run_benchmark(scales=scales, methods=methods, verbose=True)
+    results = run_benchmark(scales=scales, methods=methods, verbose=True, scenarios=scenarios, reads_configs=reads_configs)
     
     # Summary
     print_summary(results)

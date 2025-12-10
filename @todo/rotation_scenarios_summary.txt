@@ -1,0 +1,128 @@
+================================================================================
+ROTATION SCENARIOS - TECHNICAL SUMMARY
+================================================================================
+
+WHAT THEY ARE:
+--------------
+Multi-period crop rotation optimization with spatial interactions and 
+frustrated synergies, designed for quantum-classical benchmarking.
+
+KEY DIFFERENCES FROM ORIGINAL (e.g., full_family):
+--------------------------------------------------
+
+1. TEMPORAL DIMENSION
+   Original: Static, single-period assignment
+   Rotation: 3-period temporal optimization
+   → Models realistic crop rotation over 3 years
+
+2. OBJECTIVE FUNCTION
+   Original: Linear (sum of crop benefits)
+   Rotation: Quadratic (benefits + rotation synergies + spatial interactions)
+   → Native QUBO structure for quantum annealers
+
+3. CROP REPRESENTATION
+   Original: 27 individual crops
+   Rotation: 6 crop families (Fruits, Grains, Legumes, Vegetables, Proteins)
+   → Reduces decision space, bounds max degree
+
+4. SYNERGIES & FRUSTRATION
+   Original: No synergies (all crops independent)
+   Rotation: 70-88% frustrated interactions (negative synergies)
+   → Models disease carryover, nutrient depletion, competition
+   → Creates spin-glass-like computational hardness
+
+5. CONSTRAINTS
+   Original: Hard one-hot (exactly 1 crop per farm)
+   Rotation: Soft one-hot (penalized deviation)
+   → Allows LP relaxation to use fractional solutions
+   → Creates massive integrality gap (>700%)
+
+6. SPATIAL STRUCTURE
+   Original: No spatial interactions
+   Rotation: k=4 nearest neighbor coupling
+   → Models pest spread, pollination, resource competition
+   → Keeps max degree bounded (~29)
+
+MATHEMATICAL FORMULATION:
+-------------------------
+
+Objective:
+  max Σ_{f,c,t} B_c·L_f·Y_{f,c,t}                    [Linear benefits]
+      + γ·Σ_{f,c,c',t} R_{c,c'}·L_f·Y_{f,c,t-1}·Y_{f,c',t}  [Rotation synergies]
+      + γ_s·Σ_{neighbors(f,f'),c,c',t} S_{c,c'}·Y_{f,c,t}·Y_{f',c',t}  [Spatial]
+      - P·Σ_{f,t} (Σ_c Y_{f,c,t} - 1)²              [Soft one-hot penalty]
+      + δ·Σ_{f,c,t} Y_{f,c,t}                        [Diversity bonus]
+
+Where:
+  Y_{f,c,t} ∈ {0,1}: Farm f grows family c in period t
+  R_{c,c'}: Rotation synergy matrix (70-88% negative entries)
+  γ ∈ [0.20, 0.35]: Rotation strength
+  P ∈ [1.5, 3.0]: One-hot penalty (lower = harder)
+  δ ∈ [0.15, 0.25]: Diversity bonus
+
+Constraints:
+  Σ_c Y_{f,c,t} ≤ 2  ∀f,t  [Allow up to 2 crops, but penalize deviation]
+
+COMPUTATIONAL PROPERTIES:
+-------------------------
+
+Classical (Gurobi):
+  Variables:     90-900 (vs 2700 in original)
+  Integrality gap: >700% (vs 0% in original)
+  Solve time:    >300s timeout (vs <1s in original)
+  BB nodes:      77K-2.5M (vs 1 in original)
+  Status:        VERY HARD ✓✓✓
+
+Quantum (D-Wave):
+  Max degree:    ~29 (bounded!)
+  Embeddable:    Yes, with chains ~2-3
+  QPU topology:  Fits Pegasus graph
+  Status:        FEASIBLE ✓
+
+SCENARIOS:
+----------
+rotation_micro_25:   5 farms  × 6 families × 3 periods = 90 vars
+rotation_small_50:   10 farms × 6 families × 3 periods = 180 vars
+rotation_medium_100: 20 farms × 6 families × 3 periods = 360 vars
+rotation_large_200:  50 farms × 6 families × 3 periods = 900 vars
+
+All scenarios: 70-88% frustration, soft constraints, diversity bonus
+
+AGRONOMIC REALISM:
+------------------
+✓ Crop rotation is standard practice in sustainable agriculture
+✓ Negative synergies represent real phenomena:
+  - Nutrient depletion (monoculture)
+  - Disease carryover (pathogen persistence)
+  - Allelopathy (chemical inhibition)
+  - Pest harbor (consecutive same-family planting)
+✓ Positive synergies represent benefits:
+  - Nitrogen fixation (legumes → grains)
+  - Pest control (companion planting)
+  - Soil structure improvement
+
+THE QUANTUM ADVANTAGE HYPOTHESIS:
+---------------------------------
+Classical solvers struggle because:
+  1. Quadratic objective creates large search space
+  2. Soft constraints allow LP to cheat with fractions
+  3. Frustrated synergies create local minima
+  4. Branch-and-bound explores exponentially many nodes
+
+Quantum annealers may succeed because:
+  1. Native QUBO mapping (quadratic → qubit couplings)
+  2. Quantum tunneling escapes local minima
+  3. No branch-and-bound (different search mechanism)
+  4. Sparse coupling (k=4) fits hardware topology
+
+NEXT STEPS:
+-----------
+1. Benchmark on D-Wave QPU (Advantage_system6)
+2. Compare: QPU vs SA vs Gurobi (timeout)
+3. Measure time-to-solution, solution quality
+4. Document quantum advantage (if found)
+
+================================================================================
+Generated: December 2025
+LaTeX Report: rotation_scenarios_report.pdf
+================================================================================

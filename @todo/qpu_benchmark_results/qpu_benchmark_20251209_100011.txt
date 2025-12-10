@@ -1,0 +1,707 @@
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-09T09:48:35.500400
+Scales: []
+Methods: ['ground_truth', 'direct_qpu']
+QPU Available: True
+
+
+================================================================================
+SCALE: 2 farms
+================================================================================
+
+Metadata:
+  n_farms: 2
+  n_foods: 2
+  n_variables: 6
+  n_constraints: 9
+  logical_qubits: 6
+  total_area: 20.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.415500
+  Solve Time: 0.02s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.415500
+Total Time: 3.91s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 1
+  Foods: Rice
+  Total Area Allocated: 20.00
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.415500
+Total Time: 2.12s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 1
+  Foods: Rice
+  Total Area Allocated: 20.00
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.415500
+Total Time: 2.29s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 1
+  Foods: Rice
+  Total Area Allocated: 20.00
+
+
+================================================================================
+SCALE: 3 farms
+================================================================================
+
+Metadata:
+  n_farms: 3
+  n_foods: 3
+  n_variables: 12
+  n_constraints: 17
+  logical_qubits: 12
+  total_area: 30.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.474595
+  Solve Time: 0.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.477000
+Total Time: 3.14s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 2
+  Foods: Rice, Soybeans
+  Total Area Allocated: 30.00
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.458565
+Total Time: 2.03s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 2
+  Foods: Wheat, Soybeans
+  Total Area Allocated: 30.00
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.444183
+Total Time: 1.18s
+Violations: 0
+
+Solution Summary:
+  Unique Foods Used: 2
+  Foods: Wheat, Soybeans
+  Total Area Allocated: 30.00
+
+
+================================================================================
+SCALE: 4 farms
+================================================================================
+
+Metadata:
+  n_farms: 4
+  n_foods: 5
+  n_variables: 25
+  n_constraints: 32
+  logical_qubits: 25
+  total_area: 40.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.494513
+  Solve Time: 0.03s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.534802
+Total Time: 1.87s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 5
+  Foods: Wheat, Rice, Soybeans, Lentils, Potatoes
+  Total Area Allocated: 45.96
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Plot4: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.445233
+Total Time: 1.75s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 3
+  Foods: Wheat, Soybeans, Potatoes
+  Total Area Allocated: 41.70
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Plot3: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.650918
+Total Time: 1.89s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 4
+  Foods: Wheat, Rice, Soybeans, Potatoes
+  Total Area Allocated: 59.02
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Plot1: 2 crops (expected 1)
+
+
+================================================================================
+SCALE: 5 farms
+================================================================================
+
+Metadata:
+  n_farms: 5
+  n_foods: 6
+  n_variables: 36
+  n_constraints: 45
+  logical_qubits: 36
+  total_area: 49.99
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.485552
+  Solve Time: 0.00s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.518038
+Total Time: 3.82s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 4
+  Foods: Rice, Soybeans, Carrots, Apples
+  Total Area Allocated: 60.72
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Plot2: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.715875
+Total Time: 3.30s
+Violations: 3
+
+Solution Summary:
+  Unique Foods Used: 4
+  Foods: Rice, Soybeans, Carrots, Apples
+  Total Area Allocated: 81.14
+
+Violation Details:
+  One Crop Per Farm: 3 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot4: 2 crops (expected 1)
+    Farm Plot5: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.359176
+Total Time: 3.61s
+Violations: 1
+
+Solution Summary:
+  Unique Foods Used: 4
+  Foods: Wheat, Soybeans, Potatoes, Apples
+  Total Area Allocated: 39.92
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Plot3: 2 crops (expected 1)
+
+
+================================================================================
+SCALE: 6 farms
+================================================================================
+
+Metadata:
+  n_farms: 6
+  n_foods: 8
+  n_variables: 56
+  n_constraints: 66
+  logical_qubits: 56
+  total_area: 60.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.498644
+  Solve Time: 0.01s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.812740
+Total Time: 6.60s
+Violations: 4
+
+Solution Summary:
+  Unique Foods Used: 5
+  Foods: Wheat, Rice, Soybeans, Potatoes, Carrots
+  Total Area Allocated: 116.12
+
+Violation Details:
+  One Crop Per Farm: 3 violations
+    Farm Plot2: 3 crops (expected 1)
+    Farm Plot3: 3 crops (expected 1)
+    Farm Plot4: 2 crops (expected 1)
+  Food Group Constraints: 1 violations
+    Group Fruits: 0 (range: 1-1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.350986
+Total Time: 6.58s
+Violations: 2
+
+Solution Summary:
+  Unique Foods Used: 3
+  Foods: Wheat, Lentils, Carrots
+  Total Area Allocated: 48.19
+
+Violation Details:
+  One Crop Per Farm: 1 violations
+    Farm Plot5: 3 crops (expected 1)
+  Food Group Constraints: 1 violations
+    Group Fruits: 0 (range: 1-1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.795223
+Total Time: 7.52s
+Violations: 4
+
+Solution Summary:
+  Unique Foods Used: 5
+  Foods: Rice, Lentils, Potatoes, Carrots, Apples
+  Total Area Allocated: 110.91
+
+Violation Details:
+  One Crop Per Farm: 4 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 2 crops (expected 1)
+    Farm Plot3: 2 crops (expected 1)
+    Farm Plot6: 2 crops (expected 1)
+
+
+================================================================================
+SCALE: 7 farms
+================================================================================
+
+Metadata:
+  n_farms: 7
+  n_foods: 10
+  n_variables: 80
+  n_constraints: 92
+  logical_qubits: 80
+  total_area: 70.00999999999999
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.494099
+  Solve Time: 0.00s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.247380
+Total Time: 19.35s
+Violations: 6
+
+Solution Summary:
+  Unique Foods Used: 7
+  Foods: Wheat, Rice, Corn, Lentils, Potatoes, Carrots, Oranges
+  Total Area Allocated: 193.38
+
+Violation Details:
+  One Crop Per Farm: 5 violations
+    Farm Plot1: 4 crops (expected 1)
+    Farm Plot2: 3 crops (expected 1)
+    Farm Plot3: 3 crops (expected 1)
+    Farm Plot4: 4 crops (expected 1)
+    Farm Plot5: 2 crops (expected 1)
+  Food Group Constraints: 1 violations
+    Group Proteins: 0 (range: 1-1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.007006
+Total Time: 18.26s
+Violations: 7
+
+Solution Summary:
+  Unique Foods Used: 7
+  Foods: Wheat, Corn, Lentils, Potatoes, Apples, Oranges, Eggs
+  Total Area Allocated: 157.51
+
+Violation Details:
+  One Crop Per Farm: 7 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 2 crops (expected 1)
+    Farm Plot3: 2 crops (expected 1)
+    Farm Plot4: 4 crops (expected 1)
+    Farm Plot5: 3 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 0.927011
+Total Time: 20.10s
+Violations: 8
+
+Solution Summary:
+  Unique Foods Used: 5
+  Foods: Wheat, Corn, Carrots, Apples, Eggs
+  Total Area Allocated: 154.80
+
+Violation Details:
+  One Crop Per Farm: 7 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 2 crops (expected 1)
+    Farm Plot3: 2 crops (expected 1)
+    Farm Plot4: 3 crops (expected 1)
+    Farm Plot5: 2 crops (expected 1)
+  Food Group Constraints: 1 violations
+    Group Legumes: 0 (range: 1-2)
+
+
+================================================================================
+SCALE: 8 farms
+================================================================================
+
+Metadata:
+  n_farms: 8
+  n_foods: 11
+  n_variables: 99
+  n_constraints: 112
+  logical_qubits: 99
+  total_area: 80.00999999999999
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.534159
+  Solve Time: 0.00s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.118674
+Total Time: 47.64s
+Violations: 8
+
+Solution Summary:
+  Unique Foods Used: 8
+  Foods: Rice, Corn, Soybeans, Lentils, Carrots, Apples, Oranges, Eggs
+  Total Area Allocated: 192.78
+
+Violation Details:
+  One Crop Per Farm: 8 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 2 crops (expected 1)
+    Farm Plot3: 2 crops (expected 1)
+    Farm Plot4: 4 crops (expected 1)
+    Farm Plot5: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.253346
+Total Time: 48.88s
+Violations: 8
+
+Solution Summary:
+  Unique Foods Used: 7
+  Foods: Corn, Lentils, Potatoes, Carrots, Tomatoes, Apples, Eggs
+  Total Area Allocated: 216.72
+
+Violation Details:
+  One Crop Per Farm: 8 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 3 crops (expected 1)
+    Farm Plot3: 3 crops (expected 1)
+    Farm Plot4: 2 crops (expected 1)
+    Farm Plot5: 3 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.273253
+Total Time: 48.38s
+Violations: 6
+
+Solution Summary:
+  Unique Foods Used: 8
+  Foods: Corn, Lentils, Potatoes, Carrots, Tomatoes, Apples, Oranges, Eggs
+  Total Area Allocated: 228.41
+
+Violation Details:
+  One Crop Per Farm: 6 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot3: 5 crops (expected 1)
+    Farm Plot4: 4 crops (expected 1)
+    Farm Plot5: 3 crops (expected 1)
+    Farm Plot6: 2 crops (expected 1)
+
+
+================================================================================
+SCALE: 9 farms
+================================================================================
+
+Metadata:
+  n_farms: 9
+  n_foods: 12
+  n_variables: 120
+  n_constraints: 134
+  logical_qubits: 120
+  total_area: 90.01
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.464624
+  Solve Time: 0.00s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.056386
+Total Time: 63.49s
+Violations: 9
+
+Solution Summary:
+  Unique Foods Used: 8
+  Foods: Wheat, Rice, Barley, Soybeans, Potatoes, Apples, Oranges, Eggs
+  Total Area Allocated: 235.83
+
+Violation Details:
+  One Crop Per Farm: 9 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 2 crops (expected 1)
+    Farm Plot3: 3 crops (expected 1)
+    Farm Plot4: 2 crops (expected 1)
+    Farm Plot5: 3 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.295521
+Total Time: 63.43s
+Violations: 9
+
+Solution Summary:
+  Unique Foods Used: 9
+  Foods: Wheat, Rice, Corn, Soybeans, Lentils, Potatoes, Apples, Oranges, Eggs
+  Total Area Allocated: 277.03
+
+Violation Details:
+  One Crop Per Farm: 9 violations
+    Farm Plot1: 2 crops (expected 1)
+    Farm Plot2: 3 crops (expected 1)
+    Farm Plot3: 5 crops (expected 1)
+    Farm Plot4: 3 crops (expected 1)
+    Farm Plot5: 4 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.044499
+Total Time: 63.94s
+Violations: 7
+
+Solution Summary:
+  Unique Foods Used: 7
+  Foods: Wheat, Rice, Barley, Potatoes, Carrots, Apples, Eggs
+  Total Area Allocated: 221.60
+
+Violation Details:
+  One Crop Per Farm: 6 violations
+    Farm Plot1: 4 crops (expected 1)
+    Farm Plot3: 3 crops (expected 1)
+    Farm Plot4: 2 crops (expected 1)
+    Farm Plot5: 4 crops (expected 1)
+    Farm Plot6: 4 crops (expected 1)
+  Food Group Constraints: 1 violations
+    Group Legumes: 0 (range: 1-2)
+
+
+================================================================================
+SCALE: 10 farms
+================================================================================
+
+Metadata:
+  n_farms: 10
+  n_foods: 14
+  n_variables: 154
+  n_constraints: 169
+  logical_qubits: 154
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: True
+  Objective: 0.521745
+  Solve Time: 0.00s
+  Violations: 0
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r100
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.384746
+Total Time: 82.13s
+Violations: 9
+
+Solution Summary:
+  Unique Foods Used: 9
+  Foods: Wheat, Barley, Soybeans, Lentils, Chickpeas, Potatoes, Tomatoes, Apples, Chicken
+  Total Area Allocated: 317.11
+
+Violation Details:
+  One Crop Per Farm: 9 violations
+    Farm Plot2: 4 crops (expected 1)
+    Farm Plot3: 4 crops (expected 1)
+    Farm Plot4: 4 crops (expected 1)
+    Farm Plot5: 2 crops (expected 1)
+    Farm Plot6: 5 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r250
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.406865
+Total Time: 84.13s
+Violations: 10
+
+Solution Summary:
+  Unique Foods Used: 11
+  Foods: Wheat, Corn, Barley, Soybeans, Lentils, Chickpeas, Potatoes, Tomatoes, Apples, Oranges ... (11 total)
+  Total Area Allocated: 320.46
+
+Violation Details:
+  One Crop Per Farm: 10 violations
+    Farm Plot1: 3 crops (expected 1)
+    Farm Plot2: 5 crops (expected 1)
+    Farm Plot3: 4 crops (expected 1)
+    Farm Plot4: 4 crops (expected 1)
+    Farm Plot5: 2 crops (expected 1)
+
+
+--------------------------------------------------------------------------------
+Method: direct_qpu_r500
+--------------------------------------------------------------------------------
+Success: True
+Objective: 1.780157
+Total Time: 84.46s
+Violations: 10
+
+Solution Summary:
+  Unique Foods Used: 9
+  Foods: Wheat, Rice, Corn, Chickpeas, Potatoes, Tomatoes, Apples, Oranges, Chicken
+  Total Area Allocated: 386.97
+
+Violation Details:
+  One Crop Per Farm: 10 violations
+    Farm Plot1: 5 crops (expected 1)
+    Farm Plot2: 5 crops (expected 1)
+    Farm Plot3: 4 crops (expected 1)
+    Farm Plot4: 5 crops (expected 1)
+    Farm Plot5: 3 crops (expected 1)
+
