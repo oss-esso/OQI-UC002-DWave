@@ -1,0 +1,470 @@
+11:03:35 [INFO] Loaded scenario 'rotation_small_50': 10 plots × 6 foods = 66 variables
+11:03:35 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+11:03:35 [INFO]   Total area: 99.99 ha
+11:03:35 [INFO] Building rotation CQM with 10 farms × 6 families × 3 periods
+11:03:35 [INFO]   Rotation gamma: 0.25, Frustration: 75%, One-hot penalty: 2.5
+11:03:35 [INFO]   Rotation matrix: 88.9% negative synergies
+11:03:35 [INFO]   Spatial graph: 25 neighbor pairs (k=4)
+11:03:36 [INFO]   CQM built: 180 variables, 30 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.77s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+  ✓ neal (SimulatedAnnealing) available for comparison
+  ✓ Louvain community detection available
+  ✓ Spectral clustering available
+  D-Wave imports: 3.61s
+[3/5] Loading configuration...
+  Output directory: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results
+[4/5] Setting up data loading...
+[5/5] Starting benchmark...
+  D-Wave token configured (length: 45)
+
+====================================================================================================
+RUNNING ROADMAP BENCHMARK - PHASE 3
+====================================================================================================
+
+
+====================================================================================================
+ROADMAP PHASE 3: OPTIMIZATION & REFINEMENT
+Testing: Advanced techniques for maximum quantum advantage
+Goal: Optimize quality, speed, and scalability
+====================================================================================================
+
+====================================================================================================
+Scale: 10 farms × 6 crops × 3 periods
+====================================================================================================
+Problem size: 180 variables
+
+--- Ground Truth (Gurobi) ---
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+11:08:37 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:08:37 [INFO]   [SpatialTemporal] 10 farms → 2-farm clusters × 3 periods
+11:08:37 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:08:37 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:08:37 [INFO]   [SpatialTemporal] Created 5 spatial clusters → 15 total subproblems
+11:08:37 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:08:38 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:08:54 [INFO]   [SpatialTemporal] Iteration 1: obj=6.6763 (improved!)
+11:08:54 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:09:03 [INFO]   [SpatialTemporal] Iteration 2: obj=6.8748 (improved!)
+11:09:03 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:09:13 [INFO]   [SpatialTemporal] Iteration 3: obj=6.7331
+11:09:13 [INFO]   [SpatialTemporal] Complete! 15 subproblems (12 vars each)
+11:09:13 [INFO]   [SpatialTemporal] Total QPU=0.427s, embed=0.0000s
+11:09:13 [INFO]   [SpatialTemporal] Final objective: 6.8748, violations: 0
+11:09:13 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:09:13 [INFO]   [SpatialTemporal] 10 farms → 2-farm clusters × 3 periods
+11:09:13 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:09:13 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:09:13 [INFO]   [SpatialTemporal] Created 5 spatial clusters → 15 total subproblems
+11:09:13 [INFO]   [SpatialTemporal] Iterations: 5 (boundary coordination)
+11:09:14 [INFO]   [SpatialTemporal] Iteration 1/5: Initial independent solve
+11:09:29 [INFO]   [SpatialTemporal] Iteration 1: obj=6.7866 (improved!)
+11:09:29 [INFO]   [SpatialTemporal] Iteration 2/5: Refining with temporal/spatial context
+11:09:38 [INFO]   [SpatialTemporal] Iteration 2: obj=6.8684 (improved!)
+11:09:38 [INFO]   [SpatialTemporal] Iteration 3/5: Refining with temporal/spatial context
+11:09:47 [INFO]   [SpatialTemporal] Iteration 3: obj=6.8726 (improved!)
+11:09:47 [INFO]   [SpatialTemporal] Iteration 4/5: Refining with temporal/spatial context
+11:09:57 [INFO]   [SpatialTemporal] Iteration 4: obj=6.7720
+11:09:57 [INFO]   [SpatialTemporal] Iteration 5/5: Refining with temporal/spatial context
+11:10:06 [INFO]   [SpatialTemporal] Iteration 5: obj=6.8365
+11:10:06 [INFO]   [SpatialTemporal] Complete! 15 subproblems (12 vars each)
+11:10:06 [INFO]   [SpatialTemporal] Total QPU=0.427s, embed=0.0000s
+11:10:06 [INFO]   [SpatialTemporal] Final objective: 6.8726, violations: 0
+11:10:06 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:10:06 [INFO]   [SpatialTemporal] 10 farms → 3-farm clusters × 3 periods
+11:10:06 [INFO]   [SpatialTemporal] Subproblem size: 3 farms × 6 crops = 18 vars
+11:10:06 [WARNING]   [SpatialTemporal] WARNING: 18 vars > 16! May not fit cliques!
+11:10:06 [WARNING]   [SpatialTemporal] Recommendation: Reduce farms_per_cluster to 2
+11:10:06 [INFO]   [SpatialTemporal] Created 4 spatial clusters → 12 total subproblems
+11:10:06 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:10:06 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:10:20 [INFO]   [SpatialTemporal] Iteration 1: obj=6.5765 (improved!)
+11:10:20 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:10:27 [INFO]   [SpatialTemporal] Iteration 2: obj=6.5835 (improved!)
+11:10:27 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:10:34 [INFO]   [SpatialTemporal] Iteration 3: obj=6.6371 (improved!)
+11:10:34 [INFO]   [SpatialTemporal] Complete! 12 subproblems (18 vars each)
+11:10:34 [INFO]   [SpatialTemporal] Total QPU=0.406s, embed=0.0000s
+11:10:34 [INFO]   [SpatialTemporal] Final objective: 6.6371, violations: 0
+11:10:34 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:10:34 [INFO]   [SpatialTemporal] 10 farms → 3-farm clusters × 3 periods
+11:10:34 [INFO]   [SpatialTemporal] Subproblem size: 3 farms × 6 crops = 18 vars
+11:10:34 [WARNING]   [SpatialTemporal] WARNING: 18 vars > 16! May not fit cliques!
+11:10:34 [WARNING]   [SpatialTemporal] Recommendation: Reduce farms_per_cluster to 2
+11:10:34 [INFO]   [SpatialTemporal] Created 4 spatial clusters → 12 total subproblems
+11:10:34 [INFO]   [SpatialTemporal] Iterations: 5 (boundary coordination)
+11:10:34 [INFO]   [SpatialTemporal] Iteration 1/5: Initial independent solve
+11:10:48 [INFO]   [SpatialTemporal] Iteration 1: obj=6.6404 (improved!)
+11:10:48 [INFO]   [SpatialTemporal] Iteration 2/5: Refining with temporal/spatial context
+11:10:55 [INFO]   [SpatialTemporal] Iteration 2: obj=6.6787 (improved!)
+11:10:55 [INFO]   [SpatialTemporal] Iteration 3/5: Refining with temporal/spatial context
+11:11:02 [INFO]   [SpatialTemporal] Iteration 3: obj=6.6094
+11:11:02 [INFO]   [SpatialTemporal] Iteration 4/5: Refining with temporal/spatial context
+11:11:10 [INFO]   [SpatialTemporal] Iteration 4: obj=6.6640
+11:11:10 [INFO]   [SpatialTemporal] Iteration 5/5: Refining with temporal/spatial context
+11:11:17 [INFO]   [SpatialTemporal] Iteration 5: obj=6.6694
+11:11:17 [INFO]   [SpatialTemporal] Complete! 12 subproblems (18 vars each)
+11:11:17 [INFO]   [SpatialTemporal] Total QPU=0.406s, embed=0.0000s
+11:11:17 [INFO]   [SpatialTemporal] Final objective: 6.6787, violations: 0
+11:11:17 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:11:17 [INFO]   [SpatialTemporal] 10 farms → 2-farm clusters × 3 periods
+11:11:17 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:11:17 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:11:17 [INFO]   [SpatialTemporal] Created 5 spatial clusters → 15 total subproblems
+11:11:17 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:11:17 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:11:33 [INFO]   [SpatialTemporal] Iteration 1: obj=6.5636 (improved!)
+11:11:33 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:11:44 [INFO]   [SpatialTemporal] Iteration 2: obj=6.9238 (improved!)
+11:11:44 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:11:54 [INFO]   [SpatialTemporal] Iteration 3: obj=6.9321 (improved!)
+11:11:54 [INFO]   [SpatialTemporal] Complete! 15 subproblems (12 vars each)
+11:11:54 [INFO]   [SpatialTemporal] Total QPU=1.187s, embed=0.0000s
+11:11:54 [INFO]   [SpatialTemporal] Final objective: 6.9321, violations: 0
+11:11:54 [INFO] Loaded scenario 'rotation_medium_100': 20 plots × 6 foods = 126 variables
+11:11:54 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+11:11:54 [INFO]   Total area: 100.00 ha
+11:11:54 [INFO] Building rotation CQM with 15 farms × 6 families × 3 periods
+11:11:54 [INFO]   Rotation gamma: 0.3, Frustration: 82%, One-hot penalty: 2.0
+11:11:54 [INFO]   Rotation matrix: 88.9% negative synergies
+11:11:54 [INFO]   Spatial graph: 37 neighbor pairs (k=4)
+11:11:54 [INFO]   CQM built: 270 variables, 45 constraints
+11:16:55 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:16:55 [INFO]   [SpatialTemporal] 15 farms → 2-farm clusters × 3 periods
+11:16:55 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:16:55 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:16:55 [INFO]   [SpatialTemporal] Created 8 spatial clusters → 24 total subproblems
+11:16:55 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:16:56 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:17:17 [INFO]   [SpatialTemporal] Iteration 1: obj=10.7691 (improved!)
+11:17:17 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:17:32 [INFO]   [SpatialTemporal] Iteration 2: obj=10.9370 (improved!)
+11:17:32 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:17:46 [INFO]   [SpatialTemporal] Iteration 3: obj=11.0266 (improved!)
+11:17:46 [INFO]   [SpatialTemporal] Complete! 24 subproblems (12 vars each)
+11:17:46 [INFO]   [SpatialTemporal] Total QPU=0.682s, embed=0.0000s
+11:17:46 [INFO]   [SpatialTemporal] Final objective: 11.0266, violations: 0
+11:17:46 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:17:46 [INFO]   [SpatialTemporal] 15 farms → 2-farm clusters × 3 periods
+11:17:46 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:17:46 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:17:46 [INFO]   [SpatialTemporal] Created 8 spatial clusters → 24 total subproblems
+11:17:46 [INFO]   [SpatialTemporal] Iterations: 5 (boundary coordination)
+11:17:46 [INFO]   [SpatialTemporal] Iteration 1/5: Initial independent solve
+11:18:07 [INFO]   [SpatialTemporal] Iteration 1: obj=10.6737 (improved!)
+11:18:07 [INFO]   [SpatialTemporal] Iteration 2/5: Refining with temporal/spatial context
+11:18:22 [INFO]   [SpatialTemporal] Iteration 2: obj=10.8327 (improved!)
+11:18:22 [INFO]   [SpatialTemporal] Iteration 3/5: Refining with temporal/spatial context
+11:18:37 [INFO]   [SpatialTemporal] Iteration 3: obj=11.0432 (improved!)
+11:18:37 [INFO]   [SpatialTemporal] Iteration 4/5: Refining with temporal/spatial context
+11:18:52 [INFO]   [SpatialTemporal] Iteration 4: obj=10.9873
+11:18:52 [INFO]   [SpatialTemporal] Iteration 5/5: Refining with temporal/spatial context
+11:19:06 [INFO]   [SpatialTemporal] Iteration 5: obj=11.0328
+11:19:06 [INFO]   [SpatialTemporal] Complete! 24 subproblems (12 vars each)
+11:19:06 [INFO]   [SpatialTemporal] Total QPU=0.682s, embed=0.0000s
+11:19:06 [INFO]   [SpatialTemporal] Final objective: 11.0432, violations: 0
+11:19:06 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:19:06 [INFO]   [SpatialTemporal] 15 farms → 3-farm clusters × 3 periods
+11:19:06 [INFO]   [SpatialTemporal] Subproblem size: 3 farms × 6 crops = 18 vars
+11:19:06 [WARNING]   [SpatialTemporal] WARNING: 18 vars > 16! May not fit cliques!
+11:19:06 [WARNING]   [SpatialTemporal] Recommendation: Reduce farms_per_cluster to 2
+11:19:06 [INFO]   [SpatialTemporal] Created 5 spatial clusters → 15 total subproblems
+11:19:06 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:19:07 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:19:22 [INFO]   [SpatialTemporal] Iteration 1: obj=10.7252 (improved!)
+11:19:22 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:19:32 [INFO]   [SpatialTemporal] Iteration 2: obj=10.8483 (improved!)
+11:19:32 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:19:41 [INFO]   [SpatialTemporal] Iteration 3: obj=10.7807
+11:19:41 [INFO]   [SpatialTemporal] Complete! 15 subproblems (18 vars each)
+11:19:41 [INFO]   [SpatialTemporal] Total QPU=0.536s, embed=0.0000s
+11:19:41 [INFO]   [SpatialTemporal] Final objective: 10.8483, violations: 0
+11:19:41 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:19:41 [INFO]   [SpatialTemporal] 15 farms → 3-farm clusters × 3 periods
+11:19:41 [INFO]   [SpatialTemporal] Subproblem size: 3 farms × 6 crops = 18 vars
+11:19:41 [WARNING]   [SpatialTemporal] WARNING: 18 vars > 16! May not fit cliques!
+11:19:41 [WARNING]   [SpatialTemporal] Recommendation: Reduce farms_per_cluster to 2
+11:19:41 [INFO]   [SpatialTemporal] Created 5 spatial clusters → 15 total subproblems
+11:19:41 [INFO]   [SpatialTemporal] Iterations: 5 (boundary coordination)
+11:19:41 [INFO]   [SpatialTemporal] Iteration 1/5: Initial independent solve
+11:19:57 [INFO]   [SpatialTemporal] Iteration 1: obj=10.6003 (improved!)
+11:19:57 [INFO]   [SpatialTemporal] Iteration 2/5: Refining with temporal/spatial context
+11:20:06 [INFO]   [SpatialTemporal] Iteration 2: obj=10.9013 (improved!)
+11:20:06 [INFO]   [SpatialTemporal] Iteration 3/5: Refining with temporal/spatial context
+11:20:16 [INFO]   [SpatialTemporal] Iteration 3: obj=10.9751 (improved!)
+11:20:16 [INFO]   [SpatialTemporal] Iteration 4/5: Refining with temporal/spatial context
+11:20:26 [INFO]   [SpatialTemporal] Iteration 4: obj=10.9731
+11:20:26 [INFO]   [SpatialTemporal] Iteration 5/5: Refining with temporal/spatial context
+11:20:35 [INFO]   [SpatialTemporal] Iteration 5: obj=10.9509
+11:20:35 [INFO]   [SpatialTemporal] Complete! 15 subproblems (18 vars each)
+11:20:35 [INFO]   [SpatialTemporal] Total QPU=0.536s, embed=0.0000s
+11:20:35 [INFO]   [SpatialTemporal] Final objective: 10.9751, violations: 0
+11:20:35 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:20:35 [INFO]   [SpatialTemporal] 15 farms → 2-farm clusters × 3 periods
+11:20:35 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:20:35 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:20:35 [INFO]   [SpatialTemporal] Created 8 spatial clusters → 24 total subproblems
+11:20:35 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:20:35 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:20:58 [INFO]   [SpatialTemporal] Iteration 1: obj=10.6709 (improved!)
+11:20:58 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:21:14 [INFO]   [SpatialTemporal] Iteration 2: obj=11.0579 (improved!)
+11:21:14 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:21:30 [INFO]   [SpatialTemporal] Iteration 3: obj=11.0660 (improved!)
+11:21:30 [INFO]   [SpatialTemporal] Complete! 24 subproblems (12 vars each)
+11:21:30 [INFO]   [SpatialTemporal] Total QPU=1.895s, embed=0.0000s
+11:21:30 [INFO]   [SpatialTemporal] Final objective: 11.0660, violations: 0
+11:21:30 [INFO] Loaded scenario 'rotation_medium_100': 20 plots × 6 foods = 126 variables
+11:21:30 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+11:21:30 [INFO]   Total area: 100.00 ha
+11:21:30 [INFO] Building rotation CQM with 20 farms × 6 families × 3 periods
+11:21:30 [INFO]   Rotation gamma: 0.3, Frustration: 82%, One-hot penalty: 2.0
+11:21:30 [INFO]   Rotation matrix: 88.9% negative synergies
+11:21:30 [INFO]   Spatial graph: 48 neighbor pairs (k=4)
+11:21:31 [INFO]   CQM built: 360 variables, 60 constraints
+11:26:32 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:26:32 [INFO]   [SpatialTemporal] 20 farms → 2-farm clusters × 3 periods
+11:26:32 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:26:32 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:26:32 [INFO]   [SpatialTemporal] Created 10 spatial clusters → 30 total subproblems
+11:26:32 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:26:32 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:26:57 [INFO]   [SpatialTemporal] Iteration 1: obj=14.2349 (improved!)
+11:26:57 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:27:16 [INFO]   [SpatialTemporal] Iteration 2: obj=14.4305 (improved!)
+11:27:16 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:27:34 [INFO]   [SpatialTemporal] Iteration 3: obj=14.5379 (improved!)
+11:27:34 [INFO]   [SpatialTemporal] Complete! 30 subproblems (12 vars each)
+11:27:34 [INFO]   [SpatialTemporal] Total QPU=0.853s, embed=0.0000s
+11:27:34 [INFO]   [SpatialTemporal] Final objective: 14.5379, violations: 0
+11:27:34 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:27:34 [INFO]   [SpatialTemporal] 20 farms → 2-farm clusters × 3 periods
+11:27:34 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:27:34 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:27:34 [INFO]   [SpatialTemporal] Created 10 spatial clusters → 30 total subproblems
+11:27:34 [INFO]   [SpatialTemporal] Iterations: 5 (boundary coordination)
+11:27:35 [INFO]   [SpatialTemporal] Iteration 1/5: Initial independent solve
+11:27:59 [INFO]   [SpatialTemporal] Iteration 1: obj=14.2466 (improved!)
+11:27:59 [INFO]   [SpatialTemporal] Iteration 2/5: Refining with temporal/spatial context
+11:28:18 [INFO]   [SpatialTemporal] Iteration 2: obj=14.4445 (improved!)
+11:28:18 [INFO]   [SpatialTemporal] Iteration 3/5: Refining with temporal/spatial context
+11:28:36 [INFO]   [SpatialTemporal] Iteration 3: obj=14.3883
+11:28:36 [INFO]   [SpatialTemporal] Iteration 4/5: Refining with temporal/spatial context
+11:28:54 [INFO]   [SpatialTemporal] Iteration 4: obj=14.2790
+11:28:54 [INFO]   [SpatialTemporal] Iteration 5/5: Refining with temporal/spatial context
+11:29:13 [INFO]   [SpatialTemporal] Iteration 5: obj=14.5467 (improved!)
+11:29:13 [INFO]   [SpatialTemporal] Complete! 30 subproblems (12 vars each)
+11:29:13 [INFO]   [SpatialTemporal] Total QPU=0.853s, embed=0.0000s
+11:29:13 [INFO]   [SpatialTemporal] Final objective: 14.5467, violations: 0
+11:29:13 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:29:13 [INFO]   [SpatialTemporal] 20 farms → 3-farm clusters × 3 periods
+11:29:13 [INFO]   [SpatialTemporal] Subproblem size: 3 farms × 6 crops = 18 vars
+11:29:13 [WARNING]   [SpatialTemporal] WARNING: 18 vars > 16! May not fit cliques!
+11:29:13 [WARNING]   [SpatialTemporal] Recommendation: Reduce farms_per_cluster to 2
+11:29:13 [INFO]   [SpatialTemporal] Created 7 spatial clusters → 21 total subproblems
+11:29:13 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:29:13 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:29:34 [INFO]   [SpatialTemporal] Iteration 1: obj=14.0802 (improved!)
+11:29:34 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:29:46 [INFO]   [SpatialTemporal] Iteration 2: obj=14.2738 (improved!)
+11:29:46 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:29:59 [INFO]   [SpatialTemporal] Iteration 3: obj=14.4103 (improved!)
+11:29:59 [INFO]   [SpatialTemporal] Complete! 21 subproblems (18 vars each)
+11:29:59 [INFO]   [SpatialTemporal] Total QPU=0.729s, embed=0.0000s
+11:29:59 [INFO]   [SpatialTemporal] Final objective: 14.4103, violations: 0
+11:29:59 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:29:59 [INFO]   [SpatialTemporal] 20 farms → 3-farm clusters × 3 periods
+11:29:59 [INFO]   [SpatialTemporal] Subproblem size: 3 farms × 6 crops = 18 vars
+11:29:59 [WARNING]   [SpatialTemporal] WARNING: 18 vars > 16! May not fit cliques!
+11:29:59 [WARNING]   [SpatialTemporal] Recommendation: Reduce farms_per_cluster to 2
+11:29:59 [INFO]   [SpatialTemporal] Created 7 spatial clusters → 21 total subproblems
+11:29:59 [INFO]   [SpatialTemporal] Iterations: 5 (boundary coordination)
+11:30:00 [INFO]   [SpatialTemporal] Iteration 1/5: Initial independent solve
+11:30:20 [INFO]   [SpatialTemporal] Iteration 1: obj=14.3074 (improved!)
+11:30:20 [INFO]   [SpatialTemporal] Iteration 2/5: Refining with temporal/spatial context
+11:30:33 [INFO]   [SpatialTemporal] Iteration 2: obj=14.3807 (improved!)
+11:30:33 [INFO]   [SpatialTemporal] Iteration 3/5: Refining with temporal/spatial context
+11:30:46 [INFO]   [SpatialTemporal] Iteration 3: obj=14.4240 (improved!)
+11:30:46 [INFO]   [SpatialTemporal] Iteration 4/5: Refining with temporal/spatial context
+11:30:59 [INFO]   [SpatialTemporal] Iteration 4: obj=14.3529
+11:30:59 [INFO]   [SpatialTemporal] Iteration 5/5: Refining with temporal/spatial context
+11:31:12 [INFO]   [SpatialTemporal] Iteration 5: obj=14.3130
+11:31:12 [INFO]   [SpatialTemporal] Complete! 21 subproblems (18 vars each)
+11:31:12 [INFO]   [SpatialTemporal] Total QPU=0.729s, embed=0.0000s
+11:31:12 [INFO]   [SpatialTemporal] Final objective: 14.4240, violations: 0
+11:31:12 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+11:31:12 [INFO]   [SpatialTemporal] 20 farms → 2-farm clusters × 3 periods
+11:31:12 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+11:31:12 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+11:31:12 [INFO]   [SpatialTemporal] Created 10 spatial clusters → 30 total subproblems
+11:31:12 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+11:31:12 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+11:31:39 [INFO]   [SpatialTemporal] Iteration 1: obj=14.0193 (improved!)
+11:31:39 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+11:31:59 [INFO]   [SpatialTemporal] Iteration 2: obj=14.5062 (improved!)
+11:31:59 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+11:32:19 [INFO]   [SpatialTemporal] Iteration 3: obj=14.5568 (improved!)
+11:32:19 [INFO]   [SpatialTemporal] Complete! 30 subproblems (12 vars each)
+11:32:19 [INFO]   [SpatialTemporal] Total QPU=2.374s, embed=0.0000s
+11:32:19 [INFO]   [SpatialTemporal] Final objective: 14.5568, violations: 0
+✓ obj=7.1747, time=300.255s
+
+--- Baseline (Phase 2) ---
+✓ obj=6.8748, gap=4.2%, time=36.248s
+  QPU=0.427s, embed=0.0000s, violations=0
+  Subproblems: 15 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (8.28x speedup)
+
+--- Increased Iterations (5x) ---
+✓ obj=6.8726, gap=4.2%, time=52.530s
+  QPU=0.427s, embed=0.0000s, violations=0
+  Subproblems: 15 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (5.72x speedup)
+
+--- Larger Clusters ---
+✓ obj=6.6371, gap=7.5%, time=28.041s
+  QPU=0.406s, embed=0.0000s, violations=0
+  Subproblems: 12 × 18 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (10.71x speedup)
+
+--- Hybrid: More Iterations + Larger Clusters ---
+✓ obj=6.6787, gap=6.9%, time=43.060s
+  QPU=0.406s, embed=0.0000s, violations=0
+  Subproblems: 12 × 18 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (6.97x speedup)
+
+--- High Reads (500) ---
+✓ obj=6.9321, gap=3.4%, time=36.543s
+  QPU=1.187s, embed=0.0000s, violations=0
+  Subproblems: 15 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (8.22x speedup)
+
+====================================================================================================
+Scale: 15 farms × 6 crops × 3 periods
+====================================================================================================
+Problem size: 270 variables
+
+--- Ground Truth (Gurobi) ---
+✓ obj=11.5266, time=300.099s
+
+--- Baseline (Phase 2) ---
+✓ obj=11.0266, gap=4.3%, time=51.178s
+  QPU=0.682s, embed=0.0000s, violations=0
+  Subproblems: 24 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (5.86x speedup)
+
+--- Increased Iterations (5x) ---
+✓ obj=11.0432, gap=4.2%, time=80.282s
+  QPU=0.682s, embed=0.0000s, violations=0
+  Subproblems: 24 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (3.74x speedup)
+
+--- Larger Clusters ---
+✓ obj=10.8483, gap=5.9%, time=34.505s
+  QPU=0.536s, embed=0.0000s, violations=0
+  Subproblems: 15 × 18 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (8.70x speedup)
+
+--- Hybrid: More Iterations + Larger Clusters ---
+✓ obj=10.9751, gap=4.8%, time=53.876s
+  QPU=0.536s, embed=0.0000s, violations=0
+  Subproblems: 15 × 18 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (5.57x speedup)
+
+--- High Reads (500) ---
+✓ obj=11.0660, gap=4.0%, time=55.587s
+  QPU=1.895s, embed=0.0000s, violations=0
+  Subproblems: 24 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (5.40x speedup)
+
+====================================================================================================
+Scale: 20 farms × 6 crops × 3 periods
+====================================================================================================
+Problem size: 360 variables
+
+--- Ground Truth (Gurobi) ---
+✓ obj=14.8938, time=300.146s
+
+--- Baseline (Phase 2) ---
+✓ obj=14.5379, gap=2.4%, time=62.881s
+  QPU=0.853s, embed=0.0000s, violations=0
+  Subproblems: 30 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (4.77x speedup)
+
+--- Increased Iterations (5x) ---
+✓ obj=14.5467, gap=2.3%, time=98.406s
+  QPU=0.853s, embed=0.0000s, violations=0
+  Subproblems: 30 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (3.05x speedup)
+
+--- Larger Clusters ---
+✓ obj=14.4103, gap=3.2%, time=46.552s
+  QPU=0.729s, embed=0.0000s, violations=0
+  Subproblems: 21 × 18 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (6.45x speedup)
+
+--- Hybrid: More Iterations + Larger Clusters ---
+✓ obj=14.4240, gap=3.2%, time=72.223s
+  QPU=0.729s, embed=0.0000s, violations=0
+  Subproblems: 21 × 18 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (4.16x speedup)
+
+--- High Reads (500) ---
+✓ obj=14.5568, gap=2.3%, time=67.003s
+  QPU=2.374s, embed=0.0000s, violations=0
+  Subproblems: 30 × 12 vars
+  🌟 EXCELLENT QUALITY (gap < 10%)
+  ⚡ FASTER THAN GUROBI (4.48x speedup)
+
+====================================================================================================
+PHASE 3 OPTIMIZATION ANALYSIS
+====================================================================================================
+
+10 farms:
+  (No ground truth available)
+
+15 farms:
+  (No ground truth available)
+
+20 farms:
+  (No ground truth available)
+
+====================================================================================================
+PHASE 3 RECOMMENDATIONS
+====================================================================================================
+Based on the optimization analysis:
+1. For best quality (lowest gap): Use strategy with highest iterations and coordination
+2. For best speed: Use baseline with minimal iterations but good clustering
+3. For balanced performance: Consider hybrid approaches with moderate parameters
+4. For large-scale problems (>15 farms): Increase farms_per_cluster to reduce subproblems
+5. For publication results: Use the 'Best Balanced' strategy for each scale
+
+====================================================================================================
+Roadmap Phase 3 results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase3_20251211_113219.json
+====================================================================================================

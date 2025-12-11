@@ -48,6 +48,31 @@ applyTo: '**'
 - **Food Groups Data Structure** (CRITICAL):
   - `food_groups = {group_name: [list_of_foods]}`  ← Lists only
   - `food_group_constraints = {group_name: {'min_foods': X, 'max_foods': Y}}`  ← Constraint params
+
+## Quantum Speedup Roadmap (Dec 10, 2024)
+- **D-Wave Token Status**: Current token `DEV-45FS-*` is INVALID/EXPIRED
+  - Get new token from: https://cloud.dwavesys.com/leap/
+  - Token set via `--token` argument or `DWAVE_API_TOKEN` env var
+- **Phase 1 Partial Results** (Authentication blocked):
+  - ✅ Gurobi ground truth: Works successfully
+  - ✅ Direct QPU embedding: Successfully found embedding (4.5s, 498 physical qubits, max chain 8)
+  - ❌ Clique QPU: Authentication failed (invalid token)
+  - ❌ Rotation tests: Not completed due to token issue
+- **Roadmap Implementation Status**:
+  - Phase 1 (Proof of Concept): CODED ✅ (needs valid token to run)
+  - Phase 2 (Scaling Validation): CODED ✅ (5, 10, 15 farms)
+  - Phase 3 (Optimization): **CODED ✅ (10, 15, 20 farms, 5 optimization strategies)**
+- **Phase 3 Implementation** (Dec 10, 2024):
+  - 5 optimization strategies: Baseline, 5x Iterations, Larger Clusters, Hybrid, High Reads
+  - Automatic best strategy identification (quality, speed, balanced)
+  - Comprehensive parameter space exploration
+  - Publication-ready benchmarking framework
+  - Files: `PHASE3_IMPLEMENTATION_SUMMARY.md`, `ROADMAP_EXECUTION_GUIDE.md`
+- **Next Actions**:
+  1. Obtain valid D-Wave token
+  2. Run Phase 1 to validate
+  3. Run Phase 2 to find crossover
+  4. Run Phase 3 to optimize parameters
   - `load_food_data()` returns: `(scenario_data, foods, food_groups, config)`
   - Access pattern: `foods_in_group = food_groups.get(group_name, [])`
   - Constraints: `constraints = config['parameters']['food_group_constraints'][group_name]`

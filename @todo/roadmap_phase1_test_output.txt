@@ -1,0 +1,125 @@
+10:09:49 [INFO] Loaded scenario 'tiny_24': 4 plots × 5 foods = 25 variables
+10:09:49 [INFO]   Food groups: ['Grains', 'Legumes', 'Vegetables']
+10:09:49 [INFO]   Total area: 100.01 ha
+10:09:49 [INFO] Building SIMPLE binary CQM: 4 farms × 5 crops (no rotation/synergy)
+10:09:49 [INFO]   Simple binary CQM: 20 variables, 4 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.65s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+  ✓ neal (SimulatedAnnealing) available for comparison
+  ✓ Louvain community detection available
+  ✓ Spectral clustering available
+  D-Wave imports: 2.81s
+[3/5] Loading configuration...
+  Output directory: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results
+[4/5] Setting up data loading...
+[5/5] Starting benchmark...
+  D-Wave token configured (length: 45)
+
+====================================================================================================
+RUNNING ROADMAP BENCHMARK - PHASE 1
+====================================================================================================
+
+
+====================================================================================================
+ROADMAP PHASE 1: PROOF OF CONCEPT
+Testing: Simple binary and rotation scenarios with clique-friendly sizes
+Goal: Verify decomposition works and fits cliques
+Success Criteria: Gap <20%, QPU <1s, zero embedding overhead
+====================================================================================================
+
+====================================================================================================
+Test: Simple Binary (tiny_24: 4 farms, 5 foods, NO rotation)
+====================================================================================================
+Problem size: 20 variables, 4 constraints
+
+--- Method: ground_truth ---
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+10:09:49 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=50.0)...
+10:09:49 [INFO]   [DirectQPU] BQM: 24 vars, 60 interactions
+10:09:49 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+10:09:50 [INFO]   [DirectQPU] Found embedding: 32 physical qubits, max chain 2, in 0.1s
+10:09:50 [INFO]   [DirectQPU] Sampling on QPU (1000 reads)...
+10:09:52 [INFO]   [DirectQPU] Success! obj=0.5145, QPU_access=0.163s, embed=0.12s
+10:09:52 [INFO]   [CliqueQPU] Converting CQM to BQM (lagrange=50.0)...
+10:09:52 [INFO]   [CliqueQPU] BQM: 24 vars, 60 interactions
+10:09:52 [WARNING]   [CliqueQPU] Problem too large (24 vars) for guaranteed clique embedding
+10:09:52 [WARNING]   [CliqueQPU] DWaveCliqueSampler works best for n<=16, may use chains for n>16
+10:09:52 [INFO]   [CliqueQPU] Sampling with DWaveCliqueSampler (1000 reads)...
+10:09:54 [INFO]   [CliqueQPU] Success! obj=0.5025, QPU_access=0.223s, embed=0.000s, chains=1.84%
+10:09:54 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+10:09:54 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+10:09:54 [INFO]   Total area: 100.00 ha
+10:09:54 [INFO] Building rotation CQM with 5 farms × 6 families × 3 periods
+10:09:54 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+10:09:54 [INFO]   Rotation matrix: 86.1% negative synergies
+10:09:54 [INFO]   Spatial graph: 10 neighbor pairs (k=4)
+10:09:54 [INFO]   CQM built: 90 variables, 15 constraints
+10:11:55 [INFO]   [CliqueDecomp] Decomposing 5 farms into independent subproblems...
+10:11:55 [INFO]   [CliqueDecomp] Each farm: 6 families × 3 periods = 18 variables
+10:11:55 [INFO]   [CliqueDecomp] Iterations: 3 (1=independent, 3+=coordinated)
+10:11:58 [INFO]   [CliqueDecomp] Farm 1/5: 18 vars, QPU=0.036s, embed=0.0000s
+10:11:59 [INFO]   [CliqueDecomp] Farm 2/5: 18 vars, QPU=0.036s, embed=0.0000s
+10:12:01 [INFO]   [CliqueDecomp] Farm 3/5: 18 vars, QPU=0.036s, embed=0.0000s
+10:12:03 [INFO]   [CliqueDecomp] Farm 4/5: 18 vars, QPU=0.036s, embed=0.0000s
+10:12:05 [INFO]   [CliqueDecomp] Farm 5/5: 18 vars, QPU=0.036s, embed=0.0000s
+10:12:05 [INFO]   [CliqueDecomp] Iteration 1: obj=4.0121 (improved!)
+10:12:05 [INFO]   [CliqueDecomp] Iteration 2/3: Refining with neighbor context...
+10:12:08 [INFO]   [CliqueDecomp] Iteration 2: obj=4.0205 (improved!)
+10:12:08 [INFO]   [CliqueDecomp] Iteration 3/3: Refining with neighbor context...
+10:12:11 [INFO]   [CliqueDecomp] Iteration 3: obj=3.9885 (no improvement)
+10:12:11 [INFO]   [CliqueDecomp] Complete! 5 subproblems, total QPU=0.179s, embed=0.000s
+10:12:11 [INFO]   [CliqueDecomp] Combined objective: 4.0205, violations: 0
+10:12:11 [INFO]   [SpatialTemporal] Strategy 1: Spatial + Temporal Decomposition
+10:12:11 [INFO]   [SpatialTemporal] 5 farms → 2-farm clusters × 3 periods
+10:12:11 [INFO]   [SpatialTemporal] Subproblem size: 2 farms × 6 crops = 12 vars
+10:12:11 [INFO]   [SpatialTemporal] ✓ 12 ≤ 16: FITS CLIQUES (zero embedding overhead!)
+10:12:11 [INFO]   [SpatialTemporal] Created 3 spatial clusters → 9 total subproblems
+10:12:11 [INFO]   [SpatialTemporal] Iterations: 3 (boundary coordination)
+10:12:12 [INFO]   [SpatialTemporal] Iteration 1/3: Initial independent solve
+10:12:23 [INFO]   [SpatialTemporal] Iteration 1: obj=3.6757 (improved!)
+10:12:23 [INFO]   [SpatialTemporal] Iteration 2/3: Refining with temporal/spatial context
+10:12:29 [INFO]   [SpatialTemporal] Iteration 2: obj=3.8004 (improved!)
+10:12:29 [INFO]   [SpatialTemporal] Iteration 3/3: Refining with temporal/spatial context
+10:12:35 [INFO]   [SpatialTemporal] Iteration 3: obj=3.7616
+10:12:35 [INFO]   [SpatialTemporal] Complete! 9 subproblems (12 vars each)
+10:12:35 [INFO]   [SpatialTemporal] Total QPU=0.255s, embed=0.0000s
+10:12:35 [INFO]   [SpatialTemporal] Final objective: 3.8004, violations: 0
+✓ Success: obj=0.4945, wall=0.045s, QPU=0.000s, embed=0.0000s, violations=0
+
+--- Method: direct_qpu ---
+  Connected to QPU: Advantage_system4.1
+  QPU topology: 5627 qubits
+✓ Success: obj=0.5145, wall=2.623s, QPU=0.163s, embed=0.1234s, violations=3
+
+--- Method: clique_qpu ---
+✓ Success: obj=0.5025, wall=2.359s, QPU=0.223s, embed=0.0000s, violations=3
+
+====================================================================================================
+Test: Rotation (rotation_micro_25: 5 farms, 6 crops, 3 periods)
+====================================================================================================
+Problem size: 90 variables, 15 constraints
+
+--- Method: ground_truth ---
+✓ Success: obj=4.0782, wall=120.041s, QPU=0.000s, embed=0.0000s, violations=0
+
+--- Method: clique_decomp ---
+✓ Success: obj=4.0205, wall=15.920s, QPU=0.179s, embed=0.0000s, violations=0
+
+--- Method: spatial_temporal ---
+✓ Success: obj=3.8004, wall=23.778s, QPU=0.255s, embed=0.0000s, violations=0
+
+====================================================================================================
+Roadmap Phase 1 results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase1_20251211_101235.json
+====================================================================================================

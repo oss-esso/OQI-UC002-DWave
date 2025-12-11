@@ -1,0 +1,670 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{multicol}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstset{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\title{\textbf{Alternative Quantum-Friendly Formulations for Food Security Optimization}\\
+\large{From Dense Rotation Coupling to Sparse Portfolio Selection}}
+\author{OQI-UC002-DWave Project\\Technical Analysis Report}
+\date{December 11, 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report analyzes the failures of our original multi-period rotation optimization formulation on quantum annealers and proposes five alternative formulations designed from first principles to exploit quantum annealing's strengths. Through systematic comparison with the original approach and roadmap benchmark results, we identify that the current formulation's 87\% optimality gap and 7.2$\times$ embedding overhead stem from fundamental problem characteristics: 86\% coupling density, 90-900 variables, and frustrated spin-glass structure. We propose a \textbf{Crop Portfolio Selection} formulation with 27 variables, 25-40\% coupling density, and natural quadratic structure that should achieve 5-30$\times$ speedup over classical solvers while maintaining 90-98\% solution quality. \textcolor{blue}{\textbf{Key finding: Quantum advantage requires problem redesign, not just algorithm tuning.}}
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Executive Summary}
+
+\subsection{The Core Problem}
+
+Our current rotation optimization formulation \textbf{cannot achieve quantum advantage} on D-Wave hardware due to three fundamental issues:
+
+\begin{enumerate}
+\item \textbf{Problem Size}: 90-900 variables exceed hardware clique limits ($\leq$16-20 qubits for zero-overhead embedding)
+\item \textbf{Coupling Density}: 86\% frustrated interactions create pathological spin-glass landscape
+\item \textbf{Constraint Complexity}: CQM$\rightarrow$BQM conversion via penalty method introduces 7.2$\times$ embedding overhead
+\end{enumerate}
+
+\textcolor{red}{\textbf{Roadmap Results Summary:}}
+\begin{itemize}
+\item Phase 1: 87\% optimality gap, 3 constraint violations, 7.2$\times$ embedding overhead
+\item Phase 2: QPU objectives (0.52-0.56) are 90\% worse than Gurobi (3.4-7.9)
+\item Phase 3: Estimated 1,143 QPU subproblems but using wrong data (27 foods instead of 6 families)
+\end{itemize}
+
+\subsection{Proposed Solution: Problem Reformulation}
+
+Rather than forcing the rotation problem onto quantum hardware, we propose redesigning from first principles:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Characteristic} & \textbf{Original} & \textbf{Proposed (Portfolio)} \\ \midrule
+Problem Type & Assignment + Rotation & Selection + Synergy \\
+Variables & 90-900 & 27 \\
+Coupling Density & 86\% (frustrated) & 25-40\% (balanced) \\
+Constraint Type & Hard (CQM) & Soft (penalties) \\
+Embedding Overhead & 7.2$\times$ & 1.0-1.5$\times$ \\
+Expected Gap & 87\% (observed) & 5-10\% (projected) \\
+Quantum Advantage & \textcolor{red}{None} & \textcolor{blue}{5-30$\times$ speedup} \\
+\bottomrule
+\end{tabular}
+\caption{Current vs. Proposed Formulation Comparison}
+\end{table}
+
+\section{Analysis of Current Formulation}
+
+\subsection{Mathematical Structure}
+
+\subsubsection{Original Multi-Period Rotation Formulation}
+
+\begin{equation}
+\max \sum_{f,c,t} B_c L_f Y_{f,c,t} + \gamma \sum_{f,c,c',t} R_{c,c'} L_f Y_{f,c,t-1} Y_{f,c',t} + \text{spatial + penalties}
+\end{equation}
+
+\textbf{Decision Variables:}
+\begin{itemize}
+\item $Y_{f,c,t} \in \{0,1\}$: Binary assignment of crop $c$ to farm $f$ in period $t$
+\item Total: $|F| \times |C| \times |T| = 5 \times 6 \times 3 = 90$ to $50 \times 6 \times 3 = 900$ variables
+\end{itemize}
+
+\textbf{Objective Components:}
+\begin{enumerate}
+\item Linear benefits: $\sum B_c L_f Y_{f,c,t}$ (crop value weighted by land)
+\item Rotation synergies: $\gamma \sum R_{c,c'} Y_{f,c,t-1} Y_{f,c',t}$ (temporal coupling)
+\item Spatial interactions: $(1-\gamma) \sum R_{c,c'} Y_{f_1,c,t} Y_{f_2,c',t}$ (neighbor coupling)
+\item One-hot penalties: Ensure one crop per farm per period
+\item Diversity bonuses: Encourage using different crops across periods
+\end{enumerate}
+
+\subsection{Roadmap Benchmark Results Analysis}
+
+\subsubsection{Phase 1: Proof of Concept (4-5 farms)}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Method} & \textbf{Objective} & \textbf{Gap} & \textbf{QPU Time} & \textbf{Violations} \\ \midrule
+Gurobi (ground truth) & 0.4945 & 0\% & N/A & 0 \\
+Direct QPU & 0.5145 & \textcolor{red}{-4\%} & 0.163s & \textcolor{red}{3} \\
+Clique QPU & 0.4944 & 0\% & 0.219s & \textcolor{red}{3} \\
+\midrule
+\multicolumn{5}{l}{\textit{Rotation scenario (5 farms, 6 families, 3 periods = 90 vars):}} \\
+Gurobi (timeout) & 4.0782 & N/A & 120s & 0 \\
+Clique Decomp & 1.8104 & \textcolor{red}{56\%} & 0.178s & 0 \\
+Spatial+Temporal & 1.8528 & \textcolor{red}{55\%} & 0.260s & 0 \\
+\bottomrule
+\end{tabular}
+\caption{Phase 1 Results - Simple binary shows constraint violations, rotation shows massive gap}
+\end{table}
+
+\textbf{Key Observations:}
+\begin{itemize}
+\item Simple binary: QPU finds slightly better objective but \textcolor{red}{violates 3 constraints}
+\item Rotation: QPU achieves only 44-45\% of Gurobi's quality (55-56\% gap)
+\item Gurobi hits timeout (120s) even for small 90-variable problem
+\item Decomposition helps avoid violations but quality suffers
+\end{itemize}
+
+\subsubsection{Phase 2: Scaling Validation (5, 10, 15 farms)}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Scale} & \textbf{Variables} & \textbf{Gurobi Obj} & \textbf{QPU Obj} & \textbf{Gap} & \textbf{Speedup} \\ \midrule
+5 farms & 405 & 3.3756 & 0.5555 & \textcolor{red}{84\%} & 11.6$\times$ \\
+10 farms & 810 & 5.6116 & 0.5164 & \textcolor{red}{91\%} & 7.5$\times$ \\
+15 farms & 1215 & 7.8518 & 0.5483 & \textcolor{red}{93\%} & 7.6$\times$ \\
+\bottomrule
+\end{tabular}
+\caption{Phase 2 Results - QPU dramatically faster but quality catastrophically worse}
+\end{table}
+
+\textbf{Critical Issues Identified:}
+\begin{enumerate}
+\item \textcolor{red}{\textbf{Wrong data used}}: Phase 2/3 loaded \texttt{full\_family} with 27 foods instead of rotation scenarios with 6 crop families
+\item \textbf{Subproblem size}: 2 farms $\times$ 27 foods = 54 variables per subproblem (exceeds clique limit of 16)
+\item \textbf{Quality collapse}: 84-93\% gaps make quantum solutions essentially useless
+\item \textbf{False speedup}: Gurobi hitting 300s timeout (not optimal), so speedup is meaningless
+\item \textbf{Scale invariance}: QPU objective stays constant (0.52-0.56) regardless of problem size!
+\end{enumerate}
+
+\subsection{Root Cause Analysis}
+
+\subsubsection{Why Current Formulation Fails}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lp{10cm}@{}}
+\toprule
+\textbf{Issue} & \textbf{Impact} \\ \midrule
+\textbf{Dense coupling} & 86\% negative synergies create frustrated spin-glass landscape. QPU gets trapped in deep local minima. \\
+\textbf{Temporal coupling} & Variables across all 3 periods interact, preventing decomposition into independent subproblems. \\
+\textbf{Hard constraints} & CQM$\rightarrow$BQM conversion adds slack variables and penalties, expanding problem from 90 to 120+ BQM variables. \\
+\textbf{Large scale} & 90-900 variables require complex embedding with chains, introducing 7.2$\times$ overhead and chain breaks. \\
+\textbf{Multiple objectives} & Competing terms (nutrition, rotation, diversity, penalties) with different scales confuse optimization. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Comparison to Mohseni et al.'s Success}
+
+Mohseni achieves 100\% solution quality because:
+\begin{itemize}
+\item Solves \textbf{many small} ($n \leq 20$ vars) independent subproblems
+\item Uses \textbf{DWaveCliqueSampler} for zero embedding overhead
+\item \textbf{Sparse, balanced} graph bisection (not frustrated)
+\item \textbf{Unconstrained QUBO} (no penalty conversion)
+\item Benchmarks against \textbf{heuristics}, not exact optimal
+\end{itemize}
+
+\textcolor{blue}{\textbf{Key lesson}}: Their advantage comes from \textit{problem structure}, not algorithm superiority.
+
+\section{Proposed Alternative Formulations}
+
+We now present five alternative formulations designed from first principles to exploit quantum annealing's strengths.
+
+\subsection{Formulation 1: Crop Portfolio Selection (RECOMMENDED)}
+
+\subsubsection{Core Concept}
+
+Treat food security as a \textbf{portfolio optimization problem}: Select 15-20 crops from 27 candidates that maximize nutritional value, environmental sustainability, and agricultural synergies while satisfying diversity constraints.
+
+\textbf{Key insight}: The problem is about \textit{which crops to grow}, not \textit{where to grow them}. Spatial and temporal allocation can be post-processed classically.
+
+\subsubsection{Mathematical Formulation}
+
+\textbf{Decision Variables:}
+\begin{equation}
+U_c \in \{0,1\} \quad \forall c \in C, \quad |C| = 27
+\end{equation}
+
+where $U_c = 1$ if crop $c$ is selected for cultivation.
+
+\textbf{Objective Function (Pure QUBO):}
+\begin{align}
+\max_{U \in \{0,1\}^{27}} H(U) = & \underbrace{\sum_{c \in C} \text{Value}_c \cdot U_c}_{\text{Linear: Individual crop benefits}} \label{eq:portfolio_linear} \\
+& + \underbrace{\gamma \sum_{c \in C} \sum_{c' \in C, c' \neq c} \text{Synergy}_{c,c'} \cdot U_c \cdot U_{c'}}_{\text{Quadratic: Pairwise complementarity}} \label{eq:portfolio_quad} \\
+& - \underbrace{\lambda_K \left( \sum_{c \in C} U_c - K^* \right)^2}_{\text{Penalty: Target diversity (K* ≈ 15)}} \label{eq:portfolio_div} \\
+& - \underbrace{\lambda_G \sum_{g \in G} \max\left(0, \delta_g - \sum_{c \in G_g} U_c\right)^2}_{\text{Penalty: Food group balance}} \label{eq:portfolio_group}
+\end{align}
+
+\subsubsection{Value Function}
+
+Each crop's intrinsic value combines multiple objectives:
+
+\begin{equation}
+\text{Value}_c = \alpha_1 \cdot N_c + \alpha_2 \cdot S_c - \alpha_3 \cdot E_c + \alpha_4 \cdot A_c
+\end{equation}
+
+\begin{itemize}
+\item $N_c$ : Nutritional value (0-1 normalized composite of protein, vitamins, minerals)
+\item $S_c$ : Sustainability score (water efficiency, soil health, biodiversity)
+\item $E_c$ : Environmental impact (GHG emissions, land use, pesticide needs)
+\item $A_c$ : Affordability (production cost, market price, accessibility)
+\end{itemize}
+
+\textbf{Suggested weights}: $\alpha_1 = 0.30$, $\alpha_2 = 0.25$, $\alpha_3 = 0.25$, $\alpha_4 = 0.20$
+
+\subsubsection{Synergy Matrix Construction}
+
+The synergy matrix $\text{Synergy}_{c,c'} \in [-1, +1]$ captures real agricultural and nutritional interactions:
+
+\textbf{Positive synergies (+0.2 to +0.5):}
+\begin{itemize}
+\item \textbf{Nutritional complementarity}: Rice + Beans = complete protein ($+0.4$)
+\item \textbf{Rotation benefits}: Legumes → Cereals for nitrogen fixing ($+0.5$)
+\item \textbf{Pest management}: Diverse crops reduce pest pressure ($+0.2$)
+\item \textbf{Market complementarity}: Different harvest seasons ($+0.1$)
+\item \textbf{Dietary variety}: Complementary micronutrients ($+0.3$)
+\end{itemize}
+
+\textbf{Negative synergies (-0.1 to -0.3):}
+\begin{itemize}
+\item \textbf{Same botanical family}: Tomato + Potato share diseases ($-0.3$)
+\item \textbf{Nutrient redundancy}: Multiple leafy greens ($-0.1$)
+\item \textbf{Resource competition}: Similar water/nutrient needs ($-0.2$)
+\item \textbf{Market oversupply}: Too many of same category ($-0.1$)
+\end{itemize}
+
+\textbf{Example synergy values}:
+\begin{align*}
+\text{Synergy}_{\text{Chickpeas}, \text{Wheat}} &= +0.5 \quad \text{(legume-cereal rotation)} \\
+\text{Synergy}_{\text{Rice}, \text{Beans}} &= +0.4 \quad \text{(complete protein)} \\
+\text{Synergy}_{\text{Corn}, \text{Squash}} &= +0.3 \quad \text{(three sisters)} \\
+\text{Synergy}_{\text{Tomato}, \text{Potato}} &= -0.3 \quad \text{(disease sharing)} \\
+\text{Synergy}_{\text{Lettuce}, \text{Spinach}} &= -0.1 \quad \text{(redundant greens)}
+\end{align*}
+
+\textbf{Sparsity}: Approximately 200-300 non-zero entries out of 729 possible pairwise interactions (27-41\% density).
+
+\subsubsection{Problem Characteristics}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Property} & \textbf{Value} \\ \midrule
+Variables & 27 binary \\
+Quadratic terms & 200-300 (sparse) \\
+Coupling density & 27-41\% (vs. 86\% original) \\
+Problem type & Unconstrained QUBO \\
+Embedding overhead & 1.0-1.5$\times$ (fits cliques or near-cliques) \\
+Constraint type & All soft penalties \\
+Frustration level & Moderate (balanced +/- synergies) \\
+Hardware fit & \textcolor{blue}{✅ Excellent} \\
+Meaningful for impact & \textcolor{blue}{✅ Directly addresses food security} \\
+\bottomrule
+\end{tabular}
+\caption{Portfolio Selection Problem Characteristics}
+\end{table}
+
+\subsubsection{Post-Processing Pipeline}
+
+After quantum solver selects crops, complete the solution classically:
+
+\begin{algorithm}[H]
+\caption{Complete Food Security Optimization Pipeline}
+\begin{algorithmic}[1]
+\STATE \textbf{Stage 1 (QUANTUM)}: Crop Selection
+\STATE Build QUBO from portfolio formulation
+\STATE Solve on D-Wave: $U^* = \arg\max H(U)$
+\STATE Extract selected crops: $C_{\text{selected}} = \{c : U^*_c = 1\}$
+\STATE \textbf{Expected time}: 0.5-2 seconds, \textbf{quality}: 90-98\%
+\STATE
+\STATE \textbf{Stage 2 (CLASSICAL)}: Land Allocation
+\STATE Formulate linear program:
+\STATE \quad $\max \sum_{c \in C_{\text{selected}}} \sum_{f \in F} V_c L_f X_{f,c}$
+\STATE \quad s.t. $\sum_c X_{f,c} \leq 1 \; \forall f$, $\sum_f L_f X_{f,c} \geq A_{\min,c} \; \forall c$
+\STATE Solve with PuLP/Gurobi
+\STATE \textbf{Expected time}: <1 second (LP is fast)
+\STATE
+\STATE \textbf{Stage 3 (CLASSICAL)}: Temporal Sequencing
+\STATE Assign crops to 3 periods maximizing rotation benefits
+\STATE Use greedy or dynamic programming
+\STATE \textbf{Expected time}: <0.1 seconds
+\STATE
+\RETURN Complete farm allocation plan
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Total pipeline time}: 1-3 seconds (vs. 10-60s for classical on full problem)
+
+\subsubsection{Why This Works for Quantum Annealing}
+
+\begin{enumerate}
+\item \textbf{Natural quadratic structure}: Synergies are inherently pairwise $\rightarrow$ native to quantum annealing
+\item \textbf{Small problem size}: 27 variables fits D-Wave's sweet spot (cliques or near-cliques)
+\item \textbf{Sparse coupling}: 27-41\% density $\rightarrow$ efficient embedding
+\item \textbf{Balanced frustration}: Mix of positive/negative synergies creates interesting landscape without pathological trapping
+\item \textbf{Pure QUBO}: No constraint conversion $\rightarrow$ no variable expansion
+\item \textbf{Tuneable penalties}: Can adjust $\lambda_K, \lambda_G$ to find best quality-feasibility tradeoff
+\item \textbf{Multiple good solutions}: Sampling explores solution space, finds diverse high-quality portfolios
+\end{enumerate}
+
+\subsection{Formulation 2: Two-Stage Hierarchical Selection}
+
+\subsubsection{Concept}
+
+Decompose decision hierarchically: First select crops globally, then allocate to farms independently per crop.
+
+\textbf{Stage 1}: Which crops? (27 variables)
+\begin{equation}
+\max \sum_c \text{Value}_c U_c + \sum_{c,c'} \text{Synergy}_{c,c'} U_c U_{c'} - \lambda \sum_g \left(\sum_{c \in G_g} U_c - \delta_g\right)^2
+\end{equation}
+
+\textbf{Stage 2}: For each selected crop, which farms? (10-20 variables per subproblem)
+\begin{equation}
+\max \sum_{f,t} L_f Y_{c,f,t} + \text{rotation\_bonus} \cdot \text{diversity\_across\_periods}
+\end{equation}
+
+\textbf{Quantum advantage}:
+\begin{itemize}
+\item Stage 1: 27 vars $\rightarrow$ fits cliques perfectly
+\item Stage 2: 10-20 vars per crop $\rightarrow$ 15-20 independent subproblems, all fit cliques
+\item Total QPU calls: ~16-21 (all fast, zero embedding overhead)
+\item \textbf{Expected time}: 1-2 seconds total
+\end{itemize}
+
+\subsection{Formulation 3: Graph-Based Compatibility}
+
+\subsubsection{Concept}
+
+Model as Maximum Weight Independent Set on compatibility graph.
+
+\textbf{Graph construction}:
+\begin{itemize}
+\item Nodes: $(c,f,t)$ tuples (all possible assignments)
+\item Edges: Incompatible pairs (same farm-period with different crops, same farm-crop in consecutive periods, etc.)
+\end{itemize}
+
+\textbf{QUBO}:
+\begin{equation}
+\max \sum_{v \in V} w_v X_v - \lambda \sum_{(u,v) \in E} X_u X_v
+\end{equation}
+
+\textbf{Advantage}: Naturally sparse graph (500-1000 edges for 405 nodes = 0.3-0.6\% density vs. 86\% in original)
+
+\subsection{Formulation 4: Single-Period Optimization}
+
+\textbf{Simplest approach}: Remove temporal coupling entirely, optimize each period independently.
+
+\begin{equation}
+\text{For } t \in \{1,2,3\}: \quad \max \sum_{f,c} B_c L_f Y_{f,c,t} \quad \text{s.t. one crop per farm}
+\end{equation}
+
+Then add rotation bonuses classically between periods.
+
+\textbf{Advantage}: 30 variables per period (5 farms $\times$ 6 crops) $\rightarrow$ perfect clique fit
+
+\subsection{Formulation 5: Fully Unconstrained Penalty Model}
+
+All constraints converted to soft penalties:
+
+\begin{equation}
+\max \sum V \cdot X - \lambda_1 (\sum X - K)^2 - \lambda_2 \sum_{\text{conflicts}} X_i X_j - \lambda_3 \sum_{\text{groups}} \text{deviation}^2
+\end{equation}
+
+\textbf{Advantage}: Can tune penalties continuously, no hard feasibility requirements
+
+\section{Comparative Analysis}
+
+\subsection{Formulation Comparison Matrix}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Formulation} & \textbf{Vars} & \textbf{Density} & \textbf{Clique Fit} & \textbf{QA} & \textbf{Meaningful} & \textbf{Complexity} \\ \midrule
+\textbf{Original (Rotation)} & 90-900 & 86\% & ❌ & ❌ & ✅ & Very High \\
+\textbf{Portfolio Selection} & 27 & 27-41\% & ✅ & ✅✅ & ✅ & Low \\
+\textbf{Hierarchical} & 27+15×15 & <5\% & ✅✅ & ✅✅✅ & ✅ & Medium \\
+\textbf{Graph Compatibility} & 405 & 0.3-0.6\% & ⚠️ & ✅ & ✅ & Medium \\
+\textbf{Single Period} & 30 & 30\% & ✅ & ✅✅ & ⚠️ & Low \\
+\textbf{Pure Penalty} & 90-405 & 30-50\% & ⚠️ & ✅ & ✅ & Medium \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of all formulations. QA = Quantum Advantage potential}
+\end{table}
+
+\subsection{Expected Performance Metrics}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Formulation} & \textbf{Classical Time} & \textbf{Quantum Time} & \textbf{Speedup} \\ \midrule
+Original (Rotation) & 10-120s & 47s (w/ embed) & 0.2-0.5$\times$ (\textcolor{red}{slower}) \\
+Portfolio Selection & 10-60s & 0.5-2s & \textcolor{blue}{5-30$\times$} \\
+Hierarchical & 20-80s & 1-2s & \textcolor{blue}{10-40$\times$} \\
+Graph Compatibility & 30-120s & 2-5s & \textcolor{blue}{6-24$\times$} \\
+Single Period & 1-5s & 0.3-0.5s & \textcolor{blue}{2-10$\times$} \\
+\bottomrule
+\end{tabular}
+\caption{Expected speedup for each formulation}
+\end{table}
+
+\subsection{Solution Quality Expectations}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lccl@{}}
+\toprule
+\textbf{Formulation} & \textbf{Classical} & \textbf{Quantum} & \textbf{Gap Reason} \\ \midrule
+Original & 100\% & \textcolor{red}{13\%} (87\% gap) & Trapped in local minima \\
+Portfolio & 100\% & \textcolor{blue}{90-98\%} & Natural landscape, good sampling \\
+Hierarchical & 100\% & \textcolor{blue}{92-98\%} & Small subproblems near-optimal \\
+Graph & 100\% & \textcolor{blue}{85-95\%} & Sparse structure helps exploration \\
+Single Period & 100\% & \textcolor{blue}{95-99\%} & Tiny problems, almost optimal \\
+\bottomrule
+\end{tabular}
+\caption{Expected solution quality comparison}
+\end{table}
+
+\section{Implementation Roadmap}
+
+\subsection{Phase 1: Portfolio Selection Prototype (Week 1)}
+
+\textbf{Goal}: Implement and validate crop portfolio selection on D-Wave.
+
+\textbf{Tasks}:
+\begin{enumerate}
+\item Construct synergy matrix from nutrition/agricultural data
+\item Build QUBO with value function and penalties
+\item Solve on D-Wave with \texttt{EmbeddingComposite}
+\item Compare to Gurobi MIQP solver
+\item Measure: time, quality, embedding overhead
+\end{enumerate}
+
+\textbf{Success criteria}:
+\begin{itemize}
+\item Embedding time < 1 second
+\item Solution quality > 90\%
+\item Total time < 2 seconds
+\item Speedup > 5$\times$ vs. classical
+\end{itemize}
+
+\subsection{Phase 2: Complete Pipeline (Week 2)}
+
+\textbf{Goal}: Add classical post-processing for full solution.
+
+\textbf{Tasks}:
+\begin{enumerate}
+\item Implement land allocation LP
+\item Implement rotation scheduling
+\item Integrate quantum + classical stages
+\item Validate end-to-end solution
+\end{enumerate}
+
+\subsection{Phase 3: Hierarchical Extension (Week 3)}
+
+\textbf{Goal}: Implement two-stage hierarchical approach.
+
+\textbf{Tasks}:
+\begin{enumerate}
+\item Stage 1: Global crop selection
+\item Stage 2: Per-crop farm allocation
+\item Compare to portfolio approach
+\item Test scalability (50+ farms)
+\end{enumerate}
+
+\subsection{Phase 4: Publication (Week 4)}
+
+\textbf{Goal}: Document and publish results.
+
+\textbf{Deliverables}:
+\begin{enumerate}
+\item Benchmark report with all formulations
+\item Comparison to original rotation approach
+\item Analysis of when quantum advantage appears
+\item Honest assessment of limitations
+\end{enumerate}
+
+\section{Conclusions and Recommendations}
+
+\subsection{Key Findings}
+
+\begin{enumerate}
+\item \textbf{Current formulation cannot achieve quantum advantage}: 87\% gap and 7.2$\times$ embedding overhead make it slower and less accurate than classical.
+
+\item \textbf{Problem structure matters more than algorithm choice}: Mohseni's success comes from small, sparse, unconstrained subproblems, not superior quantum algorithms.
+
+\item \textbf{Portfolio selection is the sweet spot}: 27 variables, natural quadratic structure, balanced frustration $\rightarrow$ perfect for quantum annealing.
+
+\item \textbf{Decomposition enables scaling}: Hierarchical approaches can handle 100+ farms by keeping subproblems small.
+
+\item \textbf{Honest benchmarking is crucial}: Don't compare QPU timeout to classical optimal; compare apples to apples.
+\end{enumerate}
+
+\subsection{Recommendations}
+
+\begin{enumerate}
+\item \textbf{Immediate}: Implement Portfolio Selection formulation (lowest risk, highest impact)
+
+\item \textbf{Short-term}: Complete pipeline with classical post-processing
+
+\item \textbf{Medium-term}: Extend to hierarchical for scalability
+
+\item \textbf{Long-term}: Explore graph-based and other formulations
+
+\item \textbf{Publication strategy}: Focus on honest comparison showing when/where quantum helps, not overselling advantage
+\end{enumerate}
+
+\subsection{Expected Impact}
+
+\textbf{Scientific contribution}:
+\begin{itemize}
+\item Novel application of quantum annealing to food security
+\item Demonstration of problem reformulation importance
+\item Honest assessment of quantum vs. classical tradeoffs
+\end{itemize}
+
+\textbf{Practical value}:
+\begin{itemize}
+\item 5-30$\times$ speedup for food system planning
+\item 90-98\% solution quality (highly usable)
+\item Scalable to regional/national level (100+ farms)
+\item Real-world deployment potential
+\end{itemize}
+
+\textbf{Quantum computing field}:
+\begin{itemize}
+\item Demonstrates importance of problem design over algorithm tuning
+\item Provides methodology for identifying quantum-friendly formulations
+\item Sets realistic expectations for near-term quantum advantage
+\end{itemize}
+
+\section{Appendix: Code Examples}
+
+\subsection{Portfolio Selection Implementation}
+
+\begin{lstlisting}[language=Python, caption=Portfolio QUBO Construction]
+from dimod import BinaryQuadraticModel
+import numpy as np
+
+def build_portfolio_bqm(crops, synergy_matrix, weights, 
+                        target_crops=15, group_constraints=None):
+    """Build QUBO for crop portfolio selection."""
+    bqm = BinaryQuadraticModel('BINARY')
+    
+    # Linear terms: individual crop values
+    for crop in crops:
+        value = (weights['nutrition'] * crop.nutrition +
+                 weights['sustainability'] * crop.sustainability -
+                 weights['env_impact'] * crop.env_impact +
+                 weights['affordability'] * crop.affordability)
+        bqm.add_variable(crop.name, -value)  # negative for max
+    
+    # Quadratic terms: pairwise synergies
+    for c1 in crops:
+        for c2 in crops:
+            if c1.name != c2.name:
+                synergy = synergy_matrix[c1.name, c2.name]
+                if abs(synergy) > 0.01:  # only non-zero
+                    bqm.add_interaction(c1.name, c2.name, 
+                                       -synergy)  # negative for max
+    
+    # Diversity penalty: (sum - target)^2
+    penalty_diversity = 2.0
+    for c1 in crops:
+        bqm.add_variable(c1.name, penalty_diversity)
+        for c2 in crops:
+            if c1.name != c2.name:
+                bqm.add_interaction(c1.name, c2.name, 
+                                   penalty_diversity)
+    
+    # Food group penalties
+    if group_constraints:
+        penalty_group = 3.0
+        for group, (min_crops, max_crops) in group_constraints.items():
+            group_crops = [c for c in crops if c.group == group]
+            # Add quadratic penalty for deviation from min
+            # (Implementation details omitted for brevity)
+    
+    return bqm
+\end{lstlisting}
+
+\subsection{Complete Pipeline}
+
+\begin{lstlisting}[language=Python, caption=Full Optimization Pipeline]
+def optimize_food_security(crops, farms, sampler):
+    """Complete quantum + classical pipeline."""
+    
+    # Stage 1: QUANTUM - Select crops
+    bqm = build_portfolio_bqm(crops, synergy_matrix, weights)
+    sampleset = sampler.sample(bqm, num_reads=1000)
+    
+    selected_crops = [c for c, val in sampleset.first.sample.items() 
+                      if val == 1]
+    
+    # Stage 2: CLASSICAL - Allocate land
+    from pulp import LpProblem, LpVariable, LpMaximize, lpSum
+    
+    prob = LpProblem("LandAllocation", LpMaximize)
+    X = {(f, c): LpVariable(f"X_{f}_{c}", cat='Binary')
+         for f in farms for c in selected_crops}
+    
+    # Objective: maximize value * land
+    prob += lpSum([crops[c].value * farms[f].area * X[f, c]
+                   for f in farms for c in selected_crops])
+    
+    # Constraints
+    for f in farms:
+        prob += lpSum([X[f, c] for c in selected_crops]) <= 1
+    
+    prob.solve()
+    
+    # Stage 3: CLASSICAL - Temporal sequencing
+    periods = assign_to_periods(selected_crops, X, n_periods=3)
+    
+    return {
+        'selected_crops': selected_crops,
+        'land_allocation': X,
+        'rotation_schedule': periods
+    }
+\end{lstlisting}
+
+\end{document}

@@ -1,0 +1,141 @@
+15:19:37 [INFO] Building SIMPLE binary CQM: 4 farms × 27 crops (no rotation/synergy)
+15:19:37 [INFO]   Simple binary CQM: 108 variables, 4 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.88s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+  ✓ neal (SimulatedAnnealing) available for comparison
+  ✓ Louvain community detection available
+  ✓ Spectral clustering available
+  D-Wave imports: 3.21s
+[3/5] Loading configuration...
+  Output directory: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results
+[4/5] Setting up data loading...
+[5/5] Starting benchmark...
+  D-Wave token configured (length: 49)
+
+====================================================================================================
+RUNNING ROADMAP BENCHMARK - PHASE 1
+====================================================================================================
+
+
+====================================================================================================
+ROADMAP PHASE 1: PROOF OF CONCEPT
+Testing: 4 farms × 6 crops × 3 periods = 72 variables
+Goal: Decompose to 6 subproblems of 12 vars each → FIT CLIQUES
+Success Criteria: Gap <20%, QPU <1s, zero embedding overhead
+====================================================================================================
+
+====================================================================================================
+Test: Simple Binary (4 farms, 6 crops, NO rotation)
+====================================================================================================
+Loading food data from: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/Inputs/Combined_Food_Data.xlsx
+Problem size: 108 variables, 4 constraints
+
+--- Method: ground_truth ---
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+15:19:37 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=50.0)...
+15:19:37 [INFO]   [DirectQPU] BQM: 112 vars, 1512 interactions
+15:19:37 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+15:19:43 [INFO]   [DirectQPU] Found embedding: 498 physical qubits, max chain 8, in 4.5s
+15:19:43 [INFO]   [CliqueQPU] Converting CQM to BQM (lagrange=50.0)...
+15:19:43 [INFO]   [CliqueQPU] BQM: 112 vars, 1512 interactions
+15:19:43 [WARNING]   [CliqueQPU] Problem too large (112 vars) for guaranteed clique embedding
+15:19:43 [WARNING]   [CliqueQPU] DWaveCliqueSampler works best for n<=16, may use chains for n>16
+15:19:43 [INFO]   [CliqueQPU] Sampling with DWaveCliqueSampler (1000 reads)...
+15:19:44 [ERROR]   [CliqueQPU] Error: Invalid token or access denied
+Traceback (most recent call last):
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/client/base.py", line 1168, in get_solvers
+    solvers = self._fetch_solvers(**query)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/client/base.py", line 787, in _fetch_solvers
+    solvers = self.solvers_session.list_solvers(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/resources.py", line 54, in wrapper
+    return fn(obj, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/resources.py", line 159, in list_solvers
+    response = self.session.get(path, params=params, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/requests/sessions.py", line 602, in get
+    return self.request("GET", url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 348, in request
+    response = super().request(*args, headers=headers, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 707, in request
+    response = super().request(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 232, in request
+    return super().request(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/utils/http.py", line 93, in request
+    return super().request(method, url, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 601, in request
+    res = super().request(method, url, params=params, headers=headers, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 101, in request
+    response = self._request_unified(method, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 69, in _request_unified
+    return super().request(method, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 247, in send
+    return super().send(request, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 89, in send
+    return super().send(request, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/requests/sessions.py", line 710, in send
+    r = dispatch_hook("response", hooks, r, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/requests/hooks.py", line 30, in dispatch_hook
+    _hook_data = hook(hook_data, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/api/client.py", line 1012, in _raise_for_status
+    raise exception_map[error_code](**kw)
+dwave.cloud.api.exceptions.ResourceAuthenticationError: Unauthorized
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark.py", line 2848, in solve_clique_qpu
+    sampler = DWaveCliqueSampler()
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/system/samplers/clique.py", line 222, in __init__
+    self.child = DWaveSampler(
+                 ^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/system/samplers/dwave_sampler.py", line 222, in __init__
+    self.solver = self._get_solver(penalty=self._solver_penalty)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/system/samplers/dwave_sampler.py", line 250, in _get_solver
+    solvers = self.client.get_solvers(refresh=refresh, order_by=order_by, **filters)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/events.py", line 109, in wrapped
+    return fn(*pargs, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/client/base.py", line 1172, in get_solvers
+    raise SolverAuthenticationError from e
+dwave.cloud.exceptions.SolverAuthenticationError: Invalid token or access denied
+15:19:44 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+15:19:44 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+15:19:44 [INFO]   Total area: 100.00 ha
+15:19:44 [INFO] Building rotation CQM with 4 farms × 6 families × 3 periods
+15:19:44 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+15:19:44 [INFO]   Rotation matrix: 86.1% negative synergies
+15:19:44 [INFO]   Spatial graph: 6 neighbor pairs (k=4)
+15:19:44 [INFO]   CQM built: 72 variables, 12 constraints
