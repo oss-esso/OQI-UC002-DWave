@@ -854,6 +854,11 @@ def solve_ground_truth_rotation(data: Dict, timeout: int = 120) -> Dict:
     model = gp.Model("GroundTruth_Rotation")
     model.Params.OutputFlag = 0
     model.Params.TimeLimit = timeout
+    model.Params.MIPGap = 0.0001  # 0.01% optimality gap
+    model.Params.MIPFocus = 1  # Focus on finding good feasible solutions quickly
+    model.Params.Threads = 0  # Use all available cores
+    model.Params.Presolve = 2  # Aggressive presolve
+    model.Params.Cuts = 2  # Aggressive cuts
     
     # Variables: Y[f,c,t]
     Y = {}

@@ -1,0 +1,1177 @@
+{
+  "timestamp": "20251211_140442",
+  "config": {
+    "formulations": [
+      "portfolio",
+      "graph_mwis",
+      "single_period",
+      "penalty"
+    ],
+    "n_farms": 5,
+    "n_crops": 6,
+    "num_reads": 100,
+    "runs": 1
+  },
+  "results": {
+    "portfolio": {
+      "data": {
+        "formulation": "portfolio",
+        "crop_names": [
+          "Wheat",
+          "Rice",
+          "Corn",
+          "Barley",
+          "Oats",
+          "Sorghum",
+          "Beans",
+          "Lentils",
+          "Chickpeas",
+          "Peas",
+          "Soybeans",
+          "Tomato",
+          "Potato",
+          "Carrot",
+          "Onion",
+          "Cabbage",
+          "Spinach",
+          "Lettuce",
+          "Squash",
+          "Apple",
+          "Orange",
+          "Banana",
+          "Grapes",
+          "Sunflower",
+          "Peanuts",
+          "Almonds",
+          "Sesame"
+        ],
+        "values": {
+          "Wheat": 0.42000000000000004,
+          "Rice": 0.365,
+          "Corn": 0.385,
+          "Barley": 0.4325,
+          "Oats": 0.4774999999999999,
+          "Sorghum": 0.47750000000000004,
+          "Beans": 0.5775000000000001,
+          "Lentils": 0.5700000000000001,
+          "Chickpeas": 0.5575,
+          "Peas": 0.5475,
+          "Soybeans": 0.48750000000000004,
+          "Tomato": 0.41000000000000003,
+          "Potato": 0.4625,
+          "Carrot": 0.5075,
+          "Onion": 0.49750000000000005,
+          "Cabbage": 0.5425,
+          "Spinach": 0.51,
+          "Lettuce": 0.36,
+          "Squash": 0.5025000000000001,
+          "Apple": 0.42500000000000004,
+          "Orange": 0.405,
+          "Banana": 0.3950000000000001,
+          "Grapes": 0.315,
+          "Sunflower": 0.4175,
+          "Peanuts": 0.5075,
+          "Almonds": 0.30000000000000004,
+          "Sesame": 0.4925
+        },
+        "groups": {
+          "Cereals": [
+            "Wheat",
+            "Rice",
+            "Corn",
+            "Barley",
+            "Oats",
+            "Sorghum"
+          ],
+          "Legumes": [
+            "Beans",
+            "Lentils",
+            "Chickpeas",
+            "Peas",
+            "Soybeans"
+          ],
+          "Vegetables": [
+            "Tomato",
+            "Potato",
+            "Carrot",
+            "Onion",
+            "Cabbage",
+            "Spinach",
+            "Lettuce",
+            "Squash"
+          ],
+          "Fruits": [
+            "Apple",
+            "Orange",
+            "Banana",
+            "Grapes"
+          ],
+          "Oils": [
+            "Sunflower",
+            "Sesame"
+          ],
+          "Nuts": [
+            "Peanuts",
+            "Almonds"
+          ]
+        },
+        "target_selection": 15,
+        "n_variables": 27
+      },
+      "gurobi": [
+        {
+          "method": "portfolio_gurobi",
+          "success": true,
+          "objective": 11.592500000000001,
+          "wall_time": 0.025777101516723633,
+          "solve_time": 0.012428045272827148,
+          "n_variables": 27,
+          "n_selected": 17,
+          "selected_crops": [
+            "Wheat",
+            "Rice",
+            "Corn",
+            "Barley",
+            "Oats",
+            "Beans",
+            "Lentils",
+            "Chickpeas",
+            "Peas",
+            "Soybeans",
+            "Carrot",
+            "Onion",
+            "Spinach",
+            "Squash",
+            "Apple",
+            "Peanuts",
+            "Sesame"
+          ],
+          "optimal": true
+        }
+      ],
+      "qpu": [
+        {
+          "method": "portfolio_qpu",
+          "success": true,
+          "objective": 10.260000000000002,
+          "wall_time": 2.827183961868286,
+          "qpu_time": 0.03639916000000001,
+          "n_variables": 27,
+          "n_selected": 17,
+          "selected_crops": [
+            "Wheat",
+            "Rice",
+            "Corn",
+            "Barley",
+            "Oats",
+            "Sorghum",
+            "Beans",
+            "Lentils",
+            "Chickpeas",
+            "Peas",
+            "Tomato",
+            "Potato",
+            "Carrot",
+            "Onion",
+            "Cabbage",
+            "Spinach",
+            "Lettuce"
+          ],
+          "energy": -469.2600000000001
+        }
+      ],
+      "summary": {
+        "gurobi_obj": 11.592500000000001,
+        "qpu_obj": 10.260000000000002,
+        "gap": 11.494500754798356,
+        "gurobi_time": 0.025777101516723633,
+        "qpu_wall_time": 2.827183961868286,
+        "qpu_only_time": 0.03639916000000001,
+        "speedup": 0.009117589044219594
+      }
+    },
+    "graph_mwis": {
+      "data": {
+        "formulation": "graph_mwis",
+        "farm_names": [
+          "Farm_0",
+          "Farm_1",
+          "Farm_2",
+          "Farm_3",
+          "Farm_4"
+        ],
+        "crop_names": [
+          "Wheat",
+          "Rice",
+          "Corn",
+          "Barley",
+          "Oats",
+          "Sorghum"
+        ],
+        "edges": [
+          [
+            [
+              "Farm_0",
+              "Wheat"
+            ],
+            [
+              "Farm_0",
+              "Rice"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Wheat"
+            ],
+            [
+              "Farm_0",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Wheat"
+            ],
+            [
+              "Farm_0",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Wheat"
+            ],
+            [
+              "Farm_0",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Wheat"
+            ],
+            [
+              "Farm_0",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Rice"
+            ],
+            [
+              "Farm_0",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Rice"
+            ],
+            [
+              "Farm_0",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Rice"
+            ],
+            [
+              "Farm_0",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Rice"
+            ],
+            [
+              "Farm_0",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Corn"
+            ],
+            [
+              "Farm_0",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Corn"
+            ],
+            [
+              "Farm_0",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Corn"
+            ],
+            [
+              "Farm_0",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Barley"
+            ],
+            [
+              "Farm_0",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Barley"
+            ],
+            [
+              "Farm_0",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_0",
+              "Oats"
+            ],
+            [
+              "Farm_0",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Wheat"
+            ],
+            [
+              "Farm_1",
+              "Rice"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Wheat"
+            ],
+            [
+              "Farm_1",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Wheat"
+            ],
+            [
+              "Farm_1",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Wheat"
+            ],
+            [
+              "Farm_1",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Wheat"
+            ],
+            [
+              "Farm_1",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Rice"
+            ],
+            [
+              "Farm_1",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Rice"
+            ],
+            [
+              "Farm_1",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Rice"
+            ],
+            [
+              "Farm_1",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Rice"
+            ],
+            [
+              "Farm_1",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Corn"
+            ],
+            [
+              "Farm_1",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Corn"
+            ],
+            [
+              "Farm_1",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Corn"
+            ],
+            [
+              "Farm_1",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Barley"
+            ],
+            [
+              "Farm_1",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Barley"
+            ],
+            [
+              "Farm_1",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_1",
+              "Oats"
+            ],
+            [
+              "Farm_1",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Wheat"
+            ],
+            [
+              "Farm_2",
+              "Rice"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Wheat"
+            ],
+            [
+              "Farm_2",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Wheat"
+            ],
+            [
+              "Farm_2",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Wheat"
+            ],
+            [
+              "Farm_2",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Wheat"
+            ],
+            [
+              "Farm_2",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Rice"
+            ],
+            [
+              "Farm_2",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Rice"
+            ],
+            [
+              "Farm_2",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Rice"
+            ],
+            [
+              "Farm_2",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Rice"
+            ],
+            [
+              "Farm_2",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Corn"
+            ],
+            [
+              "Farm_2",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Corn"
+            ],
+            [
+              "Farm_2",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Corn"
+            ],
+            [
+              "Farm_2",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Barley"
+            ],
+            [
+              "Farm_2",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Barley"
+            ],
+            [
+              "Farm_2",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_2",
+              "Oats"
+            ],
+            [
+              "Farm_2",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Wheat"
+            ],
+            [
+              "Farm_3",
+              "Rice"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Wheat"
+            ],
+            [
+              "Farm_3",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Wheat"
+            ],
+            [
+              "Farm_3",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Wheat"
+            ],
+            [
+              "Farm_3",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Wheat"
+            ],
+            [
+              "Farm_3",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Rice"
+            ],
+            [
+              "Farm_3",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Rice"
+            ],
+            [
+              "Farm_3",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Rice"
+            ],
+            [
+              "Farm_3",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Rice"
+            ],
+            [
+              "Farm_3",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Corn"
+            ],
+            [
+              "Farm_3",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Corn"
+            ],
+            [
+              "Farm_3",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Corn"
+            ],
+            [
+              "Farm_3",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Barley"
+            ],
+            [
+              "Farm_3",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Barley"
+            ],
+            [
+              "Farm_3",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_3",
+              "Oats"
+            ],
+            [
+              "Farm_3",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Wheat"
+            ],
+            [
+              "Farm_4",
+              "Rice"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Wheat"
+            ],
+            [
+              "Farm_4",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Wheat"
+            ],
+            [
+              "Farm_4",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Wheat"
+            ],
+            [
+              "Farm_4",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Wheat"
+            ],
+            [
+              "Farm_4",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Rice"
+            ],
+            [
+              "Farm_4",
+              "Corn"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Rice"
+            ],
+            [
+              "Farm_4",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Rice"
+            ],
+            [
+              "Farm_4",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Rice"
+            ],
+            [
+              "Farm_4",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Corn"
+            ],
+            [
+              "Farm_4",
+              "Barley"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Corn"
+            ],
+            [
+              "Farm_4",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Corn"
+            ],
+            [
+              "Farm_4",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Barley"
+            ],
+            [
+              "Farm_4",
+              "Oats"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Barley"
+            ],
+            [
+              "Farm_4",
+              "Sorghum"
+            ]
+          ],
+          [
+            [
+              "Farm_4",
+              "Oats"
+            ],
+            [
+              "Farm_4",
+              "Sorghum"
+            ]
+          ]
+        ],
+        "n_variables": 30,
+        "n_farms": 5,
+        "n_crops": 6
+      },
+      "gurobi": [
+        {
+          "method": "graph_mwis_gurobi",
+          "success": true,
+          "objective": 2.3874999999999997,
+          "wall_time": 0.004731178283691406,
+          "solve_time": 0.000492095947265625,
+          "n_variables": 30,
+          "solution": {
+            "('Farm_0', 'Oats')": 1.0,
+            "('Farm_1', 'Oats')": 1.0,
+            "('Farm_2', 'Oats')": 1.0,
+            "('Farm_3', 'Oats')": 1.0,
+            "('Farm_4', 'Oats')": 1.0
+          },
+          "optimal": true
+        }
+      ],
+      "qpu": [
+        {
+          "method": "graph_mwis_qpu",
+          "success": true,
+          "objective": 2.3425,
+          "wall_time": 2.225137948989868,
+          "qpu_time": 0.036669160000000006,
+          "n_variables": 30,
+          "violations": 0,
+          "energy": -2.3425000000000065
+        }
+      ],
+      "summary": {
+        "gurobi_obj": 2.3874999999999997,
+        "qpu_obj": 2.3425,
+        "gap": 1.8848167539266987,
+        "gurobi_time": 0.004731178283691406,
+        "qpu_wall_time": 2.225137948989868,
+        "qpu_only_time": 0.036669160000000006,
+        "speedup": 0.0021262404363914557
+      }
+    },
+    "single_period": {
+      "data": {
+        "formulation": "single_period",
+        "farm_names": [
+          "Farm_0",
+          "Farm_1",
+          "Farm_2",
+          "Farm_3",
+          "Farm_4"
+        ],
+        "crop_names": [
+          "Wheat",
+          "Rice",
+          "Corn",
+          "Barley",
+          "Oats",
+          "Sorghum"
+        ],
+        "land": {
+          "Farm_0": 0.2,
+          "Farm_1": 0.2,
+          "Farm_2": 0.2,
+          "Farm_3": 0.2,
+          "Farm_4": 0.2
+        },
+        "values": {
+          "Wheat": 0.42000000000000004,
+          "Rice": 0.365,
+          "Corn": 0.385,
+          "Barley": 0.4325,
+          "Oats": 0.4774999999999999,
+          "Sorghum": 0.47750000000000004
+        },
+        "neighbors": [
+          [
+            "Farm_0",
+            "Farm_1"
+          ],
+          [
+            "Farm_0",
+            "Farm_3"
+          ],
+          [
+            "Farm_1",
+            "Farm_2"
+          ],
+          [
+            "Farm_1",
+            "Farm_4"
+          ],
+          [
+            "Farm_3",
+            "Farm_4"
+          ]
+        ],
+        "n_variables": 30,
+        "n_farms": 5,
+        "n_crops": 6
+      },
+      "gurobi": [
+        {
+          "method": "single_period_gurobi",
+          "success": true,
+          "objective": 0.4775,
+          "wall_time": 0.002740144729614258,
+          "solve_time": 0.0021228790283203125,
+          "n_variables": 30,
+          "solution": {
+            "('Farm_0', 'Oats')": 1.0,
+            "('Farm_1', 'Sorghum')": 1.0,
+            "('Farm_2', 'Oats')": 1.0,
+            "('Farm_3', 'Sorghum')": 1.0,
+            "('Farm_4', 'Oats')": 1.0
+          },
+          "optimal": true
+        }
+      ],
+      "qpu": [
+        {
+          "method": "single_period_qpu",
+          "success": true,
+          "objective": 0.4595000000000001,
+          "wall_time": 2.1948208808898926,
+          "qpu_time": 0.03666876,
+          "n_variables": 30,
+          "violations": 0,
+          "energy": -15.459499999999977
+        }
+      ],
+      "summary": {
+        "gurobi_obj": 0.4775,
+        "qpu_obj": 0.4595000000000001,
+        "gap": 3.7696335078533836,
+        "gurobi_time": 0.002740144729614258,
+        "qpu_wall_time": 2.1948208808898926,
+        "qpu_only_time": 0.03666876,
+        "speedup": 0.0012484593861268821
+      }
+    },
+    "penalty": {
+      "data": {
+        "formulation": "penalty_model",
+        "farm_names": [
+          "Farm_0",
+          "Farm_1",
+          "Farm_2",
+          "Farm_3",
+          "Farm_4"
+        ],
+        "crop_names": [
+          "Wheat",
+          "Rice",
+          "Corn",
+          "Barley",
+          "Oats",
+          "Sorghum"
+        ],
+        "n_periods": 3,
+        "land": {
+          "Farm_0": 0.2,
+          "Farm_1": 0.2,
+          "Farm_2": 0.2,
+          "Farm_3": 0.2,
+          "Farm_4": 0.2
+        },
+        "values": {
+          "Wheat": 0.42000000000000004,
+          "Rice": 0.365,
+          "Corn": 0.385,
+          "Barley": 0.4325,
+          "Oats": 0.4774999999999999,
+          "Sorghum": 0.47750000000000004
+        },
+        "n_variables": 90,
+        "n_farms": 5,
+        "n_crops": 6
+      },
+      "gurobi": [
+        {
+          "method": "penalty_gurobi",
+          "success": true,
+          "objective": 1.4324999999999999,
+          "wall_time": 0.0012621879577636719,
+          "solve_time": 0.00025582313537597656,
+          "n_variables": 90,
+          "optimal": true
+        }
+      ],
+      "qpu": [
+        {
+          "method": "penalty_qpu",
+          "success": true,
+          "objective": 2.3784999999999994,
+          "wall_time": 15.751853227615356,
+          "qpu_time": 0.5363393999999999,
+          "n_variables": 90,
+          "violations": 0
+        }
+      ],
+      "summary": {
+        "gurobi_obj": 1.4324999999999999,
+        "qpu_obj": 2.3784999999999994,
+        "gap": -66.03839441535774,
+        "gurobi_time": 0.0012621879577636719,
+        "qpu_wall_time": 15.751853227615356,
+        "qpu_only_time": 0.5363393999999999,
+        "speedup": 8.012948949720199e-05
+      }
+    }
+  }
+}
