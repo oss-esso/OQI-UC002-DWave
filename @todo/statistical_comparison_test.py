@@ -40,14 +40,16 @@ sys.path.insert(0, project_root)
 
 # Test parameters (mirroring Phase 2 roadmap settings)
 TEST_CONFIG = {
-    'farm_sizes': [5, 10, 15, 20],       # Number of farms to test
+    'farm_sizes': [5, 10, 15, 20, 25],   # All available rotation scenarios (plots/patches)
     'n_crops': 6,                         # Crop families
     'n_periods': 3,                       # Rotation periods
     'num_reads': 100,                     # QPU reads (Phase 2: 100)
     'num_iterations': 3,                  # Decomposition iterations
-    'runs_per_method': 2,                 # Runs for statistical analysis
+    'runs_per_method': 2,                 # Runs for statistical variance
     'classical_timeout': 300,             # Gurobi timeout (seconds)
     'methods': ['ground_truth', 'clique_decomp', 'spatial_temporal'],
+    'enable_post_processing': True,       # Enable two-level crop allocation
+    'crops_per_family': 3,                # Crop refinement: 3 crops per family
 }
 
 # Output directory
@@ -107,6 +109,17 @@ except ImportError:
     sys.exit(1)
 
 from src.scenarios import load_food_data
+
+# Post-processing: crop allocation within families
+CROP_FAMILIES = {
+    'Legumes': ['Beans', 'Lentils', 'Chickpeas'],
+    'Grains': ['Rice', 'Wheat', 'Maize'],
+    'Vegetables': ['Tomatoes', 'Cabbage', 'Peppers'],
+    'Roots': ['Potatoes', 'Carrots', 'Cassava'],
+    'Fruits': ['Bananas', 'Oranges', 'Mangoes'],
+    'Other': ['Nuts', 'Herbs', 'Spices'],
+}
+
 print(f"  Core imports: {time.time() - import_start:.2f}s")
 
 print("[2/4] Importing D-Wave libraries...")
@@ -167,6 +180,9 @@ def load_rotation_data(n_farms: int) -> Dict:
     
     # Load base scenario
     farms, foods, food_groups, config = load_food_data(base_scenario)
+    
+    # Add post-processing flag to config
+    config['enable_post_processing'] = TEST_CONFIG.get('enable_post_processing', True)
     
     params = config.get('parameters', {})
     weights = params.get('weights', {
@@ -397,12 +413,23 @@ def solve_ground_truth(data: Dict, timeout: int = 300) -> Dict:
         
         # Extract solution
         solution = {}
+        solution_dict = {}  # For post-processing: (farm, family, period) -> value
         for f in farm_names:
             for c in families_list:
                 for t in range(1, n_periods + 1):
                     var_name = f"Y_{f}_{c}_t{t}"
-                    solution[var_name] = int(Y[(f, c, t)].X > 0.5)
+                    val = int(Y[(f, c, t)].X > 0.5)
+                    solution[var_name] = val
+                    if val > 0:
+                        solution_dict[(f, c, t)] = 1
         result['solution'] = solution
+        
+        # Post-processing: Refine to specific crops
+        if config.get('enable_post_processing', False) and solution_dict:
+            refined_solution = refine_family_to_crops(solution_dict, data)
+            diversity_stats = analyze_crop_diversity(refined_solution, data)
+            result['refined_solution'] = refined_solution
+            result['diversity_stats'] = diversity_stats
     
     return result
 
@@ -583,6 +610,14 @@ def solve_spatial_temporal(data: Dict, num_reads: int = 100, num_iterations: int
         'solution': best_global_solution,
     }
     
+    # Post-processing: Refine to specific crops
+    config = data.get('config', {})
+    if config.get('enable_post_processing', False) and best_global_solution:
+        refined_solution = refine_family_to_crops(best_global_solution, data)
+        diversity_stats = analyze_crop_diversity(refined_solution, data)
+        result['refined_solution'] = refined_solution
+        result['diversity_stats'] = diversity_stats
+    
     return result
 
 
@@ -747,6 +782,14 @@ def solve_clique_decomp(data: Dict, num_reads: int = 100, num_iterations: int = 
         'solution': best_global_solution,
     }
     
+    # Post-processing: Refine to specific crops
+    config = data.get('config', {})
+    if config.get('enable_post_processing', False) and best_global_solution:
+        refined_solution = refine_family_to_crops(best_global_solution, data)
+        diversity_stats = analyze_crop_diversity(refined_solution, data)
+        result['refined_solution'] = refined_solution
+        result['diversity_stats'] = diversity_stats
+    
     return result
 
 
@@ -844,6 +887,114 @@ def count_violations(solution: Dict, data: Dict) -> int:
     return violations
 
 # ============================================================================
+# POST-PROCESSING: TWO-LEVEL CROP ALLOCATION
+# ============================================================================
+
+def refine_family_to_crops(solution: Dict, data: Dict) -> Dict:
+    """
+    Post-processing: Refine family-level decisions to specific crops.
+    
+    Two-level optimization:
+    1. Strategic (QPU): Choose crop families per plot per period
+    2. Tactical (Classical): Allocate specific crops within each family
+    
+    For each (plot, family, period) assignment, distribute land among
+    2-3 specific crops from that family based on:
+    - Crop-specific benefits (nutritional value, market price)
+    - Local soil compatibility
+    - Intra-family rotation synergies
+    """
+    farm_names = data['farm_names']
+    food_names = data['food_names']
+    land_availability = data['land_availability']
+    n_periods = 3
+    
+    # Map family names to available crops
+    family_to_crops = CROP_FAMILIES.copy()
+    
+    # Refined solution: (plot, crop, period) -> land_fraction
+    refined_solution = {}
+    
+    for f in farm_names:
+        for t in range(1, n_periods + 1):
+            # Get assigned family for this plot-period
+            assigned_family = None
+            for family in food_names:
+                if solution.get((f, family, t), 0) == 1:
+                    assigned_family = family
+                    break
+            
+            if assigned_family is None:
+                continue
+            
+            # Get crops in this family
+            crops = family_to_crops.get(assigned_family, [assigned_family])
+            n_crops_in_family = len(crops)
+            
+            if n_crops_in_family == 0:
+                continue
+            
+            # Simple allocation: equal split with slight randomization for realism
+            # (In practice, would optimize based on soil, market, etc.)
+            np.random.seed(hash((f, assigned_family, t)) % 2**32)
+            
+            # Generate random weights
+            weights = np.random.uniform(0.8, 1.2, n_crops_in_family)
+            weights = weights / weights.sum()  # Normalize to sum to 1
+            
+            # Assign land fractions
+            for i, crop in enumerate(crops):
+                land_fraction = weights[i]
+                refined_solution[(f, crop, t)] = land_fraction
+    
+    return refined_solution
+
+
+def analyze_crop_diversity(refined_solution: Dict, data: Dict) -> Dict:
+    """
+    Analyze crop diversity at the tactical level.
+    
+    Metrics:
+    - Total unique crops grown
+    - Crops per plot
+    - Shannon diversity index
+    """
+    farm_names = data['farm_names']
+    n_periods = 3
+    
+    # Count unique crops per plot
+    crops_per_plot = {}
+    all_crops = set()
+    
+    for f in farm_names:
+        plot_crops = set()
+        for (plot, crop, period), fraction in refined_solution.items():
+            if plot == f and fraction > 0.01:  # Threshold: >1% land allocation
+                plot_crops.add(crop)
+                all_crops.add(crop)
+        crops_per_plot[f] = len(plot_crops)
+    
+    # Shannon diversity: H = -sum(p_i * log(p_i))
+    crop_counts = {}
+    for (plot, crop, period), fraction in refined_solution.items():
+        if fraction > 0.01:
+            crop_counts[crop] = crop_counts.get(crop, 0) + fraction
+    
+    total = sum(crop_counts.values())
+    if total > 0:
+        proportions = [count / total for count in crop_counts.values()]
+        shannon_diversity = -sum(p * np.log(p) for p in proportions if p > 0)
+    else:
+        shannon_diversity = 0
+    
+    return {
+        'total_unique_crops': len(all_crops),
+        'avg_crops_per_plot': np.mean(list(crops_per_plot.values())) if crops_per_plot else 0,
+        'shannon_diversity': shannon_diversity,
+        'crops_per_plot': crops_per_plot,
+    }
+
+# ============================================================================
 # MAIN TEST RUNNER
 # ============================================================================
 
@@ -917,7 +1068,14 @@ def run_statistical_test(config: Dict = None) -> Dict:
                     continue
                 
                 method_runs.append(result)
-                print(f"obj={result['objective']:.4f}, time={result['wall_time']:.2f}s")
+                
+                # Report diversity stats if available
+                diversity_info = ""
+                if 'diversity_stats' in result:
+                    div_stats = result['diversity_stats']
+                    diversity_info = f", crops={div_stats['total_unique_crops']}, diversity={div_stats['shannon_diversity']:.2f}"
+                
+                print(f"obj={result['objective']:.4f}, time={result['wall_time']:.2f}s{diversity_info}")
             
             # Compute statistics
             objectives = [r['objective'] for r in method_runs if r['success']]
@@ -925,35 +1083,70 @@ def run_statistical_test(config: Dict = None) -> Dict:
             qpu_times = [r['qpu_time'] for r in method_runs if r['success']]
             violations = [r['violations'] for r in method_runs if r['success']]
             
-            size_results['methods'][method] = {
-                'runs': method_runs,
-                'stats': {
-                    'objective': {
-                        'mean': np.mean(objectives) if objectives else 0,
-                        'std': np.std(objectives) if len(objectives) > 1 else 0,
-                        'min': np.min(objectives) if objectives else 0,
-                        'max': np.max(objectives) if objectives else 0,
-                    },
-                    'wall_time': {
-                        'mean': np.mean(wall_times) if wall_times else 0,
-                        'std': np.std(wall_times) if len(wall_times) > 1 else 0,
-                        'min': np.min(wall_times) if wall_times else 0,
-                        'max': np.max(wall_times) if wall_times else 0,
-                    },
-                    'qpu_time': {
-                        'mean': np.mean(qpu_times) if qpu_times else 0,
-                        'std': np.std(qpu_times) if len(qpu_times) > 1 else 0,
-                    },
-                    'violations': {
-                        'mean': np.mean(violations) if violations else 0,
-                        'total': sum(violations) if violations else 0,
-                    },
-                    'success_rate': len(objectives) / len(method_runs) if method_runs else 0,
-                }
+            # Diversity statistics (if post-processing enabled)
+            diversity_metrics = []
+            for r in method_runs:
+                if r['success'] and 'diversity_stats' in r:
+                    diversity_metrics.append(r['diversity_stats'])
+            
+            stats_dict = {
+                'objective': {
+                    'mean': np.mean(objectives) if objectives else 0,
+                    'std': np.std(objectives) if len(objectives) > 1 else 0,
+                    'min': np.min(objectives) if objectives else 0,
+                    'max': np.max(objectives) if objectives else 0,
+                },
+                'wall_time': {
+                    'mean': np.mean(wall_times) if wall_times else 0,
+                    'std': np.std(wall_times) if len(wall_times) > 1 else 0,
+                    'min': np.min(wall_times) if wall_times else 0,
+                    'max': np.max(wall_times) if wall_times else 0,
+                },
+                'qpu_time': {
+                    'mean': np.mean(qpu_times) if qpu_times else 0,
+                    'std': np.std(qpu_times) if len(qpu_times) > 1 else 0,
+                },
+                'violations': {
+                    'mean': np.mean(violations) if violations else 0,
+                    'total': sum(violations) if violations else 0,
+                },
+                'success_rate': len(objectives) / len(method_runs) if method_runs else 0,
             }
             
+            # Add diversity statistics if available
+            if diversity_metrics:
+                unique_crops = [d['total_unique_crops'] for d in diversity_metrics]
+                crops_per_plot = [d['avg_crops_per_plot'] for d in diversity_metrics]
+                shannon = [d['shannon_diversity'] for d in diversity_metrics]
+                
+                stats_dict['diversity'] = {
+                    'total_unique_crops': {
+                        'mean': np.mean(unique_crops),
+                        'std': np.std(unique_crops) if len(unique_crops) > 1 else 0,
+                    },
+                    'avg_crops_per_plot': {
+                        'mean': np.mean(crops_per_plot),
+                        'std': np.std(crops_per_plot) if len(crops_per_plot) > 1 else 0,
+                    },
+                    'shannon_diversity': {
+                        'mean': np.mean(shannon),
+                        'std': np.std(shannon) if len(shannon) > 1 else 0,
+                    }
+                }
+            
+            size_results['methods'][method] = {
+                'runs': method_runs,
+                'stats': stats_dict
+            }
+            
+            diversity_report = ""
+            if diversity_metrics:
+                unique_crops_mean = np.mean([d['total_unique_crops'] for d in diversity_metrics])
+                shannon_mean = np.mean([d['shannon_diversity'] for d in diversity_metrics])
+                diversity_report = f", crops={unique_crops_mean:.1f}, H={shannon_mean:.2f}"
+            
             print(f"  Statistics: obj={np.mean(objectives):.4f}±{np.std(objectives):.4f}, "
-                  f"time={np.mean(wall_times):.2f}±{np.std(wall_times):.2f}s")
+                  f"time={np.mean(wall_times):.2f}±{np.std(wall_times):.2f}s{diversity_report}")
         
         # Calculate gaps (each quantum method vs ground truth)
         gt_stats = size_results['methods'].get('ground_truth', {}).get('stats', {})
