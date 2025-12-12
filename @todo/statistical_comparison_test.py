@@ -46,7 +46,7 @@ TEST_CONFIG = {
     'num_reads': 100,                     # QPU reads (Phase 2: 100)
     'num_iterations': 3,                  # Decomposition iterations
     'runs_per_method': 2,                 # Runs for statistical variance
-    'classical_timeout': 300,             # Gurobi timeout (seconds)
+    'classical_timeout': 900,             # Gurobi timeout (seconds)
     'methods': ['ground_truth', 'clique_decomp', 'spatial_temporal'],
     'enable_post_processing': True,       # Enable two-level crop allocation
     'crops_per_family': 3,                # Crop refinement: 3 crops per family
@@ -239,7 +239,7 @@ def load_rotation_data(n_farms: int) -> Dict:
 # GROUND TRUTH SOLVER (GUROBI)
 # ============================================================================
 
-def solve_ground_truth(data: Dict, timeout: int = 300) -> Dict:
+def solve_ground_truth(data: Dict, timeout: int = 900) -> Dict:
     """
     Solve rotation problem with Gurobi (classical ground truth).
     
@@ -918,9 +918,16 @@ def refine_family_to_crops(solution: Dict, data: Dict) -> Dict:
     for f in farm_names:
         for t in range(1, n_periods + 1):
             # Get assigned family for this plot-period
+            # Try both tuple keys and string keys (for different solution formats)
             assigned_family = None
             for family in food_names:
+                # Try tuple key
                 if solution.get((f, family, t), 0) == 1:
+                    assigned_family = family
+                    break
+                # Try string key format: Y_{farm}_{family}_t{period}
+                var_name = f"Y_{f}_{family}_t{t}"
+                if solution.get(var_name, 0) == 1:
                     assigned_family = family
                     break
             
@@ -1181,10 +1188,22 @@ def run_statistical_test(config: Dict = None) -> Dict:
         
         results['results_by_size'][n_farms] = size_results
     
-    # Save results
+    # Save results (convert tuple keys to strings for JSON serialization)
+    def serialize_solution(obj):
+        """Convert tuple keys to strings for JSON compatibility."""
+        if isinstance(obj, dict):
+            return {str(k) if isinstance(k, tuple) else k: serialize_solution(v) 
+                    for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [serialize_solution(item) for item in obj]
+        else:
+            return obj
+    
+    serializable_results = serialize_solution(results)
+    
     results_file = OUTPUT_DIR / f"statistical_comparison_{timestamp}.json"
     with open(results_file, 'w') as f:
-        json.dump(results, f, indent=2, default=str)
+        json.dump(serializable_results, f, indent=2, default=str)
     print(f"\n✓ Results saved to: {results_file}")
     
     return results

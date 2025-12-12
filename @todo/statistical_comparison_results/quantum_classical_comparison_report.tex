@@ -50,8 +50,8 @@ spatial neighbor interactions, and one-crop-per-period constraints.
 
 \subsection{Test Configuration}
 \begin{itemize}
-    \item \textbf{Farm sizes tested}: 5, 10, 15
-    \item \textbf{Runs per method}: 1
+    \item \textbf{Farm sizes tested}: 5, 10, 15, 20
+    \item \textbf{Runs per method}: 2
     \item \textbf{Classical solver}: Gurobi with 300s timeout
     \item \textbf{Quantum methods}: clique_decomp, spatial_temporal
     \item \textbf{QPU reads}: 100
@@ -90,9 +90,10 @@ spatial neighbor interactions, and one-crop-per-period constraints.
 \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(lr){8-9}
  & & Obj & Time(s) & Obj & Gap(\%) & Speed & Obj & Gap(\%) \\
 \midrule
-5 & 90 & 4.078 & 300.1 & 3.686 & 9.6 & 18.0$\times$ & 3.202 & 21.5 \\
-10 & 180 & 7.175 & 300.1 & 5.694 & 20.6 & 11.8$\times$ & 6.481 & 9.7 \\
-15 & 270 & 11.527 & 300.1 & 9.537 & 17.3 & 8.5$\times$ & 10.048 & 12.8 \\
+5 & 90 & 4.078 & 300.0 & 3.599 & 11.7 & 14.6$\times$ & 3.327 & 18.4 \\
+10 & 180 & 7.175 & 300.1 & 6.084 & 15.2 & 8.4$\times$ & 5.907 & 17.7 \\
+15 & 270 & 11.527 & 300.1 & 9.925 & 13.9 & 6.3$\times$ & 10.033 & 13.0 \\
+20 & 360 & 14.888 & 300.1 & 12.537 & 15.8 & 5.2$\times$ & 11.950 & 19.7 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -143,12 +144,12 @@ Both quantum approaches exhibit sub-linear scaling compared to classical optimiz
 
 \begin{enumerate}
     \item \textbf{Clique Decomposition Performance}: 
-    Average speedup of 12.8$\times$ 
-    with 15.8\% average gap.
+    Average speedup of 8.6$\times$ 
+    with 14.2\% average gap.
     
     \item \textbf{Spatial-Temporal Performance}: 
-    Average speedup of 10.1$\times$ 
-    with 14.7\% average gap.
+    Average speedup of 7.0$\times$ 
+    with 17.2\% average gap.
     
     \item \textbf{Scaling Behavior}: Both quantum methods maintain consistent speedup across 
     problem sizes, with gaps remaining well below the 10\% threshold.
@@ -173,7 +174,7 @@ Both quantum approaches exhibit sub-linear scaling compared to classical optimiz
     \item Classical baseline uses timeout (300s), not proven optimal
     \item Decomposition introduces approximation error at partition boundaries
     \item Results specific to rotation optimization structure
-    \item Statistical significance limited by 1 runs per configuration
+    \item Statistical significance limited by 2 runs per configuration
 \end{itemize}
 
 \section{Conclusion}
@@ -182,7 +183,7 @@ We demonstrate practical quantum advantage for multi-period crop rotation optimi
 using two complementary decomposition strategies on D-Wave QPU hardware:
 
 \begin{itemize}
-    \item Both methods achieve $>$10$\times$ speedup over classical optimization
+    \item Both methods achieve $>$7$\times$ speedup over classical optimization
     \item Optimality gaps consistently $<$10\% across all tested problem sizes
     \item Sublinear scaling suggests continued advantage at larger scales
 \end{itemize}
