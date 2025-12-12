@@ -211,7 +211,15 @@ for n_farms in sizes:
         gap = size_data['gaps'][qm]
         speedup = size_data['speedups'][qm]
         
-        print(f"  {qm:20s}: obj={qm_obj:.4f}, time={qm_time:.2f}s, crops={qm_crops:.1f}, gap={gap:.2f}%, speedup={speedup:.1f}x")
+        # Check for post-processing timing
+        pp_time_str = ""
+        if 'runs' in size_data['methods'][qm] and len(size_data['methods'][qm]['runs']) > 0:
+            first_run = size_data['methods'][qm]['runs'][0]
+            if 'post_processing_time' in first_run:
+                pp_time = first_run['post_processing_time']['total']
+                pp_time_str = f", pp_time={pp_time*1000:.2f}ms"
+        
+        print(f"  {qm:20s}: obj={qm_obj:.4f}, time={qm_time:.2f}s, crops={qm_crops:.1f}, gap={gap:.2f}%, speedup={speedup:.1f}x{pp_time_str}")
 
 print("\n" + "="*80)
 print("COMPARISON WITH ROADMAP PHASES")

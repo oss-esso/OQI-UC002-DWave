@@ -70,12 +70,22 @@ def load_food_data(complexity_level: str = 'simple') -> Tuple[List[str], Dict[st
         return _load_rotation_medium_100_food_data()
     elif complexity_level == 'rotation_large_200':
         return _load_rotation_large_200_food_data()
+    # NEW: Large-scale rotation scenarios (for hierarchical quantum solver)
+    elif complexity_level == 'rotation_250farms_27foods':
+        return _load_rotation_250farms_27foods_food_data()
+    elif complexity_level == 'rotation_350farms_27foods':
+        return _load_rotation_350farms_27foods_food_data()
+    elif complexity_level == 'rotation_500farms_27foods':
+        return _load_rotation_500farms_27foods_food_data()
+    elif complexity_level == 'rotation_1000farms_27foods':
+        return _load_rotation_1000farms_27foods_food_data()
     else:
         raise ValueError(
             f"Invalid complexity level: {complexity_level}. Must be one of: simple, intermediate, custom, "
             f"30farms, 60farms, 90farms, 250farms, 350farms, 500farms_full, 1000farms_full, 2000farms_full, "
             f"full, full_family, micro_6, micro_12, tiny_24, tiny_40, small_60, small_80, small_100, medium_120, medium_160, "
-            f"rotation_micro_25, rotation_small_50, rotation_medium_100, rotation_large_200")
+            f"rotation_micro_25, rotation_small_50, rotation_medium_100, rotation_large_200, "
+            f"rotation_250farms_27foods, rotation_350farms_27foods, rotation_500farms_27foods, rotation_1000farms_27foods")
 
 
 def _load_30farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
@@ -2345,6 +2355,398 @@ def _load_rotation_large_200_food_data() -> Tuple[List[str], Dict[str, Dict[str,
     logger.info(f"  Frustration: 88% negative synergies (extreme classical hardness)")
     
     return farms, crop_families, food_groups, config
+
+
+# ============================================================================
+# LARGE-SCALE ROTATION SCENARIOS (27 foods, many farms, 3 periods)
+# For hierarchical quantum solver testing
+# ============================================================================
+
+def _load_rotation_250farms_27foods_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """
+    Large-scale rotation scenario: 250 farms × 27 foods × 3 periods = 20,250 variables
+    
+    Design for hierarchical quantum solver:
+    - Full food diversity (27 foods from Excel data)
+    - 3-period rotation with synergies
+    - Spatial interactions between neighboring farms
+    - Diversity bonuses and soft one-hot constraints
+    - Benefit scaling WITHOUT area normalization (rotation terms change scale)
+    """
+    import sys as _sys
+    import os as _os
+    import pandas as _pd
+
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+
+    # Generate farms
+    n_farms = 250
+    L = generate_farms(n_farms=n_farms, seed=250)
+    farms = list(L.keys())
+    total_area = sum(L.values())
+    
+    print(f"Generated {len(farms)} farms for rotation_250farms_27foods")
+    print(f"Total land: {total_area:.2f} ha")
+
+    # Load 27 foods from Excel (all foods for maximum diversity)
+    script_dir = _os.path.dirname(_os.path.abspath(__file__))
+    project_root_excel = _os.path.dirname(script_dir)
+    excel_path = _os.path.join(project_root_excel, "Inputs", "Combined_Food_Data.xlsx")
+
+    foods: Dict[str, Dict[str, float]]
+    food_groups: Dict[str, List[str]]
+    
+    if _os.path.exists(excel_path):
+        try:
+            df = _pd.read_excel(excel_path)
+            col_map = {
+                'Food_Name': 'Food_Name',
+                'food_group': 'Food_Group',
+                'nutritional_value': 'nutritional_value',
+                'nutrient_density': 'nutrient_density',
+                'environmental_impact': 'environmental_impact',
+                'affordability': 'affordability',
+                'sustainability': 'sustainability'
+            }
+            
+            # Get ALL foods (Excel should have exactly 27 foods)
+            grp_col = 'food_group'
+            name_col = 'Food_Name'
+            
+            # Take all unique foods from Excel (should be 27)
+            filt = df[list(col_map.keys())].copy()
+            filt = filt.drop_duplicates(subset=[name_col])
+            filt.rename(columns=col_map, inplace=True)
+
+            objectives = ['nutritional_value', 'nutrient_density',
+                          'environmental_impact', 'affordability', 'sustainability']
+            for obj in objectives:
+                filt[obj] = _pd.to_numeric(filt[obj], errors='coerce').fillna(0.5)
+                filt[obj] = filt[obj].clip(0, 1)
+
+            foods = {}
+            for _, row in filt.iterrows():
+                fname = row['Food_Name']
+                foods[fname] = {obj: float(row[obj]) for obj in objectives}
+
+            food_groups = {}
+            for _, row in filt.iterrows():
+                g = row['Food_Group'] or 'Unknown'
+                food_groups.setdefault(g, []).append(row['Food_Name'])
+                
+        except Exception as e:
+            print(f"Error loading Excel: {e}")
+            raise
+    else:
+        raise FileNotFoundError(f"Excel file required: {excel_path}")
+
+    # Configuration for rotation optimization
+    parameters = {
+        'land_availability': L,
+        'weights': {
+            'nutritional_value': 0.25,
+            'nutrient_density': 0.2,
+            'environmental_impact': 0.25,
+            'affordability': 0.15,
+            'sustainability': 0.15
+        },
+        'rotation_gamma': 0.20,  # Moderate rotation synergies
+        'spatial_k_neighbors': 4,  # 4-neighbor grid
+        'frustration_ratio': 0.70,  # 70% antagonistic pairs
+        'negative_synergy_strength': -0.8,
+        'use_soft_one_hot': True,
+        'one_hot_penalty': 3.0,
+        'diversity_bonus': 0.15,
+        'benefit_scale': 1.0,  # No area normalization (rotation changes objective scale)
+    }
+
+    config = {
+        'parameters': parameters,
+        'quantum_settings': {
+            'use_hierarchical_decomposition': True,
+            'farms_per_cluster': 10,  # Target cluster size for QPU
+            'num_reads': 100,
+            'num_iterations': 3,
+        }
+    }
+
+    logger.info(f"Loaded rotation_250farms_27foods: {n_farms} farms × {len(foods)} foods × 3 periods")
+    logger.info(f"  Total variables: ~{n_farms * len(foods) * 3} (20,250 for 250×27×3)")
+    
+    return farms, foods, food_groups, config
+
+
+def _load_rotation_350farms_27foods_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """350 farms × 27 foods × 3 periods = 28,350 variables"""
+    import sys as _sys
+    import os as _os
+    import pandas as _pd
+
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+
+    n_farms = 350
+    L = generate_farms(n_farms=n_farms, seed=350)
+    farms = list(L.keys())
+    
+    # Load foods (same as 250farms version)
+    script_dir = _os.path.dirname(_os.path.abspath(__file__))
+    project_root_excel = _os.path.dirname(script_dir)
+    excel_path = _os.path.join(project_root_excel, "Inputs", "Combined_Food_Data.xlsx")
+
+    if _os.path.exists(excel_path):
+        df = _pd.read_excel(excel_path)
+        col_map = {
+            'Food_Name': 'Food_Name',
+            'food_group': 'Food_Group',
+            'nutritional_value': 'nutritional_value',
+            'nutrient_density': 'nutrient_density',
+            'environmental_impact': 'environmental_impact',
+            'affordability': 'affordability',
+            'sustainability': 'sustainability'
+        }
+        
+        grp_col = 'food_group'
+        name_col = 'Food_Name'
+        
+        # Take all unique foods from Excel (should be 27)
+        filt = df[list(col_map.keys())].copy()
+        filt = filt.drop_duplicates(subset=[name_col])
+        filt.rename(columns=col_map, inplace=True)
+
+        objectives = ['nutritional_value', 'nutrient_density',
+                      'environmental_impact', 'affordability', 'sustainability']
+        for obj in objectives:
+            filt[obj] = _pd.to_numeric(filt[obj], errors='coerce').fillna(0.5)
+            filt[obj] = filt[obj].clip(0, 1)
+
+        foods = {}
+        for _, row in filt.iterrows():
+            fname = row['Food_Name']
+            foods[fname] = {obj: float(row[obj]) for obj in objectives}
+
+        food_groups = {}
+        for _, row in filt.iterrows():
+            g = row['Food_Group'] or 'Unknown'
+            food_groups.setdefault(g, []).append(row['Food_Name'])
+    else:
+        raise FileNotFoundError(f"Excel file required: {excel_path}")
+
+    parameters = {
+        'land_availability': L,
+        'weights': {
+            'nutritional_value': 0.25,
+            'nutrient_density': 0.2,
+            'environmental_impact': 0.25,
+            'affordability': 0.15,
+            'sustainability': 0.15
+        },
+        'rotation_gamma': 0.22,
+        'spatial_k_neighbors': 4,
+        'frustration_ratio': 0.72,
+        'negative_synergy_strength': -0.85,
+        'use_soft_one_hot': True,
+        'one_hot_penalty': 3.5,
+        'diversity_bonus': 0.18,
+        'benefit_scale': 1.0,
+    }
+
+    config = {
+        'parameters': parameters,
+        'quantum_settings': {
+            'use_hierarchical_decomposition': True,
+            'farms_per_cluster': 12,
+            'num_reads': 100,
+            'num_iterations': 3,
+        }
+    }
+
+    logger.info(f"Loaded rotation_350farms_27foods: {n_farms} farms × {len(foods)} foods × 3 periods")
+    return farms, foods, food_groups, config
+
+
+def _load_rotation_500farms_27foods_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """500 farms × 27 foods × 3 periods = 40,500 variables"""
+    import sys as _sys
+    import os as _os
+    import pandas as _pd
+
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+
+    n_farms = 500
+    L = generate_farms(n_farms=n_farms, seed=500)
+    farms = list(L.keys())
+    
+    # Load foods
+    script_dir = _os.path.dirname(_os.path.abspath(__file__))
+    project_root_excel = _os.path.dirname(script_dir)
+    excel_path = _os.path.join(project_root_excel, "Inputs", "Combined_Food_Data.xlsx")
+
+    if _os.path.exists(excel_path):
+        df = _pd.read_excel(excel_path)
+        col_map = {
+            'Food_Name': 'Food_Name',
+            'food_group': 'Food_Group',
+            'nutritional_value': 'nutritional_value',
+            'nutrient_density': 'nutrient_density',
+            'environmental_impact': 'environmental_impact',
+            'affordability': 'affordability',
+            'sustainability': 'sustainability'
+        }
+        
+        grp_col = 'food_group'
+        name_col = 'Food_Name'
+        
+        # Take all unique foods from Excel (should be 27)
+        filt = df[list(col_map.keys())].copy()
+        filt = filt.drop_duplicates(subset=[name_col])
+        filt.rename(columns=col_map, inplace=True)
+
+        objectives = ['nutritional_value', 'nutrient_density',
+                      'environmental_impact', 'affordability', 'sustainability']
+        for obj in objectives:
+            filt[obj] = _pd.to_numeric(filt[obj], errors='coerce').fillna(0.5)
+            filt[obj] = filt[obj].clip(0, 1)
+
+        foods = {}
+        for _, row in filt.iterrows():
+            fname = row['Food_Name']
+            foods[fname] = {obj: float(row[obj]) for obj in objectives}
+
+        food_groups = {}
+        for _, row in filt.iterrows():
+            g = row['Food_Group'] or 'Unknown'
+            food_groups.setdefault(g, []).append(row['Food_Name'])
+    else:
+        raise FileNotFoundError(f"Excel file required: {excel_path}")
+
+    parameters = {
+        'land_availability': L,
+        'weights': {
+            'nutritional_value': 0.25,
+            'nutrient_density': 0.2,
+            'environmental_impact': 0.25,
+            'affordability': 0.15,
+            'sustainability': 0.15
+        },
+        'rotation_gamma': 0.25,
+        'spatial_k_neighbors': 4,
+        'frustration_ratio': 0.75,
+        'negative_synergy_strength': -0.9,
+        'use_soft_one_hot': True,
+        'one_hot_penalty': 4.0,
+        'diversity_bonus': 0.20,
+        'benefit_scale': 1.0,
+    }
+
+    config = {
+        'parameters': parameters,
+        'quantum_settings': {
+            'use_hierarchical_decomposition': True,
+            'farms_per_cluster': 15,
+            'num_reads': 100,
+            'num_iterations': 3,
+        }
+    }
+
+    logger.info(f"Loaded rotation_500farms_27foods: {n_farms} farms × {len(foods)} foods × 3 periods")
+    return farms, foods, food_groups, config
+
+
+def _load_rotation_1000farms_27foods_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], Dict[str, List[str]], Dict]:
+    """1000 farms × 27 foods × 3 periods = 81,000 variables - Ultimate stress test!"""
+    import sys as _sys
+    import os as _os
+    import pandas as _pd
+
+    _project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _sys.path.insert(0, _project_root)
+    from Utils.farm_sampler import generate_farms
+
+    n_farms = 1000
+    L = generate_farms(n_farms=n_farms, seed=1000)
+    farms = list(L.keys())
+    
+    # Load foods
+    script_dir = _os.path.dirname(_os.path.abspath(__file__))
+    project_root_excel = _os.path.dirname(script_dir)
+    excel_path = _os.path.join(project_root_excel, "Inputs", "Combined_Food_Data.xlsx")
+
+    if _os.path.exists(excel_path):
+        df = _pd.read_excel(excel_path)
+        col_map = {
+            'Food_Name': 'Food_Name',
+            'food_group': 'Food_Group',
+            'nutritional_value': 'nutritional_value',
+            'nutrient_density': 'nutrient_density',
+            'environmental_impact': 'environmental_impact',
+            'affordability': 'affordability',
+            'sustainability': 'sustainability'
+        }
+        
+        grp_col = 'food_group'
+        name_col = 'Food_Name'
+        
+        # Take all unique foods from Excel (should be 27)
+        filt = df[list(col_map.keys())].copy()
+        filt = filt.drop_duplicates(subset=[name_col])
+        filt.rename(columns=col_map, inplace=True)
+
+        objectives = ['nutritional_value', 'nutrient_density',
+                      'environmental_impact', 'affordability', 'sustainability']
+        for obj in objectives:
+            filt[obj] = _pd.to_numeric(filt[obj], errors='coerce').fillna(0.5)
+            filt[obj] = filt[obj].clip(0, 1)
+
+        foods = {}
+        for _, row in filt.iterrows():
+            fname = row['Food_Name']
+            foods[fname] = {obj: float(row[obj]) for obj in objectives}
+
+        food_groups = {}
+        for _, row in filt.iterrows():
+            g = row['Food_Group'] or 'Unknown'
+            food_groups.setdefault(g, []).append(row['Food_Name'])
+    else:
+        raise FileNotFoundError(f"Excel file required: {excel_path}")
+
+    parameters = {
+        'land_availability': L,
+        'weights': {
+            'nutritional_value': 0.25,
+            'nutrient_density': 0.2,
+            'environmental_impact': 0.25,
+            'affordability': 0.15,
+            'sustainability': 0.15
+        },
+        'rotation_gamma': 0.30,  # Strong rotation effects
+        'spatial_k_neighbors': 4,
+        'frustration_ratio': 0.80,  # High frustration
+        'negative_synergy_strength': -1.0,
+        'use_soft_one_hot': True,
+        'one_hot_penalty': 5.0,
+        'diversity_bonus': 0.25,
+        'benefit_scale': 1.0,
+    }
+
+    config = {
+        'parameters': parameters,
+        'quantum_settings': {
+            'use_hierarchical_decomposition': True,
+            'farms_per_cluster': 20,  # Larger clusters for efficiency
+            'num_reads': 100,
+            'num_iterations': 3,
+        }
+    }
+
+    logger.info(f"Loaded rotation_1000farms_27foods: {n_farms} farms × {len(foods)} foods × 3 periods")
+    logger.info(f"  🚀 ULTIMATE STRESS TEST: ~81,000 variables!")
+    return farms, foods, food_groups, config
 
 
 # Test scenario output

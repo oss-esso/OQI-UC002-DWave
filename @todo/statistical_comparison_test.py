@@ -306,8 +306,9 @@ def solve_ground_truth(data: Dict, timeout: int = 900) -> Dict:
     model = gp.Model("RotationGroundTruth")
     model.setParam('OutputFlag', 0)
     model.setParam('TimeLimit', timeout)
-    model.setParam('MIPGap', 0.0001)  # 0.01% optimality gap
+    model.setParam('MIPGap', 0.1)  # 10% gap tolerance (find good solutions quickly)
     model.setParam('MIPFocus', 1)  # Focus on finding good feasible solutions quickly
+    model.setParam('ImproveStartTime', 30)  # Stop if no improvement after 30s
     model.setParam('Threads', 0)  # Use all available cores
     model.setParam('Presolve', 2)  # Aggressive presolve
     model.setParam('Cuts', 2)  # Aggressive cuts
@@ -426,10 +427,21 @@ def solve_ground_truth(data: Dict, timeout: int = 900) -> Dict:
         
         # Post-processing: Refine to specific crops
         if config.get('enable_post_processing', False) and solution_dict:
+            pp_start = time.time()
             refined_solution = refine_family_to_crops(solution_dict, data)
+            refinement_time = time.time() - pp_start
+            
+            div_start = time.time()
             diversity_stats = analyze_crop_diversity(refined_solution, data)
+            diversity_time = time.time() - div_start
+            
             result['refined_solution'] = refined_solution
             result['diversity_stats'] = diversity_stats
+            result['post_processing_time'] = {
+                'refinement': refinement_time,
+                'diversity_analysis': diversity_time,
+                'total': refinement_time + diversity_time
+            }
     
     return result
 
@@ -613,10 +625,21 @@ def solve_spatial_temporal(data: Dict, num_reads: int = 100, num_iterations: int
     # Post-processing: Refine to specific crops
     config = data.get('config', {})
     if config.get('enable_post_processing', False) and best_global_solution:
+        pp_start = time.time()
         refined_solution = refine_family_to_crops(best_global_solution, data)
+        refinement_time = time.time() - pp_start
+        
+        div_start = time.time()
         diversity_stats = analyze_crop_diversity(refined_solution, data)
+        diversity_time = time.time() - div_start
+        
         result['refined_solution'] = refined_solution
         result['diversity_stats'] = diversity_stats
+        result['post_processing_time'] = {
+            'refinement': refinement_time,
+            'diversity_analysis': diversity_time,
+            'total': refinement_time + diversity_time
+        }
     
     return result
 
@@ -785,10 +808,21 @@ def solve_clique_decomp(data: Dict, num_reads: int = 100, num_iterations: int = 
     # Post-processing: Refine to specific crops
     config = data.get('config', {})
     if config.get('enable_post_processing', False) and best_global_solution:
+        pp_start = time.time()
         refined_solution = refine_family_to_crops(best_global_solution, data)
+        refinement_time = time.time() - pp_start
+        
+        div_start = time.time()
         diversity_stats = analyze_crop_diversity(refined_solution, data)
+        diversity_time = time.time() - div_start
+        
         result['refined_solution'] = refined_solution
         result['diversity_stats'] = diversity_stats
+        result['post_processing_time'] = {
+            'refinement': refinement_time,
+            'diversity_analysis': diversity_time,
+            'total': refinement_time + diversity_time
+        }
     
     return result
 

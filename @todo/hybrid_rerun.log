@@ -1,0 +1,200 @@
+================================================================================
+HYBRID FORMULATION TEST: 20, 25, 50 farms
+================================================================================
+
+Testing: 27-food variables + 6-family synergy structure
+Expected: Consistent 15-20% gap (no formulation jump!)
+
+================================================================================
+RUNNING HYBRID FORMULATION TESTS
+================================================================================
+
+
+================================================================================
+Testing 20 farms (27 foods)
+================================================================================
+
+Run 1/2:
+  Loading hybrid data for 20 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Building hybrid rotation matrix (27×27)...
+    Strategy: spatial_decomposition
+    Variables: 1620 (20 farms × 27 foods × 3 periods)
+  Gurobi:
+    Building Gurobi model: 20 farms × 27 foods × 3 periods...
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+    Building objective (temporal + spatial synergies)...
+    Building spatial neighbor graph...
+    Setting objective in Gurobi...
+    Adding constraints...
+    Solving with Gurobi...
+    ✓ Gurobi: obj=10.0654, time=303.3s, gap=24.5%
+  Quantum:
+    [SIMULATED] Quantum solver would use:
+      - 27-food variables
+      - Hybrid 27×27 rotation matrix
+      - Strategy: spatial_decomposition
+    [SIMULATED] Quantum: obj=18.2400, time=2.7s, QPU=2.630s
+    NOTE: Replace with actual hierarchical_quantum_solver call!
+
+Run 2/2:
+  Loading hybrid data for 20 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Building hybrid rotation matrix (27×27)...
+    Strategy: spatial_decomposition
+    Variables: 1620 (20 farms × 27 foods × 3 periods)
+  Gurobi:
+    Building Gurobi model: 20 farms × 27 foods × 3 periods...
+    Building objective (temporal + spatial synergies)...
+    Building spatial neighbor graph...
+    Setting objective in Gurobi...
+    Adding constraints...
+    Solving with Gurobi...
+    ✓ Gurobi: obj=10.0582, time=307.3s, gap=24.6%
+  Quantum:
+    [SIMULATED] Quantum solver would use:
+      - 27-food variables
+      - Hybrid 27×27 rotation matrix
+      - Strategy: spatial_decomposition
+    [SIMULATED] Quantum: obj=18.2400, time=2.7s, QPU=2.630s
+    NOTE: Replace with actual hierarchical_quantum_solver call!
+
+================================================================================
+Testing 25 farms (27 foods)
+================================================================================
+
+Run 1/2:
+  Loading hybrid data for 25 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Building hybrid rotation matrix (27×27)...
+    Strategy: hierarchical_aggregation
+    Variables: 2025 (25 farms × 27 foods × 3 periods)
+  Gurobi:
+    Building Gurobi model: 25 farms × 27 foods × 3 periods...
+    Building objective (temporal + spatial synergies)...
+    Building spatial neighbor graph...
+    Setting objective in Gurobi...
+    Adding constraints...
+    Solving with Gurobi...
+    ✓ Gurobi: obj=12.3154, time=307.0s, gap=18.7%
+  Quantum:
+    [SIMULATED] Quantum solver would use:
+      - 27-food variables
+      - Hybrid 27×27 rotation matrix
+      - Strategy: hierarchical_aggregation
+    [SIMULATED] Quantum: obj=19.0500, time=3.3s, QPU=3.237s
+    NOTE: Replace with actual hierarchical_quantum_solver call!
+
+Run 2/2:
+  Loading hybrid data for 25 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Building hybrid rotation matrix (27×27)...
+    Strategy: hierarchical_aggregation
+    Variables: 2025 (25 farms × 27 foods × 3 periods)
+  Gurobi:
+    Building Gurobi model: 25 farms × 27 foods × 3 periods...
+    Building objective (temporal + spatial synergies)...
+    Building spatial neighbor graph...
+    Setting objective in Gurobi...
+    Adding constraints...
+    Solving with Gurobi...
+    ✓ Gurobi: obj=12.3094, time=307.3s, gap=18.8%
+  Quantum:
+    [SIMULATED] Quantum solver would use:
+      - 27-food variables
+      - Hybrid 27×27 rotation matrix
+      - Strategy: hierarchical_aggregation
+    [SIMULATED] Quantum: obj=19.0500, time=3.3s, QPU=3.237s
+    NOTE: Replace with actual hierarchical_quantum_solver call!
+
+================================================================================
+Testing 50 farms (27 foods)
+================================================================================
+
+Run 1/2:
+  Loading hybrid data for 50 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Building hybrid rotation matrix (27×27)...
+    Strategy: hierarchical_aggregation
+    Variables: 4050 (50 farms × 27 foods × 3 periods)
+  Gurobi:
+    Building Gurobi model: 50 farms × 27 foods × 3 periods...
+    Building objective (temporal + spatial synergies)...
+    Building spatial neighbor graph...
+    Setting objective in Gurobi...
+    Adding constraints...
+    Solving with Gurobi...
+    ✓ Gurobi: obj=22.6424, time=475.6s, gap=19.0%
+  Quantum:
+    [SIMULATED] Quantum solver would use:
+      - 27-food variables
+      - Hybrid 27×27 rotation matrix
+      - Strategy: hierarchical_aggregation
+    [SIMULATED] Quantum: obj=23.1000, time=6.4s, QPU=6.275s
+    NOTE: Replace with actual hierarchical_quantum_solver call!
+
+Run 2/2:
+  Loading hybrid data for 50 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Building hybrid rotation matrix (27×27)...
+    Strategy: hierarchical_aggregation
+    Variables: 4050 (50 farms × 27 foods × 3 periods)
+  Gurobi:
+    Building Gurobi model: 50 farms × 27 foods × 3 periods...
+    Building objective (temporal + spatial synergies)...
+    Building spatial neighbor graph...
+    Setting objective in Gurobi...
+    Adding constraints...
+    Solving with Gurobi...
+    ✓ Gurobi: obj=-450.0000, time=515.8s, gap=2839.3%
+  Quantum:
+    [SIMULATED] Quantum solver would use:
+      - 27-food variables
+      - Hybrid 27×27 rotation matrix
+      - Strategy: hierarchical_aggregation
+    [SIMULATED] Quantum: obj=23.1000, time=6.4s, QPU=6.275s
+    NOTE: Replace with actual hierarchical_quantum_solver call!
+
+✓ Results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hybrid_test_results/hybrid_test_1765552825.json
+
+================================================================================
+COMBINING WITH EXISTING RESULTS
+================================================================================
+
+✓ Comparison plot saved to: hybrid_formulation_comparison.png
+✓ PDF version saved to: hybrid_formulation_comparison.pdf
+
+================================================================================
+RESULTS SUMMARY
+================================================================================
+ n_vars  n_farms         formulation        gap    speedup  qpu_time
+     90        5 6 families (native)  11.742367  14.561366  0.536389
+    180       10 6 families (native)  15.198035   8.417163  1.072772
+    270       15 6 families (native)  13.892713   6.279979  1.609172
+    360       20 6 families (native)  15.788613   5.244158  2.145570
+    450       25     27→6 aggregated 134.761118   8.752506  0.595530
+    900       50     27→6 aggregated 133.795634   4.318915  1.191067
+   1800      100     27→6 aggregated 130.086175   2.212707  2.382114
+   1620       20   27 foods (hybrid)  81.279521 111.720885  2.630000
+   2025       25   27 foods (hybrid)  54.721715  91.907514  3.237500
+   4050       50   27 foods (hybrid) 110.810618  77.700236  6.275000
+
+================================================================================
+KEY OBSERVATION:
+================================================================================
+
+If hybrid formulation works as expected:
+- Gap at 1620 vars (20 farms, 27 foods): ~15-20%
+- Gap at 2025 vars (25 farms, 27 foods): ~15-20% (NOT 135%!)
+- Gap at 4050 vars (50 farms, 27 foods): ~15-20%
+
+This would prove the 135% gap was a formulation artifact!
+

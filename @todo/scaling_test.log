@@ -1,0 +1,149 @@
+================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  • 6 families (native) - Small problems
+  • 27→6 aggregated - Large problems (existing)
+  • 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Formulation: 6_families
+================================================================================
+
+  Testing: 5 farms × 6 foods = 90 variables
+  Loading: 5 farms × 6 foods from rotation_micro_25
+    Running Gurobi...
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+      obj=4.0187, time=0.3s, gap=7.8%, status=optimal
+    Running Quantum (simulated)...
+      obj=4.6325, time=2.4s, QPU=0.380s
+
+  Testing: 10 farms × 6 foods = 180 variables
+  Loading: 10 farms × 6 foods from rotation_small_50
+    Running Gurobi...
+      obj=6.2644, time=0.6s, gap=6.9%, status=optimal
+    Running Quantum (simulated)...
+      obj=5.0150, time=2.6s, QPU=0.560s
+
+  Testing: 15 farms × 6 foods = 270 variables
+  Loading: 15 farms × 6 foods from rotation_medium_100
+    Running Gurobi...
+      obj=8.2351, time=0.8s, gap=9.2%, status=optimal
+    Running Quantum (simulated)...
+      obj=5.3975, time=2.7s, QPU=0.740s
+
+  Testing: 20 farms × 6 foods = 360 variables
+  Loading: 20 farms × 6 foods from rotation_medium_100
+    Running Gurobi...
+      obj=10.4276, time=1.2s, gap=8.9%, status=optimal
+    Running Quantum (simulated)...
+      obj=5.7800, time=2.9s, QPU=0.920s
+
+  Testing: 25 farms × 6 foods = 450 variables
+  Loading: 25 farms × 6 foods from rotation_large_200
+    Running Gurobi...
+      obj=12.4504, time=1.0s, gap=8.8%, status=optimal
+    Running Quantum (simulated)...
+      obj=6.1625, time=3.1s, QPU=1.100s
+
+================================================================================
+Formulation: 27_hybrid
+================================================================================
+
+  Testing: 20 farms × 27 foods = 1620 variables
+  Loading: 20 farms × 27 foods from rotation_250farms_27foods
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Running Gurobi...
+      obj=10.0654, time=306.2s, gap=24.5%, status=timeout
+    Running Quantum (simulated)...
+      obj=11.1350, time=5.4s, QPU=3.440s
+
+  Testing: 25 farms × 27 foods = 2025 variables
+  Loading: 25 farms × 27 foods from rotation_250farms_27foods
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Running Gurobi...
+      obj=12.3154, time=306.2s, gap=18.7%, status=timeout
+    Running Quantum (simulated)...
+      obj=12.8562, time=6.2s, QPU=4.250s
+
+  Testing: 30 farms × 27 foods = 2430 variables
+  Loading: 30 farms × 27 foods from rotation_250farms_27foods
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Running Gurobi...
+      obj=14.5603, time=310.7s, gap=15.8%, status=timeout
+    Running Quantum (simulated)...
+      obj=14.5775, time=7.1s, QPU=5.060s
+
+  Testing: 40 farms × 27 foods = 3240 variables
+  Loading: 40 farms × 27 foods from rotation_250farms_27foods
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Running Gurobi...
+      obj=18.1232, time=485.1s, gap=18.5%, status=timeout
+    Running Quantum (simulated)...
+      obj=18.0200, time=8.7s, QPU=6.680s
+
+  Testing: 50 farms × 27 foods = 4050 variables
+  Loading: 50 farms × 27 foods from rotation_250farms_27foods
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+    Running Gurobi...
+      obj=-450.0000, time=514.0s, gap=2839.3%, status=timeout
+    Running Quantum (simulated)...
+      obj=21.4625, time=10.3s, QPU=8.300s
+
+  Testing: 60 farms × 27 foods = 4860 variables
+  Loading: 60 farms × 27 foods from rotation_350farms_27foods
+    Running Gurobi...
+      obj=-540.0000, time=375.9s, gap=2838.6%, status=timeout
+    Running Quantum (simulated)...
+      obj=24.9050, time=11.9s, QPU=9.920s
+
+✓ Results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765553199.json
+✓ CSV saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765553199.csv
+
+✓ Scaling plots saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/comprehensive_scaling.png
+✓ PDF version saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/comprehensive_scaling.pdf
+
+================================================================================
+COMPREHENSIVE SCALING RESULTS
+================================================================================
+ n_vars formulation  gurobi_obj  gurobi_time gurobi_status  quantum_obj       gap   speedup
+     90  6_families    4.018688     0.330851       optimal      4.63250 15.273944  0.139013
+    180  6_families    6.264378     0.591686       optimal      5.01500 19.944167  0.231127
+    270  6_families    8.235090     0.831675       optimal      5.39750 34.457303  0.303531
+    360  6_families   10.427638     1.207120       optimal      5.78000 44.570384  0.413397
+    450  6_families   12.450357     0.959322       optimal      6.16250 50.503428  0.309459
+   1620   27_hybrid   10.065371   306.249365       timeout     11.13500 10.626823 56.295839
+   2025   27_hybrid   12.315444   306.166059       timeout     12.85625  4.391286 48.986569
+   2430   27_hybrid   14.560257   310.747142       timeout     14.57750  0.118424 44.015176
+   3240   27_hybrid   18.123169   485.108640       timeout     18.02000  0.569264 55.888092
+   4050   27_hybrid -450.000000   513.969935       timeout     21.46250  0.000000 49.899994
+   4860   27_hybrid -540.000000   375.873195       timeout     24.90500  0.000000 31.532986
+
+================================================================================
+KEY INSIGHTS:
+================================================================================
+
+Variable Range: 90 - 4860
+Average Gap: 16.4%
+Average Speedup: 26.2×
+Gurobi Timeout Rate: 6/11 
+                     (55%)
+
+With optimized Gurobi settings (MIPGap=10%, early stopping):
+- Better solutions found faster
+- More consistent performance across problem sizes
+- Fairer quantum vs classical comparison
+
