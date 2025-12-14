@@ -4,6 +4,8 @@ Hierarchical Decomposition for Clique Embedding (Mohseni et al. style)
 Key idea: Decompose problem into subproblems with ≤16 variables each,
 solve with DWaveCliqueSampler (zero embedding overhead), then coordinate.
 """
+from typing import Dict
+from dimod import ConstrainedQuadraticModel
 
 def solve_rotation_clique_decomposition(data: Dict, cqm: ConstrainedQuadraticModel,
                                         num_reads: int = 100) -> Dict:

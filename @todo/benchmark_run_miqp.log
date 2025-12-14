@@ -1,0 +1,335 @@
+================================================================================
+SIGNIFICANT SCENARIOS BENCHMARK: Gurobi vs QPU
+================================================================================
+
+Importing libraries...
+✓ Gurobi available
+✓ D-Wave libraries available
+✓ Clique decomposition available
+[HierarchicalSolver] Loading modules...
+  ✓ QPU available (DWaveCliqueSampler)
+[HierarchicalSolver] Ready!
+✓ Hierarchical solver available
+
+
+================================================================================
+SIGNIFICANT SCENARIOS BENCHMARK
+Gurobi vs QPU Comprehensive Comparison
+================================================================================
+
+Run Configuration:
+  Mode: Gurobi FIRST, then QPU (with confirmation)
+  Scenarios: 6
+
+Gurobi Configuration:
+  Time limit: 300s (HARD LIMIT)
+  MIP gap: 1.0% (stop within 1% of optimum)
+  MIP focus: 1 (find good feasible solutions quickly)
+  Improve start time: 30s (stop if no improvement)
+
+QPU Configuration:
+  Num reads: 100
+  Farms per cluster: 5 (hierarchical)
+  Iterations: 3 (boundary coordination)
+
+Output: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios_results
+
+⚠️  This will consume D-Wave QPU credits (~600 QPU calls)
+⚠️  Estimated runtime: 60-90 minutes
+
+NOTE: You will be prompted after each Gurobi run before QPU starts.
+      This allows you to confirm Gurobi results first.
+
+Press ENTER to start benchmark, or Ctrl+C to cancel...
+================================================================================
+STARTING BENCHMARK - GUROBI FIRST, THEN QPU
+================================================================================
+Testing 6 scenarios
+Output directory: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios_results
+
+Configuration:
+  Gurobi: timeout=300s, MIPGap=1.0%, ImproveStartTime=30s
+  QPU: num_reads=100
+
+
+################################################################################
+SCENARIO 1/6: rotation_micro_25
+Description: 5 farms - Small scale
+Size: 5 farms × 6 foods × 3 periods = 90 vars
+QPU Method: clique_decomp
+################################################################################
+Loading data for rotation_micro_25 (using scenario 'rotation_micro_25')...
+
+======================================================================
+STEP 1: RUNNING GUROBI (Classical Baseline)
+======================================================================
+
+============================================================
+GUROBI: rotation_micro_25
+============================================================
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 300
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model built: 5 farms, 6 foods, 3 periods
+Variables: 0, Constraints: 0
+Model type: MIQP (Mixed Integer Quadratic Program) - includes rotation & spatial synergies
+Gurobi params: MIPGap=1.0%, MIPFocus=1, TimeLimit=300s, ImproveStartTime=30s
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  300
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 90 rows, 90 columns and 300 nonzeros
+Model fingerprint: 0x40e99e50
+Model has 1755 quadratic objective terms
+Variable types: 0 continuous, 90 integer (90 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 7e+00]
+  QObjective range [3e-05, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 4.9707401
+Presolve time: 0.01s
+Presolved: 1755 rows, 1755 columns, 5295 nonzeros
+Variable types: 0 continuous, 1755 integer (1755 binary)
+
+Root relaxation: objective 5.655628e+01, 279 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   56.55628    0   70    4.97074   56.55628  1038%     -    0s
+H    0     0                       6.0421629   56.55628   836%     -    0s
+H    0     0                       6.1030312   56.55628   827%     -    0s
+     0     0   55.81471    0  160    6.10303   55.81471   815%     -    0s
+     0     0   55.65178    0  247    6.10303   55.65178   812%     -    0s
+     0     0   55.62919    0  233    6.10303   55.62919   812%     -    0s
+     0     0   55.62837    0  246    6.10303   55.62837   811%     -    0s
+     0     0   55.44151    0  246    6.10303   55.44151   808%     -    0s
+     0     0   55.40063    0  288    6.10303   55.40063   808%     -    0s
+     0     0   55.39554    0  274    6.10303   55.39554   808%     -    0s
+     0     0   53.13631    0  409    6.10303   53.13631   771%     -    0s
+     0     0   51.84733    0  483    6.10303   51.84733   750%     -    0s
+     0     0   51.79472    0  544    6.10303   51.79472   749%     -    0s
+     0     0   51.78683    0  540    6.10303   51.78683   749%     -    0s
+     0     0   47.96351    0  428    6.10303   47.96351   686%     -    0s
+     0     0   47.87821    0  441    6.10303   47.87821   684%     -    0s
+     0     0   47.86381    0  466    6.10303   47.86381   684%     -    0s
+     0     0   46.17419    0  427    6.10303   46.17419   657%     -    0s
+     0     2   46.17418    0  427    6.10303   46.17418   657%     -    0s
+H  469   323                       6.1397607   41.82146   581%  27.8    1s
+   956   712   24.49986   17  439    6.13976   26.22124   327%  47.5    5s
+H 1779   803                       6.1555577   23.42667   281%  63.1    8s
+H 1978   799                       6.1668268   23.03137   273%  63.7    9s
+  2094   846   21.53357   21  398    6.16683   23.03137   273%  64.3   10s
+  3472  1304   15.55477   24  251    6.16683   21.30328   245%  67.1   15s
+  5100  2129   18.36830   22  316    6.16683   20.74054   236%  66.9   20s
+  7714  3366    7.16500   39   46    6.16683   20.06908   225%  63.8   25s
+ 10749  4654     cutoff   35         6.16683   19.18853   211%  62.5   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+ 11290  4666    9.06308   36   99    6.16683   19.13163   210%  62.4   31s
+ 11331  4912   15.43017   25  239    6.16683   19.12676   210%  62.5   40s
+ 11822  4956   12.52153   25  265    6.16683   19.07635   209%  62.4   46s
+ 11911  5247    7.23562   33   70    6.16683   19.07197   209%  62.3   56s
+ 12528  5345   13.96411   27  160    6.16683   18.98658   208%  61.9   64s
+ 12710  5763   15.22135   31  219    6.16683   18.97791   208%  61.7   73s
+ 13593  5796    6.79280   35   27    6.16683   18.89999   206%  61.4   79s
+ 13692  5817    7.51909   32   52    6.16683   18.89550   206%  61.3   85s
+ 13722  5865   14.49872   29  213    6.16683   18.89196   206%  61.4   91s
+ 13827  5882   18.69198   24  344    6.16683   18.87905   206%  61.3   97s
+ 13859  6005   17.13133   25  254    6.16683   18.87905   206%  61.2  104s
+ 14072  6035   11.06334   29  113    6.16683   18.86282   206%  61.2  111s
+ 14148  6250   15.32839   23  240    6.16683   18.85486   206%  61.2  119s
+ 14624  6314   12.38369   31  174    6.16683   18.80285   205%  61.0  128s
+ 14764  6736    8.86377   29   47    6.16683   18.78916   205%  60.9  137s
+ 15507  6757   10.76092   26  131    6.16683   18.74086   204%  60.9  144s
+ 15545  6796    7.94532   29   57    6.16683   18.74086   204%  60.9  152s
+ 15645  6941    7.67637   25  108    6.16683   18.71052   203%  60.8  160s
+ 15968  7018   14.78715   25  210    6.16683   18.69161   203%  60.6  168s
+ 16124  7269    7.92754   36   69    6.16683   18.67709   203%  60.5  177s
+ 16635  7326    7.29366   31   90    6.16683   18.64287   202%  60.3  185s
+ 16736  7458    7.56013   31   22    6.16683   18.63430   202%  60.4  195s
+ 17051  7626    7.21249   32   54    6.16683   18.61306   202%  60.2  204s
+ 17439  7707   13.88128   26  202    6.16683   18.57787   201%  60.2  213s
+ 17587  7775   10.32734   30  144    6.16683   18.55837   201%  60.2  220s
+ 17732  7790    6.52830   31   26    6.16683   18.54774   201%  60.1  228s
+ 17778  7857   16.89784   23  292    6.16683   18.54488   201%  60.1  236s
+ 17876  8097    6.74306   32   62    6.16683   18.54488   201%  60.1  249s
+ 18315  8145    8.74255   33   76    6.16683   18.51986   200%  60.1  258s
+ 18427  8205   10.63902   31  132    6.16683   18.51986   200%  60.1  266s
+ 18529  8244   11.30086   26  117    6.16683   18.50703   200%  60.0  275s
+ 18631  8392    7.21019   31   54    6.16683   18.47583   200%  59.9  288s
+ 18957  8417   14.68595   23  235    6.16683   18.45263   199%  59.8  296s
+ 18990  8438    6.68390   29   26    6.16683   18.45263   199%  59.8  300s
+
+Cutting planes:
+  Gomory: 3
+  Cover: 73
+  Dual implied bound: 351
+  MIR: 69
+  Flow cover: 124
+  Zero half: 107
+  RLT: 321
+  BQP: 1139
+
+Explored 19023 nodes (1143081 simplex iterations) in 300.01 seconds (237.23 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 6: 6.16683 6.15556 6.13976 ... 4.97074
+
+Time limit reached
+Best objective 6.166826839680e+00, best bound 1.845263095682e+01, gap 199.2241%
+Status: timeout
+  ⚠️  HIT TIMEOUT at 300s
+Objective: 6.166826839679835
+Runtime: 300.09s
+MIP Gap: 199.22%
+
+======================================================================
+GUROBI RESULTS: rotation_micro_25
+======================================================================
+Status:      timeout
+Objective:   6.166826839679835
+Runtime:     300.09s
+MIP Gap:     199.22%
+Timeout Hit: YES ⚠️
+Violations:  0
+  - Rotation:  0
+  - Diversity: 0
+  - Area:      0
+======================================================================
+
+======================================================================
+Gurobi results confirmed. Ready to run QPU method.
+Press ENTER to continue with QPU, or Ctrl+C to stop...
+======================================================================
+
+======================================================================
+STEP 2: RUNNING QPU (Quantum Hybrid)
+======================================================================
+
+============================================================
+QPU (CLIQUE_DECOMP): rotation_micro_25
+============================================================
+CQM built: 90 variables, 75 constraints
+Status: error
+Objective: None
+Runtime: 0.03s
+
+======================================================================
+QPU RESULTS: rotation_micro_25
+======================================================================
+Status:      error
+Objective:   None
+Runtime:     0.03s
+Violations:  999
+  - Rotation:  0
+  - Diversity: 0
+  - Area:      0
+======================================================================
+
+======================================================================
+COMPARISON: rotation_micro_25
+======================================================================
+Gurobi:  Obj=6.1668, Time=300.09s, Violations=0, Timeout=YES
+QPU:     Obj=0.0000, Time=0.03s, Violations=999
+Gap:     +100.00% (QPU worse)
+Speedup: 10301.88× (expected: 11.5×)
+======================================================================
+
+
+################################################################################
+SCENARIO 2/6: rotation_small_50
+Description: 10 farms - At the cliff
+Size: 10 farms × 6 foods × 3 periods = 180 vars
+QPU Method: clique_decomp
+################################################################################
+Loading data for rotation_small_50 (using scenario 'rotation_small_50')...
+
+======================================================================
+STEP 1: RUNNING GUROBI (Classical Baseline)
+======================================================================
+
+============================================================
+GUROBI: rotation_small_50
+============================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 300
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model built: 10 farms, 6 foods, 3 periods
+Variables: 0, Constraints: 0
+Model type: MIQP (Mixed Integer Quadratic Program) - includes rotation & spatial synergies
+Gurobi params: MIPGap=1.0%, MIPFocus=1, TimeLimit=300s, ImproveStartTime=30s
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  300
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 180 rows, 180 columns and 600 nonzeros
+Model fingerprint: 0x8d2e5653
+Model has 4158 quadratic objective terms
+Variable types: 0 continuous, 180 integer (180 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [3e-06, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 7.4004209
+Presolve time: 0.01s
+Presolved: 180 rows, 180 columns, 600 nonzeros
+Presolved model has 4158 quadratic objective terms
+Variable types: 0 continuous, 180 integer (180 binary)
+
+Root relaxation: objective 2.717429e+02, 123 iterations, 0.01 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  271.74288    0   95    7.40042  271.74288  3572%     -    0s
+H    0     0                       7.4217578  271.74288  3561%     -    0s
+H    0     0                       7.6106247  271.74288  3471%     -    0s
+H    0     0                       7.6805863  271.74288  3438%     -    0s
+     0     0  271.74288    0   95    7.68059  271.74288  3438%     -    0s
+H    0     0                       7.9036084  271.74288  3338%     -    0s
+H    0     0                       7.9298559  271.74288  3327%     -    0s
+H    0     0                       7.9602725  271.74288  3314%     -    0s
+H    0     0                       8.0155415  271.74288  3290%     -    0s
+H    0     0                       8.0405314  271.74288  3280%     -    0s
+H    0     0                       8.1620188  271.74288  3229%     -    0s
+H    0     0                       8.2192713  271.74288  3206%     -    0s
+H    0     0                       8.2961659  271.74288  3176%     -    0s
+H    0     0                       8.6625220  271.74288  3037%     -    0s
+     0     2  271.74288    0   95    8.66252  271.74288  3037%     -    0s
+H 5177  3777                       8.6767570  209.31657  2312%   3.6    3s
+H 5900  4399                       8.6859587  208.62503  2302%   3.6    3s
+  7836  5927     cutoff   52         8.68596  204.73516  2257%   3.7    5s
+ 15246 12111  157.89231   33   55    8.68596  199.30038  2195%   3.7   10s
+ 23362 17780     cutoff   54         8.68596  194.66812  2141%   3.7   15s
+ 30459 23477   10.87092   51   37    8.68596  192.36776  2115%   3.7   20s
+ 37852 29036  119.52006   31   59    8.68596  190.61929  2095%   3.7   25s
