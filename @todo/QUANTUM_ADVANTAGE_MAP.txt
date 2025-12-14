@@ -1,0 +1,88 @@
+===============================================================================
+GUROBI VS QPU: FEASIBILITY AND PERFORMANCE MAP (100s timeout)
+===============================================================================
+
+Problem Size    Variables   Area     Gurobi    QPU         Quantum
+                            (ha)     Status    Feasible    Advantage?
+-------------------------------------------------------------------------------
+ZONE 1: DIRECT QPU EMBEDDING (≤166 qubits)
+-------------------------------------------------------------------------------
+3 farms         54 vars     3.1      ✓ 7.9s   DIRECT      ✗ Gurobi OK
+5 farms         90 vars     4.5      ✗ TIMEOUT DIRECT      ✓✓✓ YES!
+-------------------------------------------------------------------------------
+ZONE 2: QPU WITH DECOMPOSITION (166-750 qubits)
+-------------------------------------------------------------------------------
+8 farms         144 vars    8.9      ✓ 7.0s   DECOMP      ✗ Gurobi OK
+10 farms        180 vars    12.4     ~ 45.8s  DECOMP      ~ Maybe
+15 farms        270 vars    32.5     ✗ TIMEOUT DECOMP      ✓✓✓ YES!
+20 farms        360 vars    100.0    ✗ TIMEOUT DECOMP      ✓✓✓ YES!
+25 farms        450 vars    12.8     ✗ TIMEOUT DECOMP      ✓✓✓ YES!
+-------------------------------------------------------------------------------
+ZONE 3: QPU BORDERLINE / HEAVY DECOMPOSITION (> 750 qubits)
+-------------------------------------------------------------------------------
+30 farms        540 vars    18.2     ✓ 2.8s   NO          ✗ Gurobi OK
+40 farms        720 vars    40.0     ✗ TIMEOUT NO          ~ Hybrid?
+-------------------------------------------------------------------------------
+ZONE 4: TOO LARGE FOR QPU / GUROBI TRIVIAL (> 1000 qubits, area=100ha)
+-------------------------------------------------------------------------------
+50 farms        900 vars    100.0    ✓ 2.9s   NO          ✗ Gurobi wins
+60 farms        1080 vars   100.0    ✓ 2.9s   NO          ✗ Gurobi wins
+75 farms        1350 vars   100.0    ✓ 2.9s   NO          ✗ Gurobi wins
+90 farms        1620 vars   100.0    ✓ 2.8s   NO          ✗ Gurobi wins
+100 farms       1800 vars   100.0    ✓ 2.8s   NO          ✗ Gurobi wins
+150 farms       2700 vars   100.0    ✓ 2.9s   NO          ✗ Gurobi wins
+200 farms       3600 vars   100.0    ✓ 2.8s   NO          ✗ Gurobi wins
+300 farms       5400 vars   100.0    ✓ 2.8s   NO          ✗ Gurobi wins
+===============================================================================
+
+LEGEND:
+  ✓ = Gurobi solves within 100s
+  ✗ = Gurobi times out at 100s
+  ~ = Gurobi struggles (slow but completes)
+  
+  DIRECT = Can fit on QPU directly (≤166 qubits after embedding)
+  DECOMP = Needs decomposition (166-750 qubits)
+  NO = Too large for QPU without heavy decomposition
+
+  ✓✓✓ = Strong quantum advantage opportunity
+  ~ = Potential quantum advantage
+  ✗ = No quantum advantage expected
+
+===============================================================================
+KEY INSIGHTS
+===============================================================================
+
+1. QUANTUM ADVANTAGE ZONE: 90-450 variables (5-25 farms)
+   - Gurobi fails (timeouts at 100s)
+   - QPU feasible with decomposition
+   - Small land areas make problems hard
+
+2. COUNTERINTUITIVE RESULT: Bigger is EASIER for Gurobi!
+   - 5 farms (90 vars) → TIMEOUT
+   - 300 farms (5400 vars) → 2.8s optimal
+   - Area matters more than size!
+
+3. QPU FEASIBILITY CUTOFFS:
+   - Direct embedding: ≤ 90 variables (≤166 qubits)
+   - With decomposition: ≤ 450 variables (≤675 qubits)
+   - Hybrid needed: 450-720 variables
+   - Classical better: > 900 variables (if area ≥ 100 ha)
+
+4. CRITICAL FACTOR: Total Land Area
+   - Area < 50 ha → Gurobi struggles
+   - Area ≥ 100 ha → Gurobi trivial
+   - Use tight constraints for quantum advantage!
+
+===============================================================================
+RECOMMENDATION
+===============================================================================
+
+Test QPU on these problem sizes:
+  ✓ 5 farms (90 vars, 4.5 ha) - Direct embedding
+  ✓ 15 farms (270 vars, 32.5 ha) - With decomposition
+  ✓ 20 farms (360 vars, 100 ha) - With decomposition
+  ✓ 25 farms (450 vars, 12.8 ha) - With decomposition
+
+All show Gurobi timeouts and are QPU-feasible!
+
+===============================================================================

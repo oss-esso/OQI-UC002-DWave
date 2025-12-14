@@ -40,9 +40,9 @@ print("COMPREHENSIVE SCALING TEST: 25-1500 Variables")
 print("="*80)
 print()
 print("Testing three formulations across full variable range:")
-print("  • 6 families (native) - Small problems")
-print("  • 27→6 aggregated - Large problems (existing)")
-print("  • 27 foods (hybrid) - All sizes")
+print("  * 6 families (native) - Small problems")
+print("  * 27->6 aggregated - Large problems (existing)")
+print("  * 27 foods (hybrid) - All sizes")
 print()
 
 # Configuration
@@ -63,32 +63,32 @@ NUM_RUNS = 1  # Single run for speed (can increase for variance)
 #          ~4-5 farms × 27 foods × 3 = 360-405 vars
 
 TEST_PLAN = {
-    # Test point 1: ~360 variables (small)
+    # Test point 1: ~360 variables (HARD instance)
     'test_360': {
         'native_6': {'n_farms': 20, 'n_foods': 6, 'scenario': 'rotation_medium_100', 'formulation': 'Native 6-Family'},
-        'aggregated': {'n_farms': 20, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'aggregate_to_6': True, 'formulation': '27→6 Aggregated'},
-        'hybrid_27': {'n_farms': 4, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'formulation': '27-Food Hybrid'},  # 4×27×3=324 vars
+        'aggregated': {'n_farms': 20, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'aggregate_to_6': True, 'formulation': '27->6 Aggregated'},
+        'hybrid_27': {'n_farms': 4, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'formulation': '27-Food Hybrid'},
     },
     
-    # Test point 2: ~900 variables (medium)
+    # Test point 2: ~900 variables (EASY instance for native_6)
     'test_900': {
-        'native_6': {'n_farms': 50, 'n_foods': 6, 'scenario': 'rotation_large_200', 'formulation': 'Native 6-Family'},  # 50×6×3=900
-        'aggregated': {'n_farms': 50, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'aggregate_to_6': True, 'formulation': '27→6 Aggregated'},
-        'hybrid_27': {'n_farms': 11, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'formulation': '27-Food Hybrid'},  # 11×27×3=891 vars
+        'native_6': {'n_farms': 50, 'n_foods': 6, 'scenario': 'rotation_large_200', 'formulation': 'Native 6-Family'},
+        'aggregated': {'n_farms': 50, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'aggregate_to_6': True, 'formulation': '27->6 Aggregated'},
+        'hybrid_27': {'n_farms': 11, 'n_foods': 27, 'scenario': 'rotation_250farms_27foods', 'formulation': '27-Food Hybrid'},
     },
     
-    # Test point 3: ~1620 variables (large)
+    # Test point 3: ~1620 variables (EASY instance for native_6)
     'test_1620': {
-        'native_6': {'n_farms': 90, 'n_foods': 6, 'scenario': 'rotation_large_200', 'formulation': 'Native 6-Family'},  # 90×6×3=1620
-        'aggregated': {'n_farms': 90, 'n_foods': 27, 'scenario': 'rotation_350farms_27foods', 'aggregate_to_6': True, 'formulation': '27→6 Aggregated'},
-        'hybrid_27': {'n_farms': 20, 'n_foods': 27, 'scenario': 'rotation_350farms_27foods', 'formulation': '27-Food Hybrid'},  # 20×27×3=1620 vars
+        'native_6': {'n_farms': 90, 'n_foods': 6, 'scenario': 'rotation_large_200', 'formulation': 'Native 6-Family'},
+        'aggregated': {'n_farms': 90, 'n_foods': 27, 'scenario': 'rotation_350farms_27foods', 'aggregate_to_6': True, 'formulation': '27->6 Aggregated'},
+        'hybrid_27': {'n_farms': 20, 'n_foods': 27, 'scenario': 'rotation_350farms_27foods', 'formulation': '27-Food Hybrid'},
     },
     
-    # Test point 4: ~4050 variables (very large)
+    # Test point 4: ~4050 variables (EASY instance for native_6)
     'test_4050': {
-        'native_6': {'n_farms': 225, 'n_foods': 6, 'scenario': 'rotation_large_200', 'formulation': 'Native 6-Family'},  # 225×6×3=4050
-        'aggregated': {'n_farms': 225, 'n_foods': 27, 'scenario': 'rotation_500farms_27foods', 'aggregate_to_6': True, 'formulation': '27→6 Aggregated'},
-        'hybrid_27': {'n_farms': 50, 'n_foods': 27, 'scenario': 'rotation_500farms_27foods', 'formulation': '27-Food Hybrid'},  # 50×27×3=4050 vars
+        'native_6': {'n_farms': 225, 'n_foods': 6, 'scenario': 'rotation_large_200', 'formulation': 'Native 6-Family'},
+        'aggregated': {'n_farms': 225, 'n_foods': 27, 'scenario': 'rotation_500farms_27foods', 'aggregate_to_6': True, 'formulation': '27->6 Aggregated'},
+        'hybrid_27': {'n_farms': 50, 'n_foods': 27, 'scenario': 'rotation_500farms_27foods', 'formulation': '27-Food Hybrid'},
     },
 }
 
@@ -112,24 +112,30 @@ def load_data_for_test(test_config: Dict) -> Dict:
     aggregate_to_6 = test_config.get('aggregate_to_6', False)
     formulation_name = test_config.get('formulation', 'Unknown')
     
-    print(f"  Loading: {n_farms} farms × {n_foods_requested} foods from {scenario}")
+    print(f"  Loading: {n_farms} farms x {n_foods_requested} foods from {scenario}")
     if aggregate_to_6:
-        print(f"    → Will aggregate 27 foods to 6 families")
+        print(f"    -> Will aggregate 27 foods to 6 families")
     
     # Load scenario
     farms, foods, food_groups, config = load_food_data(scenario)
     
-    # Get farm subset
-    if isinstance(farms, list):
-        all_farm_names = farms[:n_farms]
-    else:
-        all_farm_names = list(farms.keys())[:n_farms]
+    # Land availability - Load from scenario params (EXACT same as statistical test)
+    params = config.get('parameters', {})
+    land_availability = params.get('land_availability', {})
+    all_farm_names = list(land_availability.keys())
     
-    # Land availability
-    land_availability = {f: np.random.uniform(10, 30) for f in all_farm_names}
+    # Extend if needed (matching statistical_comparison_test.py logic)
+    if len(all_farm_names) < n_farms:
+        for i in range(len(all_farm_names), n_farms):
+            land_availability[f'Farm_{i+1}'] = np.random.uniform(15, 35)
+        all_farm_names = list(land_availability.keys())
+    
+    # Trim to exact count
+    farm_names = all_farm_names[:n_farms]
+    land_availability = {f: land_availability[f] for f in farm_names}
     total_area = sum(land_availability.values())
     
-    # Food data
+    # Food data - Extract from scenario (EXACT same as statistical test)
     params = config.get('parameters', {})
     weights = params.get('weights', {
         'nutritional_value': 0.25,
@@ -174,16 +180,16 @@ def load_data_for_test(test_config: Dict) -> Dict:
         n_foods = 6
         print(f"    → Aggregated to {n_foods} families with averaged benefits")
     else:
-        # No aggregation - use foods directly
+        # No aggregation - use foods directly (EXACT same as statistical test)
         food_names = list(foods.keys())[:n_foods_requested]
         food_benefits = {}
         for food in food_names:
             benefit = (
-                weights.get('nutritional_value', 0) * foods[food].get('nutritional_value', 0.5) +
-                weights.get('nutrient_density', 0) * foods[food].get('nutrient_density', 0.5) -
-                weights.get('environmental_impact', 0) * foods[food].get('environmental_impact', 0.5) +
-                weights.get('affordability', 0) * foods[food].get('affordability', 0.5) +
-                weights.get('sustainability', 0) * foods[food].get('sustainability', 0.5)
+                weights.get('nutritional_value', 0) * foods[food].get('nutritional_value', 0) +
+                weights.get('nutrient_density', 0) * foods[food].get('nutrient_density', 0) -
+                weights.get('environmental_impact', 0) * foods[food].get('environmental_impact', 0) +
+                weights.get('affordability', 0) * foods[food].get('affordability', 0) +
+                weights.get('sustainability', 0) * foods[food].get('sustainability', 0)
             )
             food_benefits[food] = benefit
         n_foods = len(food_names)
@@ -192,14 +198,27 @@ def load_data_for_test(test_config: Dict) -> Dict:
     if n_foods == 27:
         # Hybrid: 27×27 from 6×6 template
         R = build_hybrid_rotation_matrix(food_names)
-        print(f"    → Built hybrid 27×27 rotation matrix from 6×6 template")
+        print(f"    -> Built hybrid 27x27 rotation matrix from 6x6 template")
     else:
-        # Simple frustration matrix for 6 foods
+        # Use SAME frustration-based generation as statistical test for fair comparison
         np.random.seed(42)
-        R = np.random.uniform(-0.8, 0.2, (n_foods, n_foods))
+        frustration_ratio = 0.7  # Match statistical_comparison_test.py
+        negative_strength = -0.8
+        R = np.zeros((n_foods, n_foods))
+        
         for i in range(n_foods):
-            R[i, i] = -1.2  # Avoid same crop
-        print(f"    → Built {n_foods}×{n_foods} frustration matrix")
+            for j in range(n_foods):
+                if i == j:
+                    # Diagonal: strong self-avoidance
+                    R[i, j] = negative_strength * 1.5
+                elif np.random.random() < frustration_ratio:
+                    # 70% negative synergies (hard problem)
+                    R[i, j] = np.random.uniform(negative_strength * 1.2, negative_strength * 0.3)
+                else:
+                    # 30% positive synergies
+                    R[i, j] = np.random.uniform(0.02, 0.20)
+        
+        print(f"    -> Built {n_foods}x{n_foods} frustration matrix (frustration_ratio=0.7)")
     
     strategy = detect_decomposition_strategy(n_farms, n_foods, N_PERIODS)
     
@@ -210,7 +229,7 @@ def load_data_for_test(test_config: Dict) -> Dict:
         'food_benefits': food_benefits,
         'weights': weights,
         'land_availability': land_availability,
-        'farm_names': all_farm_names,
+        'farm_names': farm_names,  # FIXED: Use trimmed list, not all_farm_names
         'total_area': total_area,
         'n_farms': n_farms,
         'n_foods': n_foods,
@@ -272,14 +291,16 @@ def solve_gurobi(data: Dict, timeout: int = 300) -> Dict:
     n_farms = len(farm_names)
     n_foods = len(food_names)
     
-    # Model with optimized settings
+    # Model with SAME settings as statistical_comparison_test.py for fair comparison
     model = gp.Model("ScalingTest")
     model.setParam('OutputFlag', 0)
     model.setParam('TimeLimit', timeout)
     model.setParam('MIPGap', 0.1)  # 10% gap tolerance
     model.setParam('MIPFocus', 1)  # Focus on feasible solutions
     model.setParam('ImproveStartTime', 30)  # Stop if no improvement after 30s
-    model.setParam('Threads', 8)
+    model.setParam('Threads', 0)  # Use all available cores (MATCH statistical test)
+    model.setParam('Presolve', 2)  # Aggressive presolve (MATCH statistical test)
+    model.setParam('Cuts', 2)  # Aggressive cuts (MATCH statistical test)
     
     # Variables
     Y = {}
@@ -468,18 +489,18 @@ for test_name, test_variants in TEST_PLAN.items():
         data = load_data_for_test(test_config)
         n_vars = data['n_farms'] * data['n_foods'] * N_PERIODS
         
-        print(f"  → Final problem: {data['n_farms']} farms × {data['n_foods']} foods = {n_vars} variables")
+        print(f"  -> Final problem: {data['n_farms']} farms x {data['n_foods']} foods = {n_vars} variables")
         
         # Gurobi
         print(f"    Running Gurobi...")
         gurobi_result = solve_gurobi(data, GUROBI_TIMEOUT)
-        print(f"      ✓ obj={gurobi_result['objective']:.4f}, time={gurobi_result['solve_time']:.1f}s, " +
+        print(f"      OK obj={gurobi_result['objective']:.4f}, time={gurobi_result['solve_time']:.1f}s, " +
               f"gap={gurobi_result['gap']*100:.1f}%, status={gurobi_result.get('status', 'unknown')}")
         
         # Quantum (simulated)
         print(f"    Running Quantum (simulated)...")
         quantum_result = solve_quantum_sim(data)
-        print(f"      ✓ obj={quantum_result['objective']:.4f}, time={quantum_result['solve_time']:.1f}s, " +
+        print(f"      OK obj={quantum_result['objective']:.4f}, time={quantum_result['solve_time']:.1f}s, " +
               f"QPU={quantum_result['qpu_time']:.3f}s")
         
         # Calculate gap and speedup

@@ -1,0 +1,44 @@
+﻿================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  * 6 families (native) - Small problems
+  * 27->6 aggregated - Large problems (existing)
+  * 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Test Point: test_360
+================================================================================
+
+  Variant: Native 6-Family
+  -----------------------------------------------------------------------
+  Loading: 20 farms Î 6 foods from rotation_medium_100
+    -> Built 6x6 frustration matrix (frustration_ratio=0.7)
+  -> Final problem: 20 farms x 6 foods = 360 variables
+    Running Gurobi...
+Set parameter Username
+Set parameter LicenseID to value 2727502
+Academic license - for non-commercial use only - expires 2026-10-24
+      OK obj=10.8068, time=300.2s, gap=7207.7%, status=timeout
+    Running Quantum (simulated)...
+      OK obj=5.7800, time=2.9s, QPU=0.920s
+python : Traceback (most recent call last):
+In riga:1 car:1
++ python -u comprehensive_scaling_test.py 2>&1 | Out-File -FilePath com ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\Projects\OQI-UC002-DWave\@todo\comprehensive_scaling_test.py", line 485, in <module>
+    print(f"\n  Variant: {formulation_name}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 15: character maps to <undefined>

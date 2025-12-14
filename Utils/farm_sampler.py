@@ -87,6 +87,31 @@ def generate_farms(n_farms: int, seed: int = 42, total_area: float = None) -> Di
     
     return L
 
+
+def generate_farms_constant_area(n_farms: int, area_per_farm: float = 5.0, seed: int = 42) -> Dict[str, float]:
+    """
+    Generate farms with CONSTANT area per farm for consistent hardness scaling.
+    
+    This ensures that total land area scales linearly with number of farms,
+    eliminating area-based instance difficulty variations.
+    
+    Args:
+        n_farms: Number of farms to generate
+        area_per_farm: Area per farm in hectares (default: 5.0 ha)
+        seed: Random seed for reproducibility (not used for area, only for ordering)
+        
+    Returns:
+        Dictionary mapping farm names to constant land availability (hectares)
+    """
+    np.random.seed(seed)
+    
+    # Create farms with constant area
+    L = {}
+    for i in range(1, n_farms + 1):
+        L[f'Farm{i}'] = area_per_farm
+    
+    return L
+
 # ------------------------------------------------------------
 # MAIN: Display example usage
 # ------------------------------------------------------------
