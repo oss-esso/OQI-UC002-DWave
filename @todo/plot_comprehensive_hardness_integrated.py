@@ -36,27 +36,11 @@ except FileNotFoundError:
 
 # Load QPU results
 try:
-    df_qpu = pd.read_csv(results_dir / 'qpu_results_integrated.csv')
-    
-    # Ensure test_type column exists and is properly set
-    if 'test_type' not in df_qpu.columns or df_qpu['test_type'].isna().any():
-        # Determine test type from source/method
-        def assign_qpu_test_type(row):
-            if 'roadmap' in str(row.get('source', '')).lower():
-                return 'Roadmap QPU'
-            elif 'hierarchical' in str(row.get('method', '')).lower():
-                return 'Hierarchical QPU'
-            elif 'statistical' in str(row.get('method', '')).lower():
-                return 'Statistical QPU'
-            else:
-                return 'Roadmap QPU'  # Default
-        
-        df_qpu['test_type'] = df_qpu.apply(assign_qpu_test_type, axis=1)
-    
-    df_combined_list.append(df_qpu)
-    print(f"  Loaded {len(df_qpu)} QPU results")
+    df_additional = pd.read_csv(results_dir / 'additional_gurobi_results.csv')
+    df_combined_list.append(df_additional)
+    print(f"  Loaded {len(df_additional)} additional Gurobi results")
 except FileNotFoundError:
-    print("  No QPU data found")
+    print("  No additional Gurobi data found")
 
 # Combine all datasets
 df_combined = pd.concat(df_combined_list, ignore_index=True)
@@ -102,9 +86,9 @@ color_map = {
 marker_map = {
     'Per-Farm Area (1 ha/farm)': 'o',   # Circle - new normalization
     'Total Area (100 ha)': 's',         # Square - old normalization
-    'Roadmap QPU': '^',                 # Triangle up
-    'Hierarchical QPU': 'D',            # Diamond
-    'Statistical QPU': '*'              # Star
+    'Roadmap Gurobi': '^',              # Triangle up
+    'Hierarchical Gurobi': 'D',         # Diamond  
+    'Statistical Gurobi': '*'           # Star
 }
 
 # ============================================================================
@@ -341,15 +325,15 @@ for test_type in df_combined['test_type'].unique():
         marker_legend_elements.append(
             Line2D([0], [0], marker='s', color='w', markerfacecolor='gray', 
                    markeredgecolor='black', markersize=10, label=test_type))
-    elif test_type == 'Roadmap QPU':
+    elif test_type == 'Roadmap Gurobi':
         marker_legend_elements.append(
             Line2D([0], [0], marker='^', color='w', markerfacecolor='gray', 
                    markeredgecolor='black', markersize=10, label=test_type))
-    elif test_type == 'Hierarchical QPU':
+    elif test_type == 'Hierarchical Gurobi':
         marker_legend_elements.append(
             Line2D([0], [0], marker='D', color='w', markerfacecolor='gray', 
                    markeredgecolor='black', markersize=8, label=test_type))
-    elif test_type == 'Statistical QPU':
+    elif test_type == 'Statistical Gurobi':
         marker_legend_elements.append(
             Line2D([0], [0], marker='*', color='w', markerfacecolor='gray', 
                    markeredgecolor='black', markersize=12, label=test_type))

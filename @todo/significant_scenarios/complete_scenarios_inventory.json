@@ -1,0 +1,370 @@
+{
+  "scenarios": {
+    "micro_6": {
+      "description": "Micro scenario - 6 variables total",
+      "n_vars": 6,
+      "estimated_farms": 1,
+      "n_foods": 2,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "FAST (< 1s)",
+      "qpu_expected": "Direct QPU embedding possible",
+      "hardness": "trivial"
+    },
+    "micro_12": {
+      "description": "Micro scenario - 12 variables",
+      "n_vars": 12,
+      "estimated_farms": 2,
+      "n_foods": 2,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "FAST (< 1s)",
+      "qpu_expected": "Direct QPU embedding possible",
+      "hardness": "trivial"
+    },
+    "tiny_24": {
+      "description": "Tiny scenario - 24 variables",
+      "n_vars": 24,
+      "estimated_farms": 4,
+      "n_foods": 2,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "FAST (< 1s)",
+      "qpu_expected": "Direct QPU embedding possible",
+      "hardness": "easy"
+    },
+    "tiny_40": {
+      "description": "Tiny scenario - 40 variables",
+      "n_vars": 40,
+      "estimated_farms": 4,
+      "n_foods": 3,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "FAST (< 5s)",
+      "qpu_expected": "Direct QPU embedding possible",
+      "hardness": "easy"
+    },
+    "small_60": {
+      "description": "Small scenario - 60 variables",
+      "n_vars": 60,
+      "estimated_farms": 5,
+      "n_foods": 4,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "FAST (< 10s)",
+      "qpu_expected": "Direct QPU or minor decomposition",
+      "hardness": "easy"
+    },
+    "small_80": {
+      "description": "Small scenario - 80 variables",
+      "n_vars": 80,
+      "estimated_farms": 5,
+      "n_foods": 5,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "MEDIUM (10-60s)",
+      "qpu_expected": "Decomposition recommended",
+      "hardness": "moderate"
+    },
+    "small_100": {
+      "description": "Small scenario - 100 variables",
+      "n_vars": 100,
+      "estimated_farms": 6,
+      "n_foods": 5,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "MEDIUM (10-100s)",
+      "qpu_expected": "Decomposition required",
+      "hardness": "moderate"
+    },
+    "medium_120": {
+      "description": "Medium scenario - 120 variables",
+      "n_vars": 120,
+      "estimated_farms": 7,
+      "n_foods": 6,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "MEDIUM-TIMEOUT (60-300s)",
+      "qpu_expected": "Decomposition required",
+      "hardness": "hard"
+    },
+    "medium_160": {
+      "description": "Medium scenario - 160 variables",
+      "n_vars": 160,
+      "estimated_farms": 9,
+      "n_foods": 6,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "TIMEOUT likely",
+      "qpu_expected": "Decomposition required",
+      "hardness": "hard"
+    },
+    "rotation_micro_25": {
+      "description": "5 farms \u00d7 6 foods \u00d7 3 periods - rotation constraints",
+      "n_vars": 90,
+      "estimated_farms": 5,
+      "n_foods": 6,
+      "n_periods": 3,
+      "category": "rotation",
+      "gurobi_expected": "TIMEOUT (> 100s) - confirmed in analysis",
+      "qpu_expected": "clique_decomp: ~18s, 8% gap",
+      "hardness": "HARD - rotation constraints make it NP-hard",
+      "analysis_result": {
+        "gurobi_time": 210,
+        "gurobi_obj": 4.08,
+        "qpu_time": 18,
+        "qpu_obj": 3.75,
+        "speedup": 11.5,
+        "gap_pct": 8.2
+      }
+    },
+    "rotation_small_50": {
+      "description": "~10 farms \u00d7 6 foods \u00d7 3 periods - rotation constraints",
+      "n_vars": 180,
+      "estimated_farms": 10,
+      "n_foods": 6,
+      "n_periods": 3,
+      "category": "rotation",
+      "gurobi_expected": "TIMEOUT (> 100s) - at the \"10-farm cliff\"",
+      "qpu_expected": "spatial_temporal: ~39s, 9.6% gap",
+      "hardness": "VERY HARD - critical threshold",
+      "analysis_result": {
+        "gurobi_time": 240,
+        "gurobi_obj": 7.17,
+        "qpu_time": 39,
+        "qpu_obj": 6.49,
+        "speedup": 6.2,
+        "gap_pct": 9.6
+      }
+    },
+    "rotation_medium_100": {
+      "description": "~20 farms \u00d7 6 foods \u00d7 3 periods - rotation constraints",
+      "n_vars": 360,
+      "estimated_farms": 20,
+      "n_foods": 6,
+      "n_periods": 3,
+      "category": "rotation",
+      "gurobi_expected": "TIMEOUT (300s) - always fails",
+      "qpu_expected": "clique_decomp: ~57s, 13% gap",
+      "hardness": "EXTREMELY HARD - beyond classical",
+      "analysis_result": {
+        "gurobi_time": 300,
+        "gurobi_obj": 14.89,
+        "qpu_time": 57,
+        "qpu_obj": 12.98,
+        "speedup": 5.2,
+        "gap_pct": 12.9
+      }
+    },
+    "rotation_large_200": {
+      "description": "~35+ farms \u00d7 6 foods \u00d7 3 periods - rotation constraints",
+      "n_vars": 630,
+      "estimated_farms": 35,
+      "n_foods": 6,
+      "n_periods": 3,
+      "category": "rotation",
+      "gurobi_expected": "TIMEOUT (300s) - intractable",
+      "qpu_expected": "Hierarchical decomposition required",
+      "hardness": "EXTREMELY HARD"
+    },
+    "rotation_250farms_27foods": {
+      "description": "250 farms \u00d7 27 foods \u00d7 3 periods - massive scale",
+      "n_vars": 20250,
+      "n_vars_aggregated": 4500,
+      "estimated_farms": 250,
+      "n_foods": 27,
+      "n_periods": 3,
+      "category": "large_rotation",
+      "gurobi_expected": "INTRACTABLE - far beyond limits",
+      "qpu_expected": "Hierarchical QPU only option",
+      "hardness": "INTRACTABLE for classical"
+    },
+    "rotation_350farms_27foods": {
+      "description": "350 farms \u00d7 27 foods \u00d7 3 periods",
+      "n_vars": 28350,
+      "n_vars_aggregated": 6300,
+      "estimated_farms": 350,
+      "n_foods": 27,
+      "n_periods": 3,
+      "category": "large_rotation",
+      "gurobi_expected": "INTRACTABLE",
+      "qpu_expected": "Hierarchical QPU only option",
+      "hardness": "INTRACTABLE for classical"
+    },
+    "rotation_500farms_27foods": {
+      "description": "500 farms \u00d7 27 foods \u00d7 3 periods",
+      "n_vars": 40500,
+      "n_vars_aggregated": 9000,
+      "estimated_farms": 500,
+      "n_foods": 27,
+      "n_periods": 3,
+      "category": "large_rotation",
+      "gurobi_expected": "INTRACTABLE",
+      "qpu_expected": "Hierarchical QPU only option",
+      "hardness": "INTRACTABLE for classical"
+    },
+    "rotation_1000farms_27foods": {
+      "description": "1000 farms \u00d7 27 foods \u00d7 3 periods - ultimate scale",
+      "n_vars": 81000,
+      "n_vars_aggregated": 18000,
+      "estimated_farms": 1000,
+      "n_foods": 27,
+      "n_periods": 3,
+      "category": "large_rotation",
+      "gurobi_expected": "INTRACTABLE",
+      "qpu_expected": "Hierarchical QPU required - may hit QPU limits",
+      "hardness": "INTRACTABLE for classical"
+    },
+    "simple": {
+      "description": "Simple baseline scenario",
+      "category": "standard",
+      "gurobi_expected": "FAST",
+      "hardness": "easy - no rotation"
+    },
+    "intermediate": {
+      "description": "Intermediate scenario",
+      "category": "standard",
+      "gurobi_expected": "FAST-MEDIUM",
+      "hardness": "easy-moderate"
+    },
+    "30farms": {
+      "description": "30 farms from sampler",
+      "estimated_farms": 30,
+      "category": "standard",
+      "gurobi_expected": "MEDIUM (without rotation)",
+      "hardness": "moderate without rotation constraints"
+    },
+    "60farms": {
+      "description": "60 farms - ~600 pairs",
+      "estimated_farms": 60,
+      "category": "standard",
+      "gurobi_expected": "MEDIUM-SLOW (without rotation)",
+      "hardness": "moderate-hard without rotation"
+    },
+    "90farms": {
+      "description": "90 farms - ~900 pairs",
+      "estimated_farms": 90,
+      "category": "standard",
+      "gurobi_expected": "SLOW (without rotation)",
+      "hardness": "hard without rotation"
+    },
+    "250farms": {
+      "description": "250 farms - ~2500 pairs",
+      "estimated_farms": 250,
+      "category": "standard",
+      "gurobi_expected": "TIMEOUT likely (without rotation)",
+      "hardness": "very hard even without rotation"
+    },
+    "350farms": {
+      "description": "350 farms - ~3500 pairs",
+      "estimated_farms": 350,
+      "category": "standard",
+      "gurobi_expected": "TIMEOUT (without rotation)",
+      "hardness": "very hard"
+    },
+    "500farms_full": {
+      "description": "500 farms with full 27 foods",
+      "estimated_farms": 500,
+      "n_foods": 27,
+      "category": "standard_large",
+      "gurobi_expected": "INTRACTABLE",
+      "hardness": "extremely hard"
+    },
+    "1000farms_full": {
+      "description": "1000 farms with full 27 foods",
+      "estimated_farms": 1000,
+      "n_foods": 27,
+      "category": "standard_large",
+      "gurobi_expected": "INTRACTABLE",
+      "hardness": "extremely hard"
+    },
+    "2000farms_full": {
+      "description": "2000 farms with full 27 foods",
+      "estimated_farms": 2000,
+      "n_foods": 27,
+      "category": "standard_large",
+      "gurobi_expected": "INTRACTABLE",
+      "hardness": "extremely hard"
+    }
+  },
+  "hardness_categories": {
+    "trivial": [
+      "micro_6",
+      "micro_12",
+      "tiny_24"
+    ],
+    "easy": [
+      "tiny_40",
+      "small_60",
+      "simple"
+    ],
+    "moderate": [
+      "small_80",
+      "small_100",
+      "intermediate",
+      "30farms"
+    ],
+    "hard": [
+      "medium_120",
+      "medium_160",
+      "60farms",
+      "90farms"
+    ],
+    "very_hard_rotation": [
+      "rotation_micro_25",
+      "rotation_small_50"
+    ],
+    "extremely_hard_rotation": [
+      "rotation_medium_100",
+      "rotation_large_200"
+    ],
+    "intractable": [
+      "rotation_250farms_27foods",
+      "rotation_350farms_27foods",
+      "rotation_500farms_27foods",
+      "rotation_1000farms_27foods",
+      "250farms",
+      "350farms",
+      "500farms_full",
+      "1000farms_full",
+      "2000farms_full"
+    ]
+  },
+  "solver_recommendations": {
+    "gurobi": [
+      "micro_6",
+      "micro_12",
+      "tiny_24",
+      "tiny_40",
+      "small_60",
+      "simple",
+      "intermediate"
+    ],
+    "qpu_direct": [
+      "micro_6",
+      "micro_12",
+      "tiny_24",
+      "tiny_40"
+    ],
+    "clique_decomp": [
+      "rotation_micro_25",
+      "rotation_small_50",
+      "small_80",
+      "small_100"
+    ],
+    "spatial_temporal": [
+      "rotation_small_50",
+      "rotation_medium_100",
+      "medium_120",
+      "medium_160"
+    ],
+    "hierarchical_qpu": [
+      "rotation_medium_100",
+      "rotation_large_200",
+      "rotation_250farms_27foods",
+      "rotation_350farms_27foods",
+      "rotation_500farms_27foods",
+      "rotation_1000farms_27foods"
+    ]
+  }
+}
