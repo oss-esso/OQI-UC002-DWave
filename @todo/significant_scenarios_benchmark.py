@@ -733,17 +733,11 @@ def run_benchmark():
         # ====================================================================
         # STEP 2: PAUSE AND CONFIRM BEFORE RUNNING QPU
         # ====================================================================
-        if PAUSE_BETWEEN_METHODS:
-            print(f"\n{'='*70}")
-            print(f"Gurobi results confirmed. Ready to run QPU method.")
-            print(f"Press ENTER to continue with QPU, or Ctrl+C to stop...")
-            print(f"{'='*70}")
-            try:
-                input()
-            except KeyboardInterrupt:
-                print("\n\nBenchmark stopped by user.")
-                print(f"Partial results saved up to scenario {idx-1}")
-                break
+        # STEP 2: PAUSE AND CONFIRM BEFORE RUNNING QPU - DISABLED FOR AUTO-RUN
+        # ====================================================================
+        print(f"\n{'='*70}")
+        print(f"Gurobi results confirmed. Proceeding to QPU method automatically...")
+        print(f"{'='*70}")
         
         # ====================================================================
         # STEP 3: RUN QPU
@@ -928,7 +922,8 @@ if __name__ == '__main__':
         print("      This allows you to confirm Gurobi results first.")
         print()
     
-    input("Press ENTER to start benchmark, or Ctrl+C to cancel...")
+    # Auto-start for automated runs
+    print("Starting benchmark automatically...")
     
     results = run_benchmark()
     

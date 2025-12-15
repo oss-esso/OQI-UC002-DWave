@@ -1,0 +1,2166 @@
+================================================================================
+GUROBI-ONLY TIMEOUT VERIFICATION TEST
+================================================================================
+
+✓ Gurobi available
+
+Configuration:
+  Time limit: 100s
+  MIP gap: 1.0%
+  MIP focus: 1
+  Improve start time: 30s
+
+
+Testing 20 scenarios with Gurobi...
+
+
+################################################################################
+SCENARIO 1/20: rotation_micro_25
+################################################################################
+
+======================================================================
+Testing: rotation_micro_25
+Size: 5 farms × 6 foods = 90 vars
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 90 rows, 90 columns and 300 nonzeros
+Model fingerprint: 0x40e99e50
+Model has 1755 quadratic objective terms
+Variable types: 0 continuous, 90 integer (90 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 7e+00]
+  QObjective range [3e-05, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 4.9707401
+Presolve time: 0.02s
+Presolved: 1755 rows, 1755 columns, 5295 nonzeros
+Variable types: 0 continuous, 1755 integer (1755 binary)
+
+Root relaxation: objective 5.655628e+01, 279 iterations, 0.01 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   56.55628    0   70    4.97074   56.55628  1038%     -    0s
+H    0     0                       6.0421629   56.55628   836%     -    0s
+H    0     0                       6.1030312   56.55628   827%     -    0s
+     0     0   55.81471    0  160    6.10303   55.81471   815%     -    0s
+     0     0   55.65178    0  247    6.10303   55.65178   812%     -    0s
+     0     0   55.62919    0  233    6.10303   55.62919   812%     -    0s
+     0     0   55.62837    0  246    6.10303   55.62837   811%     -    0s
+     0     0   55.44151    0  246    6.10303   55.44151   808%     -    0s
+     0     0   55.40063    0  288    6.10303   55.40063   808%     -    0s
+     0     0   55.39554    0  274    6.10303   55.39554   808%     -    0s
+     0     0   53.13631    0  409    6.10303   53.13631   771%     -    0s
+     0     0   51.84733    0  483    6.10303   51.84733   750%     -    1s
+     0     0   51.79472    0  544    6.10303   51.79472   749%     -    1s
+     0     0   51.78683    0  540    6.10303   51.78683   749%     -    1s
+     0     0   47.96351    0  428    6.10303   47.96351   686%     -    1s
+     0     0   47.87821    0  441    6.10303   47.87821   684%     -    1s
+     0     0   47.86381    0  466    6.10303   47.86381   684%     -    1s
+     0     0   46.17419    0  427    6.10303   46.17419   657%     -    1s
+     0     2   46.17418    0  427    6.10303   46.17418   657%     -    1s
+H  469   323                       6.1397607   41.82146   581%  27.8    2s
+   918   673   29.33480   13  590    6.13976   38.70729   530%  28.2    5s
+  1038   717   19.33255   22  319    6.13976   24.51951   299%  52.2   10s
+  1770   825   19.59462   21  274    6.13976   23.42667   282%  62.9   15s
+H 1779   803                       6.1555577   23.42667   281%  63.1   15s
+H 1978   799                       6.1668268   23.03137   273%  63.7   16s
+  2782   958   15.94385   23  248    6.16683   22.34546   262%  65.7   20s
+  3476  1309   13.86536   25  189    6.16683   21.30328   245%  67.1   25s
+  4183  1693   20.80747   21  345    6.16683   20.99517   240%  66.9   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+  4370  1730   18.35466   23  352    6.16683   20.90830   239%  67.0   31s
+  4432  1832   11.90209   28  189    6.16683   20.90830   239%  67.9   43s
+  4637  1853     cutoff   35         6.16683   20.83943   238%  67.7   49s
+  4660  1924   18.56089   21  309    6.16683   20.83943   238%  68.1   57s
+  4789  2079    8.56842   29  154    6.16683   20.83943   238%  68.1   65s
+  5083  2112    8.92502   31   83    6.16683   20.77108   237%  68.2   70s
+  5131  2207   18.30131   25  268    6.16683   20.76529   237%  68.3   78s
+  5335  2250    6.62407   29   22    6.16683   20.73023   236%  68.1   83s
+  5383  2491    9.09539   31   95    6.16683   20.72957   236%  68.3   89s
+  5824  2524   18.21166   24  287    6.16683   20.64233   235%  67.6   95s
+  5874  2538    9.73179   27   72    6.16683   20.64233   235%  67.7  100s
+
+Cutting planes:
+  Gomory: 3
+  Cover: 61
+  Dual implied bound: 268
+  MIR: 69
+  Flow cover: 99
+  Zero half: 82
+  RLT: 248
+  BQP: 947
+
+Explored 5907 nodes (404912 simplex iterations) in 100.01 seconds (40.02 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 6: 6.16683 6.15556 6.13976 ... 4.97074
+
+Time limit reached
+Best objective 6.166826839680e+00, best bound 2.062511373807e+01, gap 234.4526%
+
+======================================================================
+RESULTS: rotation_micro_25
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.31s / 100s
+Objective:      6.166826839679835
+MIP Gap:        234.45%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 2/20: rotation_small_50
+################################################################################
+
+======================================================================
+Testing: rotation_small_50
+Size: 10 farms × 6 foods = 180 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 180 rows, 180 columns and 600 nonzeros
+Model fingerprint: 0x8d2e5653
+Model has 4158 quadratic objective terms
+Variable types: 0 continuous, 180 integer (180 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [3e-06, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 7.4004209
+Presolve time: 0.04s
+Presolved: 180 rows, 180 columns, 600 nonzeros
+Presolved model has 4158 quadratic objective terms
+Variable types: 0 continuous, 180 integer (180 binary)
+
+Root relaxation: objective 2.717429e+02, 123 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  271.74288    0   95    7.40042  271.74288  3572%     -    0s
+H    0     0                       7.4217578  271.74288  3561%     -    0s
+H    0     0                       7.6106247  271.74288  3471%     -    0s
+H    0     0                       7.6805863  271.74288  3438%     -    0s
+     0     0  271.74288    0   95    7.68059  271.74288  3438%     -    0s
+H    0     0                       7.9036084  271.74288  3338%     -    0s
+H    0     0                       7.9298559  271.74288  3327%     -    0s
+H    0     0                       7.9602725  271.74288  3314%     -    0s
+H    0     0                       8.0155415  271.74288  3290%     -    0s
+H    0     0                       8.0405314  271.74288  3280%     -    0s
+H    0     0                       8.1620188  271.74288  3229%     -    0s
+H    0     0                       8.2192713  271.74288  3206%     -    0s
+H    0     0                       8.2961659  271.74288  3176%     -    0s
+H    0     0                       8.6625220  271.74288  3037%     -    0s
+     0     2  271.74288    0   95    8.66252  271.74288  3037%     -    0s
+  2691  1892  116.30668   39   60    8.66252  218.31027  2420%   3.6    5s
+H 5177  3777                       8.6767570  209.31657  2312%   3.6    8s
+  5804  4399   32.01331   47   41    8.67676  208.62503  2304%   3.6   10s
+H 5900  4399                       8.6859587  208.62503  2302%   3.6   10s
+  8713  6709   33.48724   60   45    8.68596  203.06487  2238%   3.7   15s
+ 11135  9298   50.05975   54   46    8.68596  202.41352  2230%   3.7   20s
+ 13865 11154     cutoff   53         8.68596  201.09426  2215%   3.7   25s
+ 17127 13455   21.04367   59   37    8.68596  198.27369  2183%   3.7   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+ 17733 13473  197.53206   29   66    8.68596  197.53206  2174%   3.7   31s
+ 17751 13585  151.57502   34   63    8.68596  197.36170  2172%   3.7   39s
+ 17877 13719   10.00527   59   34    8.68596  197.33869  2172%   3.7   45s
+ 18053 13892  177.70645   31   66    8.68596  197.25618  2171%   3.7   50s
+ 18425 14225  192.30094   27   72    8.68596  197.10267  2169%   3.7   65s
+ 18650 14380   47.39706   43   47    8.68596  196.85878  2166%   3.7   71s
+ 18844 14519   17.70456   48   37    8.68596  196.85057  2166%   3.7   76s
+ 19002 14692   19.81196   55   39    8.68596  196.81581  2166%   3.7   81s
+ 19224 14859  170.23186   30   67    8.68596  196.69003  2164%   3.7   86s
+ 19428 15017  100.92966   34   56    8.68596  196.54980  2163%   3.7   91s
+ 19615 15177  136.37583   31   57    8.68596  196.47581  2162%   3.7   95s
+ 19812 15325  165.68054   29   66    8.68596  196.41768  2161%   3.7  100s
+
+Explored 19987 nodes (73989 simplex iterations) in 100.00 seconds (37.66 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 8.68596 8.67676 8.66252 ... 7.92986
+
+Time limit reached
+Best objective 8.685958678757e+00, best bound 1.963975304245e+02, gap 2161.0922%
+
+======================================================================
+RESULTS: rotation_small_50
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.22s / 100s
+Objective:      8.685958678757245
+MIP Gap:        2161.09%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 3/20: rotation_15farms_6foods
+################################################################################
+
+======================================================================
+Testing: rotation_15farms_6foods
+Size: 15 farms × 6 foods = 270 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 270 rows, 270 columns and 900 nonzeros
+Model fingerprint: 0xf1c5bef5
+Model has 5913 quadratic objective terms
+Variable types: 0 continuous, 270 integer (270 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [2e-06, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 9.0887912
+Presolve time: 0.04s
+Presolved: 270 rows, 270 columns, 900 nonzeros
+Presolved model has 5913 quadratic objective terms
+Variable types: 0 continuous, 270 integer (270 binary)
+
+Root relaxation: objective 1.007110e+01, 270 iterations, 0.01 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   10.07110    0  179    9.08879   10.07110  10.8%     -    0s
+H    0     0                       9.4267325   10.07110  6.84%     -    0s
+H    0     0                       9.5718173   10.07110  5.22%     -    0s
+H    0     0                       9.5859462   10.07110  5.06%     -    0s
+     0     0   10.07110    0  179    9.58595   10.07110  5.06%     -    0s
+H    0     0                       9.6740762   10.07110  4.10%     -    0s
+     0     2   10.07110    0  179    9.67408   10.07110  4.10%     -    0s
+  1310   370    9.76250   89   60    9.67408   10.05685  3.96%   3.8    5s
+  3151  1178    9.74911   60   50    9.67408   10.04529  3.84%   4.0   10s
+  6504  2339    9.80778   47   82    9.67408   10.03599  3.74%   3.9   15s
+  7994  3000    9.70141   85   68    9.67408   10.03379  3.72%   3.8   20s
+  9828  3667    9.70601  129   50    9.67408   10.03248  3.70%   3.8   25s
+ 13170  4630    9.81470   50   78    9.67408   10.02816  3.66%   3.8   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+ 13394  4666   10.02506   19  161    9.67408   10.02783  3.66%   3.8   30s
+ 13521  4862    9.87907   36  143    9.67408   10.02762  3.65%   3.8   39s
+ 13641  5010    9.77684   56  118    9.67408   10.02753  3.65%   3.8   45s
+ 13802  5169    9.83745   38  149    9.67408   10.02753  3.65%   3.8   51s
+ 13981  5311    9.67872   71   87    9.67408   10.02727  3.65%   3.8   58s
+ 14128  5455    9.81349   48  118    9.67408   10.02726  3.65%   3.8   65s
+ 14294  5677    9.90835   25  140    9.67408   10.02713  3.65%   3.8   73s
+ 14542  5842    9.99762   20  156    9.67408   10.02713  3.65%   3.8   80s
+ 14723  5966    9.83790   50  132    9.67408   10.02674  3.65%   3.8   88s
+ 14864  6100    9.94967   24  148    9.67408   10.02674  3.65%   3.8   96s
+ 15014  6178    9.84901   47  131    9.67408   10.02661  3.64%   3.8  100s
+
+Explored 15092 nodes (57533 simplex iterations) in 100.01 seconds (60.58 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 5: 9.67408 9.58595 9.57182 ... 9.08879
+
+Time limit reached
+Best objective 9.674076240796e+00, best bound 1.002660974138e+01, gap 3.6441%
+
+======================================================================
+RESULTS: rotation_15farms_6foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.21s / 100s
+Objective:      9.674076240796353
+MIP Gap:        3.64%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 4/20: rotation_medium_100
+################################################################################
+
+======================================================================
+Testing: rotation_medium_100
+Size: 20 farms × 6 foods = 360 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 360 rows, 360 columns and 1200 nonzeros
+Model fingerprint: 0x42bc77da
+Model has 7884 quadratic objective terms
+Variable types: 0 continuous, 360 integer (360 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [2e-06, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 11.9770312
+Presolve time: 0.07s
+Presolved: 360 rows, 360 columns, 1200 nonzeros
+Presolved model has 7884 quadratic objective terms
+Variable types: 0 continuous, 360 integer (360 binary)
+
+Root relaxation: objective 1.314758e+01, 379 iterations, 0.02 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   13.14758    0  234   11.97703   13.14758  9.77%     -    0s
+H    0     0                      12.5397564   13.14758  4.85%     -    0s
+H    0     0                      12.7831598   13.14758  2.85%     -    0s
+     0     0   13.14758    0  234   12.78316   13.14758  2.85%     -    0s
+     0     2   13.14758    0  234   12.78316   13.14758  2.85%     -    0s
+  1526   515   13.11971   24  232   12.78316   13.13651  2.76%   4.4    5s
+  3422   957   13.09076   42  194   12.78316   13.13132  2.72%   4.3   10s
+  5758  1651   12.95989   67   84   12.78316   13.12683  2.69%   4.1   15s
+  8020  2325   12.90010  164   72   12.78316   13.12457  2.67%   4.1   20s
+  9343  3121   13.06319   23  216   12.78316   13.12183  2.65%   4.1   25s
+ 11260  4402   13.00484   65  140   12.78316   13.11959  2.63%   4.2   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+ 12008  4427   13.11730   22  232   12.78316   13.11924  2.63%   4.2   31s
+ 12033  4513   13.08171   27  222   12.78316   13.11923  2.63%   4.2   35s
+ 12119  4625   12.99885   41  197   12.78316   13.11923  2.63%   4.2   44s
+ 12231  4733   12.88368   57  194   12.78316   13.11923  2.63%   4.2   55s
+ 12370  4877   13.08234   25  217   12.78316   13.11878  2.63%   4.2   68s
+ 12514  5037   12.94240   50  177   12.78316   13.11878  2.63%   4.2   82s
+ 12687  5210   12.80489   78  140   12.78316   13.11869  2.62%   4.2   96s
+ 12878  5261   12.87772   63  166   12.78316   13.11867  2.62%   4.2  100s
+
+Explored 12929 nodes (55301 simplex iterations) in 100.00 seconds (60.84 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 3: 12.7832 12.5398 11.977 
+
+Time limit reached
+Best objective 1.278315978622e+01, best bound 1.311866571656e+01, gap 2.6246%
+
+======================================================================
+RESULTS: rotation_medium_100
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.30s / 100s
+Objective:      12.783159786223962
+MIP Gap:        2.62%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 5/20: rotation_25farms_6foods
+################################################################################
+
+======================================================================
+Testing: rotation_25farms_6foods
+Size: 25 farms × 6 foods = 450 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 450 rows, 450 columns and 1500 nonzeros
+Model fingerprint: 0x93eff87c
+Model has 9747 quadratic objective terms
+Variable types: 0 continuous, 450 integer (450 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [7e-07, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 13.2095582
+Presolve time: 0.11s
+Presolved: 450 rows, 450 columns, 1500 nonzeros
+Presolved model has 9747 quadratic objective terms
+Variable types: 0 continuous, 450 integer (450 binary)
+
+Root relaxation: objective 1.423979e+01, 502 iterations, 0.05 seconds (0.03 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   14.23979    0  426   13.20956   14.23979  7.80%     -    0s
+H    0     0                      13.2430198   14.23979  7.53%     -    0s
+H    0     0                      13.3895108   14.23979  6.35%     -    0s
+H    0     0                      13.3896935   14.23979  6.35%     -    0s
+H    0     0                      13.4032951   14.23979  6.24%     -    0s
+H    0     0                      13.4130127   14.23979  6.16%     -    0s
+H    0     0                      13.4289628   14.23979  6.04%     -    0s
+H    0     0                      13.4314889   14.23979  6.02%     -    0s
+H    0     0                      13.4493780   14.23979  5.88%     -    0s
+     0     0   14.23979    0  426   13.44938   14.23979  5.88%     -    0s
+     0     2   14.23979    0  426   13.44938   14.23979  5.88%     -    0s
+   716   156   13.49487  297   36   13.44938   14.23199  5.82%   3.6    5s
+  2052   562   14.13419   41  391   13.44938   14.22849  5.79%   3.8   10s
+  2344   762   13.95310   92  320   13.44938   14.22849  5.79%   3.8   15s
+  3033  1418   13.71193  158  209   13.44938   14.22849  5.79%   3.8   20s
+  3900  2042   14.11625   42  382   13.44938   14.22849  5.79%   3.8   25s
+  4545  2719   13.74265  147  217   13.44938   14.22849  5.79%   3.8   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+  4588  2722   14.22849   12  421   13.44938   14.22849  5.79%   3.8   31s
+  4591  2787   14.22005   13  418   13.44938   14.22654  5.78%   3.8   44s
+  4656  2912   14.16045   25  393   13.44938   14.22099  5.74%   3.8   65s
+  4781  3016   14.00873   56  328   13.44938   14.22099  5.74%   3.8   86s
+  4885  3082   13.87861   80  260   13.44938   14.22099  5.74%   3.8  100s
+
+Explored 4951 nodes (19367 simplex iterations) in 100.01 seconds (60.72 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 9: 13.4494 13.4315 13.429 ... 13.2096
+
+Time limit reached
+Best objective 1.344937795563e+01, best bound 1.422099237446e+01, gap 5.7372%
+
+======================================================================
+RESULTS: rotation_25farms_6foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.41s / 100s
+Objective:      13.449377955633992
+MIP Gap:        5.74%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 6/20: rotation_large_200
+################################################################################
+
+======================================================================
+Testing: rotation_large_200
+Size: 40 farms × 6 foods = 720 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 720 rows, 720 columns and 2400 nonzeros
+Model fingerprint: 0xde786e5b
+Model has 15336 quadratic objective terms
+Variable types: 0 continuous, 720 integer (720 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [7e-07, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 21.1665315
+Presolve time: 0.23s
+Presolved: 720 rows, 720 columns, 2400 nonzeros
+Presolved model has 15336 quadratic objective terms
+Variable types: 0 continuous, 720 integer (720 binary)
+
+Root relaxation: objective 2.203156e+01, 643 iterations, 0.06 seconds (0.04 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   22.03156    0  522   21.16653   22.03156  4.09%     -    0s
+H    0     0                      21.2913555   22.03156  3.48%     -    0s
+H    0     0                      21.5647588   22.03156  2.16%     -    0s
+     0     0   22.03156    0  522   21.56476   22.03156  2.16%     -    0s
+     0     2   22.03156    0  522   21.56476   22.03156  2.16%     -    1s
+   283   239   21.87198  168  120   21.56476   22.03051  2.16%   5.0    5s
+  1009   247   21.61781  530   26   21.56476   22.03051  2.16%   3.4   10s
+  1716   398   21.98984   42  393   21.56476   22.03045  2.16%   3.4   15s
+  1804   485   22.01851   25  494   21.56476   22.02995  2.16%   3.8   20s
+  2045   630   21.98935   48  446   21.56476   22.02995  2.16%   3.9   25s
+  2168   719   21.97722   60  441   21.56476   22.02995  2.16%   3.9   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+  2188   715   22.02990   13  513   21.56476   22.02990  2.16%   3.9   30s
+  2192   723   22.02865   15  509   21.56476   22.02977  2.16%   3.9   36s
+  2200   733   22.02804   16  506   21.56476   22.02977  2.16%   3.9   42s
+  2212   744   22.02745   17  501   21.56476   22.02977  2.16%   3.9   52s
+  2227   761   22.01428   24  488   21.56476   22.02977  2.16%   3.9   69s
+  2249   774   21.99960   28  479   21.56476   22.02977  2.16%   3.9   82s
+  2270   787   21.99372   30  477   21.56476   22.02977  2.16%   3.9   91s
+  2290   801   21.95498   37  464   21.56476   22.02977  2.16%   3.9  100s
+
+Explored 2310 nodes (9707 simplex iterations) in 100.01 seconds (56.07 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 3: 21.5648 21.2914 21.1665 
+
+Time limit reached
+Best objective 2.156475876252e+01, best bound 2.202976616280e+01, gap 2.1563%
+
+======================================================================
+RESULTS: rotation_large_200
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.56s / 100s
+Objective:      21.56475876252398
+MIP Gap:        2.16%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 7/20: rotation_50farms_6foods
+################################################################################
+
+======================================================================
+Testing: rotation_50farms_6foods
+Size: 50 farms × 6 foods = 900 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 900 rows, 900 columns and 3000 nonzeros
+Model fingerprint: 0x46646af9
+Model has 19062 quadratic objective terms
+Variable types: 0 continuous, 900 integer (900 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [7e-07, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 26.4274035
+Presolve time: 0.42s
+Presolved: 900 rows, 900 columns, 3000 nonzeros
+Presolved model has 19062 quadratic objective terms
+Variable types: 0 continuous, 900 integer (900 binary)
+
+Root relaxation: objective 2.750056e+01, 806 iterations, 0.09 seconds (0.05 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   27.50056    0  655   26.42740   27.50056  4.06%     -    0s
+H    0     0                      26.5601351   27.50056  3.54%     -    0s
+H    0     0                      26.9177074   27.50056  2.17%     -    0s
+     0     0   27.50056    0  655   26.91771   27.50056  2.17%     -    0s
+     0     2   27.50056    0  655   26.91771   27.50056  2.17%     -    2s
+   125   128   27.44816   49  510   26.91771   27.49952  2.16%   4.7    5s
+   358   276   27.36363  120  275   26.91771   27.49952  2.16%   4.8   10s
+  1031   368   27.26654  286  138   26.91771   27.49946  2.16%   3.6   15s
+  1522   448   27.48735   16  611   26.91771   27.49934  2.16%   3.4   20s
+  1631   535   27.49214   24  636   26.91771   27.49895  2.16%   4.1   25s
+  1866   731   27.44794   58  561   26.91771   27.49895  2.16%   4.1   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+  1909   720   27.49890   16  646   26.91771   27.49890  2.16%   4.1   30s
+  1918   737   27.49775   18  639   26.91771   27.49890  2.16%   4.1   37s
+  1932   750   27.49561   21  636   26.91771   27.49890  2.16%   4.1   45s
+  1950   762   27.49139   25  629   26.91771   27.49890  2.16%   4.1   55s
+  1968   776   27.48849   28  625   26.91771   27.49890  2.16%   4.1   68s
+  1988   793   27.48514   31  619   26.91771   27.49890  2.16%   4.1   86s
+  2012   809   27.48147   35  607   26.91771   27.49890  2.16%   4.1  100s
+
+Explored 2036 nodes (9241 simplex iterations) in 100.01 seconds (69.53 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 3: 26.9177 26.5601 26.4274 
+
+Time limit reached
+Best objective 2.691770739311e+01, best bound 2.749889637745e+01, gap 2.1591%
+
+======================================================================
+RESULTS: rotation_50farms_6foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.76s / 100s
+Objective:      26.91770739310664
+MIP Gap:        2.16%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 8/20: rotation_75farms_6foods
+################################################################################
+
+======================================================================
+Testing: rotation_75farms_6foods
+Size: 75 farms × 6 foods = 1350 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 1350 rows, 1350 columns and 4500 nonzeros
+Model fingerprint: 0x077f3167
+Model has 28161 quadratic objective terms
+Variable types: 0 continuous, 1350 integer (1350 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [7e-07, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 39.6203222
+Presolve time: 0.75s
+Presolved: 1350 rows, 1350 columns, 4500 nonzeros
+Presolved model has 28161 quadratic objective terms
+Variable types: 0 continuous, 1350 integer (1350 binary)
+
+Root relaxation: objective 4.124091e+01, 1206 iterations, 0.14 seconds (0.09 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   41.24091    0  980   39.62032   41.24091  4.09%     -    0s
+H    0     0                      39.7938424   41.24091  3.64%     -    0s
+H    0     0                      40.3670853   41.24091  2.16%     -    0s
+     0     0   41.24091    0  980   40.36709   41.24091  2.16%     -    1s
+     0     2   41.24091    0  980   40.36709   41.24091  2.16%     -    5s
+   117   120   41.18230   56  820   40.36709   41.23986  2.16%   4.3   10s
+   249   304   41.10872  122  601   40.36709   41.23986  2.16%   4.8   15s
+   407   410   41.02983  186  385   40.36709   41.23986  2.16%   5.4   20s
+  1847   509   40.48989  950   56   40.36709   41.23986  2.16%   3.5   25s
+  2000   509   40.44520 1001   39   40.36709   41.23986  2.16%   3.4   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+  2008   509   40.44513 1002   39   40.36709   41.23986  2.16%   3.4   31s
+  2010   511   40.44507 1003   39   40.36709   41.23986  2.16%   3.4   44s
+  2029   509   40.43894 1012   34   40.36709   41.23986  2.16%   3.4   92s
+  2092   509   40.38078 1042   10   40.36709   41.23986  2.16%   3.4  100s
+
+Explored 2099 nodes (8257 simplex iterations) in 100.01 seconds (55.88 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 3: 40.3671 39.7938 39.6203 
+
+Time limit reached
+Best objective 4.036708534874e+01, best bound 4.123985809207e+01, gap 2.1621%
+
+======================================================================
+RESULTS: rotation_75farms_6foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        100.94s / 100s
+Objective:      40.367085348740375
+MIP Gap:        2.16%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 9/20: rotation_100farms_6foods
+################################################################################
+
+======================================================================
+Testing: rotation_100farms_6foods
+Size: 100 farms × 6 foods = 1800 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 1800 rows, 1800 columns and 6000 nonzeros
+Model fingerprint: 0x1d7888d2
+Model has 37152 quadratic objective terms
+Variable types: 0 continuous, 1800 integer (1800 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [7e-07, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 52.8409114
+Presolve time: 0.62s
+Presolved: 37152 rows, 37152 columns, 112056 nonzeros
+Variable types: 0 continuous, 37152 integer (37152 binary)
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+Concurrent spin time: 0.00s
+
+Solved with dual simplex
+
+Root relaxation: objective 1.007523e+03, 3538 iterations, 0.29 seconds (0.13 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 1007.52316    0 1309   52.84091 1007.52316  1807%     -    1s
+H    0     0                      53.4855805 1007.52316  1784%     -    1s
+     0     0 1007.44718    0 1338   53.48558 1007.44718  1784%     -    6s
+H    0     0                      53.7373602 1007.44718  1775%     -    7s
+     0     0 1007.03819    0 2270   53.73736 1007.03819  1774%     -   11s
+     0     0 1007.01538    0 1950   53.73736 1007.01538  1774%     -   11s
+     0     0 1006.97351    0 1848   53.73736 1006.97351  1774%     -   11s
+     0     0 1006.94500    0 1693   53.73736 1006.94500  1774%     -   11s
+     0     0 1006.94285    0 1693   53.73736 1006.94285  1774%     -   11s
+     0     0 1006.81473    0 5389   53.73736 1006.81473  1774%     -   12s
+     0     0 1006.78712    0 5260   53.73736 1006.78712  1774%     -   12s
+     0     0 1006.77779    0 4752   53.73736 1006.77779  1774%     -   12s
+     0     0 1006.76780    0 4619   53.73736 1006.76780  1773%     -   13s
+     0     0 1006.76764    0 4575   53.73736 1006.76764  1773%     -   13s
+     0     0 1006.62347    0 7286   53.73736 1006.62347  1773%     -   15s
+     0     0 1006.59081    0 7024   53.73736 1006.59081  1773%     -   15s
+     0     0 1006.53767    0 6512   53.73736 1006.53767  1773%     -   16s
+     0     0 1006.53253    0 6351   53.73736 1006.53253  1773%     -   16s
+     0     0 1006.51514    0 6264   53.73736 1006.51514  1773%     -   16s
+     0     0 1006.51411    0 6254   53.73736 1006.51411  1773%     -   16s
+     0     0 1006.40062    0 8217   53.73736 1006.40062  1773%     -   19s
+     0     0 1006.36034    0 7965   53.73736 1006.36034  1773%     -   19s
+     0     0 1006.32411    0 7983   53.73736 1006.32411  1773%     -   19s
+     0     0 1006.31285    0 7841   53.73736 1006.31285  1773%     -   20s
+     0     0 1006.31008    0 7530   53.73736 1006.31008  1773%     -   20s
+     0     0 1006.07425    0 6966   53.73736 1006.07425  1772%     -   22s
+     0     0 1005.62290    0 7557   53.73736 1005.62290  1771%     -   22s
+     0     0 1002.15469    0 7971   53.73736 1002.15469  1765%     -   23s
+     0     0  998.41625    0 8262   53.73736  998.41625  1758%     -   23s
+     0     0  994.05313    0 8510   53.73736  994.05313  1750%     -   23s
+     0     0  993.77454    0 8541   53.73736  993.77454  1749%     -   24s
+     0     0  993.73987    0 8787   53.73736  993.73987  1749%     -   24s
+     0     0  993.73163    0 9314   53.73736  993.73163  1749%     -   24s
+     0     0  993.72932    0 9459   53.73736  993.72932  1749%     -   25s
+     0     0  993.64183    0 9376   53.73736  993.64183  1749%     -   27s
+     0     2  993.64183    0 9375   53.73736  993.64183  1749%     -   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+     1     4  993.63804    1 9309   53.73736  993.64095  1749%  82.0   30s
+    35    38  975.03572   10 9567   53.73736  993.63619  1749%   244   35s
+    63    66  962.29865   14 9497   53.73736  993.63619  1749%   184   40s
+H   80    83                      53.7393659  993.63619  1749%   164   45s
+H   89    91                      53.7407618  993.63619  1749%   158   48s
+    94    97  957.38121   20 9413   53.74076  993.63619  1749%   156   50s
+H   99   101                      53.7439531  993.63619  1749%   154   52s
+   104   108  949.68280   23 9211   53.74395  993.63619  1749%   154   55s
+H  111   114                      53.7466771  993.63619  1749%   150   58s
+   117   120  951.27202   25 9212   53.74668  993.63619  1749%   146   60s
+H  122   124                      53.7494439  993.63619  1749%   145   64s
+   123   130  948.88780   27 9188   53.74944  993.63619  1749%   145   66s
+H  131   134                      53.7515656  993.63619  1749%   141   70s
+   137   140  938.55413   31 9098   53.75157  993.63619  1749%   140   75s
+H  138   140                      53.7533709  993.63619  1749%   139   75s
+   143   146  937.84631   32 9158   53.75337  993.63619  1749%   138   81s
+H  144   146                      53.7541593  993.63619  1748%   137   81s
+   149   152  933.07255   35 9080   53.75416  993.63619  1748%   137   89s
+H  151   154                      53.7563366  993.63619  1748%   136   91s
+   157   160  925.65949   38 8987   53.75634  993.63619  1748%   137   95s
+H  159   163                      53.7563758  993.63619  1748%   136   96s
+H  162   165                      53.7583765  993.63619  1748%   136   99s
+   164   171  925.12827   40 8925   53.75838  993.63619  1748%   136  100s
+
+Cutting planes:
+  Gomory: 6
+  Dual implied bound: 1555
+  MIR: 1044
+  Zero half: 526
+  RLT: 4751
+  BQP: 7151
+
+Explored 170 nodes (128790 simplex iterations) in 100.05 seconds (58.71 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 53.7584 53.7564 53.7563 ... 53.7408
+
+Time limit reached
+Best objective 5.375837651043e+01, best bound 9.936361882969e+02, gap 1748.3374%
+
+======================================================================
+RESULTS: rotation_100farms_6foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        101.35s / 100s
+Objective:      53.75837651043412
+MIP Gap:        1748.34%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 10/20: rotation_25farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_25farms_27foods
+Size: 25 farms × 27 foods = 2025 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 1500 rows, 2025 columns and 6750 nonzeros
+Model fingerprint: 0x2eddc9f9
+Model has 193833 quadratic objective terms
+Variable types: 0 continuous, 2025 integer (2025 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 11.5879935
+Presolve time: 2.36s
+Presolved: 1500 rows, 2025 columns, 6750 nonzeros
+Presolved model has 193833 quadratic objective terms
+Variable types: 0 continuous, 2025 integer (2025 binary)
+
+Root relaxation: objective 1.197718e+01, 1052 iterations, 0.50 seconds (0.38 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   11.97718    0  976   11.58799   11.97718  3.36%     -    2s
+H    0     0                      11.5890597   11.97718  3.35%     -    2s
+H    0     0                      11.5914172   11.97718  3.33%     -    2s
+H    0     0                      11.5921380   11.97718  3.32%     -    2s
+H    0     0                      11.5923040   11.97718  3.32%     -    3s
+H    0     0                      11.5932676   11.97718  3.31%     -    3s
+H    0     0                      11.5932823   11.97718  3.31%     -    3s
+H    0     0                      11.5932960   11.97718  3.31%     -    3s
+H    0     0                      11.5935121   11.97718  3.31%     -    3s
+H    0     0                      11.5938250   11.97718  3.31%     -    3s
+H    0     0                      11.6545074   11.97718  2.77%     -    3s
+H    0     0                      11.6546707   11.97718  2.77%     -    3s
+H    0     0                      11.6589955   11.97718  2.73%     -    3s
+     0     0   11.97718    0  976   11.65900   11.97718  2.73%     -    4s
+H    0     0                      11.6681778   11.97718  2.65%     -    5s
+H    0     0                      11.6708526   11.97718  2.62%     -    5s
+H    0     0                      11.6717829   11.97718  2.62%     -    5s
+H    0     0                      11.6726852   11.97718  2.61%     -    5s
+H    0     0                      11.6729813   11.97718  2.61%     -    6s
+H    0     0                      11.6741478   11.97718  2.60%     -    7s
+H    0     0                      11.6744109   11.97718  2.59%     -    7s
+H    0     0                      11.6749755   11.97718  2.59%     -    7s
+H    0     0                      11.6752299   11.97718  2.59%     -    7s
+H    0     0                      11.6755325   11.97718  2.58%     -    7s
+     0     2   11.97718    0  976   11.67553   11.97718  2.58%     -   18s
+     5    10   11.97683    3  977   11.67553   11.97692  2.58%   6.8   20s
+    62    68   11.93119   27  713   11.67553   11.97692  2.58%  14.0   25s
+   122   131   11.86194   62  289   11.67553   11.97692  2.58%  14.9   30s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+   130   133   11.85798   65  268   11.67553   11.97692  2.58%  14.9   30s
+   140   145   11.84981   68  215   11.67553   11.97692  2.58%  14.5   36s
+   146   152   11.84951   70  217   11.67553   11.97692  2.58%  14.3   41s
+   151   154   11.84780   70  206   11.67553   11.97692  2.58%  14.1   45s
+   155   158   11.84564   72  195   11.67553   11.97692  2.58%  14.0   53s
+   157   162   11.84774   71  206   11.67553   11.97692  2.58%  13.9   57s
+   161   164   11.84345   73  182   11.67553   11.97692  2.58%  13.7   61s
+   163   167   11.84354   72  179   11.67553   11.97692  2.58%  13.8   67s
+   166   169   11.84336   74  181   11.67553   11.97692  2.58%  13.6   72s
+   168   171   11.84553   74  194   11.67553   11.97692  2.58%  13.6   79s
+   170   176   11.84347   74  183   11.67553   11.97692  2.58%  13.6   86s
+   175   178   11.84113   76  169   11.67553   11.97692  2.58%  13.4   93s
+   177   180   11.84336   76  183   11.67553   11.97692  2.58%  13.4  100s
+
+Explored 179 nodes (3422 simplex iterations) in 100.02 seconds (63.77 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 11.6755 11.6752 11.675 ... 11.6682
+
+Time limit reached
+Best objective 1.167553250019e+01, best bound 1.197691818786e+01, gap 2.5813%
+
+======================================================================
+RESULTS: rotation_25farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        105.72s / 100s
+Objective:      11.675532500185625
+MIP Gap:        2.58%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 11/20: rotation_150farms_6foods
+################################################################################
+
+======================================================================
+Testing: rotation_150farms_6foods
+Size: 150 farms × 6 foods = 2700 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 2700 rows, 2700 columns and 9000 nonzeros
+Model fingerprint: 0x5bd7f087
+Model has 55242 quadratic objective terms
+Variable types: 0 continuous, 2700 integer (2700 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [7e-07, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 79.2762237
+Presolve time: 0.99s
+Presolved: 55242 rows, 55242 columns, 166626 nonzeros
+Variable types: 0 continuous, 55242 integer (55242 binary)
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+Concurrent spin time: 0.00s
+
+Solved with dual simplex
+
+Root relaxation: objective 1.511285e+03, 5336 iterations, 0.53 seconds (0.22 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 1511.28471    0 1938   79.27622 1511.28471  1806%     -    2s
+H    0     0                      80.2581626 1511.28471  1783%     -    2s
+     0     0 1511.16178    0 1992   80.25816 1511.16178  1783%     -   13s
+H    0     0                      80.5692003 1511.16178  1776%     -   13s
+     0     0 1510.85472    0 2457   80.56920 1510.85472  1775%     -   23s
+     0     0 1510.56668    0 3278   80.56920 1510.56668  1775%     -   23s
+     0     0 1510.54264    0 3532   80.56920 1510.54264  1775%     -   24s
+     0     0 1510.52019    0 2470   80.56920 1510.52019  1775%     -   24s
+     0     0 1510.44497    0 2662   80.56920 1510.44497  1775%     -   24s
+     0     0 1510.41785    0 2630   80.56920 1510.41785  1775%     -   24s
+     0     0 1510.41216    0 2571   80.56920 1510.41216  1775%     -   24s
+     0     0 1510.20890    0 7735   80.56920 1510.20890  1774%     -   25s
+     0     0 1510.17404    0 7494   80.56920 1510.17404  1774%     -   25s
+     0     0 1510.16010    0 7360   80.56920 1510.16010  1774%     -   26s
+     0     0 1510.14067    0 7211   80.56920 1510.14067  1774%     -   26s
+     0     0 1510.13830    0 6922   80.56920 1510.13830  1774%     -   26s
+     0     0 1509.92339    0 10311   80.56920 1509.92339  1774%     -   30s
+     0     0 1509.88028    0 10487   80.56920 1509.88028  1774%     -   30s
+     0     0 1509.86597    0 10064   80.56920 1509.86597  1774%     -   31s
+     0     0 1509.47743    0 9983   80.56920 1509.47743  1774%     -   31s
+     0     0 1509.46707    0 10055   80.56920 1509.46707  1774%     -   32s
+     0     0 1509.42516    0 9712   80.56920 1509.42516  1773%     -   32s
+     0     0 1509.42087    0 9580   80.56920 1509.42087  1773%     -   32s
+     0     0 1509.06102    0 12049   80.56920 1509.06102  1773%     -   36s
+H    0     0                      80.5730660 1509.06102  1773%     -   37s
+     0     0 1508.94391    0 11662   80.57307 1508.94391  1773%     -   38s
+     0     0 1508.30420    0 12531   80.57307 1508.30420  1772%     -   38s
+     0     0 1508.28441    0 11935   80.57307 1508.28441  1772%     -   39s
+     0     0 1508.10221    0 11778   80.57307 1508.10221  1772%     -   39s
+     0     0 1508.09307    0 11837   80.57307 1508.09307  1772%     -   39s
+     0     0 1507.81541    0 11438   80.57307 1507.81541  1771%     -   42s
+     0     0 1507.79225    0 11707   80.57307 1507.79225  1771%     -   42s
+     0     0 1505.94693    0 11796   80.57307 1505.94693  1769%     -   43s
+     0     0 1505.13456    0 12234   80.57307 1505.13456  1768%     -   43s
+     0     0 1498.61176    0 12536   80.57307 1498.61176  1760%     -   44s
+     0     0 1495.39190    0 12695   80.57307 1495.39190  1756%     -   44s
+     0     0 1491.40227    0 13036   80.57307 1491.40227  1751%     -   45s
+     0     0 1490.54739    0 13358   80.57307 1490.54739  1750%     -   45s
+     0     0 1490.16780    0 13457   80.57307 1490.16780  1749%     -   46s
+     0     0 1489.65603    0 14071   80.57307 1489.65603  1749%     -   46s
+     0     0 1489.42991    0 14319   80.57307 1489.42991  1749%     -   46s
+     0     0 1489.41466    0 14767   80.57307 1489.41466  1749%     -   47s
+     0     0 1489.26073    0 14195   80.57307 1489.26073  1748%     -   51s
+H    0     0                      80.5775811 1489.26073  1748%     -   52s
+H    0     0                      80.5795314 1489.26073  1748%     -   54s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+     2     4 1489.25830    1 14184   80.57953 1489.25830  1748%  49.0   58s
+     8    12 1484.57196    4 14434   80.57953 1489.25803  1748%   994   60s
+H   41    42                      80.5805135 1489.25803  1748%   272   63s
+    48    50 1474.90833   12 14207   80.58051 1489.25803  1748%   246   65s
+H   67    68                      80.5817503 1489.25803  1748%   200   67s
+H   73    74                      80.5852723 1489.25803  1748%   191   69s
+    74    76 1466.95612   19 14136   80.58527 1489.25803  1748%   190   70s
+H   78    80                      80.5866329 1489.25803  1748%   183   71s
+H   79    80                      80.5868901 1489.25803  1748%   181   71s
+H   83    84                      80.5887640 1489.25803  1748%   175   72s
+H   93    94                      80.5899434 1489.25803  1748%   162   74s
+    94    98 1466.16024   20 14129   80.58994 1489.25803  1748%   161   75s
+   103   105 1458.99226   22 14040   80.58994 1489.25803  1748%   153   80s
+H  107   109                      80.5959380 1489.25803  1748%   149   82s
+   113   115 1461.36892   23 14087   80.59594 1489.25803  1748%   145   85s
+H  115   117                      80.5978961 1489.25803  1748%   143   86s
+H  116   117                      80.6001355 1489.25803  1748%   143   86s
+H  125   127                      80.6013945 1489.25803  1748%   140   91s
+H  133   135                      80.6036474 1489.25803  1748%   136   95s
+H  134   135                      80.6060373 1489.25803  1748%   136   95s
+H  139   141                      80.6082901 1489.25803  1748%   134  100s
+H  140   141                      80.6117708 1489.25803  1747%   133  100s
+
+Cutting planes:
+  Gomory: 7
+  Dual implied bound: 2562
+  MIR: 961
+  Zero half: 963
+  RLT: 7174
+  BQP: 9611
+
+Explored 141 nodes (178470 simplex iterations) in 100.06 seconds (62.32 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 80.6118 80.6083 80.606 ... 80.5888
+
+Time limit reached
+Best objective 8.061177076134e+01, best bound 1.489258028905e+03, gap 1747.4449%
+
+======================================================================
+RESULTS: rotation_150farms_6foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        102.06s / 100s
+Objective:      80.61177076134231
+MIP Gap:        1747.44%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 12/20: rotation_50farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_50farms_27foods
+Size: 50 farms × 27 foods = 4050 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 3000 rows, 4050 columns and 13500 nonzeros
+Model fingerprint: 0x85f85fae
+Model has 378918 quadratic objective terms
+Variable types: 0 continuous, 4050 integer (4050 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 23.1447532
+Presolve time: 3.49s
+Presolved: 3000 rows, 4050 columns, 13500 nonzeros
+Presolved model has 378918 quadratic objective terms
+Variable types: 0 continuous, 4050 integer (4050 binary)
+
+Root relaxation: objective 2.395747e+01, 2103 iterations, 0.90 seconds (1.37 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   23.95747    0 1952   23.14475   23.95747  3.51%     -    4s
+H    0     0                      23.1811145   23.95747  3.35%     -    4s
+H    0     0                      23.1879461   23.95747  3.32%     -    4s
+H    0     0                      23.1897375   23.95747  3.31%     -    4s
+H    0     0                      23.1898472   23.95747  3.31%     -    4s
+H    0     0                      23.1900722   23.95747  3.31%     -    4s
+H    0     0                      23.1901114   23.95747  3.31%     -    4s
+H    0     0                      23.1905075   23.95747  3.31%     -    4s
+H    0     0                      23.1905425   23.95747  3.31%     -    4s
+H    0     0                      23.1905568   23.95747  3.31%     -    4s
+H    0     0                      23.1907715   23.95747  3.31%     -    5s
+H    0     0                      23.3126676   23.95747  2.77%     -    5s
+H    0     0                      23.3133246   23.95747  2.76%     -    5s
+H    0     0                      23.3210481   23.95747  2.73%     -    5s
+H    0     0                      23.3212173   23.95747  2.73%     -    5s
+     0     0   23.95747    0 1952   23.32122   23.95747  2.73%     -    6s
+H    0     0                      23.3440643   23.95747  2.63%     -    7s
+H    0     0                      23.3487216   23.95747  2.61%     -    8s
+H    0     0                      23.3511034   23.95747  2.60%     -    8s
+H    0     0                      23.3517177   23.95747  2.59%     -    9s
+H    0     0                      23.3518308   23.95747  2.59%     -   10s
+H    0     0                      23.3525778   23.95747  2.59%     -   10s
+H    0     0                      23.3528023   23.95747  2.59%     -   11s
+H    0     0                      23.3529996   23.95747  2.59%     -   11s
+H    0     0                      23.3532209   23.95747  2.59%     -   12s
+H    0     0                      23.3535703   23.95747  2.59%     -   14s
+H    0     0                      23.3539650   23.95747  2.58%     -   14s
+H    0     0                      23.3541337   23.95747  2.58%     -   14s
+H    0     0                      23.3541957   23.95747  2.58%     -   18s
+H    0     0                      23.3543206   23.95747  2.58%     -   18s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+     2     4   23.95735    1 1952   23.35432   23.95747  2.58%   2.5   36s
+     6     8   23.95711    3 1953   23.35432   23.95716  2.58%   5.3   40s
+H    9    16                      23.3544185   23.95716  2.58%   5.7   44s
+    16    22   23.95123    8 1924   23.35442   23.95716  2.58%   8.7   48s
+    22    28   23.94934    9 1911   23.35442   23.95716  2.58%   8.4   52s
+H   23    28                      23.3545648   23.95716  2.58%   8.0   52s
+    28    32   23.94566   12 1893   23.35456   23.95716  2.58%   9.3   55s
+H   29    32                      23.3547317   23.95716  2.58%   9.0   55s
+    32    34   23.94704   11 1901   23.35473   23.95716  2.58%   9.3   61s
+    34    38   23.94675   12 1902   23.35473   23.95716  2.58%   9.0   65s
+    38    41   23.94364   14 1881   23.35473   23.95716  2.58%   9.1   71s
+    41    45   23.94375   13 1880   23.35473   23.95716  2.58%   9.5   75s
+    45    47   23.94350   15 1882   23.35473   23.95716  2.58%   9.4   82s
+    47    50   23.94142   16 1872   23.35473   23.95716  2.58%   9.7   89s
+    50    54   23.93941   17 1864   23.35473   23.95716  2.58%   9.9   93s
+    54    56   23.94128   17 1871   23.35473   23.95716  2.58%   9.5   99s
+
+Explored 56 nodes (2623 simplex iterations) in 100.08 seconds (83.63 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 23.3547 23.3546 23.3544 ... 23.353
+
+Time limit reached
+Best objective 2.335473169329e+01, best bound 2.395716239029e+01, gap 2.5795%
+
+======================================================================
+RESULTS: rotation_50farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        109.87s / 100s
+Objective:      23.3547316932914
+MIP Gap:        2.58%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 13/20: rotation_75farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_75farms_27foods
+Size: 75 farms × 27 foods = 6075 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 4500 rows, 6075 columns and 20250 nonzeros
+Model fingerprint: 0xe3f73d25
+Model has 559629 quadratic objective terms
+Variable types: 0 continuous, 6075 integer (6075 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 34.7456896
+Presolve removed 0 rows and 0 columns (presolve time = 5s)...
+Presolve time: 5.24s
+Presolved: 4500 rows, 6075 columns, 20250 nonzeros
+Presolved model has 559629 quadratic objective terms
+Variable types: 0 continuous, 6075 integer (6075 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -6.7500000e+02   0.000000e+00   9.353925e+03      5s
+    3086    3.6345855e+01   0.000000e+00   0.000000e+00      7s
+
+Root relaxation: objective 3.634586e+01, 3086 iterations, 1.53 seconds (2.70 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   36.34586    0 2710   34.74569   36.34586  4.61%     -    6s
+H    0     0                      34.7678178   36.34586  4.54%     -    6s
+H    0     0                      34.8840641   36.34586  4.19%     -    6s
+H    0     0                      34.8841226   36.34586  4.19%     -    7s
+H    0     0                      34.9378444   36.34586  4.03%     -    8s
+H    0     0                      34.9380042   36.34586  4.03%     -    8s
+H    0     0                      34.9381556   36.34586  4.03%     -    8s
+H    0     0                      34.9382765   36.34586  4.03%     -    8s
+H    0     0                      34.9383346   36.34586  4.03%     -    8s
+H    0     0                      34.9386369   36.34586  4.03%     -    8s
+     0     0   36.34586    0 2710   34.93864   36.34586  4.03%     -   10s
+H    0     0                      34.9765606   36.34586  3.91%     -   13s
+H    0     0                      34.9777967   36.34586  3.91%     -   14s
+H    0     0                      34.9790170   36.34586  3.91%     -   15s
+H    0     0                      34.9804854   36.34586  3.90%     -   16s
+H    0     0                      34.9813467   36.34586  3.90%     -   16s
+H    0     0                      34.9841289   36.34586  3.89%     -   16s
+H    0     0                      34.9843433   36.34586  3.89%     -   18s
+H    0     0                      34.9845618   36.34586  3.89%     -   20s
+H    0     0                      34.9849983   36.34586  3.89%     -   22s
+H    0     0                      34.9850027   36.34586  3.89%     -   22s
+H    0     0                      34.9856636   36.34586  3.89%     -   22s
+H    0     0                      34.9871909   36.34586  3.88%     -   22s
+H    0     0                      34.9884263   36.34586  3.88%     -   23s
+H    0     0                      34.9887010   36.34586  3.88%     -   24s
+H    0     0                      34.9922617   36.34586  3.87%     -   24s
+H    0     0                      34.9982274   36.34586  3.85%     -   25s
+H    0     0                      35.0004739   36.34586  3.84%     -   27s
+H    0     0                      35.0019703   36.34586  3.84%     -   32s
+H    0     0                      35.0040779   36.34586  3.83%     -   32s
+H    0     0                      35.0041761   36.34586  3.83%     -   32s
+H    0     0                      35.0042829   36.34586  3.83%     -   32s
+H    0     0                      35.0043472   36.34586  3.83%     -   32s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+H    1     2                      35.0067586   36.34586  3.83%   0.0   33s
+H    4     6                      35.0068577   36.34547  3.82%   3.8   35s
+H    5     6                      35.0089975   36.34540  3.82%   3.6   35s
+H    8    19                      35.0103568   36.34540  3.81%   3.2   44s
+H    9    19                      35.0120809   36.34540  3.81%   4.1   44s
+H   19    35                      35.0145864   36.34540  3.80%   6.5   54s
+H   27    35                      35.0150085   36.34540  3.80%   6.5   54s
+H   35    44                      35.0190494   36.34540  3.79%   6.8   73s
+H   44    62                      35.0201904   36.34540  3.78%   6.8   92s
+H   47    62                      35.0216140   36.34540  3.78%   6.7   92s
+H   50    62                      35.0219929   36.34540  3.78%   6.7   92s
+H   62    68                      35.0238559   36.34540  3.77%   6.8  100s
+H   65    68                      35.0243908   36.34540  3.77%   6.9  100s
+
+Explored 68 nodes (3557 simplex iterations) in 100.06 seconds (127.52 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 35.0244 35.0239 35.022 ... 35.0104
+
+Time limit reached
+Best objective 3.502439075190e+01, best bound 3.634540041957e+01, gap 3.7717%
+
+======================================================================
+RESULTS: rotation_75farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        114.74s / 100s
+Objective:      35.02439075189602
+MIP Gap:        3.77%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 14/20: rotation_100farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_100farms_27foods
+Size: 100 farms × 27 foods = 8100 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 6000 rows, 8100 columns and 27000 nonzeros
+Model fingerprint: 0xff585ea6
+Model has 738153 quadratic objective terms
+Variable types: 0 continuous, 8100 integer (8100 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 46.3343252
+Presolve removed 0 rows and 0 columns (presolve time = 8s)...
+Presolve time: 8.20s
+Presolved: 6000 rows, 8100 columns, 27000 nonzeros
+Presolved model has 738153 quadratic objective terms
+Variable types: 0 continuous, 8100 integer (8100 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -9.0000000e+02   0.000000e+00   1.247186e+04      8s
+    4115    4.8455578e+01   0.000000e+00   0.000000e+00     11s
+
+Root relaxation: objective 4.845558e+01, 4115 iterations, 2.54 seconds (3.92 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   48.45558    0 3614   46.33433   48.45558  4.58%     -   10s
+H    0     0                      46.3643795   48.45558  4.51%     -   11s
+H    0     0                      46.5120294   48.45558  4.18%     -   11s
+H    0     0                      46.5129715   48.45558  4.18%     -   11s
+H    0     0                      46.5130309   48.45558  4.18%     -   11s
+H    0     0                      46.5130908   48.45558  4.18%     -   11s
+H    0     0                      46.5131493   48.45558  4.18%     -   11s
+H    0     0                      46.5132091   48.45558  4.18%     -   11s
+H    0     0                      46.5845032   48.45558  4.02%     -   12s
+H    0     0                      46.5853798   48.45558  4.01%     -   13s
+H    0     0                      46.5855334   48.45558  4.01%     -   13s
+H    0     0                      46.5859683   48.45558  4.01%     -   14s
+     0     0   48.45558    0 3614   46.58597   48.45558  4.01%     -   15s
+H    0     0                      46.6347657   48.45558  3.90%     -   21s
+H    0     0                      46.6374368   48.45558  3.90%     -   23s
+H    0     0                      46.6377277   48.45558  3.90%     -   23s
+H    0     0                      46.6386490   48.45558  3.90%     -   27s
+H    0     0                      46.6397602   48.45558  3.89%     -   27s
+H    0     0                      46.6400888   48.45558  3.89%     -   27s
+H    0     0                      46.6410101   48.45558  3.89%     -   30s
+H    0     0                      46.6428667   48.45558  3.89%     -   30s
+H    0     0                      46.6437879   48.45558  3.88%     -   33s
+H    0     0                      46.6439910   48.45558  3.88%     -   33s
+H    0     0                      46.6452135   48.45558  3.88%     -   36s
+H    0     0                      46.6458714   48.45558  3.88%     -   39s
+H    0     0                      46.6498645   48.45558  3.87%     -   39s
+H    0     0                      46.6543990   48.45558  3.86%     -   41s
+H    0     0                      46.6614825   48.45558  3.84%     -   44s
+H    0     0                      46.6634167   48.45558  3.84%     -   45s
+H    0     0                      46.6664023   48.45558  3.83%     -   53s
+H    0     0                      46.6665407   48.45558  3.83%     -   53s
+H    0     0                      46.6669403   48.45558  3.83%     -   53s
+H    0     0                      46.6671866   48.45558  3.83%     -   53s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+H    1     2                      46.6702770   48.45558  3.83%   0.0   54s
+     2     4   48.45535    1 3613   46.67028   48.45535  3.82%   2.0   55s
+H    4     6                      46.6718863   48.45517  3.82%   3.8   57s
+H    5     6                      46.6756827   48.45494  3.81%   3.6   57s
+     6     8   48.45489    3 3613   46.67568   48.45489  3.81%   4.0   61s
+H    8    19                      46.6793130   48.45472  3.80%   3.4   69s
+H   14    19                      46.6796024   48.45472  3.80%   5.4   69s
+H   15    19                      46.6796301   48.45472  3.80%   5.8   69s
+H   19    31                      46.6813623   48.45472  3.80%   6.6   97s
+H   20    31                      46.6820236   48.45472  3.80%   6.8   97s
+H   21    31                      46.6821179   48.45472  3.80%   6.6   97s
+H   22    31                      46.6829613   48.45472  3.80%   6.8   97s
+H   28    31                      46.6829942   48.45472  3.80%   7.1   97s
+H   31    34                      46.6874805   48.45472  3.79%   7.5  100s
+
+Explored 34 nodes (4355 simplex iterations) in 100.26 seconds (132.68 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 46.6875 46.683 46.683 ... 46.6757
+
+Time limit reached
+Best objective 4.668748054022e+01, best bound 4.845472358042e+01, gap 3.7853%
+
+======================================================================
+RESULTS: rotation_100farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        119.79s / 100s
+Objective:      46.68748054022467
+MIP Gap:        3.79%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 15/20: rotation_150farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_150farms_27foods
+Size: 150 farms × 27 foods = 12150 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 9000 rows, 12150 columns and 40500 nonzeros
+Model fingerprint: 0x14d85026
+Model has 1097388 quadratic objective terms
+Variable types: 0 continuous, 12150 integer (12150 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 69.5091108
+Presolve removed 0 rows and 0 columns (presolve time = 16s)...
+Presolve time: 15.89s
+Presolved: 9000 rows, 12150 columns, 40500 nonzeros
+Presolved model has 1097388 quadratic objective terms
+Variable types: 0 continuous, 12150 integer (12150 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -1.3500000e+03   0.000000e+00   1.870329e+04     16s
+    5752    7.1940016e+01   0.000000e+00   7.661172e-03     20s
+    6268    7.1940203e+01   0.000000e+00   0.000000e+00     21s
+
+Root relaxation: objective 7.194020e+01, 6268 iterations, 5.21 seconds (8.84 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   71.94020    0 5817   69.50911   71.94020  3.50%     -   21s
+H    0     0                      69.6005306   71.94020  3.36%     -   21s
+H    0     0                      69.6171489   71.94020  3.34%     -   21s
+H    0     0                      69.6221765   71.94020  3.33%     -   21s
+H    0     0                      69.6228067   71.94020  3.33%     -   21s
+H    0     0                      69.6264864   71.94020  3.32%     -   21s
+H    0     0                      69.6266022   71.94020  3.32%     -   21s
+H    0     0                      69.6268990   71.94020  3.32%     -   22s
+H    0     0                      69.6271666   71.94020  3.32%     -   22s
+H    0     0                      69.6274260   71.94020  3.32%     -   22s
+H    0     0                      69.6276531   71.94020  3.32%     -   22s
+H    0     0                      69.6279924   71.94020  3.32%     -   23s
+H    0     0                      69.6282403   71.94020  3.32%     -   23s
+H    0     0                      69.6283929   71.94020  3.32%     -   23s
+H    0     0                      69.6286344   71.94020  3.32%     -   23s
+H    0     0                      69.9949049   71.94020  2.78%     -   24s
+H    0     0                      69.9960326   71.94020  2.78%     -   24s
+H    0     0                      70.0204403   71.94020  2.74%     -   24s
+     0     0   71.94020    0 5817   70.02044   71.94020  2.74%     -   27s
+H    0     0                      70.0894287   71.94020  2.64%     -   35s
+H    0     0                      70.0903166   71.94020  2.64%     -   38s
+H    0     0                      70.0924943   71.94020  2.64%     -   39s
+H    0     0                      70.0941612   71.94020  2.63%     -   42s
+H    0     0                      70.1001968   71.94020  2.62%     -   42s
+H    0     0                      70.1020508   71.94020  2.62%     -   45s
+H    0     0                      70.1023417   71.94020  2.62%     -   48s
+H    0     0                      70.1026395   71.94020  2.62%     -   48s
+H    0     0                      70.1028064   71.94020  2.62%     -   48s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+H    1     2                      70.1032414   71.94020  2.62%   0.0   49s
+H    2     4                      70.1038778   71.94020  2.62%   0.0   50s
+     6     8   71.93984    3 5818   70.10388   71.94008  2.62%   5.3   61s
+H    8    17                      70.1047404   71.94008  2.62%   4.6   80s
+H    9    17                      70.1083112   71.94008  2.61%   5.7   80s
+H   16    17                      70.1089259   71.94008  2.61%   7.6   80s
+H   17    27                      70.1093683   71.94008  2.61%   8.2  100s
+H   18    27                      70.1097288   71.94008  2.61%   8.6  100s
+H   21    27                      70.1098942   71.94008  2.61%   8.7  100s
+H   23    27                      70.1100577   71.94008  2.61%   8.8  100s
+H   24    27                      70.1101691   71.94008  2.61%   8.5  100s
+
+Explored 27 nodes (6499 simplex iterations) in 100.15 seconds (172.65 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 70.1102 70.1101 70.1099 ... 70.1032
+
+Time limit reached
+Best objective 7.011016912576e+01, best bound 7.194008159975e+01, gap 2.6101%
+
+======================================================================
+RESULTS: rotation_150farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        129.77s / 100s
+Objective:      70.11016912576383
+MIP Gap:        2.61%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 16/20: rotation_200farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_200farms_27foods
+Size: 200 farms × 27 foods = 16200 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 12000 rows, 16200 columns and 54000 nonzeros
+Model fingerprint: 0x836710bb
+Model has 1454436 quadratic objective terms
+Variable types: 0 continuous, 16200 integer (16200 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 92.7073647
+Presolve removed 0 rows and 0 columns (presolve time = 27s)...
+Presolve time: 26.80s
+Presolved: 12000 rows, 16200 columns, 54000 nonzeros
+Presolved model has 1454436 quadratic objective terms
+Variable types: 0 continuous, 16200 integer (16200 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -1.8000000e+03   0.000000e+00   2.494034e+04     27s
+    6564    9.6279724e+01   0.000000e+00   1.457018e-01     31s
+    8921    9.6287563e+01   0.000000e+00   0.000000e+00     36s
+
+Root relaxation: objective 9.628756e+01, 8921 iterations, 8.93 seconds (15.49 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   96.28756    0 8320   92.70736   96.28756  3.86%     -   35s
+H    0     0                      92.7444033   96.28756  3.82%     -   36s
+H    0     0                      92.7464135   96.28756  3.82%     -   36s
+H    0     0                      92.7482379   96.28756  3.82%     -   36s
+H    0     0                      92.7487301   96.28756  3.82%     -   36s
+H    0     0                      92.7493878   96.28756  3.81%     -   36s
+H    0     0                      92.7499138   96.28756  3.81%     -   36s
+H    0     0                      92.7500613   96.28756  3.81%     -   36s
+H    0     0                      92.7506516   96.28756  3.81%     -   37s
+H    0     0                      92.7510394   96.28756  3.81%     -   37s
+H    0     0                      92.7518787   96.28756  3.81%     -   37s
+H    0     0                      92.7519800   96.28756  3.81%     -   38s
+H    0     0                      92.7520737   96.28756  3.81%     -   38s
+H    0     0                      92.7525225   96.28756  3.81%     -   38s
+H    0     0                      92.7529617   96.28756  3.81%     -   38s
+H    0     0                      92.7529805   96.28756  3.81%     -   38s
+H    0     0                      92.7535449   96.28756  3.81%     -   38s
+H    0     0                      92.7536509   96.28756  3.81%     -   38s
+H    0     0                      92.7538778   96.28756  3.81%     -   39s
+H    0     0                      92.7541234   96.28756  3.81%     -   39s
+H    0     0                      92.7544174   96.28756  3.81%     -   39s
+H    0     0                      92.7549766   96.28756  3.81%     -   40s
+H    0     0                      92.7552631   96.28756  3.81%     -   40s
+H    0     0                      93.3290761   96.28756  3.17%     -   41s
+H    0     0                      93.3300431   96.28756  3.17%     -   41s
+H    0     0                      93.3401545   96.28756  3.16%     -   41s
+H    0     0                      93.3485236   96.28756  3.15%     -   41s
+H    0     0                      93.3511654   96.28756  3.15%     -   41s
+H    0     0                      93.3530764   96.28756  3.14%     -   42s
+H    0     0                      93.3535478   96.28756  3.14%     -   42s
+H    0     0                      93.3539745   96.28756  3.14%     -   42s
+H    0     0                      93.3541732   96.28756  3.14%     -   42s
+H    0     0                      93.3569086   96.28756  3.14%     -   42s
+H    0     0                      93.3571525   96.28756  3.14%     -   42s
+     0     0   96.28756    0 8320   93.35715   96.28756  3.14%     -   44s
+H    0     0                      93.3629687   96.28756  3.13%     -   60s
+H    0     0                      93.3881459   96.28756  3.10%     -   61s
+H    0     0                      93.5155136   96.28756  2.96%     -   62s
+H    0     0                      93.5183169   96.28756  2.96%     -   66s
+H    0     0                      93.5185501   96.28756  2.96%     -   75s
+H    0     0                      93.5204941   96.28756  2.96%     -   79s
+
+Resetting heuristic parameters to focus on improving solution
+(using Heuristics=0.5 and RINS=10)...
+
+     2     4   96.28744    1 8320   93.52049   96.28756  2.96%   1.5   84s
+     4     6   96.28731    2 8320   93.52049   96.28731  2.96%   5.5   89s
+     6     8   96.28719    3 8320   93.52049   96.28719  2.96%   4.7  100s
+
+Explored 8 nodes (8952 simplex iterations) in 100.32 seconds (162.09 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 93.5205 93.5186 93.5183 ... 93.354
+
+Time limit reached
+Best objective 9.352049407529e+01, best bound 9.628718682148e+01, gap 2.9584%
+
+======================================================================
+RESULTS: rotation_200farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        138.98s / 100s
+Objective:      93.5204940752858
+MIP Gap:        2.96%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 17/20: rotation_250farms_27foods
+################################################################################
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+
+======================================================================
+Testing: rotation_250farms_27foods
+Size: 250 farms × 27 foods = 20250 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 15000 rows, 20250 columns and 67500 nonzeros
+Model fingerprint: 0x5a3bec5e
+Model has 1809297 quadratic objective terms
+Variable types: 0 continuous, 20250 integer (20250 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [5e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 115.8944058
+Presolve removed 0 rows and 0 columns (presolve time = 42s)...
+Presolve time: 42.19s
+Presolved: 15000 rows, 20250 columns, 67500 nonzeros
+Presolved model has 1809297 quadratic objective terms
+Variable types: 0 continuous, 20250 integer (20250 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -2.2500000e+03   0.000000e+00   3.117326e+04     42s
+    6027    1.2002237e+02   0.000000e+00   5.045987e-01     45s
+    9077    1.2006545e+02   0.000000e+00   3.774301e-02     50s
+   10547    1.2006677e+02   0.000000e+00   0.000000e+00     54s
+
+Root relaxation: objective 1.200668e+02, 10547 iterations, 11.87 seconds (19.11 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  120.06677    0 9796  115.89441  120.06677  3.60%     -   54s
+H    0     0                     116.0459660  120.06677  3.46%     -   54s
+H    0     0                     116.0537080  120.06677  3.46%     -   54s
+H    0     0                     116.0565027  120.06677  3.46%     -   54s
+H    0     0                     116.0569923  120.06677  3.46%     -   55s
+H    0     0                     116.0579406  120.06677  3.45%     -   55s
+H    0     0                     116.0590169  120.06677  3.45%     -   55s
+H    0     0                     116.0590840  120.06677  3.45%     -   55s
+H    0     0                     116.0605223  120.06677  3.45%     -   56s
+H    0     0                     116.0605394  120.06677  3.45%     -   56s
+H    0     0                     116.0608341  120.06677  3.45%     -   57s
+H    0     0                     116.0614124  120.06677  3.45%     -   57s
+H    0     0                     116.0616524  120.06677  3.45%     -   59s
+H    0     0                     116.0617413  120.06677  3.45%     -   59s
+H    0     0                     116.7113663  120.06677  2.87%     -   59s
+H    0     0                     116.7132207  120.06677  2.87%     -   59s
+H    0     0                     116.7160730  120.06677  2.87%     -   60s
+H    0     0                     116.7399707  120.06677  2.85%     -   60s
+H    0     0                     116.7406905  120.06677  2.85%     -   61s
+H    0     0                     116.7410530  120.06677  2.85%     -   61s
+     0     0  120.06677    0 9796  116.74105  120.06677  2.85%     -   64s
+H    0     0                     116.7897015  120.06677  2.81%     -   87s
+H    0     0                     116.8161298  120.06677  2.78%     -   95s
+H    0     0                     116.8285789  120.06677  2.77%     -  100s
+
+Explored 1 nodes (10547 simplex iterations) in 100.25 seconds (130.65 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 116.829 116.816 116.79 ... 116.062
+
+Time limit reached
+Best objective 1.168285789103e+02, best bound 1.200667679304e+02, gap 2.7717%
+
+======================================================================
+RESULTS: rotation_250farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        149.79s / 100s
+Objective:      116.828578910347
+MIP Gap:        2.77%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 18/20: rotation_350farms_27foods
+################################################################################
+
+======================================================================
+Testing: rotation_350farms_27foods
+Size: 350 farms × 27 foods = 28350 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 21000 rows, 28350 columns and 94500 nonzeros
+Model fingerprint: 0xf85ba7d9
+Model has 2519019 quadratic objective terms
+Variable types: 0 continuous, 28350 integer (28350 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [4e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 160.5653449
+Presolve removed 0 rows and 0 columns (presolve time = 62s)...
+Presolve time: 61.97s
+Presolved: 21000 rows, 28350 columns, 94500 nonzeros
+Presolved model has 2519019 quadratic objective terms
+Variable types: 0 continuous, 28350 integer (28350 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -3.1500000e+03   0.000000e+00   4.362426e+04     62s
+    7414    1.6543050e+02   0.000000e+00   3.534156e-01     66s
+   11033    1.6545905e+02   0.000000e+00   7.516629e-03     72s
+   11931    1.6545920e+02   0.000000e+00   0.000000e+00     74s
+
+Root relaxation: objective 1.654592e+02, 11931 iterations, 12.19 seconds (18.76 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  165.45920    0 10880  160.56534  165.45920  3.05%     -   74s
+H    0     0                     160.5798209  165.45920  3.04%     -   74s
+H    0     0                     160.9436282  165.45920  2.81%     -   79s
+H    0     0                     160.9485259  165.45920  2.80%     -   79s
+H    0     0                     160.9537389  165.45920  2.80%     -   79s
+H    0     0                     160.9540157  165.45920  2.80%     -   79s
+H    0     0                     160.9550950  165.45920  2.80%     -   81s
+H    0     0                     160.9569596  165.45920  2.80%     -   81s
+H    0     0                     160.9574109  165.45920  2.80%     -   82s
+H    0     0                     160.9578330  165.45920  2.80%     -   82s
+H    0     0                     160.9581105  165.45920  2.80%     -   82s
+H    0     0                     160.9582648  165.45920  2.80%     -   82s
+H    0     0                     160.9585497  165.45920  2.80%     -   83s
+H    0     0                     160.9605410  165.45920  2.79%     -   83s
+H    0     0                     161.9394290  165.45920  2.17%     -   86s
+     0     0  165.45920    0 10880  161.93943  165.45920  2.17%     -   94s
+
+Explored 1 nodes (11931 simplex iterations) in 100.20 seconds (95.29 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 10: 161.939 160.961 160.959 ... 160.954
+
+Time limit reached
+Best objective 1.619394289608e+02, best bound 1.654591950455e+02, gap 2.1735%
+
+======================================================================
+RESULTS: rotation_350farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        169.10s / 100s
+Objective:      161.93942896079943
+MIP Gap:        2.17%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 19/20: rotation_500farms_27foods
+################################################################################
+
+======================================================================
+Testing: rotation_500farms_27foods
+Size: 500 farms × 27 foods = 40500 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 30000 rows, 40500 columns and 135000 nonzeros
+Model fingerprint: 0x7320483b
+Model has 3579228 quadratic objective terms
+Variable types: 0 continuous, 40500 integer (40500 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [3e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 228.4215734
+Presolve removed 0 rows and 0 columns (presolve time = 103s)...
+Presolve time: 102.53s
+Presolved: 30000 rows, 40500 columns, 135000 nonzeros
+Presolved model has 3579228 quadratic objective terms
+Variable types: 0 continuous, 40500 integer (40500 binary)
+
+Explored 0 nodes (0 simplex iterations) in 102.88 seconds (87.99 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 1: 228.422 
+
+Time limit reached
+Best objective 2.284215734265e+02, best bound 1.231804004672e+05, gap 53826.7805%
+
+======================================================================
+RESULTS: rotation_500farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        201.70s / 100s
+Objective:      228.42157342649352
+MIP Gap:        53826.78%
+Hit timeout:    YES ⚠️
+======================================================================
+
+################################################################################
+SCENARIO 20/20: rotation_1000farms_27foods
+################################################################################
+
+======================================================================
+Testing: rotation_1000farms_27foods
+Size: 1000 farms × 27 foods = 81000 vars
+======================================================================
+Set parameter OutputFlag to value 1
+Set parameter TimeLimit to value 100
+Set parameter MIPGap to value 0.01
+Set parameter MIPFocus to value 1
+Set parameter ImproveStartTime to value 30
+Model: 0 vars, 0 constraints
+Solving...
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[x86] - Darwin 22.6.0 22H730)
+
+CPU model: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Non-default parameters:
+TimeLimit  100
+MIPGap  0.01
+MIPFocus  1
+ImproveStartTime  30
+
+Optimize a model with 60000 rows, 81000 columns and 270000 nonzeros
+Model fingerprint: 0x8082d5a1
+Model has 7103781 quadratic objective terms
+Variable types: 0 continuous, 81000 integer (81000 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [6e+00, 6e+00]
+  QObjective range [1e-08, 1e+01]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 453.4279239
+Presolve removed 0 rows and 0 columns (presolve time = 115s)...
+Presolve time: 114.97s
+Presolved: 60000 rows, 81000 columns, 270000 nonzeros
+Presolved model has 7103781 quadratic objective terms
+Variable types: 0 continuous, 81000 integer (81000 binary)
+
+Explored 0 nodes (0 simplex iterations) in 115.77 seconds (109.96 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 1: 453.428 
+
+Time limit reached
+Best objective 4.534279238642e+02, best bound 2.462564091026e+05, gap 54209.9346%
+
+======================================================================
+RESULTS: rotation_1000farms_27foods
+======================================================================
+Status:         timeout
+Stopped reason: timeout_300s
+Runtime:        327.13s / 100s
+Objective:      453.4279238642466
+MIP Gap:        54209.93%
+Hit timeout:    YES ⚠️
+======================================================================
+
+✓ Results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_timeout_verification/gurobi_timeout_test_20251215_152938.json
+✓ CSV saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_timeout_verification/gurobi_timeout_test_20251215_152938.csv
+
+================================================================================
+TIMEOUT VERIFICATION SUMMARY
+================================================================================
+
+Scenario                                   Vars    Runtime  Timeout Stopped Reason      
+-----------------------------------------------------------------------------------------------
+rotation_micro_25                            90     100.3s      YES timeout_300s        
+rotation_small_50                           180     100.2s      YES timeout_300s        
+rotation_15farms_6foods                     270     100.2s      YES timeout_300s        
+rotation_medium_100                         360     100.3s      YES timeout_300s        
+rotation_25farms_6foods                     450     100.4s      YES timeout_300s        
+rotation_large_200                          720     100.6s      YES timeout_300s        
+rotation_50farms_6foods                     900     100.8s      YES timeout_300s        
+rotation_75farms_6foods                    1350     100.9s      YES timeout_300s        
+rotation_100farms_6foods                   1800     101.4s      YES timeout_300s        
+rotation_25farms_27foods                   2025     105.7s      YES timeout_300s        
+rotation_150farms_6foods                   2700     102.1s      YES timeout_300s        
+rotation_50farms_27foods                   4050     109.9s      YES timeout_300s        
+rotation_75farms_27foods                   6075     114.7s      YES timeout_300s        
+rotation_100farms_27foods                  8100     119.8s      YES timeout_300s        
+rotation_150farms_27foods                 12150     129.8s      YES timeout_300s        
+rotation_200farms_27foods                 16200     139.0s      YES timeout_300s        
+rotation_250farms_27foods                 20250     149.8s      YES timeout_300s        
+rotation_350farms_27foods                 28350     169.1s      YES timeout_300s        
+rotation_500farms_27foods                 40500     201.7s      YES timeout_300s        
+rotation_1000farms_27foods                81000     327.1s      YES timeout_300s        
+-----------------------------------------------------------------------------------------------
+
+Timeout hits: 20/20 (100%)
+ImproveStartTime stops: 0/20 (0%)
+
+✓ PASS: All scenarios hit timeout as expected!
+
+✓ Test complete!

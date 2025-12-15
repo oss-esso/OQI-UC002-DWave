@@ -1,0 +1,384 @@
+#!/usr/bin/env python3
+"""
+Plot Significant Scenarios Benchmark Results
+Comprehensive visualization of Gurobi vs QPU performance
+"""
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from pathlib import Path
+
+# Standard matplotlib rendering
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.size'] = 10
+
+# Load results
+results_dir = Path(__file__).parent / 'significant_scenarios_results'
+csv_file = list(results_dir.glob('benchmark_results_*.csv'))[-1]  # Get latest
+print(f"Loading results from: {csv_file}")
+
+df = pd.read_csv(csv_file)
+
+# Create figure with subplots
+fig = plt.figure(figsize=(16, 10))
+gs = fig.add_gridspec(3, 3, hspace=0.35, wspace=0.3)
+
+# Color scheme
+color_gurobi = '#1f77b4'  # Blue
+color_qpu = '#ff7f0e'     # Orange
+color_speedup = '#2ca02c' # Green
+color_gap = '#d62728'     # Red
+
+# ============================================================================
+# Plot 1: Runtime Comparison (Wall Time)
+# ============================================================================
+ax1 = fig.add_subplot(gs[0, 0])
+
+x = np.arange(len(df))
+width = 0.35
+
+bars1 = ax1.bar(x - width/2, df['gurobi_runtime'], width, 
+                label='Gurobi', color=color_gurobi, alpha=0.8)
+bars2 = ax1.bar(x + width/2, df['qpu_runtime'], width,
+                label='QPU', color=color_qpu, alpha=0.8)
+
+# Add timeout markers for Gurobi
+for i, (idx, row) in enumerate(df.iterrows()):
+    if row['gurobi_hit_timeout']:
+        ax1.plot(i - width/2, row['gurobi_runtime'], 'r*', markersize=15, 
+                markeredgecolor='darkred', markeredgewidth=1.5)
+
+ax1.set_ylabel('Wall Time (s)', fontsize=11, fontweight='bold')
+ax1.set_xlabel('Scenario', fontsize=11, fontweight='bold')
+ax1.set_title('Runtime Comparison', fontsize=12, pad=10, fontweight='bold')
+ax1.set_xticks(x)
+ax1.set_xticklabels([f"{int(row['n_farms'])}F" for _, row in df.iterrows()], rotation=0)
+ax1.legend(loc='upper left', fontsize=9)
+ax1.grid(axis='y', alpha=0.3, linestyle='--')
+ax1.text(0.98, 0.98, '* = timeout', 
+         transform=ax1.transAxes, ha='right', va='top', fontsize=8,
+         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+# Add values on bars
+for i, (idx, row) in enumerate(df.iterrows()):
+    ax1.text(i - width/2, row['gurobi_runtime'] + 2, f"{row['gurobi_runtime']:.1f}s",
+            ha='center', va='bottom', fontsize=7, rotation=0)
+    ax1.text(i + width/2, row['qpu_runtime'] + 2, f"{row['qpu_runtime']:.1f}s",
+            ha='center', va='bottom', fontsize=7, rotation=0)
+
+# ============================================================================
+# Plot 2: Objective Value Comparison
+# ============================================================================
+ax2 = fig.add_subplot(gs[0, 1])
+
+bars1 = ax2.bar(x - width/2, df['gurobi_objective'], width,
+                label='Gurobi', color=color_gurobi, alpha=0.8)
+bars2 = ax2.bar(x + width/2, df['qpu_objective'], width,
+                label='QPU', color=color_qpu, alpha=0.8)
+
+ax2.set_ylabel('Objective Value', fontsize=11, fontweight='bold')
+ax2.set_xlabel('Scenario', fontsize=11, fontweight='bold')
+ax2.set_title('Objective Value Comparison', fontsize=12, pad=10, fontweight='bold')
+ax2.set_xticks(x)
+ax2.set_xticklabels([f"{int(row['n_farms'])}F" for _, row in df.iterrows()], rotation=0)
+ax2.legend(loc='upper left', fontsize=9)
+ax2.grid(axis='y', alpha=0.3, linestyle='--')
+ax2.axhline(y=0, color='black', linestyle='-', linewidth=0.8, alpha=0.3)
+
+# Highlight negative objectives
+for i, (idx, row) in enumerate(df.iterrows()):
+    if row['qpu_objective'] < 0:
+        ax2.add_patch(plt.Rectangle((i + width/2 - width/2, min(ax2.get_ylim()[0], row['qpu_objective'])), 
+                                    width, abs(row['qpu_objective']),
+                                    facecolor='red', alpha=0.1, edgecolor='red', linewidth=2))
+
+# ============================================================================
+# Plot 3: Speedup Analysis
+# ============================================================================
+ax3 = fig.add_subplot(gs[0, 2])
+
+bars = ax3.bar(x, df['speedup'], color=color_speedup, alpha=0.7, edgecolor='darkgreen', linewidth=1.5)
+ax3.axhline(y=1, color='black', linestyle='--', linewidth=2, label='No speedup (1x)', alpha=0.7)
+
+# Color bars: green if >1, red if <1
+for i, bar in enumerate(bars):
+    if df.iloc[i]['speedup'] < 1:
+        bar.set_color('#d62728')
+        bar.set_alpha(0.7)
+
+ax3.set_ylabel('Speedup (Gurobi time / QPU time)', fontsize=11, fontweight='bold')
+ax3.set_xlabel('Scenario', fontsize=11, fontweight='bold')
+ax3.set_title('QPU Speedup vs Gurobi', fontsize=12, pad=10, fontweight='bold')
+ax3.set_xticks(x)
+ax3.set_xticklabels([f"{int(row['n_farms'])}F" for _, row in df.iterrows()], rotation=0)
+ax3.legend(fontsize=9)
+ax3.grid(axis='y', alpha=0.3, linestyle='--')
+
+# Add values on bars
+for i, (idx, row) in enumerate(df.iterrows()):
+    speedup_val = row['speedup']
+    y_pos = speedup_val + 0.1 if speedup_val > 0 else speedup_val - 0.1
+    ax3.text(i, y_pos, f"{speedup_val:.2f}x",
+            ha='center', va='bottom' if speedup_val > 0 else 'top', 
+            fontsize=8, fontweight='bold')
+
+# ============================================================================
+# Plot 4: Gap Percentage
+# ============================================================================
+ax4 = fig.add_subplot(gs[1, 0])
+
+bars = ax4.bar(x, df['gap_pct'], color=color_gap, alpha=0.7, edgecolor='darkred', linewidth=1.5)
+ax4.axhline(y=0, color='black', linestyle='--', linewidth=2, alpha=0.7)
+ax4.axhline(y=10, color='orange', linestyle=':', linewidth=1.5, alpha=0.5, label='10% threshold')
+
+ax4.set_ylabel('Gap % = (Gurobi - QPU) / Gurobi × 100', fontsize=10, fontweight='bold')
+ax4.set_xlabel('Scenario', fontsize=11, fontweight='bold')
+ax4.set_title('Solution Quality Gap', fontsize=12, pad=10, fontweight='bold')
+ax4.set_xticks(x)
+ax4.set_xticklabels([f"{int(row['n_farms'])}F" for _, row in df.iterrows()], rotation=0)
+ax4.legend(fontsize=9)
+ax4.grid(axis='y', alpha=0.3, linestyle='--')
+
+# Add values on bars (only show reasonable values)
+for i, (idx, row) in enumerate(df.iterrows()):
+    gap_val = row['gap_pct']
+    if gap_val < 100:  # Only show if reasonable
+        y_pos = gap_val + 2 if gap_val > 0 else gap_val - 2
+        ax4.text(i, y_pos, f"{gap_val:+.1f}%",
+                ha='center', va='bottom' if gap_val > 0 else 'top', 
+                fontsize=8, fontweight='bold', rotation=0)
+
+# ============================================================================
+# Plot 5: Constraint Violations
+# ============================================================================
+ax5 = fig.add_subplot(gs[1, 1])
+
+# Stacked bar for QPU violations only (Gurobi has 0)
+rotation_viol = df['qpu_rotation_violations']
+diversity_viol = df['qpu_diversity_violations']
+area_viol = df['qpu_area_violations']
+
+ax5.bar(x, rotation_viol, width, label='Rotation', color='#e377c2', alpha=0.8)
+ax5.bar(x, diversity_viol, width, bottom=rotation_viol, 
+        label='Diversity', color='#bcbd22', alpha=0.8)
+ax5.bar(x, area_viol, width, bottom=rotation_viol + diversity_viol,
+        label='Area', color='#17becf', alpha=0.8)
+
+ax5.set_ylabel('Constraint Violations (QPU only)', fontsize=11, fontweight='bold')
+ax5.set_xlabel('Scenario', fontsize=11, fontweight='bold')
+ax5.set_title('QPU Constraint Violations', fontsize=12, pad=10, fontweight='bold')
+ax5.set_xticks(x)
+ax5.set_xticklabels([f"{int(row['n_farms'])}F" for _, row in df.iterrows()], rotation=0)
+ax5.legend(loc='upper left', fontsize=9)
+ax5.grid(axis='y', alpha=0.3, linestyle='--')
+
+# Add total violations text
+for i, (idx, row) in enumerate(df.iterrows()):
+    total = row['qpu_total_violations']
+    if total > 0 and total < 900:  # Don't show 999 (infeasible marker)
+        ax5.text(i, total + 2, f"{int(total)}", ha='center', va='bottom', fontsize=8, fontweight='bold')
+
+# ============================================================================
+# Plot 6: Problem Size Scaling
+# ============================================================================
+ax6 = fig.add_subplot(gs[1, 2])
+
+# Plot runtime vs problem size
+ax6.plot(df['n_vars'], df['gurobi_runtime'], 'o-', 
+         color=color_gurobi, linewidth=2, markersize=8, label='Gurobi')
+ax6.plot(df['n_vars'], df['qpu_runtime'], 's-',
+         color=color_qpu, linewidth=2, markersize=8, label='QPU')
+
+ax6.set_xlabel('Problem Size (number of variables)', fontsize=11, fontweight='bold')
+ax6.set_ylabel('Runtime (s)', fontsize=11, fontweight='bold')
+ax6.set_title('Scaling with Problem Size', fontsize=12, pad=10, fontweight='bold')
+ax6.legend(fontsize=9)
+ax6.grid(True, alpha=0.3, linestyle='--')
+ax6.set_xscale('log')
+
+# Annotate crossover point (where QPU becomes slower)
+crossover_idx = df[df['speedup'] < 1].index[0] if any(df['speedup'] < 1) else None
+if crossover_idx is not None:
+    crossover_vars = df.iloc[crossover_idx]['n_vars']
+    ax6.axvline(x=crossover_vars, color='red', linestyle=':', linewidth=2, alpha=0.5)
+    ax6.text(crossover_vars, ax6.get_ylim()[1] * 0.9, 
+            'Crossover', ha='center', fontsize=9,
+            bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.5))
+
+# ============================================================================
+# Plot 7: Summary Table
+# ============================================================================
+ax7 = fig.add_subplot(gs[2, :])
+ax7.axis('off')
+
+# Create summary table
+table_data = []
+headers = ['Scenario', 'Size', 'Gurobi\nObj', 'QPU\nObj', 'Gap%', 'Gurobi\nTime(s)', 
+           'QPU\nTime(s)', 'Speedup', 'QPU\nViolations', 'Status']
+
+for idx, row in df.iterrows():
+    scenario_short = f"{int(row['n_farms'])}F-{int(row['n_foods'])}C"
+    size = f"{int(row['n_vars'])}"
+    g_obj = f"{row['gurobi_objective']:.2f}"
+    q_obj = f"{row['qpu_objective']:.2f}"
+    gap = f"{row['gap_pct']:+.1f}%" if row['gap_pct'] < 500 else ">500%"
+    g_time = f"{row['gurobi_runtime']:.1f}"
+    q_time = f"{row['qpu_runtime']:.1f}"
+    speedup = f"{row['speedup']:.2f}x"
+    violations = f"{int(row['qpu_total_violations'])}" if row['qpu_total_violations'] < 900 else "INFEAS"
+    status = "✓" if row['speedup'] > 1 and row['gap_pct'] < 20 else "⚠"
+    
+    table_data.append([scenario_short, size, g_obj, q_obj, gap, g_time, q_time, speedup, violations, status])
+
+table = ax7.table(cellText=table_data, colLabels=headers, loc='center', cellLoc='center')
+table.auto_set_font_size(False)
+table.set_fontsize(9)
+table.scale(1, 2)
+
+# Color code cells
+for i in range(len(table_data)):
+    row_idx = i + 1  # Account for header row
+    
+    # Gap % - red if >20%, yellow if 10-20%, green if <10%
+    gap_val = df.iloc[i]['gap_pct']
+    if gap_val > 20:
+        table[(row_idx, 4)].set_facecolor('#ffcccc')
+    elif gap_val > 10:
+        table[(row_idx, 4)].set_facecolor('#ffffcc')
+    else:
+        table[(row_idx, 4)].set_facecolor('#ccffcc')
+    
+    # Speedup - green if >1, red if <1
+    if df.iloc[i]['speedup'] > 1:
+        table[(row_idx, 7)].set_facecolor('#ccffcc')
+    else:
+        table[(row_idx, 7)].set_facecolor('#ffcccc')
+    
+    # Violations - red if >0
+    if df.iloc[i]['qpu_total_violations'] > 0 and df.iloc[i]['qpu_total_violations'] < 900:
+        table[(row_idx, 8)].set_facecolor('#ffcccc')
+    elif df.iloc[i]['qpu_total_violations'] >= 900:
+        table[(row_idx, 8)].set_facecolor('#ff6666')
+    else:
+        table[(row_idx, 8)].set_facecolor('#ccffcc')
+    
+    # Status
+    if table_data[i][-1] == "✓":
+        table[(row_idx, 9)].set_facecolor('#ccffcc')
+    else:
+        table[(row_idx, 9)].set_facecolor('#ffffcc')
+
+# Header styling
+for j in range(len(headers)):
+    table[(0, j)].set_facecolor('#4472C4')
+    table[(0, j)].set_text_props(weight='bold', color='white')
+
+ax7.text(0.5, 0.95, 'Summary: Gurobi vs QPU Performance', 
+         transform=ax7.transAxes, ha='center', va='top', fontsize=12, fontweight='bold')
+
+# ============================================================================
+# Overall title
+# ============================================================================
+fig.suptitle('Significant Scenarios Benchmark: Gurobi vs QPU Comprehensive Analysis',
+            fontsize=14, fontweight='bold', y=0.995)
+
+# Add summary statistics text
+total_scenarios = len(df)
+gurobi_timeouts = df['gurobi_hit_timeout'].sum()
+avg_speedup = df['speedup'].mean()
+avg_gap = df[df['gap_pct'] < 100]['gap_pct'].mean()  # Only reasonable gaps
+
+summary_text = (
+    f"Summary: {total_scenarios} scenarios tested | "
+    f"Gurobi timeouts: {gurobi_timeouts}/{total_scenarios} | "
+    f"Avg speedup: {avg_speedup:.2f}x | "
+    f"Avg gap (clique only): {avg_gap:+.1f}%"
+)
+
+fig.text(0.5, 0.01, summary_text, ha='center', fontsize=10, 
+         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+
+# Save
+output_file = results_dir / 'significant_benchmark_comprehensive.pdf'
+plt.savefig(output_file, dpi=300, bbox_inches='tight')
+print(f"\n✓ Plot saved to: {output_file}")
+
+output_file_png = results_dir / 'significant_benchmark_comprehensive.png'
+plt.savefig(output_file_png, dpi=300, bbox_inches='tight')
+print(f"✓ Plot saved to: {output_file_png}")
+
+print("\n" + "="*80)
+print("DETAILED ANALYSIS")
+print("="*80)
+
+print("\n1. RUNTIME PERFORMANCE:")
+print("-" * 80)
+for idx, row in df.iterrows():
+    scenario = row['scenario']
+    g_time = row['gurobi_runtime']
+    q_time = row['qpu_runtime']
+    speedup = row['speedup']
+    timeout_marker = " [TIMEOUT]" if row['gurobi_hit_timeout'] else ""
+    
+    print(f"{scenario:35s}: Gurobi={g_time:6.2f}s{timeout_marker:12s} | QPU={q_time:6.2f}s | Speedup={speedup:5.2f}x")
+
+print("\n2. SOLUTION QUALITY:")
+print("-" * 80)
+for idx, row in df.iterrows():
+    scenario = row['scenario']
+    g_obj = row['gurobi_objective']
+    q_obj = row['qpu_objective']
+    gap = row['gap_pct']
+    
+    quality_marker = "✓ GOOD" if abs(gap) < 10 else "⚠ POOR" if abs(gap) < 50 else "✗ FAIL"
+    
+    print(f"{scenario:35s}: Gurobi={g_obj:8.4f} | QPU={q_obj:8.4f} | Gap={gap:+7.1f}% {quality_marker}")
+
+print("\n3. CONSTRAINT VIOLATIONS (QPU only, Gurobi has 0):")
+print("-" * 80)
+for idx, row in df.iterrows():
+    scenario = row['scenario']
+    total = row['qpu_total_violations']
+    rot = row['qpu_rotation_violations']
+    div = row['qpu_diversity_violations']
+    area = row['qpu_area_violations']
+    
+    if total >= 900:
+        viol_str = "INFEASIBLE (marked as 999)"
+    elif total == 0:
+        viol_str = "✓ FEASIBLE"
+    else:
+        viol_str = f"⚠ {int(total)} violations (rot={int(rot)}, div={int(div)}, area={int(area)})"
+    
+    print(f"{scenario:35s}: {viol_str}")
+
+print("\n4. KEY FINDINGS:")
+print("-" * 80)
+clique_df = df[df['qpu_method'] == 'clique_decomp']
+hier_df = df[df['qpu_method'] == 'hierarchical']
+
+print(f"• Gurobi hit timeout on ALL {gurobi_timeouts}/{total_scenarios} scenarios (100-122s)")
+print(f"• QPU achieved speedup on {(df['speedup'] > 1).sum()}/{total_scenarios} scenarios")
+print(f"• Average speedup: {avg_speedup:.2f}x (range: {df['speedup'].min():.2f}x to {df['speedup'].max():.2f}x)")
+print(f"\nCLIQUE DECOMPOSITION (5-20 farms):")
+print(f"  • Speedup range: {clique_df['speedup'].min():.2f}x to {clique_df['speedup'].max():.2f}x")
+print(f"  • Gap range: {clique_df['gap_pct'].min():.1f}% to {clique_df['gap_pct'].max():.1f}%")
+print(f"  • All have constraint violations (diversity/area)")
+print(f"\nHIERARCHICAL (25-100 farms):")
+print(f"  • Speedup range: {hier_df['speedup'].min():.2f}x to {hier_df['speedup'].max():.2f}x")
+print(f"  • ALL have NEGATIVE objectives → validation failure")
+print(f"  • Gap >200% on all (meaningless due to negative objectives)")
+
+print("\n5. CRITICAL ISSUES:")
+print("-" * 80)
+print("⚠ QPU CLIQUE SOLVER:")
+print("  • Achieves good speedup (2.2-5.7x)")
+print("  • Reasonable objective gap (1.4-16%)")
+print("  • BUT: Has diversity/area constraint violations")
+print("\n⚠ QPU HIERARCHICAL SOLVER:")
+print("  • Returns NEGATIVE objectives → fundamentally broken")
+print("  • Validation marks as infeasible (999 violations)")
+print("  • Needs complete debugging")
+
+print("\n" + "="*80)

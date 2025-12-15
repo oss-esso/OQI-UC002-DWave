@@ -40,16 +40,25 @@ sys.path.insert(0, project_root)
 
 # Test parameters (mirroring Phase 2 roadmap settings)
 TEST_CONFIG = {
-    'farm_sizes': [5, 10, 15, 20, 25],   # All available rotation scenarios (plots/patches)
+    'farm_sizes': [5, 10, 15, 20, 25],   # Full range for comprehensive comparison
     'n_crops': 6,                         # Crop families
     'n_periods': 3,                       # Rotation periods
     'num_reads': 100,                     # QPU reads (Phase 2: 100)
     'num_iterations': 3,                  # Decomposition iterations
-    'runs_per_method': 2,                 # Runs for statistical variance
-    'classical_timeout': 900,             # Gurobi timeout (seconds)
-    'methods': ['ground_truth', 'clique_decomp', 'spatial_temporal'],
+    'runs_per_method': 1,                 # 1 run for faster execution (increase to 2-3 for variance)
+    'classical_timeout': 100,             # Gurobi timeout (seconds) - REDUCED for fair comparison
+    'methods': ['ground_truth', 'clique_decomp', 'spatial_temporal', 'hierarchical'],
     'enable_post_processing': True,       # Enable two-level crop allocation
     'crops_per_family': 3,                # Crop refinement: 3 crops per family
+    'area_per_farm': 25.0,                # CONSTANT area per farm for scaling analysis
+}
+
+# Gurobi Configuration (user-specified)
+GUROBI_CONFIG = {
+    'timeout': 100,              # 100 seconds HARD LIMIT
+    'mip_gap': 0.01,            # 1% - stop within 1% of optimum
+    'mip_focus': 1,             # Find good feasible solutions quickly
+    'improve_start_time': 30,   # Stop if no improvement for 30s
 }
 
 # Output directory
@@ -149,6 +158,17 @@ except ImportError:
 
 print("[4/4] Setup complete!\n")
 
+print("[5/6] Importing hierarchical solver...")
+try:
+    from hierarchical_quantum_solver import solve_hierarchical
+    HAS_HIERARCHICAL = True
+    print("  ✓ Hierarchical solver available")
+except ImportError:
+    HAS_HIERARCHICAL = False
+    print("  Warning: Hierarchical solver not available - will skip this method")
+
+print("[6/6] All imports complete!\n")
+
 # ============================================================================
 # DATA LOADING
 # ============================================================================
@@ -194,19 +214,23 @@ def load_rotation_data(n_farms: int) -> Dict:
     })
     
     # Get land availability and trim to requested farm count
+    # IMPORTANT: Use CONSTANT area per farm for proper scaling analysis
     land_availability = params.get('land_availability', {})
     all_farm_names = list(land_availability.keys())
     
+    # Constant area per farm (from TEST_CONFIG)
+    constant_area = TEST_CONFIG.get('area_per_farm', 25.0)
+    
     if len(all_farm_names) < n_farms:
-        # Generate additional farms if needed
+        # Generate additional farms if needed with CONSTANT area
         for i in range(len(all_farm_names), n_farms):
-            land_availability[f'Farm_{i+1}'] = np.random.uniform(15, 35)
+            land_availability[f'Farm_{i+1}'] = constant_area
         all_farm_names = list(land_availability.keys())
     
-    # Trim to exact count
+    # Trim to exact count and NORMALIZE all farms to constant area
     farm_names = all_farm_names[:n_farms]
-    land_availability = {f: land_availability[f] for f in farm_names}
-    total_area = sum(land_availability.values())
+    land_availability = {f: constant_area for f in farm_names}
+    total_area = constant_area * n_farms  # Now linearly scales with n_farms
     
     # Food data
     food_names = list(foods.keys())
@@ -302,13 +326,13 @@ def solve_ground_truth(data: Dict, timeout: int = 900) -> Dict:
             if (f2, f1) not in neighbor_edges:
                 neighbor_edges.append((f1, f2))
     
-    # Build Gurobi model
+    # Build Gurobi model with USER-SPECIFIED configuration
     model = gp.Model("RotationGroundTruth")
     model.setParam('OutputFlag', 0)
-    model.setParam('TimeLimit', timeout)
-    model.setParam('MIPGap', 0.1)  # 10% gap tolerance (find good solutions quickly)
-    model.setParam('MIPFocus', 1)  # Focus on finding good feasible solutions quickly
-    model.setParam('ImproveStartTime', 30)  # Stop if no improvement after 30s
+    model.setParam('TimeLimit', GUROBI_CONFIG['timeout'])
+    model.setParam('MIPGap', GUROBI_CONFIG['mip_gap'])  # 1% gap tolerance
+    model.setParam('MIPFocus', GUROBI_CONFIG['mip_focus'])  # Focus on good feasible solutions
+    model.setParam('ImproveStartTime', GUROBI_CONFIG['improve_start_time'])  # Stop if no improvement
     model.setParam('Threads', 0)  # Use all available cores
     model.setParam('Presolve', 2)  # Aggressive presolve
     model.setParam('Cuts', 2)  # Aggressive cuts
@@ -1104,6 +1128,19 @@ def run_statistical_test(config: Dict = None) -> Dict:
                         num_reads=config['num_reads'],
                         num_iterations=config['num_iterations']
                     )
+                elif method == 'hierarchical':
+                    if not HAS_HIERARCHICAL:
+                        print(f"Hierarchical solver not available - skipping")
+                        continue
+                    result = solve_hierarchical(
+                        data,
+                        config={
+                            'num_reads': config['num_reads'],
+                            'num_iterations': config['num_iterations'],
+                            'farms_per_cluster': max(5, n_farms // 5),  # Adaptive clustering
+                            'enable_post_processing': config['enable_post_processing'],
+                        }
+                    )
                 else:
                     print(f"Unknown method: {method}")
                     continue
@@ -1157,7 +1194,7 @@ def run_statistical_test(config: Dict = None) -> Dict:
             # Add diversity statistics if available
             if diversity_metrics:
                 unique_crops = [d['total_unique_crops'] for d in diversity_metrics]
-                crops_per_plot = [d['avg_crops_per_plot'] for d in diversity_metrics]
+                crops_per_plot = [d.get('avg_crops_per_plot', 0) for d in diversity_metrics]
                 shannon = [d['shannon_diversity'] for d in diversity_metrics]
                 
                 stats_dict['diversity'] = {
@@ -1693,14 +1730,14 @@ while maintaining solution quality through iterative refinement.
 
 def main():
     parser = argparse.ArgumentParser(description='Statistical Comparison Test: Quantum vs Classical')
-    parser.add_argument('--sizes', nargs='+', type=int, default=[5, 10, 15, 20],
-                        help='Farm sizes to test (default: 5 10 15 20)')
-    parser.add_argument('--runs', type=int, default=2,
-                        help='Runs per method (default: 2)')
+    parser.add_argument('--sizes', nargs='+', type=int, default=[5, 10, 15, 20, 25],
+                        help='Farm sizes to test (default: 5 10 15 20 25)')
+    parser.add_argument('--runs', type=int, default=1,
+                        help='Runs per method (default: 1, increase for variance analysis)')
     parser.add_argument('--reads', type=int, default=100,
                         help='QPU reads (default: 100, matches Phase 2)')
-    parser.add_argument('--timeout', type=int, default=300,
-                        help='Classical solver timeout in seconds (default: 300)')
+    parser.add_argument('--timeout', type=int, default=100,
+                        help='Classical solver timeout in seconds (default: 100)')
     parser.add_argument('--iterations', type=int, default=3,
                         help='Decomposition iterations (default: 3)')
     parser.add_argument('--token', type=str, default=None,

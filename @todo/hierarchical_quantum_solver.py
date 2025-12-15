@@ -743,6 +743,8 @@ def solve_hierarchical(data: Dict,
     total_time = time.time() - total_start
     
     result['timings']['total'] = total_time
+    result['wall_time'] = total_time  # For compatibility with statistical_comparison_test
+    result['qpu_time'] = total_qpu_time  # For compatibility with statistical_comparison_test
     result['family_solution'] = best_global_solution
     result['crop_solution'] = crop_solution
     result['objective'] = best_global_objective

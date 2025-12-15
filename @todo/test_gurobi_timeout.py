@@ -34,20 +34,40 @@ print()
 
 # Configuration
 GUROBI_CONFIG = {
-    'timeout': 300,  # 5 minutes HARD LIMIT
+    'timeout': 100,  # 100 seconds HARD LIMIT
     'mip_gap': 0.01,  # 1% - stop within 1% of optimum
     'mip_focus': 1,  # Find good feasible solutions quickly
     'improve_start_time': 30,  # Stop if no improvement for 30s
 }
 
-# Test scenarios
+# Test scenarios - Comprehensive rotation scenarios from both sources
 SCENARIOS = [
+    # Family-only scenarios (6 foods) from src/scenarios.py
     {'name': 'rotation_micro_25', 'n_farms': 5, 'n_foods': 6, 'n_periods': 3, 'n_vars': 90},
     {'name': 'rotation_small_50', 'n_farms': 10, 'n_foods': 6, 'n_periods': 3, 'n_vars': 180},
+    # Additional family-only scenario (15 farms from statistical_comparison_test.py)
+    {'name': 'rotation_15farms_6foods', 'n_farms': 15, 'n_foods': 6, 'n_periods': 3, 'n_vars': 270},
     {'name': 'rotation_medium_100', 'n_farms': 20, 'n_foods': 6, 'n_periods': 3, 'n_vars': 360},
-    {'name': 'rotation_large_25farms_27foods', 'n_farms': 25, 'n_foods': 27, 'n_periods': 3, 'n_vars': 2025},
-    {'name': 'rotation_xlarge_50farms_27foods', 'n_farms': 50, 'n_foods': 27, 'n_periods': 3, 'n_vars': 4050},
-    {'name': 'rotation_xxlarge_100farms_27foods', 'n_farms': 100, 'n_foods': 27, 'n_periods': 3, 'n_vars': 8100},
+    # Additional family-only scenario (25 farms from statistical_comparison_test.py)
+    {'name': 'rotation_25farms_6foods', 'n_farms': 25, 'n_foods': 6, 'n_periods': 3, 'n_vars': 450},
+    # Larger family-only scenario from src/scenarios.py
+    {'name': 'rotation_large_200', 'n_farms': 40, 'n_foods': 6, 'n_periods': 3, 'n_vars': 720},
+    # GAP FILLING SCENARIOS - bridging 720 to 20,250 variables
+    {'name': 'rotation_50farms_6foods', 'n_farms': 50, 'n_foods': 6, 'n_periods': 3, 'n_vars': 900},
+    {'name': 'rotation_75farms_6foods', 'n_farms': 75, 'n_foods': 6, 'n_periods': 3, 'n_vars': 1350},
+    {'name': 'rotation_100farms_6foods', 'n_farms': 100, 'n_foods': 6, 'n_periods': 3, 'n_vars': 1800},
+    {'name': 'rotation_25farms_27foods', 'n_farms': 25, 'n_foods': 27, 'n_periods': 3, 'n_vars': 2025},
+    {'name': 'rotation_150farms_6foods', 'n_farms': 150, 'n_foods': 6, 'n_periods': 3, 'n_vars': 2700},
+    {'name': 'rotation_50farms_27foods', 'n_farms': 50, 'n_foods': 27, 'n_periods': 3, 'n_vars': 4050},
+    {'name': 'rotation_75farms_27foods', 'n_farms': 75, 'n_foods': 27, 'n_periods': 3, 'n_vars': 6075},
+    {'name': 'rotation_100farms_27foods', 'n_farms': 100, 'n_foods': 27, 'n_periods': 3, 'n_vars': 8100},
+    {'name': 'rotation_150farms_27foods', 'n_farms': 150, 'n_foods': 27, 'n_periods': 3, 'n_vars': 12150},
+    {'name': 'rotation_200farms_27foods', 'n_farms': 200, 'n_foods': 27, 'n_periods': 3, 'n_vars': 16200},
+    # Full food scenarios (27 foods) from src/scenarios.py
+    {'name': 'rotation_250farms_27foods', 'n_farms': 250, 'n_foods': 27, 'n_periods': 3, 'n_vars': 20250},
+    {'name': 'rotation_350farms_27foods', 'n_farms': 350, 'n_foods': 27, 'n_periods': 3, 'n_vars': 28350},
+    {'name': 'rotation_500farms_27foods', 'n_farms': 500, 'n_foods': 27, 'n_periods': 3, 'n_vars': 40500},
+    {'name': 'rotation_1000farms_27foods', 'n_farms': 1000, 'n_foods': 27, 'n_periods': 3, 'n_vars': 81000},
 ]
 
 OUTPUT_DIR = Path(__file__).parent / 'gurobi_timeout_verification'
@@ -77,18 +97,40 @@ def load_scenario_data(scenario: Dict) -> Dict:
     n_farms = scenario['n_farms']
     n_foods = scenario['n_foods']
     
+    # Map scenario parameters to actual scenario names in scenarios.py
     if n_foods == 6:
-        if n_farms == 5:
+        if n_farms <= 5:
             scenario_name = 'rotation_micro_25'
-        elif n_farms == 10:
+        elif n_farms <= 10:
             scenario_name = 'rotation_small_50'
-        else:
+        elif n_farms <= 20:
             scenario_name = 'rotation_medium_100'
-    else:
+        elif n_farms <= 40:
+            scenario_name = 'rotation_large_200'
+        else:
+            # For 50+ farms with 6 foods, use large_200 and adjust
+            scenario_name = 'rotation_large_200'
+    else:  # 27 foods
         if n_farms <= 25:
             scenario_name = 'rotation_250farms_27foods'
-        else:
+        elif n_farms <= 50:
+            scenario_name = 'rotation_250farms_27foods'
+        elif n_farms <= 75:
+            scenario_name = 'rotation_250farms_27foods'
+        elif n_farms <= 100:
+            scenario_name = 'rotation_250farms_27foods'
+        elif n_farms <= 150:
+            scenario_name = 'rotation_250farms_27foods'
+        elif n_farms <= 200:
+            scenario_name = 'rotation_250farms_27foods'
+        elif n_farms <= 250:
+            scenario_name = 'rotation_250farms_27foods'
+        elif n_farms <= 350:
+            scenario_name = 'rotation_350farms_27foods'
+        elif n_farms <= 500:
             scenario_name = 'rotation_500farms_27foods'
+        else:
+            scenario_name = 'rotation_1000farms_27foods'
     
     data = load_food_data_as_dict(scenario_name)
     
