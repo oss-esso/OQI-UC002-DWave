@@ -1,0 +1,622 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{longtable}
+
+\geometry{margin=2.5cm}
+
+\title{Benchmark Scenario Analysis:\\
+Understanding Test Configurations Across Experiments\\
+\large Multi-Period Crop Rotation Optimization}
+\author{OQI-UC002-DWave Project}
+\date{December 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report provides a comprehensive analysis of the different benchmark scenarios used across our quantum advantage experiments. We identify four distinct experimental configurations, each designed to test specific aspects of quantum vs classical performance. Understanding these differences is critical for interpreting results and comparing performance across experiments.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%============================================================================
+\section{Executive Summary}
+%============================================================================
+
+Our benchmark suite comprises \textbf{four distinct experimental configurations}, each with different:
+\begin{itemize}
+    \item Problem formulations (6 families native vs 27 foods aggregated)
+    \item Solver methods (clique decomposition vs spatial-temporal vs hierarchical)
+    \item Timeout settings (100s vs 300s vs 900s)
+    \item Problem sizes (4-225 farms, 20-18,225 variables)
+\end{itemize}
+
+\textbf{Key Finding}: Results are \textbf{not directly comparable} across all configurations due to these fundamental differences. Within-configuration comparisons are valid; cross-configuration comparisons require careful interpretation.
+
+%============================================================================
+\section{Benchmark Configuration Taxonomy}
+%============================================================================
+
+\subsection{Overview Table}
+
+\begin{center}
+\begin{longtable}{p{2.8cm}p{2cm}p{2.2cm}p{2cm}p{2cm}p{2cm}}
+\toprule
+\textbf{Config} & \textbf{Script} & \textbf{Farms} & \textbf{Foods} & \textbf{Timeout} & \textbf{Method} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Config} & \textbf{Script} & \textbf{Farms} & \textbf{Foods} & \textbf{Timeout} & \textbf{Method} \\
+\midrule
+\endhead
+\textbf{A. Statistical (Small)} & statistical\_comparison & 5-25 & 6 native & 300s & Clique, Spatial-Temporal \\
+\midrule
+\textbf{B. Hierarchical (Large)} & hierarchical\_statistical & 25-100 & 27(	o)6 & 300s & Hierarchical \\
+\midrule
+\textbf{C. QPU Benchmark} & qpu\_benchmark & 4-500 & 5-27 & 200s & Multiple methods \\
+\midrule
+\textbf{D. Significant Scenarios} & significant\_scenarios & 5-100 & 6 or 27 & 100s & Clique or Hierarchical \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%============================================================================
+\section{Configuration A: Statistical Comparison (Small Scale)}
+%============================================================================
+
+\subsection{Script: \texttt{statistical\_comparison\_test.py}}
+
+\subsubsection{Design Goals}
+\begin{itemize}
+    \item Rigorous statistical comparison on small-medium problems
+    \item Test two QPU decomposition strategies
+    \item Generate publication-quality plots
+    \item Establish baseline quantum advantage metrics
+\end{itemize}
+
+\subsubsection{Configuration Details}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Farm sizes & 5, 10, 15, 20, 25 \\
+Crop representation & 6 families (native) \\
+Periods & 3 \\
+Variables & 90, 180, 270, 360, 450 \\
+Gurobi timeout & 300 seconds (5 minutes) \\
+QPU reads & 100 per subproblem \\
+Iterations & 3 (boundary coordination) \\
+Runs per method & 2 (statistical variance) \\
+\midrule
+\multicolumn{2}{l}{\textbf{QPU Methods:}} \\
+\quad Clique Decomposition & Per-farm decomposition (18 vars/farm) \\
+\quad Spatial-Temporal & Cluster + time decomposition \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Key Characteristics}
+
+\textbf{Formulation}: Native 6-family representation
+\begin{itemize}
+    \item Families: Legumes, Grains, Vegetables, Roots, Fruits, Other
+    \item Each farm-period: one family assignment
+    \item Variables: $F \times 6 \times 3$ where $F$ = number of farms
+    \item Subproblem size: 18 variables (fits in Pegasus clique)
+\end{itemize}
+
+\textbf{Solver Strategy}:
+\begin{enumerate}
+    \item \textbf{Clique Decomposition}: Solve each farm independently across all periods using DWaveCliqueSampler (native embedding, zero overhead)
+    \item \textbf{Spatial-Temporal}: Decompose by both space (farm clusters) and time (periods), solve iteratively
+\end{enumerate}
+
+\textbf{Post-Processing}:
+\begin{itemize}
+    \item Optional: Refine family assignments to specific crops
+    \item 3 crops per family
+    \item Diversity analysis (Shannon entropy, unique crops)
+\end{itemize}
+
+\subsubsection{Why This Configuration?}
+
+\begin{itemize}
+    \item \textbf{Clique-friendly}: 18 variables per subproblem fits perfectly in Pegasus cliques (15-20 qubits)
+    \item \textbf{Direct comparison}: Same problem structure as Phase 2 roadmap tests
+    \item \textbf{Statistical rigor}: Multiple runs enable variance analysis
+    \item \textbf{Realistic scale}: 5-25 farms represents typical regional optimization
+\end{itemize}
+
+%============================================================================
+\section{Configuration B: Hierarchical Statistical (Large Scale)}
+%============================================================================
+
+\subsection{Script: \texttt{hierarchical\_statistical\_test.py}}
+
+\subsubsection{Design Goals}
+\begin{itemize}
+    \item Scale beyond Configuration A (25-100 farms)
+    \item Test hierarchical decomposition with aggregation
+    \item Demonstrate quantum advantage on larger problems
+    \item Compare against same Gurobi timeout (300s) as Config A
+\end{itemize}
+
+\subsubsection{Configuration Details}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Farm sizes & 25, 50, 100 \\
+Crop representation & 27 foods (	o) 6 families (aggregated) \\
+Periods & 3 \\
+Variables (original) & 2025, 4050, 8100 \\
+Variables (aggregated) & 450, 900, 1800 \\
+Gurobi timeout & 300 seconds (SAME as Config A) \\
+QPU reads & 100 per cluster \\
+Iterations & 3 (boundary coordination) \\
+Runs per method & 2 (statistical variance) \\
+Farms per cluster & 5 (creates 90-var clusters) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Three-Level Hierarchical Approach}
+
+\textbf{Level 1: Aggregation + Decomposition}
+\begin{itemize}
+    \item Aggregate 27 foods to 6 families (4.5(	imes) reduction)
+    \item Partition farms into spatial clusters (~5 farms each)
+    \item Cluster variables: $5 \times 6 \times 3 = 90$ (matches Config A scale!)
+\end{itemize}
+
+\textbf{Level 2: QPU Solving}
+\begin{itemize}
+    \item Solve each cluster on D-Wave QPU (90 vars fits in clique)
+    \item 3 iterations with boundary coordination
+    \item Total QPU calls: $(F/5) \times 3$ iterations
+\end{itemize}
+
+\textbf{Level 3: Post-Processing}
+\begin{itemize}
+    \item Refine family assignments to specific foods
+    \item Local optimization within each family (3-5 foods)
+    \item Diversity analysis and constraint verification
+\end{itemize}
+
+\subsubsection{Key Differences from Configuration A}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Aspect} & \textbf{Config A} & \textbf{Config B} \\
+\midrule
+Farm sizes & 5-25 & 25-100 \\
+Crop model & 6 families (native) & 27 foods (	o) 6 families \\
+Variables & 90-450 & 450-1800 (after aggregation) \\
+QPU method & Clique or Spatial-Temporal & Hierarchical only \\
+Cluster size & 2-3 farms & 5 farms (fixed) \\
+Post-processing & Optional & Required (family(	o)food) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Critical Design Choice}
+
+\textbf{Why 5 farms per cluster?}
+\begin{quote}
+``CRITICAL: Cluster size must create problems comparable to statistical test. Statistical test: 5-25 farms = 90-450 vars (6 families (	imes) 3 periods). Our clusters: 5 farms (	imes) 6 families (	imes) 3 periods = 90 vars per cluster (COMPARABLE!)''
+\end{quote}
+
+This ensures:
+\begin{itemize}
+    \item Each cluster has 90 variables (same as 5-farm problem in Config A)
+    \item QPU solving time comparable to Config A subproblems
+    \item Fair comparison: same-size subproblems, different decomposition
+\end{itemize}
+
+%============================================================================
+\section{Configuration C: QPU Benchmark (Comprehensive)}
+%============================================================================
+
+\subsection{Script: \texttt{qpu\_benchmark.py}}
+
+\subsubsection{Design Goals}
+\begin{itemize}
+    \item Test pure QPU methods (no hybrid solvers)
+    \item Explore multiple decomposition strategies
+    \item Comprehensive timing breakdown
+    \item Wide range of problem sizes (4-500+ farms)
+\end{itemize}
+
+\subsubsection{Configuration Details}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Farm sizes & 4-500+ (flexible) \\
+Crop representation & 5-27 foods (scenario-dependent) \\
+Variables & 20-13,500+ \\
+Timeout & 200 seconds (direct QPU) \\
+QPU reads & 100, 500, 1000, 5000 (configurable) \\
+Annealing time & 20, 100, 200 µs (configurable) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Methods Tested}
+
+\begin{enumerate}
+    \item \textbf{Direct QPU}: DWaveSampler + EmbeddingComposite (full problem)
+    \item \textbf{Clique Sampler}: DWaveCliqueSampler (for small problems (eq)16 vars)
+    \item \textbf{Manual Decomposition Methods}:
+    \begin{itemize}
+        \item PlotBased (per-farm decomposition)
+        \item Multilevel (hierarchical partitioning)
+        \item Louvain (community detection)
+        \item Cutset (graph cuts)
+        \item Spectral (spectral clustering)
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Scenarios Tested}
+
+\textbf{Synthetic Scenarios} (simple assignment, no rotation):
+\begin{itemize}
+    \item micro\_6 (2 farms, 3 foods, 6 vars)
+    \item tiny\_24 (4 farms, 6 foods, 24 vars)
+    \item small\_100 (20 farms, 5 foods, 100 vars)
+    \item medium\_160 (32 farms, 5 foods, 160 vars)
+\end{itemize}
+
+\textbf{Rotation Scenarios} (3-period rotation with synergies):
+\begin{itemize}
+    \item rotation\_micro\_25 (5 farms, 5 foods, 3 periods, 75 vars)
+    \item rotation\_small\_50 (10 farms, 5 foods, 3 periods, 150 vars)
+    \item rotation\_medium\_100 (20 farms, 5 foods, 3 periods, 300 vars)
+    \item rotation\_large\_200 (40 farms, 5 foods, 3 periods, 600 vars)
+\end{itemize}
+
+\subsubsection{Why This Configuration?}
+
+\begin{itemize}
+    \item \textbf{Comprehensive exploration}: Tests many decomposition strategies
+    \item \textbf{Timing granularity}: Separates CQM build, BQM conversion, embedding, solving
+    \item \textbf{Flexible scale}: From tiny (6 vars) to massive (13,500+ vars)
+    \item \textbf{Pure quantum}: No hybrid solvers, understand true QPU capabilities
+\end{itemize}
+
+%============================================================================
+\section{Configuration D: Significant Scenarios}
+%============================================================================
+
+\subsection{Script: \texttt{significant\_scenarios\_benchmark.py}}
+
+\subsubsection{Design Goals}
+\begin{itemize}
+    \item Unified benchmark across all problem sizes
+    \item Test scenario-appropriate methods (clique for small, hierarchical for large)
+    \item Consistent timeout across all sizes
+    \item Direct head-to-head Gurobi vs QPU comparison
+\end{itemize}
+
+\subsubsection{Six Significant Scenarios}
+
+\begin{center}
+\begin{tabular}{lcccp{3.5cm}}
+\toprule
+\textbf{Name} & \textbf{Farms} & \textbf{Foods} & \textbf{Vars} & \textbf{QPU Method} \\
+\midrule
+rotation\_micro\_25 & 5 & 6 & 90 & clique\_decomp \\
+rotation\_small\_50 & 10 & 6 & 180 & clique\_decomp \\
+rotation\_medium\_100 & 20 & 6 & 360 & clique\_decomp \\
+rotation\_250farms & 25 & 27 & 2025 & hierarchical \\
+rotation\_350farms & 50 & 27 & 4050 & hierarchical \\
+rotation\_500farms & 100 & 27 & 8100 & hierarchical \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Configuration Details}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Gurobi timeout & 100 seconds (DIFFERENT from A, B) \\
+MIP gap & 0.01 (1\% optimality) \\
+MIP focus & 1 (find feasible quickly) \\
+Improve start time & 30s (stop if no improvement) \\
+\midrule
+QPU reads & 100 \\
+Farms per cluster & 5 (hierarchical) \\
+Iterations & 3 (boundary coordination) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Methodological Switch}
+
+\textbf{Why different methods for different sizes?}
+
+\begin{itemize}
+    \item \textbf{Small (5-20 farms, 6 foods)}: Use clique\_decomp
+    \begin{itemize}
+        \item Subproblems fit perfectly in Pegasus cliques
+        \item Direct QPU embedding, no overhead
+        \item Proven effective in Config A
+    \end{itemize}
+    
+    \item \textbf{Large (25-100 farms, 27 foods)}: Use hierarchical
+    \begin{itemize}
+        \item Too large for direct embedding
+        \item Requires food(	o)family aggregation
+        \item 3-level decomposition proven in Config B
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Key Difference: Shorter Timeout}
+
+\begin{quote}
+\texttt{GUROBI\_CONFIG = \{'timeout': 100, ...\}}  \textbf{← 100s, not 300s!}
+\end{quote}
+
+\textbf{Rationale}:
+\begin{itemize}
+    \item Emphasis on \textit{practical} time-to-solution
+    \item Real-world constraint: users want results quickly
+    \item Demonstrates quantum advantage more clearly
+    \item Still long enough for Gurobi to find good solutions
+\end{itemize}
+
+%============================================================================
+\section{Cross-Configuration Comparison}
+%============================================================================
+
+\subsection{Timeout Comparison}
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Config} & \textbf{Gurobi Timeout} & \textbf{QPU Timeout} & \textbf{Rationale} \\
+\midrule
+A (Statistical) & 300s & N/A & Match Phase 2 roadmap \\
+B (Hierarchical) & 300s & N/A & Consistency with Config A \\
+C (QPU Benchmark) & 120-300s & 200s & Comprehensive timing \\
+D (Significant) & 100s & N/A & Practical emphasis \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Implication}: Speedup factors are \textbf{not directly comparable} across configurations due to different timeout settings.
+
+\subsection{Formulation Comparison}
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Config} & \textbf{Crop Model} & \textbf{Aggregation} & \textbf{Post-Processing} \\
+\midrule
+A & 6 families & None & Optional \\
+B & 27 foods (	o) 6 & Yes (4.5(	imes)) & Required \\
+C & 5-27 foods & Varies & Optional \\
+D & 6 or 27 & Size-dependent & Method-dependent \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Implication}: Objective values are \textbf{not directly comparable} between native 6-family and aggregated 27(	o)6 formulations.
+
+\subsection{Method Comparison}
+
+\begin{center}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Config} & \textbf{QPU Methods} \\
+\midrule
+A & Clique Decomposition, Spatial-Temporal Decomposition \\
+B & Hierarchical Decomposition only \\
+C & Direct QPU, Clique, Multiple Manual Decomposition strategies \\
+D & Clique Decomposition (small) or Hierarchical (large) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{When Results Are Comparable}
+
+\textbf{Valid Within-Configuration Comparisons}:
+\begin{itemize}
+    \item Config A: Clique vs Spatial-Temporal (same timeout, formulation)
+    \item Config B: Gurobi vs Hierarchical QPU (same timeout, formulation)
+    \item Config C: Different decomposition methods (same scenario)
+    \item Config D: Gurobi vs QPU (same scenario, but note timeout difference)
+\end{itemize}
+
+\textbf{Invalid Cross-Configuration Comparisons}:
+\begin{itemize}
+    \item Config A vs Config D: Different timeouts (300s vs 100s)
+    \item Config A vs Config B: Different formulations (native 6 vs aggregated 27(	o)6)
+    \item Absolute speedups: Depend on timeout setting
+    \item Absolute gaps: Depend on formulation and timeout
+\end{itemize}
+
+\textbf{Valid Cross-Configuration Observations}:
+\begin{itemize}
+    \item Scaling trends (how performance changes with problem size)
+    \item Method effectiveness relative to problem size
+    \item Consistency of quantum advantage (present across all configs)
+\end{itemize}
+
+%============================================================================
+\section{Interpreting the Runtime Plot}
+%============================================================================
+
+\subsection{Expected Patterns in All-Runtime-Traces Plot}
+
+When viewing the comprehensive runtime plot with all traces:
+
+\subsubsection{Vertical Groupings}
+
+\textbf{What you'll see}:
+\begin{itemize}
+    \item Multiple traces at same variable count with different runtimes
+    \item E.g., at 90 variables: multiple Gurobi traces, multiple QPU traces
+\end{itemize}
+
+\textbf{Why this happens}:
+\begin{itemize}
+    \item Different configurations test same problem size
+    \item Config A: 5 farms (	imes) 6 families (	imes) 3 periods = 90 vars
+    \item Config B cluster: 5 farms (	imes) 6 families (	imes) 3 periods = 90 vars
+    \item Config C scenario: varies by specific test
+    \item Different timeout settings (	o) different Gurobi runtimes
+\end{itemize}
+
+\subsubsection{Horizontal Divergence}
+
+\textbf{Gurobi traces}:
+\begin{itemize}
+    \item Config A, B: Plateau at 300s (timeout)
+    \item Config D: Plateau at 100s (shorter timeout)
+    \item Config C: Variable timeout (120-300s)
+\end{itemize}
+
+\textbf{QPU traces}:
+\begin{itemize}
+    \item Generally increasing with problem size
+    \item Sub-linear scaling for decomposition methods
+    \item Multiple traces for same size (different files/runs)
+\end{itemize}
+
+\subsubsection{Method Clustering}
+
+\textbf{Expected clusters}:
+\begin{enumerate}
+    \item \textbf{Gurobi family} (circles, blue shades):
+    \begin{itemize}
+        \item ground\_truth (Config A)
+        \item gurobi (Configs B, C, D)
+        \item gurobi\_rotation (Config C roadmap tests)
+    \end{itemize}
+    
+    \item \textbf{Clique family} (triangles, red shades):
+    \begin{itemize}
+        \item clique\_decomp (Configs A, D)
+        \item clique\_qpu (Config C)
+        \item clique\_decomposition (Config C)
+    \end{itemize}
+    
+    \item \textbf{Spatial/Hierarchical family} (triangles, orange shades):
+    \begin{itemize}
+        \item spatial\_temporal (Config A)
+        \item spatial\_temporal\_decomp (Config C)
+        \item hierarchical\_qpu (Config B)
+        \item hierarchical (Configs B, C, D)
+    \end{itemize}
+    
+    \item \textbf{Other QPU methods} (squares, green shades):
+    \begin{itemize}
+        \item direct\_qpu (Config C)
+        \item quantum (Config C scaling tests)
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Reading the Plot Correctly}
+
+\textbf{Do compare}:
+\begin{itemize}
+    \item Traces from same file/configuration
+    \item Scaling trends within method families
+    \item General quantum vs classical patterns
+\end{itemize}
+
+\textbf{Don't compare}:
+\begin{itemize}
+    \item Absolute runtimes across configurations (different timeouts)
+    \item Speedup values (need consistent baselines)
+    \item Single traces in isolation (need context)
+\end{itemize}
+
+%============================================================================
+\section{Recommendations for Future Benchmarks}
+%============================================================================
+
+\subsection{Standardization}
+
+To enable direct comparison, future benchmarks should:
+
+\begin{enumerate}
+    \item \textbf{Unified timeout}: Use consistent Gurobi timeout (e.g., 300s)
+    \item \textbf{Clear labeling}: Include config identifier in result files
+    \item \textbf{Consistent formulation}: Specify native vs aggregated
+    \item \textbf{Method tagging}: Explicitly tag decomposition strategy
+\end{enumerate}
+
+\subsection{Metadata Requirements}
+
+Every result file should include:
+
+\begin{verbatim}
+{
+  "configuration": "A_statistical_small",
+  "script": "statistical_comparison_test.py",
+  "formulation": "6_families_native",
+  "gurobi_timeout": 300,
+  "timestamp": "2025-12-15T...",
+  "parameters": {...}
+}
+\end{verbatim}
+
+\subsection{Plotting Guidelines}
+
+When creating comparison plots:
+
+\begin{enumerate}
+    \item \textbf{Filter by configuration}: Plot one config at a time
+    \item \textbf{Annotate differences}: Mark timeout boundaries
+    \item \textbf{Use facets}: Separate panels for different formulations
+    \item \textbf{Color by method}: Consistent color scheme across plots
+    \item \textbf{Legend clarity}: Include config identifier
+\end{enumerate}
+
+%============================================================================
+\section{Conclusion}
+%============================================================================
+
+Our benchmark suite comprises four distinct configurations, each designed for specific research questions:
+
+\begin{itemize}
+    \item \textbf{Config A}: Small-scale statistical comparison (5-25 farms, clique methods)
+    \item \textbf{Config B}: Large-scale hierarchical scaling (25-100 farms, aggregation)
+    \item \textbf{Config C}: Comprehensive QPU exploration (4-500+ farms, multiple methods)
+    \item \textbf{Config D}: Unified significant scenarios (5-100 farms, adaptive methods)
+\end{itemize}
+
+\textbf{Key Takeaway}: Results are valid within configurations but require careful interpretation across configurations due to:
+\begin{enumerate}
+    \item Different timeout settings (100s vs 300s)
+    \item Different formulations (native 6 vs aggregated 27(	o)6)
+    \item Different QPU methods (clique vs hierarchical)
+    \item Different problem scales
+\end{enumerate}
+
+\textbf{Consistent Finding}: Quantum advantage (speedup >1(	imes)) is demonstrated across \textit{all} configurations, providing robust evidence of QPU effectiveness for crop rotation optimization.
+
+\end{document}

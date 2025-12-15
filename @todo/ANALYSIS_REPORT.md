@@ -1,200 +1,7032 @@
-# @todo Folder Analysis Report
+# Comprehensive Analysis of QPU vs. Gurobi Speedup
 
-## Executive Summary
+This report provides a comprehensive analysis of the result files related to the QPU vs. Gurobi speedup investigation. Each file is categorized and analyzed to extract key insights about the experimental runs.## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios_results/benchmark_results_20251214_205508.csv`
 
-The `@todo` folder implements a **two-level decomposition architecture** for solving agricultural resource allocation problems on quantum annealers:
+**File Type:** CSV
 
-1. **Level 1 (Farm Scenario)**: Splits MINLP problems with continuous (A) and binary (Y) variables using Benders, ADMM, and Dantzig-Wolfe decomposition
-2. **Level 2 (Patch Scenario)**: Decomposes dense binary graphs for feasible QPU embedding using various graph partitioning strategies
+**Columns:** `scenario,description,n_farms,n_foods,n_periods,n_vars,qpu_method,gurobi_status,gurobi_objective,gurobi_runtime,gurobi_mip_gap,gurobi_hit_timeout,gurobi_hit_improve_limit,gurobi_rotation_violations,gurobi_diversity_violations,gurobi_area_violations,gurobi_total_violations,qpu_status,qpu_objective,qpu_runtime,qpu_rotation_violations,qpu_diversity_violations,qpu_area_violations,qpu_total_violations,gap_pct,speedup,expected_speedup`
 
-This analysis identified and fixed critical bugs in the embedding benchmark, and verified the functionality of all decomposition strategies.
+**Number of Rows:**        7
 
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+scenario,description,n_farms,n_foods,n_periods,n_vars,qpu_method,gurobi_status,gurobi_objective,gurobi_runtime,gurobi_mip_gap,gurobi_hit_timeout,gurobi_hit_improve_limit,gurobi_rotation_violations,gurobi_diversity_violations,gurobi_area_violations,gurobi_total_violations,qpu_status,qpu_objective,qpu_runtime,qpu_rotation_violations,qpu_diversity_violations,qpu_area_violations,qpu_total_violations,gap_pct,speedup,expected_speedup
+rotation_micro_25,5 farms - Small scale,5,6,3,90,clique_decomp,timeout,6.166826839679835,100.0995421409607,201.7082586465474,True,False,0,0,0,0,success,5.281819544044196,18.20816922187805,0,15,15,30,14.351096903534696,5.497507240908435,11.5
+rotation_small_50,10 farms - At the cliff,10,6,3,180,clique_decomp,timeout,8.685958678757245,100.1083390712738,2053.0567738852437,True,False,0,0,0,0,success,7.016631897452064,30.495630979537964,0,30,30,60,19.218682048163075,3.282710862367293,6.2
+rotation_medium_100,20 farms - Past the cliff,20,6,3,360,clique_decomp,timeout,12.783159786223962,100.20199203491211,2.5860629639667594,True,False,0,0,0,0,success,12.763970991997141,50.61118984222412,0,60,60,120,0.15010994580150805,1.9798386947092708,5.2
+rotation_large_25farms_27foods,25 farms - Hierarchical test,25,27,3,2025,hierarchical,timeout,11.675532500185625,104.39024472236633,2.5813442570590848,True,False,0,0,0,0,error,0.0,1.4409940242767334,0,0,0,999,100.0,72.44321833656603,5.0
+...
+rotation_small_50,10 farms - At the cliff,10,6,3,180,clique_decomp,timeout,8.685958678757245,100.1083390712738,2053.0567738852437,True,False,0,0,0,0,success,7.016631897452064,30.495630979537964,0,30,30,60,19.218682048163075,3.282710862367293,6.2
+rotation_medium_100,20 farms - Past the cliff,20,6,3,360,clique_decomp,timeout,12.783159786223962,100.20199203491211,2.5860629639667594,True,False,0,0,0,0,success,12.763970991997141,50.61118984222412,0,60,60,120,0.15010994580150805,1.9798386947092708,5.2
+rotation_large_25farms_27foods,25 farms - Hierarchical test,25,27,3,2025,hierarchical,timeout,11.675532500185625,104.39024472236633,2.5813442570590848,True,False,0,0,0,0,error,0.0,1.4409940242767334,0,0,0,999,100.0,72.44321833656603,5.0
+rotation_xlarge_50farms_27foods,50 farms - Large hierarchical,50,27,3,4050,hierarchical,timeout,23.3547316932914,108.77275109291077,2.579480273673501,True,False,0,0,0,0,error,0.0,0.0005068778991699219,0,0,0,999,100.0,214593.5959548448,4.5
+rotation_xxlarge_100farms_27foods,100 farms - Ultimate test,100,27,3,8100,hierarchical,timeout,45.86869559976299,117.49213409423828,2.00671634000678,True,False,0,0,0,0,error,0.0,0.00048732757568359375,0,0,0,999,100.0,241094.77886497063,2.5
+```
 ---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios_results/benchmark_results_20251214_204213.csv`
 
-## Folder Structure Overview
+**File Type:** CSV
 
-### Level 1: Continuous+Binary Decomposition (Farm Scenario)
+**Columns:** ``
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `decomposition_benders.py` | Classical Benders decomposition | ✅ Working |
-| `decomposition_benders_qpu.py` | Benders with QPU/SA for master | ✅ Working |
-| `decomposition_admm.py` | Classical ADMM | ⚠️ Convergence issues |
-| `decomposition_admm_qpu.py` | ADMM with QPU/SA for Y-subproblem | ⚠️ Same issues |
-| `decomposition_dantzig_wolfe.py` | Classical column generation | ✅ Working |
-| `decomposition_dantzig_wolfe_qpu.py` | DW with QPU pricing | ✅ Working |
-| `decomposition_benders_hierarchical.py` | Multi-level Benders | Not tested |
+**Number of Rows:**        1
 
-### Level 2: Graph Decomposition for Embedding (Patch Scenario)
+**Speedup Related:** Unclear from initial analysis.
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `comprehensive_embedding_and_solving_benchmark.py` | Main benchmark (tests all decomposition strategies) | ✅ Fixed |
-| `advanced_decomposition_strategies.py` | Multilevel, Cutset, SpatialGrid | ✅ Working |
-| `formulation_builders.py` | Builds CQM/BQM formulations | ✅ Working |
-
-### Support Files
-
-| File | Purpose |
-|------|---------|
-| `decomposition_strategies.py` | Factory pattern for strategy selection |
-| `result_formatter.py` | Standardizes JSON output format |
-| `result_format_compat.py` | Compatibility layer for old format |
-| `DECOMPOSITION_BUGS_REPORT.md` | Documents known bugs (area overflow) |
-
----
-
-## Bugs Found and Fixed
-
-### Bug #1: Missing Solution in Partition Results (FIXED)
-
-**File**: `comprehensive_embedding_and_solving_benchmark.py` (line ~895)
-
-**Problem**: The `solve_decomposed_bqm_with_gurobi()` function did not pass the `"solution"` dictionary to `partition_results`, causing the actual objective calculation to fail.
-
-**Fix**:
-```python
-result["partition_results"].append({
-    ...
-    "solution": partition_solve.get("solution", {})  # ADDED
-})
+**Content Summary:**
 ```
 
-### Bug #2: Wrong Objective Aggregation for Decomposed Solutions (FIXED)
-
-**File**: `comprehensive_embedding_and_solving_benchmark.py` (line ~1403)
-
-**Problem**: The code tried to calculate actual objectives per-partition and sum them, but `calculate_actual_objective_from_bqm_solution()` iterates over ALL variables, not just partition variables.
-
-**Fix**: Changed to merge all partition solutions first, then calculate objective once:
-```python
-# BEFORE (wrong):
-for part_result in partition_results:
-    part_obj = calculate_actual_objective_from_bqm_solution(part_result["solution"], ...)
-    total_actual_obj += part_obj  # Wrong! Each call iterates ALL variables
-
-# AFTER (correct):
-merged_solution = {}
-for part_result in partition_results:
-    merged_solution.update(part_result["solution"])
-actual_obj = calculate_actual_objective_from_bqm_solution(merged_solution, meta, n_farms)
-```
-
-### Bug #3: Slack Variables Not Covered by Partitions (FIXED)
-
-**File**: `comprehensive_embedding_and_solving_benchmark.py` (function `decompose_plot_based`)
-
-**Problem**: CQM→BQM conversion introduces slack variables (e.g., `slack_v...`), but `decompose_plot_based()` only captured `Y_*` variables, leaving 22 slack variables unassigned.
-
-**Fix**: Added code to distribute slack variables to partitions based on quadratic connections:
-```python
-slack_vars = [var for var in variables if not var.startswith("Y_")]
-for slack_var in slack_vars:
-    # Find partition with most quadratic connections to this slack var
-    best_partition = find_most_connected_partition(slack_var, partitions, bqm)
-    partitions[best_partition].add(slack_var)
-```
-
-### Bug #4: Known - Area Overflow in Benders/DW (Documented)
-
-**File**: `DECOMPOSITION_BUGS_REPORT.md`
-
-**Problem**: Benders and Dantzig-Wolfe produce solutions that violate land availability constraints (210% and 188% overflow respectively).
-
-**Status**: Documented but not fixed. Requires adding per-farm capacity constraints to RMP (Dantzig-Wolfe) and fixing Benders cut generation.
-
----
-
-## Test Results
-
-### Level 2 (Embedding Benchmark) - 5 Farms Test
-
-| Configuration | Variables | Objective | Status |
-|--------------|-----------|-----------|--------|
-| Non-decomposed BQM | 157 | 1.575 | ✅ Solved (60s timeout) |
-| PlotBased decomposition | 157 (3 partitions) | 4.325 | ✅ All vars covered |
-
-**Note**: Decomposed objective differs from non-decomposed because partitions are solved independently without global constraints.
-
-### Level 1 (Farm Decomposition) - 5 Farms Test
-
-| Strategy | Objective | Land Usage | Iterations | Status |
-|----------|-----------|------------|------------|--------|
-| Benders (classical) | 0.241 | 100% | 10 | ✅ Working |
-| ADMM (classical) | 0.0003 | 0.12% | 10 | ⚠️ Not converging |
-| Dantzig-Wolfe | 0.204 | 68.6% | 1 | ✅ Working |
-| Benders QPU (SA) | 0.346 | 100% | 5 | ✅ Working |
-
----
-
-## Recommendations
-
-### Immediate Actions
-
-1. **ADMM rho tuning**: The penalty parameter `rho=1.0` is too low. Try `rho=10.0` or adaptive rho.
-
-2. **Fix Benders/DW overflow**: Implement the fixes documented in `DECOMPOSITION_BUGS_REPORT.md`:
-   - Add per-farm capacity constraints to DW's RMP
-   - Fix Benders cut generation to include land constraint duals
-
-3. **Run full embedding benchmark**: Now that bugs are fixed, run with 25 farms to get meaningful comparison of decomposition strategies.
-
-### Folder Organization Suggestions
+...
 
 ```
-@todo/
-├── decomposition/
-│   ├── level1_minlp/          # Farm scenario (continuous+binary)
-│   │   ├── benders.py
-│   │   ├── benders_qpu.py
-│   │   ├── admm.py
-│   │   ├── admm_qpu.py
-│   │   ├── dantzig_wolfe.py
-│   │   └── dantzig_wolfe_qpu.py
-│   └── level2_embedding/       # Patch scenario (graph decomposition)
-│       ├── louvain.py
-│       ├── plot_based.py
-│       ├── multilevel.py
-│       ├── cutset.py
-│       ├── spatial_grid.py
-│       └── energy_impact.py
-├── benchmarks/
-│   ├── comprehensive_embedding_benchmark.py
-│   ├── level1_benchmark.py
-│   └── results/
-├── utils/
-│   ├── formulation_builders.py
-│   ├── result_formatter.py
-│   └── decomposition_strategies.py  # Factory pattern
-└── docs/
-    ├── DECOMPOSITION_BUGS_REPORT.md
-    └── technical_report_*.tex
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_timeout_verification/gurobi_timeout_test_20251214_184357.csv`
+
+**File Type:** CSV
+
+**Columns:** `scenario,n_vars,status,objective,runtime,mip_gap,hit_timeout,hit_improve_limit,stopped_reason`
+
+**Number of Rows:**        7
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+scenario,n_vars,status,objective,runtime,mip_gap,hit_timeout,hit_improve_limit,stopped_reason
+rotation_micro_25,90,timeout,6.166826839679835,300.12698316574097,200.7664240960316,True,False,timeout_300s
+rotation_small_50,180,timeout,8.685958678757245,300.154244184494,2051.8516789332994,True,False,timeout_300s
+rotation_medium_100,360,timeout,12.783159786223962,300.2453918457031,2.5956573799925726,True,False,timeout_300s
+rotation_large_25farms_27foods,2025,timeout,11.675532500185625,305.3313219547272,2.5813442570590848,True,False,timeout_300s
+...
+rotation_small_50,180,timeout,8.685958678757245,300.154244184494,2051.8516789332994,True,False,timeout_300s
+rotation_medium_100,360,timeout,12.783159786223962,300.2453918457031,2.5956573799925726,True,False,timeout_300s
+rotation_large_25farms_27foods,2025,timeout,11.675532500185625,305.3313219547272,2.5813442570590848,True,False,timeout_300s
+rotation_xlarge_50farms_27foods,4050,timeout,22.926605142212907,310.92224884033203,1.9508409284243036,True,False,timeout_300s
+rotation_xxlarge_100farms_27foods,8100,timeout,45.869330304457094,321.84194684028625,2.005304849120348,True,False,timeout_300s
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios/significant_scenarios_comparison.csv`
+
+**File Type:** CSV
+
+**Columns:** `scenario_id,description,n_farms,n_foods,expected,gurobi_obj,gurobi_time,gurobi_status,qpu_obj,qpu_time,qpu_method,qpu_status`
+
+**Number of Rows:**        9
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+scenario_id,description,n_farms,n_foods,expected,gurobi_obj,gurobi_time,gurobi_status,qpu_obj,qpu_time,qpu_method,qpu_status
+cliff_easy_4farms,Simple binary (4 farms) - should be FAST,4,6,FAST,,,,,,,
+cliff_transition_10farms,Rotation with 10 farms - RIGHT at the cliff,10,6,VARIABLE (can be fast or timeout),7.174692355363064,60.00281500816345,MEDIUM,6.488827795272849,35.0308141708374,spatial_temporal,MEDIUM
+cliff_hard_15farms,Rotation with 15 farms - past the cliff,15,6,TIMEOUT,11.526557122912862,300.00669407844543,TIMEOUT,10.410154866584758,47.056864976882935,spatial_temporal,MEDIUM
+scale_small_5farms,5 farms with full constraints,5,6,TIMEOUT (with diversity+rotation),4.078209151759545,30.00436282157898,MEDIUM,3.745500016872332,17.12266516685486,clique_decomp,MEDIUM
+...
+scale_small_5farms,5 farms with full constraints,5,6,TIMEOUT (with diversity+rotation),4.078209151759545,30.00436282157898,MEDIUM,3.745500016872332,17.12266516685486,clique_decomp,MEDIUM
+scale_medium_20farms,20 farms with full constraints,20,6,TIMEOUT,14.893791207352791,300.00598907470703,TIMEOUT,12.977097365015828,55.37224006652832,clique_decomp,MEDIUM
+scale_large_25farms,25 farms - D-Wave hierarchical test,25,27,"TIMEOUT for Gurobi, feasible for QPU",12.322366321050083,300.3317811489105,TIMEOUT,0.0,35.318368911743164,hierarchical_qpu,MEDIUM
+scale_xlarge_50farms,50 farms - D-Wave hierarchical test,50,27,"TIMEOUT for Gurobi, feasible for QPU",23.581251663185185,300.6479229927063,TIMEOUT,0.0,67.25249171257019,hierarchical_qpu,MEDIUM
+scale_xxlarge_100farms,100 farms - ultimate test,100,27,TIMEOUT for Gurobi,46.085942684031465,300.86454606056213,TIMEOUT,0.0,137.06976985931396,hierarchical_qpu,TIMEOUT
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios/all_extracted_results.csv`
+
+**File Type:** CSV
+
+**Columns:** `source_file,scenario_id,method,n_farms,n_foods,n_vars,solve_time,objective,gap,success,qpu_time,embedding_time,time_category`
+
+**Number of Rows:**       71
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+source_file,scenario_id,method,n_farms,n_foods,n_vars,solve_time,objective,gap,success,qpu_time,embedding_time,time_category
+statistical_comparison_20251211_103242.json,statistical_5farms,gurobi,5,6,90,30.00436282157898,4.078209151759545,0.0,True,0.0,0.0,MEDIUM
+statistical_comparison_20251211_103242.json,statistical_5farms,clique_decomp,5,6,90,17.933297872543335,-38.8747544021342,0.0,True,1.7361065999999998,0.0,MEDIUM
+statistical_comparison_20251211_103242.json,statistical_5farms,spatial_temporal,5,6,90,23.599338054656982,3.0586550666344765,0.0,True,2.124921320000001,0.0,MEDIUM
+statistical_comparison_20251211_103434.json,statistical_5farms,clique_decomp,5,6,90,18.285567045211792,3.429287923089899,0.0,True,1.7361065999999998,0.0,MEDIUM
+...
+roadmap_phase3_20251210_165631.json,roadmap_phase3_15farms,gurobi,15,6,1215,300.1196300983429,7.851595316447629,0.0,True,0.0,0.0,TIMEOUT
+roadmap_phase3_20251210_165631.json,roadmap_phase3_20farms,gurobi,20,6,1620,300.22640109062195,10.09398689597458,0.0,True,0.0,0.0,TIMEOUT
+roadmap_phase3_20251210_173135.json,roadmap_phase3_10farms,gurobi,10,6,180,300.00773572921753,7.174692355363064,0.0,True,0.0,0.0,TIMEOUT
+roadmap_phase3_20251210_173135.json,roadmap_phase3_15farms,gurobi,15,6,270,300.0040669441223,11.526557122912862,0.0,True,0.0,0.0,TIMEOUT
+roadmap_phase3_20251210_173135.json,roadmap_phase3_20farms,gurobi,20,6,360,300.00598907470703,14.893791207352791,0.0,True,0.0,0.0,TIMEOUT
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765705304.csv`
+
+**File Type:** CSV
+
+**Columns:** `test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup`
+
+**Number of Rows:**       13
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup
+test_360,Native 6-Family,native_6,20,6,360,10.806808014322712,300.17477536201477,7206.522413223557,timeout,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,46.515196787621974,102.79958060342972
+test_360,27->6 Aggregated,aggregated,20,6,360,9.945938939765995,0.3007082939147949,9.88496675046277,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,41.88582862810146,0.1029822924365736
+test_360,27-Food Hybrid,hybrid_27,4,27,324,2.7247433228400197,300.37572407722473,1417.176260233432,timeout,0,12,5.627,2.848,0.8480000000000001,0,14,106.51486519232706,105.46900424059858
+test_900,Native 6-Family,native_6,50,6,900,23.365775155033475,0.7975068092346191,9.367629241623247,optimal,0,150,8.075,4.0,2.0,0,196,65.44090685448339,0.19937670230865479
+...
+test_1620,27->6 Aggregated,aggregated,90,6,1620,40.708248195372335,1.3672831058502197,4.955423340067946,optimal,0,270,11.135,5.44,3.4400000000000004,0,350,72.64682099175711,0.25133880622246685
+test_1620,27-Food Hybrid,hybrid_27,20,27,1620,9.928382840621225,302.1248552799225,28.085375592354577,timeout,0,60,11.135,5.44,3.4400000000000004,0,79,12.153209427440611,55.53765722057398
+test_4050,Native 6-Family,native_6,225,6,4050,102.22840337685511,3.5245933532714844,2.3514139056360532,optimal,0,675,21.4625,10.299999999999999,8.299999999999999,0,857,79.00534558787876,0.34219352944383347
+test_4050,27->6 Aggregated,aggregated,225,6,4050,101.46104801704314,3.906712770462036,2.7263642710644596,optimal,0,675,21.4625,10.299999999999999,8.299999999999999,0,857,78.84656188807078,0.37929250198660547
+test_4050,27-Food Hybrid,hybrid_27,50,27,4050,23.41931491058716,305.3661823272705,13.404573084301278,timeout,0,150,21.4625,10.299999999999999,8.299999999999999,0,191,8.3555600070203,29.647202167696168
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765656594.csv`
+
+**File Type:** CSV
+
+**Columns:** `test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup`
+
+**Number of Rows:**       13
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup
+test_360,Native 6-Family,native_6,20,6,360,10.55555404314822,0.32514429092407227,7.3208098194218625,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,45.242097417407564,0.11135078456303844
+test_360,27→6 Aggregated,aggregated,20,6,360,9.960937916436762,0.2333977222442627,8.511734289831114,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,41.97333575925321,0.07993072679598037
+test_360,27-Food Hybrid,hybrid_27,4,27,324,2.871408478731688,300.3523042201996,1341.792300159427,timeout,0,12,5.627,2.848,0.8480000000000001,0,14,95.96654539675481,105.46078097619367
+test_900,Native 6-Family,native_6,50,6,900,23.477296420160258,0.5202255249023438,5.807420786092638,optimal,0,150,8.075,4.0,2.0,0,196,65.60506859271116,0.13005638122558594
+...
+test_1620,27→6 Aggregated,aggregated,90,6,1620,40.906715414050154,1.1157152652740479,4.635600487085586,optimal,0,270,11.135,5.44,3.4400000000000004,0,350,72.77953048223597,0.20509471788125877
+test_1620,27-Food Hybrid,hybrid_27,20,27,1620,10.066380350451368,302.0978331565857,22.458032420158318,timeout,0,60,11.135,5.44,3.4400000000000004,0,79,10.61572891491941,55.532689918490014
+test_4050,Native 6-Family,native_6,225,6,4050,23.477296420160258,0.5141363143920898,5.807420786092638,optimal,0,150,21.4625,10.299999999999999,8.299999999999999,0,195,8.58189283852176,0.04991614702835824
+test_4050,27→6 Aggregated,aggregated,225,6,4050,101.65658631597853,2.968979835510254,2.5185729432670954,optimal,0,675,21.4625,10.299999999999999,8.299999999999999,0,857,78.88725091231349,0.288250469467015
+test_4050,27-Food Hybrid,hybrid_27,50,27,4050,23.565252190795206,305.04692339897156,11.831884248589935,timeout,0,150,21.4625,10.299999999999999,8.299999999999999,0,191,8.923104975793814,29.61620615523996
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765655255.csv`
+
+**File Type:** CSV
+
+**Columns:** `test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup`
+
+**Number of Rows:**       13
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup
+test_360,Native 6-Family,native_6,20,6,360,10.528808347471994,0.3549230098724365,7.593983729040929,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,45.102999226044425,0.12154897598371114
+test_360,27→6 Aggregated,aggregated,20,6,360,9.853824512728579,0.21870112419128418,9.717482253047773,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,41.34257219079006,0.07489764527098773
+test_360,27-Food Hybrid,hybrid_27,4,27,324,2.871408478731688,300.28140115737915,1344.0071867784206,timeout,0,12,5.627,2.848,0.8480000000000001,0,14,95.96654539675481,105.4358852378438
+test_900,Native 6-Family,native_6,50,6,900,23.477296420160258,0.51019287109375,5.807420786096027,optimal,0,150,8.075,4.0,2.0,0,196,65.60506859271116,0.1275482177734375
+...
+test_1620,27→6 Aggregated,aggregated,90,6,1620,40.906715414050154,1.13043212890625,4.635600487081417,optimal,0,270,11.135,5.44,3.4400000000000004,0,350,72.77953048223597,0.2078000236960018
+test_1620,27-Food Hybrid,hybrid_27,20,27,1620,10.066380349264705,301.99002027511597,22.45803243459103,timeout,0,60,11.135,5.44,3.4400000000000004,0,79,10.615728927959212,55.5128713741022
+test_4050,Native 6-Family,native_6,225,6,4050,23.477296420160258,0.5211596488952637,5.807420786096027,optimal,0,150,21.4625,10.299999999999999,8.299999999999999,0,195,8.58189283852176,0.05059802416458871
+test_4050,27→6 Aggregated,aggregated,225,6,4050,101.65658631597853,2.9651429653167725,2.5185729432670954,optimal,0,675,21.4625,10.299999999999999,8.299999999999999,0,857,78.88725091231349,0.28787795779774494
+test_4050,27-Food Hybrid,hybrid_27,50,27,4050,23.564157429557724,305.0980815887451,11.837079817850407,timeout,0,150,21.4625,10.299999999999999,8.299999999999999,0,191,8.918873657334803,29.62117296978108
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_results/qpu_results_integrated.csv`
+
+**File Type:** CSV
+
+**Columns:** `source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,qpu_time,embedding_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food,total_area,test_type`
+
+**Number of Rows:**       67
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,qpu_time,embedding_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food,total_area,test_type
+roadmap_phase1,"Simple Binary (4 farms, 6 crops, NO rotation)",direct_qpu,4,108,27,15.0326988697052,0,0.24770276000000002,11.141885042190552,0.8348387908009459,0,1512,0,INFEASIBLE,MEDIUM,0.14814814814814814,4.0,Roadmap QPU
+roadmap_phase1,"Simple Binary (4 farms, 6 crops, NO rotation)",clique_qpu,4,108,27,3.8172402381896973,0,0.25756596,0.0,0.13215527638416405,0,1512,0,INFEASIBLE,FAST,0.14814814814814814,4.0,Roadmap QPU
+roadmap_phase1,"Rotation (4 farms, 6 crops, 3 periods)",clique_decomposition,4,72,6,14.67519998550415,0,0.14229904000000002,0.0,1.7954055,0,0,0,OPTIMAL,MEDIUM,0.6666666666666666,4.0,Roadmap QPU
+roadmap_phase1,"Rotation (4 farms, 6 crops, 3 periods)",spatial_temporal_decomp,4,72,6,25.323477029800415,0,0.17523816,0.0,1.8339450000000002,0,0,0,OPTIMAL,MEDIUM,0.6666666666666666,4.0,Roadmap QPU
+...
+roadmap_phase3,Phase3_scale20,spatial_temporal_decomp,20,360,6,62.880728006362915,0,0.8531363999999996,0.0,14.537929514541279,0,0,0,OPTIMAL,MEDIUM,3.3333333333333335,20.0,Roadmap QPU
+roadmap_phase3,Phase3_scale20,spatial_temporal_decomp,20,360,6,98.40551495552063,0,0.8531355999999995,0.0,14.546708035749239,0,0,0,OPTIMAL,MEDIUM,3.3333333333333335,20.0,Roadmap QPU
+roadmap_phase3,Phase3_scale20,spatial_temporal_decomp,20,360,6,46.55244278907776,0,0.7289627599999998,0.0,14.41029721674527,0,0,0,OPTIMAL,MEDIUM,3.3333333333333335,20.0,Roadmap QPU
+roadmap_phase3,Phase3_scale20,spatial_temporal_decomp,20,360,6,72.22255492210388,0,0.7289631599999998,0.0,14.424013776620649,0,0,0,OPTIMAL,MEDIUM,3.3333333333333335,20.0,Roadmap QPU
+roadmap_phase3,Phase3_scale20,spatial_temporal_decomp,20,360,6,67.0030288696289,0,2.374256000000001,0.0,14.556783010174161,0,0,0,OPTIMAL,MEDIUM,3.3333333333333335,20.0,Roadmap QPU
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_results/hardness_analysis_results.csv`
+
+**File Type:** CSV
+
+**Columns:** `n_farms,farm_names,food_names,food_benefits,land_availability,total_area,mean_area,cv_area,n_vars,farms_per_food,area_per_var,config,scenario,status,status_code,time_category,solve_time,build_time,obj_value,obj_bound,gap,n_constraints,n_quadratic`
+
+**Number of Rows:**       20
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+n_farms,farm_names,food_names,food_benefits,land_availability,total_area,mean_area,cv_area,n_vars,farms_per_food,area_per_var,config,scenario,status,status_code,time_category,solve_time,build_time,obj_value,obj_bound,gap,n_constraints,n_quadratic
+3,"['Farm36', 'Farm30', 'Farm9']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm36': 1.63, 'Farm30': 0.89, 'Farm9': 0.59}",3.11,1.0366666666666666,0.4216021454169457,54,0.5,0.05759259259259259,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,FAST,0.38416028022766113,0.13326001167297363,1.3857239707042557,1.3857239707042557,0.0,24,540
+5,"['Farm9', 'Farm35', 'Farm22', 'Farm1', 'Farm8']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm9': 0.59, 'Farm35': 2.61, 'Farm22': 0.15, 'Farm1': 0.72, 'Farm8': 0.82}",4.89,0.978,0.8665401363544268,90,0.8333333333333334,0.05433333333333333,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,FAST,0.6853592395782471,0.049054861068725586,1.3517877906031157,1.3590193057653062,0.005349593488312264,32,1440
+7,"['Farm24', 'Farm9', 'Farm25', 'Farm39', 'Farm13', 'Farm33', 'Farm22']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm24': 0.82, 'Farm9': 0.59, 'Farm25': 0.99, 'Farm39': 2.77, 'Farm13': 0.24, 'Farm33': 1.68, 'Farm22': 0.15}",7.24,1.0342857142857143,0.824279027183526,126,1.1666666666666667,0.05746031746031746,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,FAST,1.7852733135223389,0.06659555435180664,1.372847593014562,1.372847593014562,0.0,40,2340
+10,"['Farm22', 'Farm18', 'Farm42', 'Farm40', 'Farm16', 'Farm7', 'Farm2', 'Farm5', 'Farm12', 'Farm33']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm22': 0.15, 'Farm18': 0.31, 'Farm42': 3.9, 'Farm40': 2.13, 'Farm16': 0.31, 'Farm7': 0.49, 'Farm2': 0.3, 'Farm5': 0.37, 'Farm12': 0.26, 'Farm33': 1.68}",9.9,0.9899999999999999,1.1743961015980207,180,1.6666666666666667,0.055,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,MEDIUM,30.89179825782776,0.0746002197265625,1.401782622357828,1.4152765138333072,0.009626236807517403,52,3312
+...
+60,"['Farm8', 'Farm21', 'Farm30', 'Farm33', 'Farm37', 'Farm2', 'Farm47', 'Farm5', 'Farm45', 'Farm40', 'Farm13', 'Farm50', 'Farm11', 'Farm20', 'Farm34', 'Farm38', 'Farm19', 'Farm31', 'Farm41', 'Farm36', 'Farm35', 'Farm43', 'Farm16', 'Farm4', 'Farm1', 'Farm32', 'Farm14', 'Farm6', 'Farm9', 'Farm49', 'Farm48', 'Farm18', 'Farm44', 'Farm12', 'Farm28', 'Farm46', 'Farm7', 'Farm25', 'Farm15', 'Farm23', 'Farm3', 'Farm10', 'Farm29', 'Farm42', 'Farm22', 'Farm27', 'Farm17', 'Farm26', 'Farm39', 'Farm24']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm8': 0.4920984196839367, 'Farm21': 0.3480696139227845, 'Farm30': 0.5341068213642728, 'Farm33': 1.0082016403280656, 'Farm37': 2.1844368873774753, 'Farm2': 0.18003600720144028, 'Farm47': 3.360672134426885, 'Farm5': 0.22204440888177635, 'Farm45': 5.749149829965993, 'Farm40': 1.2782556511302259, 'Farm13': 0.1440288057611522, 'Farm50': 4.6209241848369675, 'Farm11': 0.29405881176235243, 'Farm20': 0.24004800960192038, 'Farm34': 2.3284656931386274, 'Farm38': 0.9961992398479694, 'Farm19': 0.4860972194438888, 'Farm31': 0.654130826165233, 'Farm41': 1.998399679935987, 'Farm36': 0.9781956391278254, 'Farm35': 1.5663132626525302, 'Farm43': 2.2024404880976194, 'Farm16': 0.18603720744148827, 'Farm4': 0.3180636127225445, 'Farm1': 0.43208641728345665, 'Farm32': 0.4140828165633126, 'Farm14': 0.11402280456091217, 'Farm6': 0.2820564112822564, 'Farm9': 0.35407081416283254, 'Farm49': 3.97879575915183, 'Farm48': 3.0426085217043406, 'Farm18': 0.18603720744148827, 'Farm44': 2.4604920984196834, 'Farm12': 0.15603120624124825, 'Farm28': 0.5941188237647529, 'Farm46': 6.253250650130026, 'Farm7': 0.29405881176235243, 'Farm25': 0.5941188237647529, 'Farm15': 0.1260252050410082, 'Farm23': 0.5761152230446088, 'Farm3': 0.4860972194438888, 'Farm10': 0.40208041608321665, 'Farm29': 0.684136827365473, 'Farm42': 2.3404680936187234, 'Farm22': 0.09001800360072014, 'Farm27': 0.7681536307261452, 'Farm17': 0.16203240648129627, 'Farm26': 0.684136827365473, 'Farm39': 1.6623324664932986, 'Farm24': 0.4920984196839367}",59.99999999999999,1.2,1.2015512441872578,900,10.0,0.055555555555555546,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,SLOW,190.33963775634766,0.38404226303100586,1.5107048309428106,1.5258085796450056,0.00999781584915496,212,15912
+70,"['Farm32', 'Farm43', 'Farm5', 'Farm8', 'Farm50', 'Farm1', 'Farm10', 'Farm31', 'Farm30', 'Farm33', 'Farm20', 'Farm49', 'Farm28', 'Farm39', 'Farm4', 'Farm45', 'Farm38', 'Farm35', 'Farm21', 'Farm16', 'Farm41', 'Farm23', 'Farm25', 'Farm34', 'Farm9', 'Farm44', 'Farm22', 'Farm14', 'Farm27', 'Farm26', 'Farm11', 'Farm17', 'Farm37', 'Farm2', 'Farm29', 'Farm46', 'Farm24', 'Farm18', 'Farm47', 'Farm13', 'Farm48', 'Farm6', 'Farm40', 'Farm36', 'Farm12', 'Farm19', 'Farm42', 'Farm3', 'Farm7', 'Farm15']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm32': 0.48309661932386466, 'Farm43': 2.569513902780556, 'Farm5': 0.25905181036207237, 'Farm8': 0.5741148229645928, 'Farm50': 5.3910782156431285, 'Farm1': 0.5041008201640327, 'Farm10': 0.4690938187637527, 'Farm31': 0.7631526305261052, 'Farm30': 0.623124624924985, 'Farm33': 1.1762352470494097, 'Farm20': 0.28005601120224044, 'Farm49': 4.641928385677135, 'Farm28': 0.693138627725545, 'Farm39': 1.939387877575515, 'Farm4': 0.3710742148429686, 'Farm45': 6.707341468293658, 'Farm38': 1.1622324464892977, 'Farm35': 1.8273654730946187, 'Farm21': 0.40608121624324856, 'Farm16': 0.21704340868173633, 'Farm41': 2.3314662932586514, 'Farm23': 0.672134426885377, 'Farm25': 0.693138627725545, 'Farm34': 2.716543308661732, 'Farm9': 0.4130826165233046, 'Farm44': 2.870574114822964, 'Farm22': 0.10502100420084015, 'Farm14': 0.1330266053210642, 'Farm27': 0.8961792358471694, 'Farm26': 0.7981596319263852, 'Farm11': 0.3430686137227445, 'Farm17': 0.18903780756151228, 'Farm37': 2.5485097019403877, 'Farm2': 0.2100420084016803, 'Farm29': 0.7981596319263852, 'Farm46': 7.295459091818363, 'Farm24': 0.5741148229645928, 'Farm18': 0.21704340868173633, 'Farm47': 3.9207841568313655, 'Farm13': 0.16803360672134424, 'Farm48': 3.5497099419883975, 'Farm6': 0.32906581316263245, 'Farm40': 1.4912982596519302, 'Farm36': 1.1412282456491296, 'Farm12': 0.1820364072814563, 'Farm19': 0.5671134226845369, 'Farm42': 2.730546109221844, 'Farm3': 0.5671134226845369, 'Farm7': 0.3430686137227445, 'Farm15': 0.14702940588117622}",69.99999999999999,1.3999999999999997,1.2015512441872578,900,11.666666666666666,0.055555555555555546,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,SLOW,212.91135334968567,0.3702731132507324,1.5210951641693486,1.5362813703520826,0.00998373181406235,212,15804
+80,"['Farm10', 'Farm32', 'Farm18', 'Farm5', 'Farm37', 'Farm24', 'Farm30', 'Farm45', 'Farm22', 'Farm50', 'Farm42', 'Farm35', 'Farm20', 'Farm39', 'Farm28', 'Farm26', 'Farm4', 'Farm1', 'Farm43', 'Farm46', 'Farm33', 'Farm36', 'Farm11', 'Farm47', 'Farm15', 'Farm41', 'Farm8', 'Farm23', 'Farm38', 'Farm7', 'Farm29', 'Farm2', 'Farm19', 'Farm9', 'Farm40', 'Farm49', 'Farm21', 'Farm34', 'Farm25', 'Farm48', 'Farm31', 'Farm27', 'Farm3', 'Farm12', 'Farm16', 'Farm44', 'Farm14', 'Farm13', 'Farm6', 'Farm17']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm10': 0.5361072214442889, 'Farm32': 0.5521104220844169, 'Farm18': 0.2480496099219844, 'Farm5': 0.2960592118423685, 'Farm37': 2.9125825165033006, 'Farm24': 0.656131226245249, 'Farm30': 0.7121424284856972, 'Farm45': 7.665533106621324, 'Farm22': 0.12002400480096019, 'Farm50': 6.16123224644929, 'Farm42': 3.120624124824965, 'Farm35': 2.0884176835367074, 'Farm20': 0.3200640128025605, 'Farm39': 2.2164432886577314, 'Farm28': 0.7921584316863373, 'Farm26': 0.9121824364872974, 'Farm4': 0.42408481696339273, 'Farm1': 0.5761152230446089, 'Farm43': 2.9365873174634927, 'Farm46': 8.337667533506702, 'Farm33': 1.3442688537707541, 'Farm36': 1.304260852170434, 'Farm11': 0.3920784156831366, 'Farm47': 4.480896179235847, 'Farm15': 0.16803360672134426, 'Farm41': 2.664532906581316, 'Farm8': 0.656131226245249, 'Farm23': 0.7681536307261452, 'Farm38': 1.328265653130626, 'Farm7': 0.3920784156831366, 'Farm29': 0.9121824364872974, 'Farm2': 0.24004800960192038, 'Farm19': 0.6481296259251851, 'Farm9': 0.47209441888377673, 'Farm40': 1.7043408681736347, 'Farm49': 5.30506101220244, 'Farm21': 0.4640928185637127, 'Farm34': 3.104620924184837, 'Farm25': 0.7921584316863373, 'Farm48': 4.056811362272454, 'Farm31': 0.8721744348869774, 'Farm27': 1.0242048409681936, 'Farm3': 0.6481296259251851, 'Farm12': 0.20804160832166435, 'Farm16': 0.2480496099219844, 'Farm44': 3.280656131226245, 'Farm14': 0.15203040608121624, 'Farm13': 0.1920384076815363, 'Farm6': 0.37607521504300856, 'Farm17': 0.21604320864172835}",80.0,1.5999999999999994,1.2015512441872584,900,13.333333333333334,0.05555555555555555,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,SLOW,140.31464314460754,0.3866150379180908,1.5424290720035223,1.5566943477177404,0.009248578085790592,212,15804
+90,"['Farm16', 'Farm33', 'Farm39', 'Farm26', 'Farm19', 'Farm23', 'Farm25', 'Farm5', 'Farm27', 'Farm3', 'Farm47', 'Farm36', 'Farm11', 'Farm42', 'Farm10', 'Farm20', 'Farm35', 'Farm18', 'Farm4', 'Farm9', 'Farm38', 'Farm40', 'Farm31', 'Farm24', 'Farm21', 'Farm1', 'Farm45', 'Farm6', 'Farm2', 'Farm32', 'Farm46', 'Farm50', 'Farm37', 'Farm12', 'Farm8', 'Farm48', 'Farm7', 'Farm34', 'Farm29', 'Farm44', 'Farm30', 'Farm28', 'Farm41', 'Farm49', 'Farm22', 'Farm13', 'Farm14', 'Farm17', 'Farm43', 'Farm15']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm16': 0.27905581116223244, 'Farm33': 1.5123024604920983, 'Farm39': 2.493498699739948, 'Farm26': 1.0262052410482094, 'Farm19': 0.7291458291658331, 'Farm23': 0.8641728345669133, 'Farm25': 0.8911782356471294, 'Farm5': 0.3330666133226645, 'Farm27': 1.1522304460892179, 'Farm3': 0.7291458291658331, 'Farm47': 5.041008201640327, 'Farm36': 1.4672934586917383, 'Farm11': 0.4410882176435287, 'Farm42': 3.5107021404280854, 'Farm10': 0.603120624124825, 'Farm20': 0.3600720144028806, 'Farm35': 2.3494698939787955, 'Farm18': 0.27905581116223244, 'Farm4': 0.47709541908381675, 'Farm9': 0.5311062212442488, 'Farm38': 1.4942988597719542, 'Farm40': 1.917383476695339, 'Farm31': 0.9811962392478496, 'Farm24': 0.7381476295259051, 'Farm21': 0.5221044208841767, 'Farm1': 0.648129625925185, 'Farm45': 8.623724744948989, 'Farm6': 0.42308461692338467, 'Farm2': 0.2700540108021604, 'Farm32': 0.621124224844969, 'Farm46': 9.37987597519504, 'Farm50': 6.931386277255451, 'Farm37': 3.2766553310662134, 'Farm12': 0.2340468093618724, 'Farm8': 0.7381476295259051, 'Farm48': 4.563912782556511, 'Farm7': 0.4410882176435287, 'Farm34': 3.4926985397079413, 'Farm29': 1.0262052410482094, 'Farm44': 3.6907381476295256, 'Farm30': 0.8011602320464093, 'Farm28': 0.8911782356471294, 'Farm41': 2.997599519903981, 'Farm49': 5.968193638727746, 'Farm22': 0.1350270054010802, 'Farm13': 0.21604320864172832, 'Farm14': 0.17103420684136827, 'Farm17': 0.2430486097219444, 'Farm43': 3.303660732146429, 'Farm15': 0.18903780756151228}",90.0,1.8,1.2015512441872578,900,15.0,0.05555555555555555,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,SLOW,186.89826345443726,0.3876798152923584,1.544408645941124,1.5578117735957073,0.008678485250525047,212,15912
+100,"['Farm8', 'Farm11', 'Farm37', 'Farm45', 'Farm4', 'Farm48', 'Farm38', 'Farm42', 'Farm7', 'Farm15', 'Farm1', 'Farm36', 'Farm49', 'Farm44', 'Farm18', 'Farm46', 'Farm39', 'Farm30', 'Farm43', 'Farm34', 'Farm2', 'Farm16', 'Farm29', 'Farm26', 'Farm9', 'Farm40', 'Farm33', 'Farm10', 'Farm23', 'Farm5', 'Farm19', 'Farm25', 'Farm20', 'Farm21', 'Farm3', 'Farm41', 'Farm50', 'Farm31', 'Farm32', 'Farm24', 'Farm12', 'Farm47', 'Farm35', 'Farm14', 'Farm17', 'Farm27', 'Farm13', 'Farm28', 'Farm6', 'Farm22']","['Fruits', 'Grains', 'Legumes', 'Leafy_Vegetables', 'Root_Vegetables', 'Proteins']","{'Fruits': 0.48999999999999994, 'Grains': 0.52, 'Legumes': 0.6475, 'Leafy_Vegetables': 0.5874999999999999, 'Root_Vegetables': 0.46749999999999997, 'Proteins': 0.49499999999999994}","{'Farm8': 0.82, 'Farm11': 0.49, 'Farm37': 3.64, 'Farm45': 9.58, 'Farm4': 0.53, 'Farm48': 5.07, 'Farm38': 1.66, 'Farm42': 3.9, 'Farm7': 0.49, 'Farm15': 0.21, 'Farm1': 0.72, 'Farm36': 1.63, 'Farm49': 6.63, 'Farm44': 4.1, 'Farm18': 0.31, 'Farm46': 10.42, 'Farm39': 2.77, 'Farm30': 0.89, 'Farm43': 3.67, 'Farm34': 3.88, 'Farm2': 0.3, 'Farm16': 0.31, 'Farm29': 1.14, 'Farm26': 1.14, 'Farm9': 0.59, 'Farm40': 2.13, 'Farm33': 1.68, 'Farm10': 0.67, 'Farm23': 0.96, 'Farm5': 0.37, 'Farm19': 0.81, 'Farm25': 0.99, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm3': 0.81, 'Farm41': 3.33, 'Farm50': 7.7, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm24': 0.82, 'Farm12': 0.26, 'Farm47': 5.6, 'Farm35': 2.61, 'Farm14': 0.19, 'Farm17': 0.27, 'Farm27': 1.28, 'Farm13': 0.24, 'Farm28': 0.99, 'Farm6': 0.47, 'Farm22': 0.15}",99.98,1.9996,1.2015512441872582,900,16.666666666666668,0.055544444444444445,"{'parameters': {'land_availability': {'Farm1': 0.72, 'Farm2': 0.3, 'Farm3': 0.81, 'Farm4': 0.53, 'Farm5': 0.37, 'Farm6': 0.47, 'Farm7': 0.49, 'Farm8': 0.82, 'Farm9': 0.59, 'Farm10': 0.67, 'Farm11': 0.49, 'Farm12': 0.26, 'Farm13': 0.24, 'Farm14': 0.19, 'Farm15': 0.21, 'Farm16': 0.31, 'Farm17': 0.27, 'Farm18': 0.31, 'Farm19': 0.81, 'Farm20': 0.4, 'Farm21': 0.58, 'Farm22': 0.15, 'Farm23': 0.96, 'Farm24': 0.82, 'Farm25': 0.99, 'Farm26': 1.14, 'Farm27': 1.28, 'Farm28': 0.99, 'Farm29': 1.14, 'Farm30': 0.89, 'Farm31': 1.09, 'Farm32': 0.69, 'Farm33': 1.68, 'Farm34': 3.88, 'Farm35': 2.61, 'Farm36': 1.63, 'Farm37': 3.64, 'Farm38': 1.66, 'Farm39': 2.77, 'Farm40': 2.13, 'Farm41': 3.33, 'Farm42': 3.9, 'Farm43': 3.67, 'Farm44': 4.1, 'Farm45': 9.58, 'Farm46': 10.42, 'Farm47': 5.6, 'Farm48': 5.07, 'Farm49': 6.63, 'Farm50': 7.7}, 'weights': {'nutritional_value': 0.25, 'nutrient_density': 0.25, 'environmental_impact': 0.2, 'affordability': 0.15, 'sustainability': 0.15}, 'minimum_planting_area': {'Fruits': 0.5, 'Grains': 0.5, 'Legumes': 0.5, 'Leafy_Vegetables': 0.5, 'Root_Vegetables': 0.5, 'Proteins': 0.5}, 'food_group_constraints': {'Plant_Foods': {'min': 3, 'max': 5}, 'Proteins': {'min': 1, 'max': 2}}, 'rotation_gamma': 0.35, 'spatial_k_neighbors': 4, 'frustration_ratio': 0.88, 'negative_synergy_strength': -1.5, 'use_soft_one_hot': True, 'one_hot_penalty': 1.5, 'diversity_bonus': 0.25}}",rotation_large_200,OPTIMAL,2,SLOW,195.8941764831543,0.38467955589294434,1.5520504808043158,1.5670190362695031,0.009644374104011198,212,15912
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_results/combined_all_results.csv`
+
+**File Type:** CSV
+
+**Columns:** `source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food`
+
+**Number of Rows:**       20
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```
+source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food
+hardness_analysis,3farms_100ha_total,gurobi,3,54,6,0.1833598613739013,0.0125567913055419,1.5873034262311303,0.0,540,24,OPTIMAL,FAST,0.5
+hardness_analysis,5farms_100ha_total,gurobi,5,90,6,0.3582606315612793,0.0250606536865234,1.6215778518452049,0.0072984243498892,1440,32,OPTIMAL,FAST,0.8333333333333334
+hardness_analysis,7farms_100ha_total,gurobi,7,126,6,0.730072021484375,0.0354838371276855,1.6128434945723027,0.0090844744503433,2340,40,OPTIMAL,FAST,1.1666666666666667
+hardness_analysis,10farms_100ha_total,gurobi,10,180,6,0.7826833724975586,0.0523338317871093,1.6208093425193937,0.009634510631167,3420,52,OPTIMAL,FAST,1.6666666666666667
+...
+hardness_analysis,60farms_100ha_total,gurobi,60,900,6,270.67705607414246,0.2412571907043457,1.5492370657101393,0.0097619191693718,15804,212,OPTIMAL,SLOW,10.0
+hardness_analysis,70farms_100ha_total,gurobi,70,900,6,154.6051163673401,0.2395780086517334,1.549991343625629,0.0096955804090932,15912,212,OPTIMAL,SLOW,11.666666666666666
+hardness_analysis,80farms_100ha_total,gurobi,80,900,6,206.23973512649536,0.2419238090515136,1.5493295826311402,0.0090165601702112,15912,212,OPTIMAL,SLOW,13.333333333333334
+hardness_analysis,90farms_100ha_total,gurobi,90,900,6,220.1092264652252,0.2415125370025634,1.549748393533947,0.0080117303140555,16020,212,OPTIMAL,SLOW,15.0
+hardness_analysis,100farms_100ha_total,gurobi,100,900,6,198.0033700466156,0.236835241317749,1.5520504808043158,0.0096443741040111,15912,212,OPTIMAL,SLOW,16.666666666666668
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_results/all_datapoints_for_analysis.csv`
+
+**File Type:** CSV
+
+**Columns:** `source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food,total_area,test_type`
+
+**Number of Rows:**       38
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```
+source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food,total_area,test_type
+roadmap_phase1,"Simple Binary (4 farms, 6 crops, NO rotation)",gurobi,4,135,27,0.0093510150909423,0.0191249847412109,0.0,0.0,0,144,3,FAST,0.1481481481481481,4.0,Roadmap Gurobi
+roadmap_phase1,"Rotation (4 farms, 6 crops, 3 periods)",gurobi_rotation,4,72,6,120.0130650997162,0.0233237743377685,3.6262688507037737,0.0,0,12,SUBOPTIMAL,TIMEOUT,0.6666666666666666,4.0,Roadmap Gurobi
+roadmap_phase1,"Simple Binary (tiny_24: 4 farms, 5 foods, NO rotation)",gurobi,4,25,5,0.0434241294860839,0.0424890518188476,0.4945074492550744,0.0,0,32,OPTIMAL,FAST,0.8,4.0,Roadmap Gurobi
+roadmap_phase1,"Rotation (rotation_micro_25: 5 farms, 6 crops, 3 periods)",gurobi_rotation,5,90,6,120.00401210784912,0.0371260643005371,4.078209151759545,0.0,0,15,SUBOPTIMAL,TIMEOUT,0.8333333333333334,5.0,Roadmap Gurobi
+...
+hierarchical_test,hierarchical_25farms,gurobi,25,2025,6,300.257896900177,0.0,12.322366321050083,0.0503776738880181,0,0,SUBOPTIMAL,TIMEOUT,4.166666666666667,25.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_50farms,gurobi,50,4050,6,300.6479229927063,0.0,23.581251663185185,0.0256650237358248,0,0,SUBOPTIMAL,TIMEOUT,8.333333333333334,50.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_50farms,gurobi,50,4050,6,300.6197118759155,0.0,23.581251663185185,0.0256651768324759,0,0,SUBOPTIMAL,TIMEOUT,8.333333333333334,50.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_100farms,gurobi,100,8100,6,300.86454606056213,0.0,46.085942684031465,0.0195237730064276,0,0,SUBOPTIMAL,TIMEOUT,16.666666666666668,100.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_100farms,gurobi,100,8100,6,301.011246919632,0.0,46.085942684031465,0.0195237730064276,0,0,SUBOPTIMAL,TIMEOUT,16.666666666666668,100.0,Hierarchical Gurobi
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_results/additional_gurobi_results.csv`
+
+**File Type:** CSV
+
+**Columns:** `source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food,total_area,test_type`
+
+**Number of Rows:**       38
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```
+source,scenario,method,n_farms,n_vars,n_foods,solve_time,build_time,obj_value,gap,n_quadratic,n_constraints,status,time_category,farms_per_food,total_area,test_type
+roadmap_phase1,"Simple Binary (4 farms, 6 crops, NO rotation)",gurobi,4,135,27,0.009351015090942383,0.019124984741210938,0.0,0.0,0,144,3,FAST,0.14814814814814814,4.0,Roadmap Gurobi
+roadmap_phase1,"Rotation (4 farms, 6 crops, 3 periods)",gurobi_rotation,4,72,6,120.01306509971619,0.023323774337768555,3.6262688507037737,0.0,0,12,SUBOPTIMAL,TIMEOUT,0.6666666666666666,4.0,Roadmap Gurobi
+roadmap_phase1,"Simple Binary (tiny_24: 4 farms, 5 foods, NO rotation)",gurobi,4,25,5,0.043424129486083984,0.042489051818847656,0.4945074492550744,0.0,0,32,OPTIMAL,FAST,0.8,4.0,Roadmap Gurobi
+roadmap_phase1,"Rotation (rotation_micro_25: 5 farms, 6 crops, 3 periods)",gurobi_rotation,5,90,6,120.00401210784912,0.03712606430053711,4.078209151759545,0.0,0,15,SUBOPTIMAL,TIMEOUT,0.8333333333333334,5.0,Roadmap Gurobi
+...
+hierarchical_test,hierarchical_25farms,gurobi,25,2025,6,300.257896900177,0.0,12.322366321050083,0.05037767388801818,0,0,SUBOPTIMAL,TIMEOUT,4.166666666666667,25.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_50farms,gurobi,50,4050,6,300.6479229927063,0.0,23.581251663185185,0.025665023735824844,0,0,SUBOPTIMAL,TIMEOUT,8.333333333333334,50.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_50farms,gurobi,50,4050,6,300.6197118759155,0.0,23.581251663185185,0.025665176832475947,0,0,SUBOPTIMAL,TIMEOUT,8.333333333333334,50.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_100farms,gurobi,100,8100,6,300.86454606056213,0.0,46.085942684031465,0.019523773006427624,0,0,SUBOPTIMAL,TIMEOUT,16.666666666666668,100.0,Hierarchical Gurobi
+hierarchical_test,hierarchical_100farms,gurobi,100,8100,6,301.01124691963196,0.0,46.085942684031465,0.019523773006427624,0,0,SUBOPTIMAL,TIMEOUT,16.666666666666668,100.0,Hierarchical Gurobi
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comparison_results/gurobi_vs_qpu_comparison.csv`
+
+**File Type:** CSV
+
+**Columns:** `n_farms,n_vars,gurobi_obj,gurobi_time,gurobi_status,qpu_obj,qpu_time,qpu_qpu_only,qpu_method,speedup,obj_ratio,gap_pct`
+
+**Number of Rows:**        8
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+n_farms,n_vars,gurobi_obj,gurobi_time,gurobi_status,qpu_obj,qpu_time,qpu_qpu_only,qpu_method,speedup,obj_ratio,gap_pct
+5,90,4.078209151759545,210.0064516067505,TIMEOUT,3.745500016872332,18.308136026064556,0.8862869999999999,clique_decomp,11.470662622769066,0.9184178342732457,8.158216572675425
+10,180,7.174692355363064,240.01113367080688,TIMEOUT,6.488827795272849,38.98438982963562,1.6219608400000005,spatial_temporal,6.156595876443662,0.9044050216902286,9.559497830977136
+15,270,11.526557122912862,300.0369902610779,TIMEOUT,10.410154866584758,45.406031250953674,2.05950273,spatial_temporal,6.60786644405915,0.9031452111481855,9.685478885181453
+20,360,14.893791207352791,300.07938408851624,TIMEOUT,12.977097365015828,57.234320640563965,2.1455700000000006,clique_decomp,5.24299722142311,0.8713092042413804,12.869079575861964
+...
+15,270,11.526557122912862,300.0369902610779,TIMEOUT,10.410154866584758,45.406031250953674,2.05950273,spatial_temporal,6.60786644405915,0.9031452111481855,9.685478885181453
+20,360,14.893791207352791,300.07938408851624,TIMEOUT,12.977097365015828,57.234320640563965,2.1455700000000006,clique_decomp,5.24299722142311,0.8713092042413804,12.869079575861964
+25,450,12.322366321050083,150.2022122144699,TIMEOUT,,,,,,,
+50,900,23.581251663185185,150.36839985847473,TIMEOUT,,,,,,,
+100,1800,46.085942684031465,150.50988006591797,TIMEOUT,,,,,,,
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/analysis_20251127_161647.csv`
+
+**File Type:** CSV
+
+**Columns:** `scenario,formulation,n_units,decomposition,variables,constraints,quadratic_terms,density,embed_success,embed_skipped,embed_time,embed_error,num_partitions,partition_details,solve_success,solve_time,objective,solve_status`
+
+**Number of Rows:**       14
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+scenario,formulation,n_units,decomposition,variables,constraints,quadratic_terms,density,embed_success,embed_skipped,embed_time,embed_error,num_partitions,partition_details,solve_success,solve_time,objective,solve_status
+Farm,CQM,25,,1350,1377.0,,,,False,,,,,False,0.013406991958618164,,3
+Patch,CQM,25,,675,26.0,,,,False,,,,,False,0.0040760040283203125,,3
+Patch,BQM_from_CQM,25,,760,,236370.0,0.40922783933518003,False,False,300.0,No embedding found in 197.2s,,,False,100.06712698936462,,9
+Patch,Direct_BQM,25,,675,,8775.0,0.01925925925925926,True,False,50.35290598869324,,,,True,1.8228759765625,-25.0,2
+...
+Patch,Direct_BQM,25,SequentialCutSet,675,,8775.0,0.01925925925925926,True,False,32.785178422927856,,23.0,"[{'id': 0, 'success': True, 'time': 2.8235361576080322, 'skipped': False}, {'id': 1, 'success': True, 'time': 1.2995409965515137, 'skipped': False}, {'id': 2, 'success': True, 'time': 1.401658296585083, 'skipped': False}, {'id': 3, 'success': True, 'time': 0.9993197917938232, 'skipped': False}, {'id': 4, 'success': True, 'time': 0.6089742183685303, 'skipped': False}, {'id': 5, 'success': True, 'time': 0.7858340740203857, 'skipped': False}, {'id': 6, 'success': True, 'time': 1.4444468021392822, 'skipped': False}, {'id': 7, 'success': True, 'time': 1.65543794631958, 'skipped': False}, {'id': 8, 'success': True, 'time': 2.6408252716064453, 'skipped': False}, {'id': 9, 'success': True, 'time': 3.565998077392578, 'skipped': False}, {'id': 10, 'success': True, 'time': 1.2319202423095703, 'skipped': False}, {'id': 11, 'success': True, 'time': 1.1620421409606934, 'skipped': False}, {'id': 12, 'success': True, 'time': 0.669806957244873, 'skipped': False}, {'id': 13, 'success': True, 'time': 0.5569300651550293, 'skipped': False}, {'id': 14, 'success': True, 'time': 0.6427841186523438, 'skipped': False}, {'id': 15, 'success': True, 'time': 1.3677408695220947, 'skipped': False}, {'id': 16, 'success': True, 'time': 1.934208869934082, 'skipped': False}, {'id': 17, 'success': True, 'time': 3.35274076461792, 'skipped': False}, {'id': 18, 'success': True, 'time': 0.9289789199829102, 'skipped': False}, {'id': 19, 'success': True, 'time': 1.794295072555542, 'skipped': False}, {'id': 20, 'success': True, 'time': 0.6502010822296143, 'skipped': False}, {'id': 21, 'success': True, 'time': 0.7351958751678467, 'skipped': False}, {'id': 22, 'success': True, 'time': 0.532761812210083, 'skipped': False}]",True,1.815093994140625,-25.0,2
+Patch,UltraSparse_BQM,25,Louvain,675,,648.0,0.0014222222222222223,True,False,0.915154218673706,,5.0,"[{'id': 0, 'success': True, 'time': 0.21835708618164062, 'skipped': False}, {'id': 1, 'success': True, 'time': 0.19313716888427734, 'skipped': False}, {'id': 2, 'success': True, 'time': 0.19489097595214844, 'skipped': False}, {'id': 3, 'success': True, 'time': 0.19454598426818848, 'skipped': False}, {'id': 4, 'success': True, 'time': 0.11422300338745117, 'skipped': False}]",True,0.00907588005065918,-351.0,2
+Patch,UltraSparse_BQM,25,PlotBased,675,,648.0,0.0014222222222222223,True,False,0.8345797061920166,,5.0,"[{'id': 0, 'success': True, 'time': 0.17535996437072754, 'skipped': False}, {'id': 1, 'success': True, 'time': 0.16606473922729492, 'skipped': False}, {'id': 2, 'success': True, 'time': 0.16250300407409668, 'skipped': False}, {'id': 3, 'success': True, 'time': 0.16243410110473633, 'skipped': False}, {'id': 4, 'success': True, 'time': 0.16821789741516113, 'skipped': False}]",True,0.009802818298339844,-351.0,2
+Patch,UltraSparse_BQM,25,Multilevel_MLQLS,675,,648.0,0.0014222222222222223,True,False,0.8784987926483154,,4.0,"[{'id': 0, 'success': True, 'time': 0.24465107917785645, 'skipped': False}, {'id': 1, 'success': True, 'time': 0.22619104385375977, 'skipped': False}, {'id': 2, 'success': True, 'time': 0.21971678733825684, 'skipped': False}, {'id': 3, 'success': True, 'time': 0.18793988227844238, 'skipped': False}]",True,0.008831977844238281,-351.0,2
+Patch,UltraSparse_BQM,25,SequentialCutSet,675,,648.0,0.0014222222222222223,True,False,1.036271333694458,,23.0,"[{'id': 0, 'success': True, 'time': 0.046823978424072266, 'skipped': False}, {'id': 1, 'success': True, 'time': 0.045526981353759766, 'skipped': False}, {'id': 2, 'success': True, 'time': 0.04333901405334473, 'skipped': False}, {'id': 3, 'success': True, 'time': 0.04672503471374512, 'skipped': False}, {'id': 4, 'success': True, 'time': 0.046916961669921875, 'skipped': False}, {'id': 5, 'success': True, 'time': 0.04363703727722168, 'skipped': False}, {'id': 6, 'success': True, 'time': 0.04774880409240723, 'skipped': False}, {'id': 7, 'success': True, 'time': 0.04412102699279785, 'skipped': False}, {'id': 8, 'success': True, 'time': 0.04558897018432617, 'skipped': False}, {'id': 9, 'success': True, 'time': 0.046370744705200195, 'skipped': False}, {'id': 10, 'success': True, 'time': 0.04416680335998535, 'skipped': False}, {'id': 11, 'success': True, 'time': 0.04411482810974121, 'skipped': False}, {'id': 12, 'success': True, 'time': 0.04528689384460449, 'skipped': False}, {'id': 13, 'success': True, 'time': 0.04604601860046387, 'skipped': False}, {'id': 14, 'success': True, 'time': 0.04333901405334473, 'skipped': False}, {'id': 15, 'success': True, 'time': 0.04394197463989258, 'skipped': False}, {'id': 16, 'success': True, 'time': 0.04620528221130371, 'skipped': False}, {'id': 17, 'success': True, 'time': 0.03961324691772461, 'skipped': False}, {'id': 18, 'success': True, 'time': 0.054886817932128906, 'skipped': False}, {'id': 19, 'success': True, 'time': 0.045065879821777344, 'skipped': False}, {'id': 20, 'success': True, 'time': 0.04290604591369629, 'skipped': False}, {'id': 21, 'success': True, 'time': 0.04595518112182617, 'skipped': False}, {'id': 22, 'success': True, 'time': 0.037944793701171875, 'skipped': False}]",True,0.00922703742980957,-351.0,2
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/benchmark_results_20251129_215252.csv`
+
+**File Type:** CSV
+
+**Columns:** `n_farms,formulation,decomposition,num_partitions,num_variables,num_quadratic,density,embedding_success,embedding_time,chain_length_max,chain_length_mean,solve_success,solve_time,objective,total_embedding_time,total_solve_time,total_time`
+
+**Number of Rows:**        5
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+n_farms,formulation,decomposition,num_partitions,num_variables,num_quadratic,density,embedding_success,embedding_time,chain_length_max,chain_length_mean,solve_success,solve_time,objective,total_embedding_time,total_solve_time,total_time
+25,CQM,None,1,702,0,0,False,0,,,True,0.003233671188354492,-0.33541878630130556,0,0.003233671188354492,0.003233671188354492
+25,BQM,None,1,1655,26365,0.009625687972910068,False,0,,,False,30.07493805885315,0.015935493356368735,0,30.07493805885315,30.07493805885315
+25,BQM,Louvain,55,1655,26365,0.009625687972910068,True,49.01611351966858,,,True,192.54750323295593,3.3567580533432566,49.01611351966858,192.54750323295593,241.5636167526245
+25,BQM,PlotBased,5,1655,26365,0.009625687972910068,False,157.39659762382507,,,False,150.42796063423157,1.5920340759690577,157.39659762382507,150.42796063423157,307.82455825805664
+...
+n_farms,formulation,decomposition,num_partitions,num_variables,num_quadratic,density,embedding_success,embedding_time,chain_length_max,chain_length_mean,solve_success,solve_time,objective,total_embedding_time,total_solve_time,total_time
+25,CQM,None,1,702,0,0,False,0,,,True,0.003233671188354492,-0.33541878630130556,0,0.003233671188354492,0.003233671188354492
+25,BQM,None,1,1655,26365,0.009625687972910068,False,0,,,False,30.07493805885315,0.015935493356368735,0,30.07493805885315,30.07493805885315
+25,BQM,Louvain,55,1655,26365,0.009625687972910068,True,49.01611351966858,,,True,192.54750323295593,3.3567580533432566,49.01611351966858,192.54750323295593,241.5636167526245
+25,BQM,PlotBased,5,1655,26365,0.009625687972910068,False,157.39659762382507,,,False,150.42796063423157,1.5920340759690577,157.39659762382507,150.42796063423157,307.82455825805664
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/combined_results.csv`
+
+**File Type:** CSV
+
+**Columns:** `size,n_vars,method,test,gurobi_obj,gurobi_time,gurobi_gap,quantum_obj,quantum_time,qpu_time,gap_percent,speedup`
+
+**Number of Rows:**       12
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+size,n_vars,method,test,gurobi_obj,gurobi_time,gurobi_gap,quantum_obj,quantum_time,qpu_time,gap_percent,speedup
+5,90,Clique Decomp,Statistical,4.078209151759545,300.0400047302246,12.11890404504969,3.5993308622544093,20.605209946632385,0.5363886000000001,11.742367095089351,14.561366057775192
+5,90,Spatial Temporal,Statistical,4.078209151759545,300.0400047302246,12.11890404504969,3.326916770097559,29.726816415786743,0.7654885200000001,18.42211504375249,10.093243774697823
+10,180,Clique Decomp,Statistical,7.174692355363064,300.07608342170715,4286.270631853658,6.084280121941886,35.65050208568573,1.0727724,15.198034694910618,8.417162897186593
+10,180,Spatial Temporal,Statistical,7.174692355363064,300.07608342170715,4286.270631853658,5.906518518959828,44.16689896583557,1.279787800000001,17.675654558976024,6.794139739215675
+...
+20,360,Clique Decomp,Statistical,14.887555626323916,300.145810008049,3530.3986320893828,12.537017096700446,57.234320640563965,2.1455700000000006,15.78861291014953,5.24415781735208
+20,360,Spatial Temporal,Statistical,14.887555626323916,300.145810008049,3530.3986320893828,11.949682678138695,62.10627353191376,2.18692608,19.733749595471036,4.832777639666578
+25,2025,Hierarchical Quantum,Hierarchical,12.322366321050083,300.29483902454376,5.037390230155461,28.928124879451328,34.30958390235901,0.59553,134.76111751388137,8.752506001796673
+50,4050,Hierarchical Quantum,Hierarchical,23.581251663185185,300.6338174343109,2.5665100284150393,55.13193688245534,69.60863947868347,1.1910665999999999,133.79563421786798,4.3189152910591675
+100,8100,Hierarchical Quantum,Hierarchical,46.085942684031465,300.93789649009705,1.9523773006427623,106.03738260037518,136.00442445278168,2.3821144000000003,130.0861747092277,2.212706665249536
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/medium_160/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**      155
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Plot1_Wheat,C,0.0,False
+Y_Plot1_Rice,C,0.0,False
+Y_Plot1_Corn,C,0.0,False
+Y_Plot1_Barley,C,0.0,False
+...
+U_Tomatoes,C,0.0,False
+U_Apples,C,1.0,False
+U_Oranges,C,0.0,False
+U_Eggs,C,0.0,False
+U_Chicken,C,1.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/micro_6/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**        7
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Plot1_Wheat,C,0.0,False
+Y_Plot1_Rice,C,1.0,False
+Y_Plot2_Wheat,C,0.0,False
+Y_Plot2_Rice,C,1.0,False
+...
+Y_Plot1_Rice,C,1.0,False
+Y_Plot2_Wheat,C,0.0,False
+Y_Plot2_Rice,C,1.0,False
+U_Wheat,C,0.0,False
+U_Rice,C,1.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_10_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**      298
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_100_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**     2728
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_1000_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**    27028
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_15_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**      433
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_200_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**     5428
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_25_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**      703
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_50_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**     1378
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_500_full/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**    13528
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Patch1_Beef,C,0.0,False
+Y_Patch1_Chicken,C,0.0,False
+Y_Patch1_Egg,C,0.0,False
+Y_Patch1_Lamb,C,0.0,False
+...
+U_Eggplant,C,0.0,False
+U_Long_bean,C,0.0,False
+U_Pumpkin,C,0.0,False
+U_Spinach,C,1.0,False
+U_Tomatoes,C,0.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_100/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**      100
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Plot1_Wheat,C,0.0,False
+Y_Plot1_Rice,C,0.0,False
+Y_Plot1_Corn,C,1.0,False
+Y_Plot1_Soybeans,C,0.0,False
+...
+U_Carrots,C,0.0,False
+U_Tomatoes,C,1.0,False
+U_Apples,C,0.0,False
+U_Oranges,C,1.0,False
+U_Eggs,C,1.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_60/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**       57
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Plot1_Wheat,C,0.0,False
+Y_Plot1_Rice,C,0.0,False
+Y_Plot1_Corn,C,0.0,False
+Y_Plot1_Soybeans,C,0.0,False
+...
+U_Soybeans,C,1.0,False
+U_Lentils,C,0.0,False
+U_Potatoes,C,1.0,False
+U_Carrots,C,0.0,False
+U_Apples,C,1.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/tiny_24/root_solution.csv`
+
+**File Type:** CSV
+
+**Columns:** `var_name,var_type,value,fractional_flag
+`
+
+**Number of Rows:**       26
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+var_name,var_type,value,fractional_flag
+Y_Plot1_Wheat,C,0.0,False
+Y_Plot1_Rice,C,0.0,False
+Y_Plot1_Soybeans,C,0.0,False
+Y_Plot1_Lentils,C,1.0,False
+...
+U_Wheat,C,0.0,False
+U_Rice,C,1.0,False
+U_Soybeans,C,0.0,False
+U_Lentils,C,1.0,False
+U_Potatoes,C,1.0,False
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_statistical_results/summary_20251212_124349.csv`
+
+**File Type:** CSV
+
+**Columns:** `n_farms,n_vars,gurobi_time,gurobi_obj,quantum_time,quantum_obj,qpu_time,speedup,gap_percent,gurobi_crops,quantum_crops`
+
+**Number of Rows:**        4
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+n_farms,n_vars,gurobi_time,gurobi_obj,quantum_time,quantum_obj,qpu_time,speedup,gap_percent,gurobi_crops,quantum_crops
+25,450,300.29483902454376,12.322366321050083,34.30958390235901,28.928124879451328,0.59553,8.752506001796673,134.76111751388137,0,16.0
+50,900,300.6338174343109,23.581251663185185,69.60863947868347,55.13193688245534,1.1910665999999999,4.3189152910591675,133.79563421786798,0,16.0
+100,1800,300.93789649009705,46.085942684031465,136.00442445278168,106.03738260037518,2.3821144000000003,2.212706665249536,130.0861747092277,0,16.0
+...
+n_farms,n_vars,gurobi_time,gurobi_obj,quantum_time,quantum_obj,qpu_time,speedup,gap_percent,gurobi_crops,quantum_crops
+25,450,300.29483902454376,12.322366321050083,34.30958390235901,28.928124879451328,0.59553,8.752506001796673,134.76111751388137,0,16.0
+50,900,300.6338174343109,23.581251663185185,69.60863947868347,55.13193688245534,1.1910665999999999,4.3189152910591675,133.79563421786798,0,16.0
+100,1800,300.93789649009705,46.085942684031465,136.00442445278168,106.03738260037518,2.3821144000000003,2.212706665249536,130.0861747092277,0,16.0
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765553199.csv`
+
+**File Type:** CSV
+
+**Columns:** `formulation,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,quantum_obj,quantum_time,qpu_time,gap,speedup`
+
+**Number of Rows:**       12
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+formulation,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,quantum_obj,quantum_time,qpu_time,gap,speedup
+6_families,5,6,90,4.018687856221867,0.33085107803344727,7.7829803695680075,optimal,4.6325,2.38,0.38,15.27394427581155,0.13901305799724675
+6_families,10,6,180,6.264377997777103,0.5916857719421387,6.905646017567343,optimal,5.015000000000001,2.56,0.56,19.94416681465328,0.23112725466489792
+6_families,15,6,270,8.235089830070137,0.8316752910614014,9.151577024482771,optimal,5.3975,2.74,0.74,34.45730269642936,0.30353112812459904
+6_families,20,6,360,10.427638464968481,1.2071201801300049,8.921859705926163,optimal,5.779999999999999,2.92,0.9199999999999999,44.57038360681725,0.4133973219623304
+...
+27_hybrid,25,27,2025,12.315443637803213,306.1660590171814,18.673203888817728,timeout,12.85625,6.25,4.25,4.3912860803222635,48.98656944274902
+27_hybrid,30,27,2430,14.560257140404474,310.74714183807373,15.760810743819059,timeout,14.577499999999999,7.0600000000000005,5.0600000000000005,0.11842414202752169,44.01517589774415
+27_hybrid,40,27,3240,18.12316867592523,485.10863995552063,18.472596857163776,timeout,18.02,8.68,6.680000000000001,0.5692640054841945,55.88809216077427
+27_hybrid,50,27,4050,-450.0,513.9699347019196,2839.3306441956797,timeout,21.4625,10.299999999999999,8.299999999999999,0.0,49.899993660380545
+27_hybrid,60,27,4860,-540.0,375.8731949329376,2838.608626320923,timeout,24.905,11.92,9.92,0.0,31.532986152092082
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765556638.csv`
+
+**File Type:** CSV
+
+**Columns:** `test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,quantum_obj,quantum_time,qpu_time,gap,speedup`
+
+**Number of Rows:**       13
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,quantum_obj,quantum_time,qpu_time,gap,speedup
+test_360,Native 6-Family,native_6,20,6,360,10.427638464968481,0.9554810523986816,8.921859705926163,optimal,5.779999999999999,2.92,0.9199999999999999,44.57038360681725,0.3272195384926992
+test_360,27→6 Aggregated,aggregated,20,6,360,9.96639742534444,0.359144926071167,9.450547369712472,optimal,5.779999999999999,2.92,0.9199999999999999,42.005122279174586,0.12299483769560514
+test_360,27-Food Hybrid,hybrid_27,20,27,1620,10.065370839741206,302.89790773391724,24.51766071960889,timeout,11.135,5.44,3.4400000000000004,10.626823167166043,55.679762451087726
+test_900,Native 6-Family,native_6,50,6,900,23.477296420168727,0.748870849609375,6.127851422333427,optimal,8.075,4.0,2.0,65.60506859272357,0.18721771240234375
+...
+test_1600,27→6 Aggregated,aggregated,90,6,1620,40.906715414015366,1.9956631660461426,4.849756287112788,optimal,11.135,5.44,3.4400000000000004,72.77953048221283,0.36684984669965853
+test_1600,27-Food Hybrid,hybrid_27,90,27,7290,41.041486087619546,68.4824869632721,9.993085521737502,optimal,35.2325,16.78,14.78,14.153937007100398,4.081197077668182
+test_4000,Native 6-Family,native_6,225,6,4050,23.477296420168727,0.7044260501861572,6.127851422333427,optimal,21.4625,10.299999999999999,8.299999999999999,8.581892838554742,0.06839087865885023
+test_4000,27→6 Aggregated,aggregated,225,6,4050,101.65658631589395,5.221273899078369,2.612002579365491,optimal,21.4625,10.299999999999999,8.299999999999999,78.88725091229593,0.5069197960270262
+test_4000,27-Food Hybrid,hybrid_27,225,27,18225,101.20431447415149,122.7546238899231,8.852302461994284,optimal,81.70625,38.650000000000006,36.650000000000006,19.266040756722358,3.17605753919594
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765569552.csv`
+
+**File Type:** CSV
+
+**Columns:** `test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,quantum_obj,quantum_time,qpu_time,gap,speedup`
+
+**Number of Rows:**       13
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,quantum_obj,quantum_time,qpu_time,gap,speedup
+test_360,Native 6-Family,native_6,20,6,360,10.427638464968481,0.549027681350708,8.921859705926163,optimal,5.779999999999999,2.92,0.9199999999999999,44.57038360681725,0.18802317854476303
+test_360,27→6 Aggregated,aggregated,20,6,360,9.96639742534444,0.34987473487854004,9.450547369712472,optimal,5.779999999999999,2.92,0.9199999999999999,42.005122279174586,0.11982011468443152
+test_360,27-Food Hybrid,hybrid_27,4,27,324,2.871408479555434,395.0314829349518,1344.8528602926344,timeout,5.627,2.848,0.8480000000000001,95.96654534053616,138.70487462603646
+test_900,Native 6-Family,native_6,50,6,900,23.477296420168727,1.0215990543365479,6.127851422333427,optimal,8.075,4.0,2.0,65.60506859272357,0.25539976358413696
+...
+test_1620,27→6 Aggregated,aggregated,90,6,1620,40.906715414015366,3.3349127769470215,4.849756287112788,optimal,11.135,5.44,3.4400000000000004,72.77953048221283,0.6130354369387907
+test_1620,27-Food Hybrid,hybrid_27,20,27,1620,10.066380349264506,303.46034002304077,22.458032434594298,timeout,11.135,5.44,3.4400000000000004,10.6157289279614,55.783150739529546
+test_4050,Native 6-Family,native_6,225,6,4050,23.477296420168727,7.916990041732788,6.127851422333427,optimal,21.4625,10.299999999999999,8.299999999999999,8.581892838554742,0.7686398098769698
+test_4050,27→6 Aggregated,aggregated,225,6,4050,101.65658631589395,6.150961875915527,2.612002579365491,optimal,21.4625,10.299999999999999,8.299999999999999,78.88725091229593,0.597180764651993
+test_4050,27-Food Hybrid,hybrid_27,50,27,4050,23.547043295982803,449.97037982940674,11.930803839609034,timeout,21.4625,10.299999999999999,8.299999999999999,8.85267534348329,43.686444643631724
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765638130.csv`
+
+**File Type:** CSV
+
+**Columns:** `test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup`
+
+**Number of Rows:**       13
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+test_point,formulation,variant,n_farms,n_foods,n_vars,gurobi_obj,gurobi_time,gurobi_gap,gurobi_status,gurobi_violations,gurobi_n_assigned,quantum_obj,quantum_time,qpu_time,quantum_violations,quantum_n_assigned,gap,speedup
+test_360,Native 6-Family,native_6,20,6,360,10.427638464968481,0.6717159748077393,8.921859705926163,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,44.57038360681725,0.23003971739991072
+test_360,27→6 Aggregated,aggregated,20,6,360,9.96639742534444,0.3866150379180908,9.450547369712472,optimal,0,60,5.779999999999999,2.92,0.9199999999999999,0,82,42.005122279174586,0.1324024102459215
+test_360,27-Food Hybrid,hybrid_27,4,27,324,2.871408480017429,300.4171392917633,1344.6453073476196,timeout,0,12,5.627,2.848,0.8480000000000001,0,14,95.96654530900615,105.483546099636
+test_900,Native 6-Family,native_6,50,6,900,23.477296420168727,0.7175350189208984,6.127851422333427,optimal,0,150,8.075,4.0,2.0,0,196,65.60506859272357,0.1793837547302246
+...
+test_1620,27→6 Aggregated,aggregated,90,6,1620,40.906715414015366,2.001660108566284,4.849756287112788,optimal,0,270,11.135,5.44,3.4400000000000004,0,350,72.77953048221283,0.36795222583939047
+test_1620,27-Food Hybrid,hybrid_27,20,27,1620,10.066380349264506,302.5177757740021,22.458032434594298,timeout,0,60,11.135,5.44,3.4400000000000004,0,79,10.6157289279614,55.6098852525739
+test_4050,Native 6-Family,native_6,225,6,4050,23.477296420168727,0.7406799793243408,6.127851422333427,optimal,0,150,21.4625,10.299999999999999,8.299999999999999,0,195,8.581892838554742,0.07191067760430495
+test_4050,27→6 Aggregated,aggregated,225,6,4050,101.65658631589395,5.240318059921265,2.612002579365491,optimal,0,675,21.4625,10.299999999999999,8.299999999999999,0,857,78.88725091229593,0.5087687436816762
+test_4050,27-Food Hybrid,hybrid_27,50,27,4050,23.565252190794467,306.063773393631,11.831884248596335,timeout,0,150,21.4625,10.299999999999999,8.299999999999999,0,191,8.923104975790958,29.71492945569233
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/variable_scaling_data.csv`
+
+**File Type:** CSV
+
+**Columns:** `n_vars,n_farms,method,test,formulation,gurobi_obj,quantum_obj,gap,speedup,qpu_time,n_vars_original`
+
+**Number of Rows:**       12
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+n_vars,n_farms,method,test,formulation,gurobi_obj,quantum_obj,gap,speedup,qpu_time,n_vars_original
+90,5,Clique Decomp,Statistical,6 families (native),4.078209151759545,3.5993308622544093,11.742367095089351,14.561366057775192,0.5363886000000001,
+90,5,Spatial Temporal,Statistical,6 families (native),4.078209151759545,3.326916770097559,18.42211504375249,10.093243774697823,0.7654885200000001,
+180,10,Clique Decomp,Statistical,6 families (native),7.174692355363064,6.084280121941886,15.198034694910618,8.417162897186593,1.0727724,
+180,10,Spatial Temporal,Statistical,6 families (native),7.174692355363064,5.906518518959828,17.675654558976024,6.794139739215675,1.279787800000001,
+...
+360,20,Clique Decomp,Statistical,6 families (native),14.887555626323916,12.537017096700446,15.78861291014953,5.24415781735208,2.1455700000000006,
+360,20,Spatial Temporal,Statistical,6 families (native),14.887555626323916,11.949682678138695,19.733749595471036,4.832777639666578,2.18692608,
+450,25,Hierarchical Quantum,Hierarchical,27 foods → 6 families,12.322366321050083,28.928124879451328,134.76111751388137,8.752506001796673,0.59553,2025.0
+900,50,Hierarchical Quantum,Hierarchical,27 foods → 6 families,23.581251663185185,55.13193688245534,133.79563421786798,4.3189152910591675,1.1910665999999999,4050.0
+1800,100,Hierarchical Quantum,Hierarchical,27 foods → 6 families,46.085942684031465,106.03738260037518,130.0861747092277,2.212706665249536,2.3821144000000003,8100.0
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios_results/benchmark_results_20251214_205508.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "scenario": "rotation_micro_25",
+    "description": "5 farms - Small scale",
+    "n_farms": 5,
+    "n_foods": 6,
+    "n_periods": 3,
+    "n_vars": 90,
+    "qpu_method": "clique_decomp",
+    "gurobi_status": "timeout",
+    "gurobi_objective": 6.166826839679835,
+    "gurobi_runtime": 100.0995421409607,
+    "gurobi_mip_gap": 201.7082586465474,
+    "gurobi_hit_timeout": true,
+    "gurobi_hit_improve_limit": false,
+    "gurobi_rotation_violations": 0,
+    "gurobi_diversity_violations": 0,
+    "gurobi_area_violations": 0,
+    "gurobi_total_violations": 0,
+    "qpu_status": "success",
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/statistical_comparison_results/statistical_comparison_20251214_192625.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "20251214_192625",
+  "config": {
+    "farm_sizes": [
+      5,
+      10,
+      15,
+      20
+    ],
+    "n_crops": 6,
+    "n_periods": 3,
+    "num_reads": 100,
+    "num_iterations": 3,
+    "runs_per_method": 2,
+    "classical_timeout": 300,
+    "methods": [
+      "ground_truth",
+      "clique_decomp",
+      "spatial_temporal"
+    ],
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_timeout_verification/gurobi_timeout_test_20251214_184357.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+[
+  {
+    "scenario": "rotation_micro_25",
+    "n_vars": 90,
+    "status": "timeout",
+    "objective": 6.166826839679835,
+    "runtime": 300.12698316574097,
+    "mip_gap": 200.7664240960316,
+    "hit_timeout": true,
+    "hit_improve_limit": false,
+    "stopped_reason": "timeout_300s"
+  },
+  {
+    "scenario": "rotation_small_50",
+    "n_vars": 180,
+    "status": "timeout",
+    "objective": 8.685958678757245,
+    "runtime": 300.154244184494,
+    "mip_gap": 2051.8516789332994,
+    "hit_timeout": true,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios/scenario_definitions.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "cliff_easy_4farms": {
+    "description": "Simple binary (4 farms) - should be FAST",
+    "n_farms": 4,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "FAST",
+    "hardness_reason": "Below cliff threshold, simple formulation"
+  },
+  "cliff_transition_10farms": {
+    "description": "Rotation with 10 farms - RIGHT at the cliff",
+    "n_farms": 10,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "VARIABLE (can be fast or timeout)",
+    "hardness_reason": "Critical threshold - formulation determines outcome"
+  },
+  "cliff_hard_15farms": {
+    "description": "Rotation with 15 farms - past the cliff",
+    "n_farms": 15,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_scenarios/complete_scenarios_inventory.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "scenarios": {
+    "micro_6": {
+      "description": "Micro scenario - 6 variables total",
+      "n_vars": 6,
+      "estimated_farms": 1,
+      "n_foods": 2,
+      "n_periods": 3,
+      "category": "synthetic_small",
+      "gurobi_expected": "FAST (< 1s)",
+      "qpu_expected": "Direct QPU embedding possible",
+      "hardness": "trivial"
+    },
+    "micro_12": {
+      "description": "Micro scenario - 12 variables",
+      "n_vars": 12,
+      "estimated_farms": 2,
+      "n_foods": 2,
+      "n_periods": 3,
+      "category": "synthetic_small",
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765705304.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "test_point":"test_360",
+    "formulation":"Native 6-Family",
+    "variant":"native_6",
+    "n_farms":20,
+    "n_foods":6,
+    "n_vars":360,
+    "gurobi_obj":10.8068080143,
+    "gurobi_time":300.174775362,
+    "gurobi_gap":7206.5224132236,
+    "gurobi_status":"timeout",
+    "gurobi_violations":0,
+    "gurobi_n_assigned":60,
+    "quantum_obj":5.78,
+    "quantum_time":2.92,
+    "qpu_time":0.92,
+    "quantum_violations":0,
+    "quantum_n_assigned":82,
+    "gap":46.5151967876,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765656594.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "test_point":"test_360",
+    "formulation":"Native 6-Family",
+    "variant":"native_6",
+    "n_farms":20,
+    "n_foods":6,
+    "n_vars":360,
+    "gurobi_obj":10.5555540431,
+    "gurobi_time":0.3251442909,
+    "gurobi_gap":7.3208098194,
+    "gurobi_status":"optimal",
+    "gurobi_violations":0,
+    "gurobi_n_assigned":60,
+    "quantum_obj":5.78,
+    "quantum_time":2.92,
+    "qpu_time":0.92,
+    "quantum_violations":0,
+    "quantum_n_assigned":82,
+    "gap":45.2420974174,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765655255.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "test_point":"test_360",
+    "formulation":"Native 6-Family",
+    "variant":"native_6",
+    "n_farms":20,
+    "n_foods":6,
+    "n_vars":360,
+    "gurobi_obj":10.5288083475,
+    "gurobi_time":0.3549230099,
+    "gurobi_gap":7.593983729,
+    "gurobi_status":"optimal",
+    "gurobi_violations":0,
+    "gurobi_n_assigned":60,
+    "quantum_obj":5.78,
+    "quantum_time":2.92,
+    "qpu_time":0.92,
+    "quantum_violations":0,
+    "quantum_n_assigned":82,
+    "gap":45.102999226,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_rotation_test_results/qpu_test_1765728858.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+[
+  {
+    "scenario": "rotation_micro_25",
+    "method": "clique_decomp_qpu",
+    "n_farms": 5,
+    "n_foods": 6,
+    "n_vars": 90,
+    "n_subproblems": 5,
+    "success": true,
+    "objective": 16.50000000000001,
+    "total_time": 11.435466051101685,
+    "qpu_time": 0.1390014,
+    "qpu_wall_time": 11.413460731506348,
+    "bqm_time": 0.015003442764282227,
+    "decomp_time": 0.002001047134399414
+  },
+  {
+    "scenario": "rotation_small_50",
+    "method": "clique_decomp_qpu",
+    "n_farms": 10,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_rotation_test_results/qpu_test_1765728838.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+[
+  {
+    "scenario": "rotation_micro_25",
+    "method": "clique_decomp_qpu",
+    "n_farms": 5,
+    "n_foods": 6,
+    "n_vars": 90,
+    "n_subproblems": 5,
+    "success": true,
+    "objective": 16.50000000000001,
+    "total_time": 11.435466051101685,
+    "qpu_time": 0.1390014,
+    "qpu_wall_time": 11.413460731506348,
+    "bqm_time": 0.015003442764282227,
+    "decomp_time": 0.002001047134399414
+  }
+]...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_rotation_test_results/qpu_rotation_test_final.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-14 17:14:18",
+  "total_tests": 2,
+  "successful": 2,
+  "failed": 0,
+  "total_qpu_time": 0.41821780000000003,
+  "results": [
+    {
+      "scenario": "rotation_micro_25",
+      "method": "clique_decomp_qpu",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_subproblems": 5,
+      "success": true,
+      "objective": 16.50000000000001,
+      "total_time": 11.435466051101685,
+      "qpu_time": 0.1390014,
+      "qpu_wall_time": 11.413460731506348,
+      "bqm_time": 0.015003442764282227,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_results/hardness_analysis_results.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+[
+  {
+    "n_farms": 3,
+    "farm_names": [
+      "Farm36",
+      "Farm30",
+      "Farm9"
+    ],
+    "food_names": [
+      "Fruits",
+      "Grains",
+      "Legumes",
+      "Leafy_Vegetables",
+      "Root_Vegetables",
+      "Proteins"
+    ],
+    "food_benefits": {
+      "Fruits": 0.48999999999999994,
+      "Grains": 0.52,
+      "Legumes": 0.6475,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/alternative_formulations_results/formulation_benchmark_20251211_141139.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "20251211_141139",
+  "config": {
+    "formulations": [
+      "portfolio",
+      "graph_mwis",
+      "single_period",
+      "penalty"
+    ],
+    "n_farms": 5,
+    "n_crops": 6,
+    "num_reads": 100,
+    "runs": 1
+  },
+  "results": {
+    "portfolio": {
+      "data": {
+        "formulation": "portfolio",
+        "crop_names": [
+          "Wheat",
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/benchmark_results_20251129_215252.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "20251129_215252",
+  "config": {
+    "problem_sizes": [
+      25
+    ],
+    "n_foods": 27,
+    "embedding_timeout": 30,
+    "solve_timeout": 30,
+    "formulations": [
+      "CQM",
+      "BQM"
+    ],
+    "decompositions": [
+      "None",
+      "Louvain",
+      "PlotBased"
+    ]
+  },
+  "results": [
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/comprehensive_benchmark_20251127_163335.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "20251127_163335",
+  "problem_sizes": [
+    25
+  ],
+  "results": [
+    {
+      "scenario": "Farm",
+      "formulation": "CQM",
+      "n_units": 25,
+      "metadata": {
+        "type": "Farm_CQM",
+        "n_farms": 25,
+        "n_foods": 27,
+        "variables": 1350,
+        "constraints": 1377,
+        "continuous_vars": 675,
+        "binary_vars": 675
+      },
+      "decomposition": null,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/comprehensive_formulation_benchmark_20251130_105241.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "ground_truth_continuous": 0.3150546267389638,
+  "ground_truth_binary": 0.3150546267389638,
+  "results": {
+    "cqm": [
+      {
+        "success": true,
+        "partition_method": "None",
+        "n_partitions": 1,
+        "objective": 0.3150546267389638,
+        "solve_time": 0.01700448989868164,
+        "embed_time": 88.59727549552917,
+        "total_time": 91.26076555252075,
+        "n_embeddable": 0,
+        "total_partitions": 1,
+        "physical_qubits": null,
+        "violations": 0,
+        "gap": 0.0,
+        "method": "None"
+      },
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/cqm_partition_benchmark_20251129_233618.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "problem": {
+    "n_farms": 25,
+    "n_foods": 27,
+    "n_vars": 702,
+    "n_constraints": 710,
+    "cqm_build_time": 0.046365976333618164
+  },
+  "ground_truth": {
+    "objective": 0.3150546267389638,
+    "solve_time": 0.007116794586181641,
+    "status": "OPTIMAL"
+  },
+  "methods": {
+    "None": {
+      "n_partitions": 1,
+      "partition_sizes": [
+        702
+      ],
+      "partition_time": 0.00011539459228515625,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/hybrid_decomp_benchmark_20251129_234218.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "problem": {
+    "n_farms": 25,
+    "n_foods": 27,
+    "total_area": 100.0
+  },
+  "ground_truth": {
+    "objective": 0.3150546267389638,
+    "solve_time": 0.023741960525512695
+  },
+  "benders": {
+    "None": {
+      "objective": 0.2873063972458642,
+      "gap_percent": 8.807434374258584,
+      "n_iterations": 2,
+      "n_partitions": 1,
+      "total_time": 0.04197859764099121,
+      "success": true
+    },
+    "PlotBased": {
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/scaling_benchmark_20251130_110315.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "25": {
+    "n_farms": 25,
+    "n_vars": 702,
+    "gt_continuous": 0.3150546267389638,
+    "gt_binary": 0.3150546267389638,
+    "gt_time": 0.08176350593566895,
+    "cqm": {
+      "None": {
+        "objective": 0.3150546267389638,
+        "gap": 0.0,
+        "solve_time": 0.017081022262573242,
+        "violations": 0
+      },
+      "PlotBased": {
+        "objective": 0.31505462673896395,
+        "gap": -5.285859643373959e-14,
+        "solve_time": 0.028000593185424805,
+        "violations": 0
+      },
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/scaling_benchmark_comprehensive_20251130_191433.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "25": {
+    "n_farms": 25,
+    "n_vars": 702,
+    "gt_continuous": 0.3150546267389638,
+    "gt_binary": 0.3150546267389638,
+    "gt_time": 0.0787198543548584,
+    "cqm": {
+      "None": {
+        "objective": 0.3150546267389638,
+        "gap": 0.0,
+        "solve_time": 0.01721644401550293,
+        "embed_time": 37.189870834350586,
+        "n_embeddable": 0,
+        "all_embeddable": false,
+        "physical_qubits": null,
+        "logical_qubits": 675,
+        "max_chain": null,
+        "n_partitions": 1,
+        "violations": 0
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/scaling_benchmark_with_embedding_20251130_112226.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "25": {
+    "n_farms": 25,
+    "n_vars": 702,
+    "gt_continuous": 0.3150546267389638,
+    "gt_binary": 0.3150546267389638,
+    "gt_time": 0.06893324851989746,
+    "cqm": {
+      "None": {
+        "objective": 0.3150546267389637,
+        "gap": 3.5239064289159724e-14,
+        "solve_time": 0.016881465911865234,
+        "embed_time": 35.6812641620636,
+        "n_embeddable": 0,
+        "all_embeddable": false,
+        "physical_qubits": null,
+        "logical_qubits": 675,
+        "max_chain": null,
+        "n_partitions": 1,
+        "violations": 0
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/Benchmarks/DECOMPOSITION_COMPARISON/comparison_config_5_20251122_120457.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "n_units": 5,
+    "n_foods": 27,
+    "total_area": 99.99999999999999,
+    "timestamp": "2025-11-22T12:04:57.153843",
+    "max_iterations": 5,
+    "time_limit": 30.0
+  },
+  "strategies": {
+    "benders": {
+      "name": "benders",
+      "modes": {
+        "classical": {
+          "status": "ok (optimal)",
+          "objective": 100.0,
+          "time": 0.022573471069335938,
+          "iterations": 1,
+          "feasible": true,
+          "success": true
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/cqm_partition_scaling_20251129_224802.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+[
+  {
+    "n_plots": 10,
+    "n_foods": 27,
+    "n_vars": 297,
+    "methods": {
+      "None": {
+        "n_partitions": 1,
+        "partition_time": 7.700920104980469e-05,
+        "solve_time": 0.004924774169921875,
+        "total_time": 0.00500178337097168,
+        "objective": 0.42995089161590677,
+        "gap_percent": -1.2911044566654436e-14,
+        "n_violations": 0
+      },
+      "PlotBased": {
+        "n_partitions": 11,
+        "partition_time": 0.0002079010009765625,
+        "solve_time": 0.005915164947509766,
+        "total_time": 0.006123065948486328,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/embedding_scaling_study_20251126_183012.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "timestamp": "2025-11-26T18:30:12.471970",
+    "solver": "Advantage_system4.1",
+    "n_foods": 27,
+    "embedding_attempts": 3,
+    "embedding_timeout": 300
+  },
+  "results": {
+    "5": {
+      "bqm_info": {
+        "n_farms": 5,
+        "n_foods": 27,
+        "n_logical_vars": 153,
+        "n_linear": 153,
+        "n_quadratic": 3825,
+        "density": 0.32894736842105265
+      },
+      "success_rate": 100.0,
+      "embedding_attempts": [
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/all_scales_consolidated.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "description": "ILP Hardness Diagnostics for Crop Allocation Problem at various scales",
+  "n_foods": 27,
+  "scales": [
+    10,
+    15,
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "scenarios": [
+    {
+      "scale": 10,
+      "n_plots": 10,
+      "n_foods": 27,
+      "input_file": "@todo/hardness_output/models/plots_10_full.lp",
+      "timestamp": "2025-12-05T12:35:28.739763",
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/bqm_structure_analysis.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "description": "BQM structure after CQM conversion",
+  "results": [
+    {
+      "n_plots": 10,
+      "n_foods": 27,
+      "ilp_vars": 297,
+      "ilp_constrs": 312,
+      "ilp_density": 0.01282051282051282,
+      "bqm_vars": 698,
+      "bqm_linear": 698,
+      "bqm_quadratic": 7324,
+      "bqm_density": 0.030108570089577517,
+      "density_ratio": 2.3484684669870464,
+      "max_degree": 42,
+      "avg_degree": 20.98567335243553
+    },
+    {
+      "n_plots": 15,
+      "n_foods": 27,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/comprehensive_hardness_report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "description": "Comprehensive ILP vs BQM Hardness Analysis for Crop Allocation Problem",
+  "problem": "Binary Crop-Plot Assignment with Food Group Diversity Constraints",
+  "n_foods": 27,
+  "scales_analyzed": [
+    10,
+    15,
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "summary": {
+    "classical_hardness": "EASY for all scales (0% integrality gap, solved at LP root)",
+    "quantum_hardness": "FEASIBLE only for n_plots <= 15, IMPOSSIBLE for n_plots >= 500",
+    "key_finding": "Problem is trivial for classical solvers but intractable for QPU due to high BQM degree",
+    "recommendation": "Not a good candidate for quantum advantage - need harder classical problems with sparser BQM structure"
+  },
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/consolidated_report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "scenarios": [
+    {
+      "input_file": "@todo/hardness_output/models/micro_6.lp",
+      "timestamp": "2025-12-05T12:31:51.311201",
+      "config": {
+        "fractionality_tolerance": 1e-08,
+        "big_M_multiplier": 1000.0,
+        "big_M_absolute_threshold": 1000000.0,
+        "hash_tolerance": 1e-06,
+        "mip_time_limit": 60,
+        "top_k_fractional": 20,
+        "min_symmetric_group_size": 2
+      },
+      "model_name": "",
+      "num_vars": 6,
+      "num_constrs": 9,
+      "num_bin_vars": 6,
+      "num_int_vars": 6,
+      "lp_obj": 0.4155,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/gurobi_ground_truth_benchmark.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-08T10:37:51.299781",
+  "gurobi_version": "(12, 0, 3)",
+  "spin_glass": {
+    "results": [
+      {
+        "instance_type": "spin_glass",
+        "n_spins": 20,
+        "n_edges": 31,
+        "edge_density": 0.15,
+        "frustration_ratio": 0.5,
+        "status": 2,
+        "status_string": "OPTIMAL",
+        "mip_obj": -18.035785207948397,
+        "lp_obj": -18.035785207948397,
+        "integrality_gap": 0.0,
+        "solve_time": 0.05668997764587402,
+        "node_count": 1.0,
+        "solution_count": 3,
+        "frac_count": 0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/medium_160/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/medium_160/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/medium_160.lp",
+  "timestamp": "2025-12-05T12:31:52.182347",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 60,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 154,
+  "num_constrs": 169,
+  "num_bin_vars": 154,
+  "num_int_vars": 154,
+  "lp_obj": 0.52174465,
+  "int_obj": 0.52174465,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/micro_6/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/micro_6/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/micro_6.lp",
+  "timestamp": "2025-12-05T12:31:51.311201",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 60,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 6,
+  "num_constrs": 9,
+  "num_bin_vars": 6,
+  "num_int_vars": 6,
+  "lp_obj": 0.4155,
+  "int_obj": 0.4155,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_10_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_10_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_10_full.lp",
+  "timestamp": "2025-12-05T12:35:28.739763",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 120,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 297,
+  "num_constrs": 312,
+  "num_bin_vars": 297,
+  "num_int_vars": 297,
+  "lp_obj": 0.3594816101011599,
+  "int_obj": 0.3594816101011599,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_100_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_100_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_100_full.lp",
+  "timestamp": "2025-12-05T12:35:30.043098",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 120,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 2727,
+  "num_constrs": 2832,
+  "num_bin_vars": 2727,
+  "num_int_vars": 2727,
+  "lp_obj": 0.42290396346443143,
+  "int_obj": 0.42290396346443143,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_1000_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_1000_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_1000_full.lp",
+  "timestamp": "2025-12-05T12:35:44.599077",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 300,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 27027,
+  "num_constrs": 28032,
+  "num_bin_vars": 27027,
+  "num_int_vars": 27027,
+  "lp_obj": 0.42924619880075726,
+  "int_obj": 0.42924619880075726,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_15_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_15_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_15_full.lp",
+  "timestamp": "2025-12-05T12:35:29.062375",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 120,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 432,
+  "num_constrs": 452,
+  "num_bin_vars": 432,
+  "num_int_vars": 432,
+  "lp_obj": 0.3829713706060755,
+  "int_obj": 0.3829713706060754,
+  "integrality_gap": 1.1102230246251565e-16,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_200_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_200_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_200_full.lp",
+  "timestamp": "2025-12-05T12:35:41.891713",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 300,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 5427,
+  "num_constrs": 5632,
+  "num_bin_vars": 5427,
+  "num_int_vars": 5427,
+  "lp_obj": 0.4264274275401678,
+  "int_obj": 0.42642742754016777,
+  "integrality_gap": 5.551115123125783e-17,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_25_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_25_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_25_full.lp",
+  "timestamp": "2025-12-05T12:35:29.373125",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 120,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 702,
+  "num_constrs": 732,
+  "num_bin_vars": 702,
+  "num_int_vars": 702,
+  "lp_obj": 0.40176317901000835,
+  "int_obj": 0.40176317901000835,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_50_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_50_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_50_full.lp",
+  "timestamp": "2025-12-05T12:35:29.702443",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 120,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 1377,
+  "num_constrs": 1432,
+  "num_bin_vars": 1377,
+  "num_int_vars": 1377,
+  "lp_obj": 0.41585703531295776,
+  "int_obj": 0.4158570353129577,
+  "integrality_gap": 5.551115123125783e-17,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_500_full/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_500_full/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/plots_500_full.lp",
+  "timestamp": "2025-12-05T12:35:42.825429",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 300,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 13527,
+  "num_constrs": 14032,
+  "num_bin_vars": 13527,
+  "num_int_vars": 13527,
+  "lp_obj": 0.42854150598560997,
+  "int_obj": 0.42854150598560997,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "test_config10.lp",
+  "timestamp": "2025-12-05T12:31:09.136866",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 120,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "Objective",
+  "num_vars": 270,
+  "num_constrs": 47,
+  "num_bin_vars": 270,
+  "num_int_vars": 270,
+  "lp_obj": null,
+  "int_obj": null,
+  "integrality_gap": null,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/rotation_gurobi_benchmark.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-09T12:27:18.861446",
+  "gurobi_version": "(12, 0, 3)",
+  "scenarios": [
+    {
+      "scenario": "rotation_micro_25",
+      "n_farms": 5,
+      "n_families": 6,
+      "n_periods": 3,
+      "n_vars": 90,
+      "n_constraints": 15,
+      "n_neighbor_edges": 10,
+      "rotation_gamma": 0.2,
+      "frustration_ratio": 0.7,
+      "negative_strength": -0.8,
+      "status": 9,
+      "status_string": "TIME_LIMIT",
+      "mip_obj": 4.078209151759545,
+      "solve_time": 300.059308052063,
+      "node_count": 1120918.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_100/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_100/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/small_100.lp",
+  "timestamp": "2025-12-05T12:31:51.864323",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 60,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 99,
+  "num_constrs": 112,
+  "num_bin_vars": 99,
+  "num_int_vars": 99,
+  "lp_obj": 0.5341591676040494,
+  "int_obj": 0.5341591676040494,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_60/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_60/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/small_60.lp",
+  "timestamp": "2025-12-05T12:31:43.642020",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 60,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 56,
+  "num_constrs": 66,
+  "num_bin_vars": 56,
+  "num_int_vars": 56,
+  "lp_obj": 0.49864375,
+  "int_obj": 0.49864375,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/sparse_qubo_comparison.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "description": "Comparison of OLD (CQM\u2192BQM) vs NEW (Sparse QUBO) formulations",
+  "k_neighbors": 4,
+  "results": [
+    {
+      "n_plots": 10,
+      "old": {
+        "vars": 698,
+        "quad": 7324,
+        "max_deg": 42
+      },
+      "new": {
+        "vars": 270,
+        "quad": 21060,
+        "max_deg": 234
+      },
+      "deg_improvement": 0.1794871794871795,
+      "quad_improvement": 0.34776828110161445
+    },
+    {
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/tiny_24/coeff_stats.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "statistics": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "median": 1.0,
+    "std": 0.0,
+    "90pct": 1.0,
+    "99pct": 1.0
+  },
+  "big_M_candidates": [],
+  "big_M_threshold": 1000000.0
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/tiny_24/report.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "input_file": "@todo/hardness_output/models/tiny_24.lp",
+  "timestamp": "2025-12-05T12:31:51.605455",
+  "config": {
+    "fractionality_tolerance": 1e-08,
+    "big_M_multiplier": 1000.0,
+    "big_M_absolute_threshold": 1000000.0,
+    "hash_tolerance": 1e-06,
+    "mip_time_limit": 60,
+    "top_k_fractional": 20,
+    "min_symmetric_group_size": 2
+  },
+  "model_name": "",
+  "num_vars": 25,
+  "num_constrs": 32,
+  "num_bin_vars": 25,
+  "num_int_vars": 25,
+  "lp_obj": 0.49451349999999994,
+  "int_obj": 0.49451349999999994,
+  "integrality_gap": 0.0,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/ultra_sparse_qubo_analysis.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "description": "Ultra-sparse QUBO with farm-type abstraction",
+  "design_parameters": {
+    "n_types": 6,
+    "k_neighbors": 4,
+    "frustration_prob": 0.3,
+    "same_farm_penalty": 10.0
+  },
+  "structure_results": [
+    {
+      "n_farms": 50,
+      "n_types": 4,
+      "k_neighbors": 4,
+      "vars": 200,
+      "quad": 1680,
+      "max_deg": 21,
+      "avg_deg": 16.8
+    },
+    {
+      "n_farms": 50,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/hierarchical_10_farms.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "benchmark_type": "DECOMPOSITION",
+    "solver": "BENDERS_HIERARCHICAL",
+    "n_farms": 10,
+    "run_number": 1,
+    "timestamp": "2025-11-26T22:02:03.510608"
+  },
+  "result": {
+    "status": "failed",
+    "objective_value": 0.3918639442824119,
+    "solve_time": 5.54632568359375,
+    "solver_time": 5.54632568359375,
+    "success": false,
+    "sample_id": 0,
+    "n_units": 10,
+    "total_area": 99.99,
+    "n_foods": 27,
+    "n_variables": 540,
+    "n_constraints": 20,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/hierarchical_15_farms.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "benchmark_type": "DECOMPOSITION",
+    "solver": "BENDERS_HIERARCHICAL",
+    "n_farms": 15,
+    "run_number": 1,
+    "timestamp": "2025-11-26T22:02:14.592533"
+  },
+  "result": {
+    "status": "failed",
+    "objective_value": 0.33049925345894215,
+    "solve_time": 11.031278133392334,
+    "solver_time": 11.031278133392334,
+    "success": false,
+    "sample_id": 0,
+    "n_units": 15,
+    "total_area": 99.99,
+    "n_foods": 27,
+    "n_variables": 810,
+    "n_constraints": 25,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/hierarchical_20_farms.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "benchmark_type": "DECOMPOSITION",
+    "solver": "BENDERS_HIERARCHICAL",
+    "n_farms": 20,
+    "run_number": 1,
+    "timestamp": "2025-11-26T22:02:20.892167"
+  },
+  "result": {
+    "status": "failed",
+    "objective_value": 0.42984044525039605,
+    "solve_time": 6.244190692901611,
+    "solver_time": 6.244190692901611,
+    "success": false,
+    "sample_id": 0,
+    "n_units": 20,
+    "total_area": 99.99,
+    "n_foods": 27,
+    "n_variables": 1080,
+    "n_constraints": 30,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/hierarchical_25_farms.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "benchmark_type": "DECOMPOSITION",
+    "solver": "BENDERS_HIERARCHICAL",
+    "n_farms": 25,
+    "run_number": 1,
+    "timestamp": "2025-11-26T22:02:29.103865"
+  },
+  "result": {
+    "status": "failed",
+    "objective_value": 0.4298113893644994,
+    "solve_time": 8.158566236495972,
+    "solver_time": 8.158566236495972,
+    "success": false,
+    "sample_id": 0,
+    "n_units": 25,
+    "total_area": 99.99,
+    "n_foods": 27,
+    "n_variables": 1350,
+    "n_constraints": 35,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/hierarchical_30_farms.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "benchmark_type": "DECOMPOSITION",
+    "solver": "BENDERS_HIERARCHICAL",
+    "n_farms": 30,
+    "run_number": 1,
+    "timestamp": "2025-11-26T22:02:37.683319"
+  },
+  "result": {
+    "status": "failed",
+    "objective_value": 0.42978216271207026,
+    "solve_time": 8.522660255432129,
+    "solver_time": 8.522660255432129,
+    "success": false,
+    "sample_id": 0,
+    "n_units": 30,
+    "total_area": 100.0,
+    "n_foods": 27,
+    "n_variables": 1620,
+    "n_constraints": 40,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/hierarchical_5_farms.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "metadata": {
+    "benchmark_type": "DECOMPOSITION",
+    "solver": "BENDERS_HIERARCHICAL",
+    "n_farms": 5,
+    "run_number": 1,
+    "timestamp": "2025-11-26T22:01:57.911378"
+  },
+  "result": {
+    "status": "failed",
+    "objective_value": 0.3693693243491279,
+    "solve_time": 2.147850275039673,
+    "solver_time": 2.147850275039673,
+    "success": false,
+    "sample_id": 0,
+    "n_units": 5,
+    "total_area": 100.01,
+    "n_foods": 27,
+    "n_variables": 270,
+    "n_constraints": 15,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_benchmark_results/scaling_study_summary.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-11-26T22:02:37.689854",
+  "farm_sizes": [
+    5,
+    10,
+    15,
+    20,
+    25,
+    30
+  ],
+  "summary": [
+    {
+      "n_farms": 5,
+      "status": "success",
+      "objective": 0.3693693243491279,
+      "solve_time": 2.147850275039673,
+      "is_feasible": false,
+      "n_partitions": 2,
+      "partition_sizes": [
+        126,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_results/benchmark_100_farms_20251212_095209.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "method": "hierarchical",
+  "use_qpu": false,
+  "config": {
+    "farms_per_cluster": 10,
+    "max_cluster_vars": 360,
+    "decomposition_method": "spatial_grid",
+    "num_reads": 20,
+    "num_iterations": 2,
+    "annealing_time": 20,
+    "n_periods": 3,
+    "rotation_gamma": 0.25,
+    "diversity_bonus": 0.15,
+    "one_hot_penalty": 3.0,
+    "enable_post_processing": true,
+    "crops_per_family": 3
+  },
+  "timings": {
+    "level1_decomposition": 0.0003590583801269531,
+    "level2_quantum": 1133.462070941925,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_results/benchmark_50_farms_20251212_093315.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "method": "hierarchical",
+  "use_qpu": false,
+  "config": {
+    "farms_per_cluster": 10,
+    "max_cluster_vars": 360,
+    "decomposition_method": "spatial_grid",
+    "num_reads": 20,
+    "num_iterations": 2,
+    "annealing_time": 20,
+    "n_periods": 3,
+    "rotation_gamma": 0.25,
+    "diversity_bonus": 0.15,
+    "one_hot_penalty": 3.0,
+    "enable_post_processing": true,
+    "crops_per_family": 3
+  },
+  "timings": {
+    "level1_decomposition": 0.0005161762237548828,
+    "level2_quantum": 566.2709980010986,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_results/hierarchical_rotation_small_50_20251212_085953.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "method": "hierarchical",
+  "use_qpu": false,
+  "config": {
+    "farms_per_cluster": 3,
+    "max_cluster_vars": 360,
+    "decomposition_method": "spatial_grid",
+    "num_reads": 100,
+    "num_iterations": 3,
+    "annealing_time": 20,
+    "n_periods": 3,
+    "rotation_gamma": 0.25,
+    "diversity_bonus": 0.15,
+    "one_hot_penalty": 3.0,
+    "enable_post_processing": true,
+    "crops_per_family": 3
+  },
+  "timings": {
+    "level1_decomposition": 0.00011491775512695312,
+    "level2_quantum": 733.7521901130676,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_statistical_results/hierarchical_results_20251212_124349.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "25": {
+    "data_info": {
+      "n_farms": 25,
+      "n_foods": 27,
+      "n_variables": 2025,
+      "n_variables_aggregated": 450
+    },
+    "gurobi": [
+      {
+        "method": "gurobi_ground_truth",
+        "success": true,
+        "objective": 12.322366321050083,
+        "solve_time": 300.3317811489105,
+        "violations": 0,
+        "gap": 0.05037013071509105,
+        "solution": {
+          "('Farm1', 'Legumes', 3)": 1,
+          "('Farm1', 'Grains', 2)": 1,
+          "('Farm1', 'Other', 1)": 1,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hybrid_test_results/hybrid_test_1765547687.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```json
+{
+  "20": {
+    "gurobi": [
+      {
+        "method": "gurobi_hybrid",
+        "success": true,
+        "objective": 10.065370839741206,
+        "solve_time": 302.92573404312134,
+        "violations": 0,
+        "gap": 0.24449238950993268,
+        "solution": {
+          ...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hybrid_test_results/hybrid_test_1765549560.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "20": {
+    "gurobi": [
+      {
+        "method": "gurobi_hybrid",
+        "success": true,
+        "objective": 10.065370839741206,
+        "solve_time": 303.319100856781,
+        "violations": 0,
+        "gap": 0.24449238950993268,
+        "n_crops": 3
+      },
+      {
+        "method": "gurobi_hybrid",
+        "success": true,
+        "objective": 10.065370839741206,
+        "solve_time": 303.1223511695862,
+        "violations": 0,
+        "gap": 0.24449238950993268,
+        "n_crops": 3
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hybrid_test_results/hybrid_test_1765552825.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "20": {
+    "gurobi": [
+      {
+        "method": "gurobi_hybrid",
+        "success": true,
+        "objective": 10.065370839741206,
+        "solve_time": 303.3393380641937,
+        "violations": 0,
+        "gap": 0.24542018379654187,
+        "n_crops": 3
+      },
+      {
+        "method": "gurobi_hybrid",
+        "success": true,
+        "objective": 10.05824813154257,
+        "solve_time": 307.2625689506531,
+        "violations": 0,
+        "gap": 0.24582995161873106,
+        "n_crops": 4
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/qpu_benchmark_20251210_154111.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-10T15:41:10.744626",
+  "scales": [
+    4
+  ],
+  "scenarios": [],
+  "methods": [
+    "ground_truth"
+  ],
+  "reads_configs": "default",
+  "qpu_available": true,
+  "qbsolv_available": false,
+  "results": [
+    {
+      "n_farms": 4,
+      "scenario": null,
+      "metadata": {
+        "n_farms": 4,
+        "n_foods": 27,
+        "n_variables": 135,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase1_20251211_101235.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-11T10:09:49.345767",
+  "phase": 1,
+  "roadmap_version": "1.0",
+  "results": [
+    {
+      "test": "Simple Binary (tiny_24: 4 farms, 5 foods, NO rotation)",
+      "formulation": "simple",
+      "method": "gurobi",
+      "n_farms": 4,
+      "n_foods": 5,
+      "n_variables": 25,
+      "timings": {
+        "build": 0.024173974990844727,
+        "solve": 0.020542144775390625,
+        "total": 0.04472017288208008,
+        "solve_time": 0.020542144775390625,
+        "embedding_total": 0,
+        "qpu_access_total": 0
+      },
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase2_20251211_100739.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-11T09:50:59.638932",
+  "phase": 2,
+  "roadmap_version": "1.0",
+  "results": [
+    {
+      "phase": 2,
+      "scale": 5,
+      "method": "gurobi_rotation",
+      "n_variables": 90,
+      "timings": {
+        "build": 0.0898897647857666,
+        "solve": 300.0181019306183,
+        "total": 300.10847210884094,
+        "solve_time": 300.0181019306183,
+        "embedding_total": 0,
+        "qpu_access_total": 0
+      },
+      "solve_time": 300.0181019306183,
+      "total_time": 300.10847210884094,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase3_20251211_113219.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+{
+  "timestamp": "2025-12-11T11:03:35.508555",
+  "phase": 3,
+  "roadmap_version": "1.0",
+  "results": [
+    {
+      "phase": 3,
+      "scale": 10,
+      "method": "gurobi_rotation",
+      "n_variables": 180,
+      "timings": {
+        "build": 0.25298118591308594,
+        "solve": 300.00184988975525,
+        "total": 300.2551460266113,
+        "solve_time": 300.00184988975525,
+        "embedding_total": 0,
+        "qpu_access_total": 0
+      },
+      "solve_time": 300.00184988975525,
+      "total_time": 300.2551460266113,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_validation_results.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```json
+{
+  "qpu_direct": false,
+  "qbsolv": false,
+  "embedding": true,
+  "neal": true,
+  "qpu_error": "API token not defined",
+  "qbsolv_error": "No module named 'qbsolv'",
+  "timestamp": "2025-11-30T14:15:59.718730",
+  "qpu_ready": false,
+  "fallback_ready": true
+}...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765553199.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "formulation":"6_families",
+    "n_farms":5,
+    "n_foods":6,
+    "n_vars":90,
+    "gurobi_obj":4.0186878562,
+    "gurobi_time":0.330851078,
+    "gurobi_gap":7.7829803696,
+    "gurobi_status":"optimal",
+    "quantum_obj":4.6325,
+    "quantum_time":2.38,
+    "qpu_time":0.38,
+    "gap":15.2739442758,
+    "speedup":0.139013058
+  },
+  {
+    "formulation":"6_families",
+    "n_farms":10,
+    "n_foods":6,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765556638.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "test_point":"test_360",
+    "formulation":"Native 6-Family",
+    "variant":"native_6",
+    "n_farms":20,
+    "n_foods":6,
+    "n_vars":360,
+    "gurobi_obj":10.427638465,
+    "gurobi_time":0.9554810524,
+    "gurobi_gap":8.9218597059,
+    "gurobi_status":"optimal",
+    "quantum_obj":5.78,
+    "quantum_time":2.92,
+    "qpu_time":0.92,
+    "gap":44.5703836068,
+    "speedup":0.3272195385
+  },
+  {
+    "test_point":"test_360",
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765569552.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "test_point":"test_360",
+    "formulation":"Native 6-Family",
+    "variant":"native_6",
+    "n_farms":20,
+    "n_foods":6,
+    "n_vars":360,
+    "gurobi_obj":10.427638465,
+    "gurobi_time":0.5490276814,
+    "gurobi_gap":8.9218597059,
+    "gurobi_status":"optimal",
+    "quantum_obj":5.78,
+    "quantum_time":2.92,
+    "qpu_time":0.92,
+    "gap":44.5703836068,
+    "speedup":0.1880231785
+  },
+  {
+    "test_point":"test_360",
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test_results/scaling_test_1765638130.json`
+
+**File Type:** JSON
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```json
+[
+  {
+    "test_point":"test_360",
+    "formulation":"Native 6-Family",
+    "variant":"native_6",
+    "n_farms":20,
+    "n_foods":6,
+    "n_vars":360,
+    "gurobi_obj":10.427638465,
+    "gurobi_time":0.6717159748,
+    "gurobi_gap":8.9218597059,
+    "gurobi_status":"optimal",
+    "gurobi_violations":0,
+    "gurobi_n_assigned":60,
+    "quantum_obj":5.78,
+    "quantum_time":2.92,
+    "qpu_time":0.92,
+    "quantum_violations":0,
+    "quantum_n_assigned":82,
+    "gap":44.5703836068,
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/significant_output_1.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+SIGNIFICANT SCENARIOS BENCHMARK: Gurobi vs QPU
+================================================================================
+
+Importing libraries...
+✓ Gurobi available
+✓ D-Wave libraries available
+✓ Clique decomposition available
+[HierarchicalSolver] Loading modules...
+  ✓ QPU available (DWaveCliqueSampler)
+[HierarchicalSolver] Ready!
+✓ Hierarchical solver available
+
+
+================================================================================
+SIGNIFICANT SCENARIOS BENCHMARK
+Gurobi vs QPU Comprehensive Comparison
+================================================================================
+
+Run Configuration:
+...
+
+Scenario                                 G-Obj      Q-Obj      Gap %    Speedup  Timeout
+------------------------------------------------------------------------------------------
+rotation_micro_25                       6.1668     5.2818     +14.4%      5.50×      YES
+rotation_small_50                       8.6860     7.0166     +19.2%      3.28×      YES
+rotation_medium_100                    12.7832    12.7640      +0.2%      1.98×      YES
+rotation_large_25farms_27foods         11.6755     0.0000    +100.0%     72.44×      YES
+rotation_xlarge_50farms_27foods        23.3547     0.0000    +100.0% 214593.60×      YES
+rotation_xxlarge_100farms_27foods      45.8687     0.0000    +100.0% 241094.78×      YES
+------------------------------------------------------------------------------------------
+
+Average Gap: +55.62%
+Average Speedup: 75961.93×
+Gurobi Timeouts: 6/6 (100%)
+
+✓ Benchmark complete!
+
+================================================================================
+ALL TESTS COMPLETE
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/test_output_seeded.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   S C A L I N G   T E S T :   2 5 - 1 5 0 0   V a r i a b l e s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ T e s t i n g   t h r e e   f o r m u l a t i o n s   a c r o s s   f u l l   v a r i a b l e   r a n g e : 
+ 
+     *   6   f a m i l i e s   ( n a t i v e )   -   S m a l l   p r o b l e m s 
+ 
+     *   2 7 - > 6   a g g r e g a t e d   -   L a r g e   p r o b l e m s   ( e x i s t i n g ) 
+ 
+     *   2 7   f o o d s   ( h y b r i d )   -   A l l   s i z e s 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   C O M P R E H E N S I V E   S C A L I N G   T E S T 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   P o i n t :   t e s t _ 3 6 0 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+     V a r i a n t :   N a t i v e   6 - F a m i l y 
+ 
+     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+...
+     V a r i a n t :   N a t i v e   6 - F a m i l y 
+ 
+     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+     L o a d i n g :   2 0   f a r m s      6   f o o d s   f r o m   r o t a t i o n _ m e d i u m _ 1 0 0 
+ 
+ p y t h o n   :   T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : 
+ 
+ I n   r i g a : 1   c a r : 1 
+ 
+ +   p y t h o n   c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y   >   t e s t _ o u t p u t _ s e e d e d . t x t   2 > & 1   ;     . . . 
+ 
+ +   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+ 
+         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n 
+ 
+         +   F u l l y Q u a l i f i e d E r r o r I d   :   N a t i v e C o m m a n d E r r o r 
+ 
+   
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y " ,   l i n e   4 8 5 ,   i n   < m o d u l e > 
+ 
+         d a t a   =   l o a d _ d a t a _ f o r _ t e s t ( t e s t _ c o n f i g ) 
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y " ,   l i n e   2 1 7 ,   i n   l o a d _ d a t a _ f o r _ t e s t 
+ 
+         p r i n t ( f "         \ u 2 1 9 2   B u i l t   { n _ f o o d s }  { n _ f o o d s }   f r u s t r a t i o n   m a t r i x   ( f r u s t r a t i o n _ r a t i o = 0 . 7 ) " ) 
+ 
+         ~ ~ ~ ~ ~ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ 
+ 
+     F i l e   " C : \ P y t h o n 3 1 3 \ L i b \ e n c o d i n g s \ c p 1 2 5 2 . p y " ,   l i n e   1 9 ,   i n   e n c o d e 
+ 
+         r e t u r n   c o d e c s . c h a r m a p _ e n c o d e ( i n p u t , s e l f . e r r o r s , e n c o d i n g _ t a b l e ) [ 0 ] 
+ 
+                       ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ 
+ 
+ U n i c o d e E n c o d e E r r o r :   ' c h a r m a p '   c o d e c   c a n ' t   e n c o d e   c h a r a c t e r   ' \ u 2 1 9 2 '   i n   p o s i t i o n   4 :   c h a r a c t e r   m a p s   t o   < u n d e f i n e d > 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/metrics_for_report.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+#   P e r f o r m a n c e   M e t r i c s   f o r   R e p o r t 
+ 
+ 
+ 
+ # #   M a i n   T a b l e 
+ 
+ 
+ 
+ |   F a r m s   |   V a r s   |   A r e a / F a r m   |   T o t a l   A r e a   |   S o l v e ( s )   |   B u i l d ( s )   |   Q u a d s   |   G a p %   |   C a t e g o r y   | 
+ 
+ | - - - - - - : | - - - - - : | - - - - - - - - - - : | - - - - - - - - - - - : | - - - - - - - - - : | - - - - - - - - - : | - - - - - - : | - - - - - : | - - - - - - - - - - | 
+ 
+ |   3   |   5 4   |   1 . 0   |   3 . 1   |   0 . 3 8   |   0 . 1 3   |   5 4 0   |   0 . 0 0   |   F A S T   | 
+ 
+ |   5   |   9 0   |   1 . 0   |   4 . 9   |   0 . 6 9   |   0 . 0 5   |   1 4 4 0   |   0 . 5 3   |   F A S T   | 
+ 
+ |   7   |   1 2 6   |   1 . 0   |   7 . 2   |   1 . 7 9   |   0 . 0 7   |   2 3 4 0   |   0 . 0 0   |   F A S T   | 
+ 
+ |   1 0   |   1 8 0   |   1 . 0   |   9 . 9   |   3 0 . 8 9   |   0 . 0 7   |   3 3 1 2   |   0 . 9 6   |   M E D I U M   | 
+ 
+ |   1 2   |   2 1 6   |   1 . 0   |   1 2 . 6   |   5 4 . 6 7   |   0 . 1 0   |   3 8 8 8   |   0 . 8 1   |   M E D I U M   | 
+ 
+ |   1 5   |   2 7 0   |   1 . 0   |   1 4 . 8   |   9 4 . 3 1   |   0 . 1 2   |   5 0 7 6   |   0 . 8 8   |   M E D I U M   | 
+ 
+ |   1 8   |   3 2 4   |   1 . 0   |   1 7 . 7   |   1 0 6 . 1 5   |   0 . 1 5   |   5 9 4 0   |   0 . 9 1   |   S L O W   | 
+ 
+ |   2 0   |   3 6 0   |   1 . 0   |   2 0 . 3   |   1 5 5 . 2 2   |   0 . 1 5   |   6 6 2 4   |   1 . 0 0   |   S L O W   | 
+ 
+ |   2 2   |   3 9 6   |   1 . 0   |   2 3 . 1   |   1 8 1 . 8 0   |   0 . 1 8   |   7 4 1 6   |   0 . 9 5   |   S L O W   | 
+ 
+ |   2 5   |   4 5 0   |   1 . 0   |   2 4 . 7   |   2 2 6 . 5 2   |   0 . 1 9   |   8 2 8 0   |   0 . 9 7   |   S L O W   | 
+ 
+ |   3 0   |   5 4 0   |   1 . 0   |   3 1 . 2   |   3 0 0 . 0 2   |   0 . 2 3   |   9 8 2 8   |   1 . 4 0   |   T I M E O U T   | 
+ 
+ |   3 5   |   6 3 0   |   1 . 0   |   3 5 . 0   |   2 6 1 . 1 1   |   0 . 2 8   |   1 1 2 6 8   |   0 . 9 9   |   S L O W   | 
+ 
+ |   4 0   |   7 2 0   |   1 . 0   |   4 0 . 0   |   1 5 1 . 7 8   |   0 . 3 0   |   1 2 8 1 6   |   0 . 9 9   |   S L O W   | 
+ 
+ |   5 0   |   9 0 0   |   1 . 0   |   5 0 . 0   |   2 8 5 . 1 0   |   0 . 3 8   |   1 6 0 2 0   |   0 . 9 9   |   S L O W   | 
+ 
+...
+ |   F a r m s                       |   3 0   |   3 0   |   3 0 . 0 0   |   n a n   | 
+ 
+ |   V a r i a b l e s               |   5 4 0   |   5 4 0   |   5 4 0 . 0 0   |   n a n   | 
+ 
+ |   F a r m s / F o o d             |   5 . 0 0   |   5 . 0 0   |   5 . 0 0   |   n a n   | 
+ 
+ |   T o t a l   A r e a   ( h a )   |   3 1 . 2 4   |   3 1 . 2 4   |   3 1 . 2 4   |   n a n   | 
+ 
+ |   S o l v e   T i m e   ( s )     |   3 0 0 . 0 2   |   3 0 0 . 0 2   |   3 0 0 . 0 2   |   n a n   | 
+ 
+ |   Q u a d r a t i c s             |   9 8 2 8   |   9 8 2 8   |   9 8 2 8   |   n a n   | 
+ 
+ |   M I P   G a p   ( % )           |   1 . 4 0   |   1 . 4 0   |   1 . 4 0   |   n a n   | 
+ 
+ 
+ 
+ # #   C o r r e l a t i o n s   w i t h   S o l v e   T i m e 
+ 
+ 
+ 
+ |   M e t r i c   |   C o r r e l a t i o n   ( r )   | 
+ 
+ | - - - - - - - - | - - - - - - - - - - - - - - - - : | 
+ 
+ |   N   F a r m s   |   0 . 5 4 7   | 
+ 
+ |   F a r m s   P e r   F o o d   |   0 . 5 4 7   | 
+ 
+ |   N   C o n s t r a i n t s   |   0 . 7 4 4   | 
+ 
+ |   N   V a r s   |   0 . 7 4 4   | 
+ 
+ |   N   Q u a d r a t i c   |   0 . 7 5 9   | 
+ 
+ |   B u i l d   T i m e   |   0 . 7 1 4   | 
+ 
+ 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_fixed_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+W a r n i n g :   s e a b o r n   n o t   a v a i l a b l e ,   u s i n g   m a t p l o t l i b   o n l y 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   H A R D N E S S   A N A L Y S I S :   C o n s t a n t   A r e a   S a m p l i n g 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ C o n f i g u r a t i o n : 
+ 
+     -   T a r g e t   a r e a :   1 0 0 . 0   h a   ( %5 . 0 % ) 
+ 
+     -   F o o d   f a m i l i e s :   6 
+ 
+     -   T i m e   p e r i o d s :   3 
+ 
+     -   F a r m   c o u n t s :   1 9   t e s t   p o i n t s 
+ 
+     -   G u r o b i   t i m e o u t :   3 0 0 s 
+ 
+     -   G u r o b i   g a p :   1 . 0 % 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   E X P E R I M E N T :   1 9   t e s t   p o i n t s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   1 / 1 9 :   3   f a r m s 
+ 
+...
+W a r n i n g :   s e a b o r n   n o t   a v a i l a b l e ,   u s i n g   m a t p l o t l i b   o n l y 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   H A R D N E S S   A N A L Y S I S :   C o n s t a n t   A r e a   S a m p l i n g 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ C o n f i g u r a t i o n : 
+ 
+     -   T a r g e t   a r e a :   1 0 0 . 0   h a   ( %5 . 0 % ) 
+ 
+     -   F o o d   f a m i l i e s :   6 
+ 
+     -   T i m e   p e r i o d s :   3 
+ 
+     -   F a r m   c o u n t s :   1 9   t e s t   p o i n t s 
+ 
+     -   G u r o b i   t i m e o u t :   3 0 0 s 
+ 
+     -   G u r o b i   g a p :   1 . 0 % 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   E X P E R I M E N T :   1 9   t e s t   p o i n t s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   1 / 1 9 :   3   f a r m s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ L o a d i n g   p r o b l e m :   3   f a r m s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+         N o t e :   S c a l e d   a r e a s   b y   1 7 . 8 2 5   t o   a c h i e v e   t a r g e t   a r e a 
+ 
+     S e l e c t e d   f a r m s :   3 
+ 
+     T o t a l   a r e a :   1 0 0 . 0 0   h a   ( t a r g e t :   1 0 0 . 0   h a ) 
+ 
+     M e a n   a r e a / f a r m :   3 3 . 3 3   h a 
+ 
+     C V   ( v a r i a b i l i t y ) :   0 . 7 7 0 
+ 
+     V a r i a b l e s :   5 4 
+ 
+     F a r m s / F o o d   r a t i o :   0 . 5 0 
+ 
+     A r e a / V a r i a b l e :   1 . 8 5 2 
+ 
+ 
+ 
+     B u i l d i n g   G u r o b i   m o d e l . . . 
+ 
+ S e t   p a r a m e t e r   U s e r n a m e 
+ 
+ S e t   p a r a m e t e r   L i c e n s e I D   t o   v a l u e   2 7 2 7 5 0 2 
+ 
+ A c a d e m i c   l i c e n s e   -   f o r   n o n - c o m m e r c i a l   u s e   o n l y   -   e x p i r e s   2 0 2 6 - 1 0 - 2 4 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+p y t h o n   :   T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : 
+ 
+ I n   r i g a : 1   c a r : 1 4 
+ 
+ +   c d   " @ t o d o "   ;   p y t h o n   h a r d n e s s _ c o m p r e h e n s i v e _ a n a l y s i s . p y   2 > & 1   |   T e e - O b j   . . . 
+ 
+ +                             ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+ 
+         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n 
+ 
+         +   F u l l y Q u a l i f i e d E r r o r I d   :   N a t i v e C o m m a n d E r r o r 
+ 
+   
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ h a r d n e s s _ c o m p r e h e n s i v e _ a n a l y s i s . p y " ,   l i n e   3 0 ,   i n   < m o d u l e > 
+ 
+         i m p o r t   s e a b o r n   a s   s n s 
+ 
+ M o d u l e N o t F o u n d E r r o r :   N o   m o d u l e   n a m e d   ' s e a b o r n ' 
+ 
+ ...
+p y t h o n   :   T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : 
+ 
+ I n   r i g a : 1   c a r : 1 4 
+ 
+ +   c d   " @ t o d o "   ;   p y t h o n   h a r d n e s s _ c o m p r e h e n s i v e _ a n a l y s i s . p y   2 > & 1   |   T e e - O b j   . . . 
+ 
+ +                             ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+ 
+         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n 
+ 
+         +   F u l l y Q u a l i f i e d E r r o r I d   :   N a t i v e C o m m a n d E r r o r 
+ 
+   
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ h a r d n e s s _ c o m p r e h e n s i v e _ a n a l y s i s . p y " ,   l i n e   3 0 ,   i n   < m o d u l e > 
+ 
+         i m p o r t   s e a b o r n   a s   s n s 
+ 
+ M o d u l e N o t F o u n d E r r o r :   N o   m o d u l e   n a m e d   ' s e a b o r n ' 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_analysis_full_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+W a r n i n g :   s e a b o r n   n o t   a v a i l a b l e ,   u s i n g   m a t p l o t l i b   o n l y 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   H A R D N E S S   A N A L Y S I S :   C o n s t a n t   A r e a   S a m p l i n g 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ C o n f i g u r a t i o n : 
+ 
+     -   T a r g e t   a r e a :   1 0 0 . 0   h a   ( %5 . 0 % ) 
+ 
+     -   F o o d   f a m i l i e s :   6 
+ 
+     -   T i m e   p e r i o d s :   3 
+ 
+     -   F a r m   c o u n t s :   1 9   t e s t   p o i n t s 
+ 
+     -   G u r o b i   t i m e o u t :   3 0 0 s 
+ 
+     -   G u r o b i   g a p :   1 . 0 % 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   E X P E R I M E N T :   1 9   t e s t   p o i n t s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   1 / 1 9 :   3   f a r m s 
+ 
+...
+     S a v e d :   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ h a r d n e s s _ a n a l y s i s _ r e s u l t s \ p l o t _ h e a t m a p _ h a r d n e s s . p n g 
+ 
+     S a v e d :   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ h a r d n e s s _ a n a l y s i s _ r e s u l t s \ p l o t _ c o m b i n e d _ a n a l y s i s . p n g 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ A l l   v i s u a l i z a t i o n s   s a v e d   t o :   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ h a r d n e s s _ a n a l y s i s _ r e s u l t s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   H A R D N E S S   A N A L Y S I S   C O M P L E T E 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ R e s u l t s   s a v e d   t o :   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ h a r d n e s s _ a n a l y s i s _ r e s u l t s 
+ 
+ 
+ 
+ K e y   f i n d i n g s : 
+ 
+     -   T e s t e d   1 9   f a r m   c o u n t s   w i t h   c o n s t a n t   a r e a   ( ~ 1 0 0 . 0   h a ) 
+ 
+     -   I d e n t i f i e d   h a r d n e s s   r e g i o n   b a s e d   o n   f a r m s / f o o d   r a t i o 
+ 
+     -   G e n e r a t e d   c o m p r e h e n s i v e   v i s u a l i z a t i o n s 
+ 
+     -   R e a d y   f o r   Q P U   t e s t i n g   i n   i d e n t i f i e d   h a r d n e s s   z o n e 
+ 
+ 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_results_100s.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   G U R O B I   P E R F O R M A N C E   I N V E S T I G A T I O N 
+ 
+ T i m e o u t :   1 0 0 s   |   P r o b l e m :   6   c r o p   f a m i l i e s ,   3   p e r i o d s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+ m i c r o _ 3                   |       3   f a r m s   |       5 4   v a r s   |   A r e a :         3 . 1   h a   |   Q P U :   D I R E C T   ( 8 1   q u b i t s ) 
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+ S e t   p a r a m e t e r   U s e r n a m e 
+ 
+ S e t   p a r a m e t e r   L i c e n s e I D   t o   v a l u e   2 7 2 7 5 0 2 
+ 
+ A c a d e m i c   l i c e n s e   -   f o r   n o n - c o m m e r c i a l   u s e   o n l y   -   e x p i r e s   2 0 2 6 - 1 0 - 2 4 
+ 
+ ...
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   G U R O B I   P E R F O R M A N C E   I N V E S T I G A T I O N 
+ 
+ T i m e o u t :   1 0 0 s   |   P r o b l e m :   6   c r o p   f a m i l i e s ,   3   p e r i o d s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+ m i c r o _ 3                   |       3   f a r m s   |       5 4   v a r s   |   A r e a :         3 . 1   h a   |   Q P U :   D I R E C T   ( 8 1   q u b i t s ) 
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+ S e t   p a r a m e t e r   U s e r n a m e 
+ 
+ S e t   p a r a m e t e r   L i c e n s e I D   t o   v a l u e   2 7 2 7 5 0 2 
+ 
+ A c a d e m i c   l i c e n s e   -   f o r   n o n - c o m m e r c i a l   u s e   o n l y   -   e x p i r e s   2 0 2 6 - 1 0 - 2 4 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_investigation_100s_err.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+Traceback (most recent call last):
+  File "D:\Projects\OQI-UC002-DWave\@todo\gurobi_comprehensive_investigation.py", line 272, in <module>
+    print(f"{r['name']:15} {r['n_farms']:6} {r['n_vars']:6} {qpu_marker:>8} {r['time']:8.2f} {r['status']:>10} {r['gap']:8.1f} {r['nodes']:10.0f}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 37: character maps to <undefined>
+...
+Traceback (most recent call last):
+  File "D:\Projects\OQI-UC002-DWave\@todo\gurobi_comprehensive_investigation.py", line 272, in <module>
+    print(f"{r['name']:15} {r['n_farms']:6} {r['n_vars']:6} {qpu_marker:>8} {r['time']:8.2f} {r['status']:>10} {r['gap']:8.1f} {r['nodes']:10.0f}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 37: character maps to <undefined>
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/gurobi_investigation_100s.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+====================================================================================================
+COMPREHENSIVE GUROBI PERFORMANCE INVESTIGATION
+Timeout: 100s | Problem: 6 crop families, 3 periods
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+micro_3         |   3 farms |   54 vars | Area:    3.1 ha | QPU: DIRECT (81 qubits)
+----------------------------------------------------------------------------------------------------
+Set parameter Username
+Set parameter LicenseID to value 2727502
+Academic license - for non-commercial use only - expires 2026-10-24
+
+Interrupt request received
+  Status: optimal  | Time:   7.93s | Gap:    9.9% | Nodes:    36690
+
+----------------------------------------------------------------------------------------------------
+micro_5         |   5 farms |   90 vars | Area:    4.5 ha | QPU: DIRECT (135 qubits)
+----------------------------------------------------------------------------------------------------
+  Status: timeout  | Time: 100.18s | Gap:   13.7% | Nodes:   322097
+
+...
+xxlarge_150     | 150 farms | 2700 vars | Area:  100.0 ha | QPU: NO     (4050 qubits)
+----------------------------------------------------------------------------------------------------
+  Status: optimal  | Time:   2.70s | Gap:   10.0% | Nodes:        1
+
+----------------------------------------------------------------------------------------------------
+xxlarge_200     | 200 farms | 3600 vars | Area:  100.0 ha | QPU: NO     (5400 qubits)
+----------------------------------------------------------------------------------------------------
+  Status: optimal  | Time:   2.71s | Gap:   10.0% | Nodes:        1
+
+----------------------------------------------------------------------------------------------------
+huge_300        | 300 farms | 5400 vars | Area:  100.0 ha | QPU: NO     (8100 qubits)
+----------------------------------------------------------------------------------------------------
+  Status: optimal  | Time:   2.71s | Gap:   10.0% | Nodes:        1
+
+====================================================================================================
+SUMMARY: WHERE DOES GUROBI FAIL?
+====================================================================================================
+
+Size             Farms   Vars      QPU     Time     Status     Gap%      Nodes
+----------------------------------------------------------------------------------------------------
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_results_with_scenarios.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   S C A L I N G   T E S T :   2 5 - 1 5 0 0   V a r i a b l e s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ T e s t i n g   t h r e e   f o r m u l a t i o n s   a c r o s s   f u l l   v a r i a b l e   r a n g e : 
+ 
+     *   6   f a m i l i e s   ( n a t i v e )   -   S m a l l   p r o b l e m s 
+ 
+     *   2 7 - > 6   a g g r e g a t e d   -   L a r g e   p r o b l e m s   ( e x i s t i n g ) 
+ 
+     *   2 7   f o o d s   ( h y b r i d )   -   A l l   s i z e s 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   C O M P R E H E N S I V E   S C A L I N G   T E S T 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   P o i n t :   t e s t _ 3 6 0 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+     V a r i a n t :   N a t i v e   6 - F a m i l y 
+ 
+     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+...
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   S C A L I N G   T E S T :   2 5 - 1 5 0 0   V a r i a b l e s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ T e s t i n g   t h r e e   f o r m u l a t i o n s   a c r o s s   f u l l   v a r i a b l e   r a n g e : 
+ 
+     *   6   f a m i l i e s   ( n a t i v e )   -   S m a l l   p r o b l e m s 
+ 
+     *   2 7 - > 6   a g g r e g a t e d   -   L a r g e   p r o b l e m s   ( e x i s t i n g ) 
+ 
+     *   2 7   f o o d s   ( h y b r i d )   -   A l l   s i z e s 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   C O M P R E H E N S I V E   S C A L I N G   T E S T 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   P o i n t :   t e s t _ 3 6 0 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+     V a r i a n t :   N a t i v e   6 - F a m i l y 
+ 
+     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+     L o a d i n g :   2 0   f a r m s      6   f o o d s   f r o m   r o t a t i o n _ m e d i u m _ 1 0 0 
+ 
+         - >   B u i l t   6 x 6   f r u s t r a t i o n   m a t r i x   ( f r u s t r a t i o n _ r a t i o = 0 . 7 ) 
+ 
+ p y t h o n   :   T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : 
+ 
+ I n   r i g a : 1   c a r : 1 
+ 
+ +   p y t h o n   c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y   >   c o m p r e h e n s i v e _ r e s u l t s _ w i t h _ s c e   . . . 
+ 
+ +   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+ 
+         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n 
+ 
+         +   F u l l y Q u a l i f i e d E r r o r I d   :   N a t i v e C o m m a n d E r r o r 
+ 
+   
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y " ,   l i n e   4 9 2 ,   i n   < m o d u l e > 
+ 
+         p r i n t ( f "     \ u 2 1 9 2   F i n a l   p r o b l e m :   { d a t a [ ' n _ f a r m s ' ] }   f a r m s      { d a t a [ ' n _ f o o d s ' ] }   f o o d s   =   { n _ v a r s }   v a r i a b l e s " ) 
+ 
+         ~ ~ ~ ~ ~ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ 
+ 
+     F i l e   " C : \ P y t h o n 3 1 3 \ L i b \ e n c o d i n g s \ c p 1 2 5 2 . p y " ,   l i n e   1 9 ,   i n   e n c o d e 
+ 
+         r e t u r n   c o d e c s . c h a r m a p _ e n c o d e ( i n p u t , s e l f . e r r o r s , e n c o d i n g _ t a b l e ) [ 0 ] 
+ 
+                       ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ 
+ 
+ U n i c o d e E n c o d e E r r o r :   ' c h a r m a p '   c o d e c   c a n ' t   e n c o d e   c h a r a c t e r   ' \ u 2 1 9 2 '   i n   p o s i t i o n   2 :   c h a r a c t e r   m a p s   t o   < u n d e f i n e d > 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_final_results.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+﻿================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  * 6 families (native) - Small problems
+  * 27->6 aggregated - Large problems (existing)
+  * 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Test Point: test_360
+================================================================================
+
+  Variant: Native 6-Family
+  -----------------------------------------------------------------------
+...
+Set parameter Username
+Set parameter LicenseID to value 2727502
+Academic license - for non-commercial use only - expires 2026-10-24
+      OK obj=10.8068, time=300.2s, gap=7207.7%, status=timeout
+    Running Quantum (simulated)...
+      OK obj=5.7800, time=2.9s, QPU=0.920s
+python : Traceback (most recent call last):
+In riga:1 car:1
++ python -u comprehensive_scaling_test.py 2>&1 | Out-File -FilePath com ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\Projects\OQI-UC002-DWave\@todo\comprehensive_scaling_test.py", line 485, in <module>
+    print(f"\n  Variant: {formulation_name}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 15: character maps to <undefined>
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_final.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   S C A L I N G   T E S T :   2 5 - 1 5 0 0   V a r i a b l e s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ T e s t i n g   t h r e e   f o r m u l a t i o n s   a c r o s s   f u l l   v a r i a b l e   r a n g e : 
+ 
+     *   6   f a m i l i e s   ( n a t i v e )   -   S m a l l   p r o b l e m s 
+ 
+     *   2 7 - > 6   a g g r e g a t e d   -   L a r g e   p r o b l e m s   ( e x i s t i n g ) 
+ 
+     *   2 7   f o o d s   ( h y b r i d )   -   A l l   s i z e s 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ R U N N I N G   C O M P R E H E N S I V E   S C A L I N G   T E S T 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t   P o i n t :   t e s t _ 3 6 0 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+     V a r i a n t :   N a t i v e   6 - F a m i l y 
+ 
+     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+...
+     V a r i a n t :   2 7 - > 6   A g g r e g a t e d 
+ 
+     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+     L o a d i n g :   2 0   f a r m s      2 7   f o o d s   f r o m   r o t a t i o n _ 2 5 0 f a r m s _ 2 7 f o o d s 
+ 
+ p y t h o n   :   T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : 
+ 
+ I n   r i g a : 1   c a r : 1 1 9 
+ 
+ +   . . .     f i l e . . . "   ;   p y t h o n   c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y   * >   c o m p r e h e n s i v e _ f i n   . . . 
+ 
+ +                                   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+ 
+         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( T r a c e b a c k   ( m o s t   r e c e n t   c a l l   l a s t ) : : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n 
+ 
+         +   F u l l y Q u a l i f i e d E r r o r I d   :   N a t i v e C o m m a n d E r r o r 
+ 
+   
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y " ,   l i n e   4 8 9 ,   i n   < m o d u l e > 
+ 
+         d a t a   =   l o a d _ d a t a _ f o r _ t e s t ( t e s t _ c o n f i g ) 
+ 
+     F i l e   " D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ c o m p r e h e n s i v e _ s c a l i n g _ t e s t . p y " ,   l i n e   1 1 7 ,   i n   l o a d _ d a t a _ f o r _ t e s t 
+ 
+         p r i n t ( f "         \ u 2 1 9 2   W i l l   a g g r e g a t e   2 7   f o o d s   t o   6   f a m i l i e s " ) 
+ 
+         ~ ~ ~ ~ ~ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ 
+ 
+     F i l e   " C : \ P y t h o n 3 1 3 \ L i b \ e n c o d i n g s \ c p 1 2 5 2 . p y " ,   l i n e   1 9 ,   i n   e n c o d e 
+ 
+         r e t u r n   c o d e c s . c h a r m a p _ e n c o d e ( i n p u t , s e l f . e r r o r s , e n c o d i n g _ t a b l e ) [ 0 ] 
+ 
+                       ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ 
+ 
+ U n i c o d e E n c o d e E r r o r :   ' c h a r m a p '   c o d e c   c a n ' t   e n c o d e   c h a r a c t e r   ' \ u 2 1 9 2 '   i n   p o s i t i o n   4 :   c h a r a c t e r   m a p s   t o   < u n d e f i n e d > 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/QUANTUM_ADVANTAGE_MAP.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+===============================================================================
+GUROBI VS QPU: FEASIBILITY AND PERFORMANCE MAP (100s timeout)
+===============================================================================
+
+Problem Size    Variables   Area     Gurobi    QPU         Quantum
+                            (ha)     Status    Feasible    Advantage?
+-------------------------------------------------------------------------------
+ZONE 1: DIRECT QPU EMBEDDING (≤166 qubits)
+-------------------------------------------------------------------------------
+3 farms         54 vars     3.1      ✓ 7.9s   DIRECT      ✗ Gurobi OK
+5 farms         90 vars     4.5      ✗ TIMEOUT DIRECT      ✓✓✓ YES!
+-------------------------------------------------------------------------------
+ZONE 2: QPU WITH DECOMPOSITION (166-750 qubits)
+-------------------------------------------------------------------------------
+8 farms         144 vars    8.9      ✓ 7.0s   DECOMP      ✗ Gurobi OK
+10 farms        180 vars    12.4     ~ 45.8s  DECOMP      ~ Maybe
+15 farms        270 vars    32.5     ✗ TIMEOUT DECOMP      ✓✓✓ YES!
+20 farms        360 vars    100.0    ✗ TIMEOUT DECOMP      ✓✓✓ YES!
+25 farms        450 vars    12.8     ✗ TIMEOUT DECOMP      ✓✓✓ YES!
+-------------------------------------------------------------------------------
+...
+   - Classical better: > 900 variables (if area ≥ 100 ha)
+
+4. CRITICAL FACTOR: Total Land Area
+   - Area < 50 ha → Gurobi struggles
+   - Area ≥ 100 ha → Gurobi trivial
+   - Use tight constraints for quantum advantage!
+
+===============================================================================
+RECOMMENDATION
+===============================================================================
+
+Test QPU on these problem sizes:
+  ✓ 5 farms (90 vars, 4.5 ha) - Direct embedding
+  ✓ 15 farms (270 vars, 32.5 ha) - With decomposition
+  ✓ 20 farms (360 vars, 100 ha) - With decomposition
+  ✓ 25 farms (450 vars, 12.8 ha) - With decomposition
+
+All show Gurobi timeouts and are QPU-feasible!
+
+===============================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/FARMS_FOOD_RATIO_ANALYSIS.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+HARDNESS INVESTIGATION: FARMS/FOOD RATIO IS THE KEY!
+================================================================================
+
+FARMS vs FARMS/FOOD RATIO vs HARDNESS
+---------------------------------------------------------------------
+Farms  | Vars  | F/Food | Total  | Status  | Why
+       |       |        | Area   |         |
+---------------------------------------------------------------------
+3      | 54    | 0.50   | 25 ha  | EASY    | Too small (trivial)
+5      | 90    | 0.83   | 100 ha | TIMEOUT | HARDNESS ZONE START
+8      | 144   | 1.33   | 50 ha  | EASY    | Sweet spot avoided
+15     | 270   | 2.50   | 32 ha  | TIMEOUT | HARDNESS ZONE
+20     | 360   | 3.33   | 100 ha | TIMEOUT | HARDNESS ZONE
+25     | 450   | 4.17   | 13 ha  | TIMEOUT | HARDNESS ZONE (peak)
+30     | 540   | 5.00   | 18 ha  | EASY    | Above threshold
+40     | 720   | 6.67   | 40 ha  | TIMEOUT | Instance-specific
+50     | 900   | 8.33   | 100 ha | EASY    | Well above threshold
+100    | 1800  | 16.67  | 100 ha | EASY    | Far above threshold
+---------------------------------------------------------------------
+...
+RECOMMENDATION
+================================================================================
+
+FOR BENCHMARKING:
+  Use scenarios with 5-25 farms to demonstrate quantum advantage
+  These have optimal Farms/Food ratio (0.8-4.2) that makes Gurobi struggle
+
+FOR PROBLEM GENERATION:
+  To create HARD instances:
+    - Keep farms < 30
+    - Keep Farms/Food ratio < 4.5
+    - Total area doesn't matter much (13-100 ha all work)
+    - CV doesn't matter much (0.5-1.3 all work)
+  
+  To create EASY instances:
+    - Use farms >= 50
+    - Get Farms/Food ratio > 5.0
+    - Problem becomes easy regardless of area
+
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] Input file: test_config10.lp
+[2025-12-05 12:31:09] Output directory: @todo/hardness_output
+[2025-12-05 12:31:09] Time limit: 120s
+[2025-12-05 12:31:09] 
+[2025-12-05 12:31:09] Loading model...
+[2025-12-05 12:31:09] Model loaded: Objective
+[2025-12-05 12:31:09]   Variables: 270
+[2025-12-05 12:31:09]   Constraints: 47
+[2025-12-05 12:31:09]   Binary vars: 270
+[2025-12-05 12:31:09]   Integer vars: 270
+[2025-12-05 12:31:09]   Continuous vars: -270
+[2025-12-05 12:31:09] 
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:31:09] MIP is INFEASIBLE
+...
+[2025-12-05 12:31:09] Average nonzeros per row: 22.98
+[2025-12-05 12:31:09] Average nonzeros per col: 4.00
+[2025-12-05 12:31:09] Saved coefficient stats to @todo/hardness_output/coeff_stats.json
+[2025-12-05 12:31:09] Section 3 complete
+[2025-12-05 12:31:09] 
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] Total variables: 270
+[2025-12-05 12:31:09] Symmetric groups found: 0
+[2025-12-05 12:31:09] Variables in symmetric groups: 0
+[2025-12-05 12:31:09] Section 4 complete
+[2025-12-05 12:31:09] 
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] DIAGNOSTIC SUMMARY
+[2025-12-05 12:31:09] ============================================================
+[2025-12-05 12:31:09] Hardness Level: EASY (score: 0)
+[2025-12-05 12:31:09] Contributing factors:
+[2025-12-05 12:31:09] 
+Report saved to: @todo/hardness_output/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/medium_160/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] Input file: @todo/hardness_output/models/medium_160.lp
+[2025-12-05 12:31:52] Output directory: @todo/hardness_output/medium_160
+[2025-12-05 12:31:52] Time limit: 60s
+[2025-12-05 12:31:52] 
+[2025-12-05 12:31:52] Loading model...
+[2025-12-05 12:31:52] Model loaded: 
+[2025-12-05 12:31:52]   Variables: 154
+[2025-12-05 12:31:52]   Constraints: 169
+[2025-12-05 12:31:52]   Binary vars: 154
+[2025-12-05 12:31:52]   Integer vars: 154
+[2025-12-05 12:31:52]   Continuous vars: -154
+[2025-12-05 12:31:52] 
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:31:52] MIP optimal objective: 0.521745
+...
+[2025-12-05 12:31:52] Average nonzeros per row: 3.48
+[2025-12-05 12:31:52] Average nonzeros per col: 3.82
+[2025-12-05 12:31:52] Saved coefficient stats to @todo/hardness_output/medium_160/coeff_stats.json
+[2025-12-05 12:31:52] Section 3 complete
+[2025-12-05 12:31:52] 
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] Total variables: 154
+[2025-12-05 12:31:52] Symmetric groups found: 0
+[2025-12-05 12:31:52] Variables in symmetric groups: 0
+[2025-12-05 12:31:52] Section 4 complete
+[2025-12-05 12:31:52] 
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] DIAGNOSTIC SUMMARY
+[2025-12-05 12:31:52] ============================================================
+[2025-12-05 12:31:52] Hardness Level: EASY (score: 0)
+[2025-12-05 12:31:52] Contributing factors:
+[2025-12-05 12:31:52] 
+Report saved to: @todo/hardness_output/medium_160/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/micro_6/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Input file: @todo/hardness_output/models/micro_6.lp
+[2025-12-05 12:31:51] Output directory: @todo/hardness_output/micro_6
+[2025-12-05 12:31:51] Time limit: 60s
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] Loading model...
+[2025-12-05 12:31:51] Model loaded: 
+[2025-12-05 12:31:51]   Variables: 6
+[2025-12-05 12:31:51]   Constraints: 9
+[2025-12-05 12:31:51]   Binary vars: 6
+[2025-12-05 12:31:51]   Integer vars: 6
+[2025-12-05 12:31:51]   Continuous vars: -6
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:31:51] MIP optimal objective: 0.415500
+...
+[2025-12-05 12:31:51] Average nonzeros per row: 2.22
+[2025-12-05 12:31:51] Average nonzeros per col: 3.33
+[2025-12-05 12:31:51] Saved coefficient stats to @todo/hardness_output/micro_6/coeff_stats.json
+[2025-12-05 12:31:51] Section 3 complete
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Total variables: 6
+[2025-12-05 12:31:51] Symmetric groups found: 0
+[2025-12-05 12:31:51] Variables in symmetric groups: 0
+[2025-12-05 12:31:51] Section 4 complete
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] DIAGNOSTIC SUMMARY
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Hardness Level: EASY (score: 0)
+[2025-12-05 12:31:51] Contributing factors:
+[2025-12-05 12:31:51] 
+Report saved to: @todo/hardness_output/micro_6/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_10_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] Input file: @todo/hardness_output/models/plots_10_full.lp
+[2025-12-05 12:35:28] Output directory: @todo/hardness_output/plots_10_full
+[2025-12-05 12:35:28] Time limit: 120s
+[2025-12-05 12:35:28] 
+[2025-12-05 12:35:28] Loading model...
+[2025-12-05 12:35:28] Model loaded: 
+[2025-12-05 12:35:28]   Variables: 297
+[2025-12-05 12:35:28]   Constraints: 312
+[2025-12-05 12:35:28]   Binary vars: 297
+[2025-12-05 12:35:28]   Integer vars: 297
+[2025-12-05 12:35:28]   Continuous vars: -297
+[2025-12-05 12:35:28] 
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:28] MIP optimal objective: 0.359482
+...
+[2025-12-05 12:35:28] Average nonzeros per row: 3.63
+[2025-12-05 12:35:28] Average nonzeros per col: 3.82
+[2025-12-05 12:35:28] Saved coefficient stats to @todo/hardness_output/plots_10_full/coeff_stats.json
+[2025-12-05 12:35:28] Section 3 complete
+[2025-12-05 12:35:28] 
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] Total variables: 297
+[2025-12-05 12:35:28] Symmetric groups found: 0
+[2025-12-05 12:35:28] Variables in symmetric groups: 0
+[2025-12-05 12:35:28] Section 4 complete
+[2025-12-05 12:35:28] 
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:28] ============================================================
+[2025-12-05 12:35:28] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:28] Contributing factors:
+[2025-12-05 12:35:28] 
+Report saved to: @todo/hardness_output/plots_10_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_100_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] Input file: @todo/hardness_output/models/plots_100_full.lp
+[2025-12-05 12:35:30] Output directory: @todo/hardness_output/plots_100_full
+[2025-12-05 12:35:30] Time limit: 120s
+[2025-12-05 12:35:30] 
+[2025-12-05 12:35:30] Loading model...
+[2025-12-05 12:35:30] Model loaded: 
+[2025-12-05 12:35:30]   Variables: 2727
+[2025-12-05 12:35:30]   Constraints: 2832
+[2025-12-05 12:35:30]   Binary vars: 2727
+[2025-12-05 12:35:30]   Integer vars: 2727
+[2025-12-05 12:35:30]   Continuous vars: -2727
+[2025-12-05 12:35:30] 
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:30] MIP optimal objective: 0.422904
+...
+[2025-12-05 12:35:30] Average nonzeros per row: 3.83
+[2025-12-05 12:35:30] Average nonzeros per col: 3.98
+[2025-12-05 12:35:30] Saved coefficient stats to @todo/hardness_output/plots_100_full/coeff_stats.json
+[2025-12-05 12:35:30] Section 3 complete
+[2025-12-05 12:35:30] 
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] Total variables: 2727
+[2025-12-05 12:35:30] Symmetric groups found: 0
+[2025-12-05 12:35:30] Variables in symmetric groups: 0
+[2025-12-05 12:35:30] Section 4 complete
+[2025-12-05 12:35:30] 
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:30] ============================================================
+[2025-12-05 12:35:30] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:30] Contributing factors:
+[2025-12-05 12:35:30] 
+Report saved to: @todo/hardness_output/plots_100_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_1000_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:44] ============================================================
+[2025-12-05 12:35:44] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:44] ============================================================
+[2025-12-05 12:35:44] Input file: @todo/hardness_output/models/plots_1000_full.lp
+[2025-12-05 12:35:44] Output directory: @todo/hardness_output/plots_1000_full
+[2025-12-05 12:35:44] Time limit: 300s
+[2025-12-05 12:35:44] 
+[2025-12-05 12:35:44] Loading model...
+[2025-12-05 12:35:44] Model loaded: 
+[2025-12-05 12:35:44]   Variables: 27027
+[2025-12-05 12:35:44]   Constraints: 28032
+[2025-12-05 12:35:44]   Binary vars: 27027
+[2025-12-05 12:35:44]   Integer vars: 27027
+[2025-12-05 12:35:44]   Continuous vars: -27027
+[2025-12-05 12:35:44] 
+[2025-12-05 12:35:44] ============================================================
+[2025-12-05 12:35:44] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:44] ============================================================
+[2025-12-05 12:35:44] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:45] MIP optimal objective: 0.429246
+...
+[2025-12-05 12:35:46] Average nonzeros per row: 3.85
+[2025-12-05 12:35:46] Average nonzeros per col: 4.00
+[2025-12-05 12:35:46] Saved coefficient stats to @todo/hardness_output/plots_1000_full/coeff_stats.json
+[2025-12-05 12:35:46] Section 3 complete
+[2025-12-05 12:35:46] 
+[2025-12-05 12:35:46] ============================================================
+[2025-12-05 12:35:46] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:46] ============================================================
+[2025-12-05 12:35:46] Total variables: 27027
+[2025-12-05 12:35:46] Symmetric groups found: 0
+[2025-12-05 12:35:46] Variables in symmetric groups: 0
+[2025-12-05 12:35:47] Section 4 complete
+[2025-12-05 12:35:47] 
+[2025-12-05 12:35:47] ============================================================
+[2025-12-05 12:35:47] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:47] ============================================================
+[2025-12-05 12:35:47] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:47] Contributing factors:
+[2025-12-05 12:35:47] 
+Report saved to: @todo/hardness_output/plots_1000_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_15_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Input file: @todo/hardness_output/models/plots_15_full.lp
+[2025-12-05 12:35:29] Output directory: @todo/hardness_output/plots_15_full
+[2025-12-05 12:35:29] Time limit: 120s
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] Loading model...
+[2025-12-05 12:35:29] Model loaded: 
+[2025-12-05 12:35:29]   Variables: 432
+[2025-12-05 12:35:29]   Constraints: 452
+[2025-12-05 12:35:29]   Binary vars: 432
+[2025-12-05 12:35:29]   Integer vars: 432
+[2025-12-05 12:35:29]   Continuous vars: -432
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:29] MIP optimal objective: 0.382971
+...
+[2025-12-05 12:35:29] Average nonzeros per row: 3.70
+[2025-12-05 12:35:29] Average nonzeros per col: 3.88
+[2025-12-05 12:35:29] Saved coefficient stats to @todo/hardness_output/plots_15_full/coeff_stats.json
+[2025-12-05 12:35:29] Section 3 complete
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Total variables: 432
+[2025-12-05 12:35:29] Symmetric groups found: 0
+[2025-12-05 12:35:29] Variables in symmetric groups: 0
+[2025-12-05 12:35:29] Section 4 complete
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:29] Contributing factors:
+[2025-12-05 12:35:29] 
+Report saved to: @todo/hardness_output/plots_15_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_200_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:41] ============================================================
+[2025-12-05 12:35:41] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:41] ============================================================
+[2025-12-05 12:35:41] Input file: @todo/hardness_output/models/plots_200_full.lp
+[2025-12-05 12:35:41] Output directory: @todo/hardness_output/plots_200_full
+[2025-12-05 12:35:41] Time limit: 300s
+[2025-12-05 12:35:41] 
+[2025-12-05 12:35:41] Loading model...
+[2025-12-05 12:35:41] Model loaded: 
+[2025-12-05 12:35:41]   Variables: 5427
+[2025-12-05 12:35:41]   Constraints: 5632
+[2025-12-05 12:35:41]   Binary vars: 5427
+[2025-12-05 12:35:41]   Integer vars: 5427
+[2025-12-05 12:35:41]   Continuous vars: -5427
+[2025-12-05 12:35:41] 
+[2025-12-05 12:35:41] ============================================================
+[2025-12-05 12:35:41] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:41] ============================================================
+[2025-12-05 12:35:41] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:42] MIP optimal objective: 0.426427
+...
+[2025-12-05 12:35:42] Average nonzeros per row: 3.84
+[2025-12-05 12:35:42] Average nonzeros per col: 3.99
+[2025-12-05 12:35:42] Saved coefficient stats to @todo/hardness_output/plots_200_full/coeff_stats.json
+[2025-12-05 12:35:42] Section 3 complete
+[2025-12-05 12:35:42] 
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] Total variables: 5427
+[2025-12-05 12:35:42] Symmetric groups found: 0
+[2025-12-05 12:35:42] Variables in symmetric groups: 0
+[2025-12-05 12:35:42] Section 4 complete
+[2025-12-05 12:35:42] 
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:42] Contributing factors:
+[2025-12-05 12:35:42] 
+Report saved to: @todo/hardness_output/plots_200_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_25_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Input file: @todo/hardness_output/models/plots_25_full.lp
+[2025-12-05 12:35:29] Output directory: @todo/hardness_output/plots_25_full
+[2025-12-05 12:35:29] Time limit: 120s
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] Loading model...
+[2025-12-05 12:35:29] Model loaded: 
+[2025-12-05 12:35:29]   Variables: 702
+[2025-12-05 12:35:29]   Constraints: 732
+[2025-12-05 12:35:29]   Binary vars: 702
+[2025-12-05 12:35:29]   Integer vars: 702
+[2025-12-05 12:35:29]   Continuous vars: -702
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:29] MIP optimal objective: 0.401763
+...
+[2025-12-05 12:35:29] Average nonzeros per row: 3.76
+[2025-12-05 12:35:29] Average nonzeros per col: 3.92
+[2025-12-05 12:35:29] Saved coefficient stats to @todo/hardness_output/plots_25_full/coeff_stats.json
+[2025-12-05 12:35:29] Section 3 complete
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Total variables: 702
+[2025-12-05 12:35:29] Symmetric groups found: 0
+[2025-12-05 12:35:29] Variables in symmetric groups: 0
+[2025-12-05 12:35:29] Section 4 complete
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:29] Contributing factors:
+[2025-12-05 12:35:29] 
+Report saved to: @todo/hardness_output/plots_25_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_50_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Input file: @todo/hardness_output/models/plots_50_full.lp
+[2025-12-05 12:35:29] Output directory: @todo/hardness_output/plots_50_full
+[2025-12-05 12:35:29] Time limit: 120s
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] Loading model...
+[2025-12-05 12:35:29] Model loaded: 
+[2025-12-05 12:35:29]   Variables: 1377
+[2025-12-05 12:35:29]   Constraints: 1432
+[2025-12-05 12:35:29]   Binary vars: 1377
+[2025-12-05 12:35:29]   Integer vars: 1377
+[2025-12-05 12:35:29]   Continuous vars: -1377
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:29] MIP optimal objective: 0.415857
+...
+[2025-12-05 12:35:29] Average nonzeros per row: 3.81
+[2025-12-05 12:35:29] Average nonzeros per col: 3.96
+[2025-12-05 12:35:29] Saved coefficient stats to @todo/hardness_output/plots_50_full/coeff_stats.json
+[2025-12-05 12:35:29] Section 3 complete
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Total variables: 1377
+[2025-12-05 12:35:29] Symmetric groups found: 0
+[2025-12-05 12:35:29] Variables in symmetric groups: 0
+[2025-12-05 12:35:29] Section 4 complete
+[2025-12-05 12:35:29] 
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:29] ============================================================
+[2025-12-05 12:35:29] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:29] Contributing factors:
+[2025-12-05 12:35:29] 
+Report saved to: @todo/hardness_output/plots_50_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/plots_500_full/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] Input file: @todo/hardness_output/models/plots_500_full.lp
+[2025-12-05 12:35:42] Output directory: @todo/hardness_output/plots_500_full
+[2025-12-05 12:35:42] Time limit: 300s
+[2025-12-05 12:35:42] 
+[2025-12-05 12:35:42] Loading model...
+[2025-12-05 12:35:42] Model loaded: 
+[2025-12-05 12:35:42]   Variables: 13527
+[2025-12-05 12:35:42]   Constraints: 14032
+[2025-12-05 12:35:42]   Binary vars: 13527
+[2025-12-05 12:35:42]   Integer vars: 13527
+[2025-12-05 12:35:42]   Continuous vars: -13527
+[2025-12-05 12:35:42] 
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:35:42] ============================================================
+[2025-12-05 12:35:42] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:35:43] MIP optimal objective: 0.428542
+...
+[2025-12-05 12:35:43] Average nonzeros per row: 3.85
+[2025-12-05 12:35:43] Average nonzeros per col: 4.00
+[2025-12-05 12:35:43] Saved coefficient stats to @todo/hardness_output/plots_500_full/coeff_stats.json
+[2025-12-05 12:35:43] Section 3 complete
+[2025-12-05 12:35:43] 
+[2025-12-05 12:35:43] ============================================================
+[2025-12-05 12:35:43] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:35:43] ============================================================
+[2025-12-05 12:35:44] Total variables: 13527
+[2025-12-05 12:35:44] Symmetric groups found: 0
+[2025-12-05 12:35:44] Variables in symmetric groups: 0
+[2025-12-05 12:35:44] Section 4 complete
+[2025-12-05 12:35:44] 
+[2025-12-05 12:35:44] ============================================================
+[2025-12-05 12:35:44] DIAGNOSTIC SUMMARY
+[2025-12-05 12:35:44] ============================================================
+[2025-12-05 12:35:44] Hardness Level: EASY (score: 0)
+[2025-12-05 12:35:44] Contributing factors:
+[2025-12-05 12:35:44] 
+Report saved to: @todo/hardness_output/plots_500_full/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/rotation_analysis_summary.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+ROTATION SCENARIOS - BENCHMARK ANALYSIS
+================================================================================
+
+CRITICAL FINDING: Still Too Easy for Classical Solvers
+-------------------------------------------------------
+
+Despite implementing quantum-friendly features (bounded degree, frustration,
+spatial locality), Gurobi still solves ALL instances optimally with:
+
+• 0-0.09% integrality gap (LP finds near-integer solutions)
+• < 6 seconds for all instances  
+• Only 1 branch-and-bound node (solved at root!)
+• 0-16% fractional LP variables
+
+WHAT WORKED (Quantum Tractability):
+------------------------------------
+✅ Bounded max degree: ~29 (embeddable on Pegasus with chains ~2)
+✅ Reduced variables: 90-900 vs 2700+ in original
+✅ Spatial locality: k=4 neighbors (sparse coupling)
+...
+  - Add non-local constraints (global diversity, budgets)
+  - Use NP-hard planted instances (3-SAT reduction)
+
+Option 3: HYBRID APPROACH
+  - Use rotation formulation for subproblems
+  - Decompose large instances spatially
+  - Solve subproblems on QPU
+  - Coordinate with classical outer loop
+
+RECOMMENDATION: Pursue Option 3 (Hybrid Decomposition)
+------------------------------------------------------
+Your rotation formulation is perfect for:
+• Spatially decomposed subproblems (10-20 farms each)
+• QPU-solvable chunks (bounded degree)
+• Meaningful agricultural structure preserved
+
+Let classical solver handle coordination, QPU handle local optimization.
+This is a PRACTICAL path to demonstrating quantum utility!
+
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/rotation_benchmark_log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```
+====================================================================================================
+ROTATION SCENARIOS - GUROBI GROUND TRUTH BENCHMARK
+====================================================================================================
+Started: 2025-12-08 11:10:41
+Gurobi version: (12, 0, 3)
+
+====================================================================================================
+SCENARIO: rotation_micro_25
+====================================================================================================
+Configuration:
+  Farms: 5
+  Crop families: 6
+  Periods: 3
+  Total variables: 90
+  Rotation gamma: 0.15
+  Frustration ratio: 40%
+  Negative strength: -0.3
+  k-neighbors: 4
+
+Building MIP model...
+...
+  Solve Time: 5.99s
+  Nodes Explored: 1
+  Solutions Found: 10
+  Hardness: EASY (LP finds integer solution)
+
+====================================================================================================
+SUMMARY
+====================================================================================================
+
+Scenario                  Vars     Gap        Time(s)    Nodes      Hardness
+----------------------------------------------------------------------------------------------------
+rotation_micro_25         90       0.00%      0.16       1          EASY
+rotation_small_50         180      0.05%      0.15       1          EASY
+rotation_medium_100       360      0.00%      1.50       1          EASY
+rotation_large_200        900      0.09%      5.99       1          EASY
+
+====================================================================================================
+Results saved to: @todo/hardness_output/rotation_gurobi_benchmark.json
+====================================================================================================
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/rotation_enhanced_SUCCESS.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+ROTATION SCENARIOS - ENHANCED HARDNESS ✅ SUCCESS!
+================================================================================
+
+CRITICAL BREAKTHROUGH: Classical Solver Now Struggles!
+-------------------------------------------------------
+
+After implementing enhanced hardness features, Gurobi can NO LONGER solve
+these instances optimally within 5 minutes:
+
+• ALL scenarios hit TIME_LIMIT (300s)
+• Millions of branch-and-bound nodes explored
+• MIP gap remains >700% for largest instances
+• This is EXACTLY what we wanted!
+
+RESULTS SUMMARY:
+----------------
+Scenario              Vars    Time    Nodes Explored    Status
+---------------------------------------------------------------
+rotation_micro_25     90      300s    2,476,215 nodes   TIMEOUT ✅
+...
+1. ✅ CLASSICAL HARDNESS: Proven (cannot solve optimally)
+2. → QUANTUM BENCHMARK: Test on QPU hardware
+3. → COMPARE: QPU vs SA vs Gurobi (timeout)
+4. → ANALYZE: Time-to-solution, solution quality
+5. → DOCUMENT: Quantum advantage demonstration
+
+RECOMMENDATION:
+--------------
+PROCEED with QPU testing using these enhanced scenarios!
+
+These instances are:
+• Hard enough for classical (timeout at all scales)
+• Tractable for quantum (bounded degree)
+• Agronomically meaningful (crop rotation)
+• Scalable (5-50 farms tested)
+
+This is the strongest candidate yet for demonstrating practical
+quantum utility on a real-world agricultural optimization problem!
+
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_100/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Input file: @todo/hardness_output/models/small_100.lp
+[2025-12-05 12:31:51] Output directory: @todo/hardness_output/small_100
+[2025-12-05 12:31:51] Time limit: 60s
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] Loading model...
+[2025-12-05 12:31:51] Model loaded: 
+[2025-12-05 12:31:51]   Variables: 99
+[2025-12-05 12:31:51]   Constraints: 112
+[2025-12-05 12:31:51]   Binary vars: 99
+[2025-12-05 12:31:51]   Integer vars: 99
+[2025-12-05 12:31:51]   Continuous vars: -99
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:31:51] MIP optimal objective: 0.534159
+...
+[2025-12-05 12:31:51] Average nonzeros per row: 3.34
+[2025-12-05 12:31:51] Average nonzeros per col: 3.78
+[2025-12-05 12:31:51] Saved coefficient stats to @todo/hardness_output/small_100/coeff_stats.json
+[2025-12-05 12:31:51] Section 3 complete
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Total variables: 99
+[2025-12-05 12:31:51] Symmetric groups found: 0
+[2025-12-05 12:31:51] Variables in symmetric groups: 0
+[2025-12-05 12:31:51] Section 4 complete
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] DIAGNOSTIC SUMMARY
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Hardness Level: EASY (score: 0)
+[2025-12-05 12:31:51] Contributing factors:
+[2025-12-05 12:31:51] 
+Report saved to: @todo/hardness_output/small_100/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/small_60/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] Input file: @todo/hardness_output/models/small_60.lp
+[2025-12-05 12:31:43] Output directory: @todo/hardness_output/small_60
+[2025-12-05 12:31:43] Time limit: 60s
+[2025-12-05 12:31:43] 
+[2025-12-05 12:31:43] Loading model...
+[2025-12-05 12:31:43] Model loaded: 
+[2025-12-05 12:31:43]   Variables: 56
+[2025-12-05 12:31:43]   Constraints: 66
+[2025-12-05 12:31:43]   Binary vars: 56
+[2025-12-05 12:31:43]   Integer vars: 56
+[2025-12-05 12:31:43]   Continuous vars: -56
+[2025-12-05 12:31:43] 
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:31:43] MIP optimal objective: 0.498644
+...
+[2025-12-05 12:31:43] Average nonzeros per row: 3.15
+[2025-12-05 12:31:43] Average nonzeros per col: 3.71
+[2025-12-05 12:31:43] Saved coefficient stats to @todo/hardness_output/small_60/coeff_stats.json
+[2025-12-05 12:31:43] Section 3 complete
+[2025-12-05 12:31:43] 
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] Total variables: 56
+[2025-12-05 12:31:43] Symmetric groups found: 0
+[2025-12-05 12:31:43] Variables in symmetric groups: 0
+[2025-12-05 12:31:43] Section 4 complete
+[2025-12-05 12:31:43] 
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] DIAGNOSTIC SUMMARY
+[2025-12-05 12:31:43] ============================================================
+[2025-12-05 12:31:43] Hardness Level: EASY (score: 0)
+[2025-12-05 12:31:43] Contributing factors:
+[2025-12-05 12:31:43] 
+Report saved to: @todo/hardness_output/small_60/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hardness_output/tiny_24/log.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] ILP HARDNESS DIAGNOSTIC TOOL
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Input file: @todo/hardness_output/models/tiny_24.lp
+[2025-12-05 12:31:51] Output directory: @todo/hardness_output/tiny_24
+[2025-12-05 12:31:51] Time limit: 60s
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] Loading model...
+[2025-12-05 12:31:51] Model loaded: 
+[2025-12-05 12:31:51]   Variables: 25
+[2025-12-05 12:31:51]   Constraints: 32
+[2025-12-05 12:31:51]   Binary vars: 25
+[2025-12-05 12:31:51]   Integer vars: 25
+[2025-12-05 12:31:51]   Continuous vars: -25
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] SECTION 1: Integrality (Root) Gap
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Solving MIP to obtain integer incumbent...
+[2025-12-05 12:31:51] MIP optimal objective: 0.494513
+...
+[2025-12-05 12:31:51] Average nonzeros per row: 2.81
+[2025-12-05 12:31:51] Average nonzeros per col: 3.60
+[2025-12-05 12:31:51] Saved coefficient stats to @todo/hardness_output/tiny_24/coeff_stats.json
+[2025-12-05 12:31:51] Section 3 complete
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] SECTION 4: Symmetry & Repeated Blocks
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Total variables: 25
+[2025-12-05 12:31:51] Symmetric groups found: 0
+[2025-12-05 12:31:51] Variables in symmetric groups: 0
+[2025-12-05 12:31:51] Section 4 complete
+[2025-12-05 12:31:51] 
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] DIAGNOSTIC SUMMARY
+[2025-12-05 12:31:51] ============================================================
+[2025-12-05 12:31:51] Hardness Level: EASY (score: 0)
+[2025-12-05 12:31:51] Contributing factors:
+[2025-12-05 12:31:51] 
+Report saved to: @todo/hardness_output/tiny_24/report.json```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_statistical_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+HIERARCHICAL STATISTICAL COMPARISON: Quantum vs Classical
+================================================================================
+
+📊 Publication-Quality Benchmark for Technical Paper
+📈 Continuation of statistical_comparison_test.py (scaling to 25-100 farms)
+
+================================================================================
+
+[1/5] Importing core libraries...
+[2/5] Importing optimization libraries...
+  ✓ Gurobi available
+[3/5] Importing D-Wave libraries...
+  ✓ D-Wave QPU available
+[4/5] Importing hierarchical solver...
+[HierarchicalSolver] Loading modules...
+  ✓ QPU available (DWaveCliqueSampler)
+[HierarchicalSolver] Ready!
+[5/5] Setup complete!
+
+...
+================================================================================
+
+================================================================================
+GENERATING PUBLICATION PLOTS
+================================================================================
+  ✓ Plots saved: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_statistical_results/hierarchical_comparison_plots.png
+
+================================================================================
+✅ HIERARCHICAL STATISTICAL TEST COMPLETE!
+================================================================================
+
+Results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hierarchical_statistical_results
+
+Key files:
+  - Full results JSON (all runs)
+  - Summary CSV (statistics)
+  - Comparison plots PNG (publication-ready)
+
+Ready for inclusion in technical paper! 📊
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hybrid_test_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+================================================================================
+HYBRID FORMULATION TEST: 20, 25, 50 farms
+================================================================================
+
+Testing: 27-food variables + 6-family synergy structure
+Expected: Consistent 15-20% gap (no formulation jump!)
+
+================================================================================
+RUNNING HYBRID FORMULATION TESTS
+================================================================================
+
+
+================================================================================
+Testing 20 farms (27 foods)
+================================================================================
+
+Run 1/2:
+  Loading hybrid data for 20 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+...
+RUNNING HYBRID FORMULATION TESTS
+================================================================================
+
+
+================================================================================
+Testing 20 farms (27 foods)
+================================================================================
+
+Run 1/2:
+  Loading hybrid data for 20 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/test_hybrid_formulation.py", line 342, in <module>
+    data = load_hybrid_data(n_farms)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/test_hybrid_formulation.py", line 64, in load_hybrid_data
+    all_farm_names = list(farms.keys())[:n_farms]
+                          ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'keys'
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/mohseni_results_final.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/run_mohseni_standalone.py", line 146, in <module>
+    naeimeh_graph = data[agent_count][inst_idx]
+                    ~~~~^^^^^^^^^^^^^
+KeyError: 10
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/run_mohseni_standalone.py", line 146, in <module>
+    naeimeh_graph = data[agent_count][inst_idx]
+                    ~~~~^^^^^^^^^^^^^
+KeyError: 10
+================================================================================
+MOHSENI ET AL. COALITION FORMATION - STANDALONE VERSION
+================================================================================
+
+Loading data: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/external/Benchmark_Naeimeh/Data/data_forfig2.pkl
+✓ Data loaded: [4, 8, 12, 16, 20, 24, 28, 30, 35, 40, 45, 50] agent sizes available
+
+Configuration:
+  Agent sizes: [10, 12]
+  Instances per size: 2
+...
+
+================================================================================
+FINAL RESULTS
+================================================================================
+
+Successful: 2/4
+
+Per-instance:
+  n=12, inst=0: 2 coalitions [11, 1], value=0.6150, time=3.927s, QPU calls=2
+  n=12, inst=1: 3 coalitions [1, 4, 7], value=1.0824, time=6.344s, QPU calls=4
+
+Averages:
+  Coalitions: 2.5
+  Value: 0.8487
+  Time: 5.135s
+  QPU calls: 3.0
+
+================================================================================
+✅ Complete!
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/mohseni_results.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
 ```
 
-### Testing Checklist for Future Development
+================================================================================
+MOHSENI ET AL. COALITION FORMATION TEST
+Using DWaveCliqueSampler (zero embedding overhead)
+================================================================================
 
-- [ ] Run `test_embedding_fix.py` after any changes to embedding benchmark
-- [ ] Run `test_level1_decomp.py` after any changes to Level 1 decomposition
-- [ ] Verify land usage ≤ 100% for all solutions
-- [ ] Check convergence metrics (gap, residuals) before trusting results
-- [ ] Test with and without D-Wave token (SA fallback should work)
+→ Running Test Case 1...
 
+================================================================================
+TEST CASE 1: Balanced Graph (10 nodes)
+================================================================================
+
+================================================================================
+COALITION FORMATION: 10 agents
+================================================================================
+
+Iteration 1: 1 coalitions
+  Coalition [0, 1, 2]... (10 agents, 10 vars)... No improvement (22.50 ≥ 0.00 + 22.50)
+
+Converged after 1 iterations
+...
+  Coalitions found: 1
+  Splits performed: 0
+  Total QPU time: 0.028s
+  Total embedding time: 0.0000s
+  Avg QPU/split: 0.000s
+  Avg embed/split: 0.0000s
+
+Test 2 (15 nodes):
+  Coalitions found: 1
+  Splits performed: 0
+  Total QPU time: 0.036s
+  Total embedding time: 0.0000s
+  Avg QPU/split: 0.000s
+  Avg embed/split: 0.0000s
+
+================================================================================
+✅ Tests complete!
+================================================================================
+
+
+```
 ---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/qpu_benchmark_20251210_154111.txt`
 
-## Files Modified in This Analysis
+**File Type:** TXT
 
-1. `comprehensive_embedding_and_solving_benchmark.py` - Fixed 3 bugs
-2. `test_embedding_fix.py` - Created for testing Level 2 fixes
-3. `test_level1_decomp.py` - Created for testing Level 1 strategies
-4. `check_vars.py` - Created for debugging variable naming
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
 
+**Content Summary:**
+```
+================================================================================
+QPU BENCHMARK DETAILED REPORT
+================================================================================
+
+Timestamp: 2025-12-10T15:41:10.744626
+Scales: [4]
+Methods: ['ground_truth']
+QPU Available: True
+
+
+================================================================================
+SCALE: 4 farms
+================================================================================
+
+Metadata:
+  n_farms: 4
+  n_foods: 27
+  n_variables: 135
+  n_constraints: 144
+  logical_qubits: 135
+...
+Scales: [4]
+Methods: ['ground_truth']
+QPU Available: True
+
+
+================================================================================
+SCALE: 4 farms
+================================================================================
+
+Metadata:
+  n_farms: 4
+  n_foods: 27
+  n_variables: 135
+  n_constraints: 144
+  logical_qubits: 135
+  total_area: 100.0
+
+Ground Truth (Gurobi):
+  Success: False
+
+```
 ---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/results_frist.txt`
 
-## Conclusion
+**File Type:** TXT
 
-The @todo folder contains a comprehensive two-level decomposition framework for quantum-classical hybrid optimization. The main blocking issues (objective=0.0 in benchmark, missing slack variables) have been fixed. The framework is now ready for full-scale benchmarking.
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
 
-Key remaining work:
-1. Fix ADMM convergence (rho parameter tuning)
-2. Fix Benders/DW area overflow (documented in DECOMPOSITION_BUGS_REPORT.md)
-3. Run full 25-farm benchmark to compare decomposition strategy performance
+**Content Summary:**
+```
+============================================================================================================================================
+BENCHMARK SUMMARY (Pure QPU - No Hybrid)
+============================================================================================================================================
+
+Scale  Method                                Obj    Gap%     Wall    Solve    Embed      QPU  Viol Status      
+--------------------------------------------------------------------------------------------------------------------------------------------
+10     Ground Truth (Gurobi)              0.3595     0.0    0.032    0.006      N/A      N/A     0 ✓ Opt       
+       direct_qpu                         0.0000     N/A   211.41   211.41   210.89      N/A     0 ✗ Fail      
+       decomposition_PlotBased_QPU        0.3641    -1.3    35.29     1.73    20.35    1.726     0 ✓ Feas      
+       decomposition_Multilevel(5)_QPU    0.2313    35.7    15.61     0.71    11.79    0.706     0 ✓ Feas      
+       decomposition_Multilevel(10)_QPU   0.2690    25.2    13.48     0.42    10.22    0.416     0 ✓ Feas      
+       decomposition_Louvain_QPU          0.3390     5.7    45.25     3.78    19.21    3.712     0 ✓ Feas      
+       decomposition_Spectral(10)_QPU     0.3239     9.9    40.95     1.75    32.23    1.605     1 ⚠ 1v        
+       cqm_first_PlotBased                0.2987    16.9    61.61    52.22    50.64    1.584     0 ✓ Feas      
+       coordinated                        0.4212   -17.2    44.80    37.49    36.49    0.999     1 ⚠ 1v        
+--------------------------------------------------------------------------------------------------------------------------------------------
+15     Ground Truth (Gurobi)              0.3830     0.0    0.042    0.023      N/A      N/A     0 ✓ Opt       
+       direct_qpu                         0.0000     N/A   221.06   221.06   220.94      N/A     0 ✗ Fail      
+       decomposition_PlotBased_QPU        0.3398    11.3    52.52     2.30    34.08    2.305     0 ✓ Feas      
+       decomposition_Multilevel(5)_QPU    0.2616    31.7    55.64     0.86    50.05    0.863     0 ✓ Feas      
+...
+       decomposition_HybridGrid(5,9)_QPU   0.3867    -7.6    17.38     1.09     3.13    1.089     1 ⚠ 1v        
+--------------------------------------------------------------------------------------------------------------------------------------------
+15     Ground Truth (Gurobi)          0.3830     0.0    0.029    0.010      N/A      N/A     0 ✓ Opt       
+       decomposition_HybridGrid(5,9)_QPU   0.3977    -3.9    11.87     1.74     3.19    1.738     0 ✓ Feas      
+--------------------------------------------------------------------------------------------------------------------------------------------
+50     Ground Truth (Gurobi)          0.4159     0.0    0.033    0.015      N/A      N/A     0 ✓ Opt       
+       decomposition_HybridGrid(5,9)_QPU   0.3878     6.7    35.83     5.57     8.59    5.570     0 ✓ Feas      
+--------------------------------------------------------------------------------------------------------------------------------------------
+100    Ground Truth (Gurobi)          0.4229     0.0    0.111    0.043      N/A      N/A     0 ✓ Opt       
+       decomposition_HybridGrid(10,9)_QPU   0.3521    16.7    54.38     6.04    18.64    6.043     0 ✓ Feas      
+--------------------------------------------------------------------------------------------------------------------------------------------
+200    Ground Truth (Gurobi)          0.4264     0.0    0.304    0.049      N/A      N/A     0 ✓ Opt       
+       decomposition_HybridGrid(5,9)_QPU   0.3870     9.2   148.70    21.41    40.84   21.413     0 ✓ Feas      
+--------------------------------------------------------------------------------------------------------------------------------------------
+500    Ground Truth (Gurobi)          0.4285     0.0    0.550    0.283      N/A      N/A     0 ✓ Opt       
+       decomposition_HybridGrid(10,9)_QPU   0.3520    17.9   234.43    30.83    83.64   30.823     1 ⚠ 1v        
+--------------------------------------------------------------------------------------------------------------------------------------------
+1000   Ground Truth (Gurobi)          0.4292     0.0    0.914    0.327      N/A      N/A     0 ✓ Opt       
+       decomposition_HybridGrid(10,9)_QPU   0.3517    18.1   549.07    61.49   239.23   61.484     0 ✓ Feas      
+--------------------------------------------------------------------------------------------------------------------------------------------```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/results.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+====================================================================================================================================================================================
+COMPREHENSIVE SCALING SUMMARY (with Embedding)
+====================================================================================================================================================================================
+
+====================================================================================================================================================================================
+25 FARMS × 27 FOODS (GT=0.315055)
+====================================================================================================================================================================================
+
+Method       Decomp           Parts      Solve      Embed     Qubits  Chain    Objective        Gap   Viol
+------------------------------------------------------------------------------------------------------------------------
+CQM (Binary):
+  CQM        None                 1     0.019s      37.4s       FAIL    N/A     0.315055      -0.0%      ✅
+  CQM        PlotBased           26     0.039s      16.8s       2600      5     0.315055      -0.0%      ✅
+  CQM        Spectral(4)          4     0.020s      18.8s       2929      9     0.315055      -0.0%      ✅
+  CQM        Louvain             25     0.032s      17.0s       2600      5     0.271504     +13.8%     ❌3
+  CQM        Multilevel(5)        6     0.010s      28.8s       2760      7     0.315055      -0.0%      ✅
+  CQM        Cutset(2)           14     0.026s      32.7s       2588      6     0.315055      -0.0%      ✅
+  CQM        SpatialGrid(5)       6     0.012s      31.8s       2760      7     0.315055      -0.0%      ✅
+
+Benders (Continuous):
+...
+  🏆 Best CQM:     PlotBased       gap=-0.0% viol=0 embed=✅
+  🏆 Best Benders: None            gap=-0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+50 farms:
+  🏆 Best CQM:     Spectral(4)     gap=+0.0% viol=0 embed=❌
+  🏆 Best Benders: None            gap=-0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+100 farms:
+  🏆 Best CQM:     Spectral(4)     gap=+0.0% viol=0 embed=❌
+  🏆 Best Benders: Spectral(4)     gap=+0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+200 farms:
+  🏆 Best CQM:     Spectral(4)     gap=-0.0% viol=0 embed=❌
+  🏆 Best Benders: PlotBased       gap=-0.0% viol=4
+  🏆 Best D-W:     None            gap=+0.0% viol=4
+
+====================================================================================================================================================================================```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/roadmap_phase1_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+15:19:37 [INFO] Building SIMPLE binary CQM: 4 farms × 27 crops (no rotation/synergy)
+15:19:37 [INFO]   Simple binary CQM: 108 variables, 4 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.88s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+  ✓ neal (SimulatedAnnealing) available for comparison
+  ✓ Louvain community detection available
+  ✓ Spectral clustering available
+  D-Wave imports: 3.21s
+[3/5] Loading configuration...
+  Output directory: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results
+...
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/system/samplers/dwave_sampler.py", line 222, in __init__
+    self.solver = self._get_solver(penalty=self._solver_penalty)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/system/samplers/dwave_sampler.py", line 250, in _get_solver
+    solvers = self.client.get_solvers(refresh=refresh, order_by=order_by, **filters)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/events.py", line 109, in wrapped
+    return fn(*pargs, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/oqi/lib/python3.11/site-packages/dwave/cloud/client/base.py", line 1172, in get_solvers
+    raise SolverAuthenticationError from e
+dwave.cloud.exceptions.SolverAuthenticationError: Invalid token or access denied
+15:19:44 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+15:19:44 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+15:19:44 [INFO]   Total area: 100.00 ha
+15:19:44 [INFO] Building rotation CQM with 4 farms × 6 families × 3 periods
+15:19:44 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+15:19:44 [INFO]   Rotation matrix: 86.1% negative synergies
+15:19:44 [INFO]   Spatial graph: 6 neighbor pairs (k=4)
+15:19:44 [INFO]   CQM built: 72 variables, 12 constraints
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/roadmap_phase1_test_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+10:09:49 [INFO] Loaded scenario 'tiny_24': 4 plots × 5 foods = 25 variables
+10:09:49 [INFO]   Food groups: ['Grains', 'Legumes', 'Vegetables']
+10:09:49 [INFO]   Total area: 100.01 ha
+10:09:49 [INFO] Building SIMPLE binary CQM: 4 farms × 5 crops (no rotation/synergy)
+10:09:49 [INFO]   Simple binary CQM: 20 variables, 4 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.65s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+  ✓ neal (SimulatedAnnealing) available for comparison
+  ✓ Louvain community detection available
+  ✓ Spectral clustering available
+...
+--- Method: clique_qpu ---
+✓ Success: obj=0.5025, wall=2.359s, QPU=0.223s, embed=0.0000s, violations=3
+
+====================================================================================================
+Test: Rotation (rotation_micro_25: 5 farms, 6 crops, 3 periods)
+====================================================================================================
+Problem size: 90 variables, 15 constraints
+
+--- Method: ground_truth ---
+✓ Success: obj=4.0782, wall=120.041s, QPU=0.000s, embed=0.0000s, violations=0
+
+--- Method: clique_decomp ---
+✓ Success: obj=4.0205, wall=15.920s, QPU=0.179s, embed=0.0000s, violations=0
+
+--- Method: spatial_temporal ---
+✓ Success: obj=3.8004, wall=23.778s, QPU=0.255s, embed=0.0000s, violations=0
+
+====================================================================================================
+Roadmap Phase 1 results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase1_20251211_101235.json
+====================================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/roadmap_phase2_test_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+09:50:59 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+09:50:59 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+09:50:59 [INFO]   Total area: 100.00 ha
+09:50:59 [INFO] Building rotation CQM with 5 farms × 6 families × 3 periods
+09:50:59 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+09:50:59 [INFO]   Rotation matrix: 86.1% negative synergies
+09:50:59 [INFO]   Spatial graph: 10 neighbor pairs (k=4)
+09:50:59 [INFO]   CQM built: 90 variables, 15 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.85s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+...
+✓ obj=6.8634, time=33.800s
+
+====================================================================================================
+Scale: 15 farms × 6 crops × 3 periods
+====================================================================================================
+Problem size: 270 variables
+
+--- Method: ground_truth ---
+✓ obj=11.5266, time=300.146s
+
+--- Method: spatial_temporal ---
+✓ obj=11.1712, time=35.701s
+
+====================================================================================================
+CROSSOVER ANALYSIS
+====================================================================================================
+
+====================================================================================================
+Roadmap Phase 2 results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase2_20251211_100739.json
+====================================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/roadmap_phase3_test_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+11:03:35 [INFO] Loaded scenario 'rotation_small_50': 10 plots × 6 foods = 66 variables
+11:03:35 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+11:03:35 [INFO]   Total area: 99.99 ha
+11:03:35 [INFO] Building rotation CQM with 10 farms × 6 families × 3 periods
+11:03:35 [INFO]   Rotation gamma: 0.25, Frustration: 75%, One-hot penalty: 2.5
+11:03:35 [INFO]   Rotation matrix: 88.9% negative synergies
+11:03:35 [INFO]   Spatial graph: 25 neighbor pairs (k=4)
+11:03:36 [INFO]   CQM built: 180 variables, 30 constraints
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.77s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+  ✓ DWaveCliqueSampler (hardware cliques) available
+  ℹ QBSolv: Deprecated (using decomposition methods instead)
+  ✓ minorminer available
+  ✓ dwave_networkx available
+...
+
+15 farms:
+  (No ground truth available)
+
+20 farms:
+  (No ground truth available)
+
+====================================================================================================
+PHASE 3 RECOMMENDATIONS
+====================================================================================================
+Based on the optimization analysis:
+1. For best quality (lowest gap): Use strategy with highest iterations and coordination
+2. For best speed: Use baseline with minimal iterations but good clustering
+3. For balanced performance: Consider hybrid approaches with moderate parameters
+4. For large-scale problems (>15 farms): Increase farms_per_cluster to reduce subproblems
+5. For publication results: Use the 'Best Balanced' strategy for each scale
+
+====================================================================================================
+Roadmap Phase 3 results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/roadmap_phase3_20251211_113219.json
+====================================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/rotation_scenarios_summary.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+ROTATION SCENARIOS - TECHNICAL SUMMARY
+================================================================================
+
+WHAT THEY ARE:
+--------------
+Multi-period crop rotation optimization with spatial interactions and 
+frustrated synergies, designed for quantum-classical benchmarking.
+
+KEY DIFFERENCES FROM ORIGINAL (e.g., full_family):
+--------------------------------------------------
+
+1. TEMPORAL DIMENSION
+   Original: Static, single-period assignment
+   Rotation: 3-period temporal optimization
+   → Models realistic crop rotation over 3 years
+
+2. OBJECTIVE FUNCTION
+   Original: Linear (sum of crop benefits)
+   Rotation: Quadratic (benefits + rotation synergies + spatial interactions)
+...
+  3. Frustrated synergies create local minima
+  4. Branch-and-bound explores exponentially many nodes
+
+Quantum annealers may succeed because:
+  1. Native QUBO mapping (quadratic → qubit couplings)
+  2. Quantum tunneling escapes local minima
+  3. No branch-and-bound (different search mechanism)
+  4. Sparse coupling (k=4) fits hardware topology
+
+NEXT STEPS:
+-----------
+1. Benchmark on D-Wave QPU (Advantage_system6)
+2. Compare: QPU vs SA vs Gurobi (timeout)
+3. Measure time-to-solution, solution quality
+4. Document quantum advantage (if found)
+
+================================================================================
+Generated: December 2025
+LaTeX Report: rotation_scenarios_report.pdf
+================================================================================
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/statistical_test_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+================================================================================
+STATISTICAL COMPARISON TEST: Quantum vs Classical
+================================================================================
+
+[1/4] Importing core libraries...
+  Core imports: 1.92s
+[2/4] Importing D-Wave libraries...
+  ✓ DWaveCliqueSampler available
+  D-Wave imports: 1.78s
+[3/4] Importing plotting libraries...
+  ✓ Matplotlib available
+[4/4] Setup complete!
+
+  D-Wave token loaded from config (length: 45)
+================================================================================
+STATISTICAL COMPARISON TEST
+================================================================================
+Farm sizes: [5, 10, 15, 20]
+Methods: ['ground_truth', 'clique_decomp', 'spatial_temporal']
+Runs per method: 2
+...
+================================================================================
+STATISTICAL COMPARISON TEST
+================================================================================
+Farm sizes: [5, 10, 15, 20]
+Methods: ['ground_truth', 'clique_decomp', 'spatial_temporal']
+Runs per method: 2
+QPU reads: 100
+Classical timeout: 300s
+================================================================================
+
+
+================================================================================
+TESTING: 5 farms × 6 crops × 3 periods
+Variables: 90
+================================================================================
+
+--- Method: ground_truth ---
+  Run 1/2... Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/test_3iter_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/test_micro_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/test_rotation_output.txt`
+
+**File Type:** TXT
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+11:26:07 [INFO] Loading scenario 'rotation_micro_25'...
+11:26:07 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+11:26:07 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+11:26:07 [INFO]   Total area: 100.00 ha
+11:26:07 [INFO] Building CQM...
+11:26:07 [INFO]   Detected rotation scenario - using 3-period formulation
+11:26:07 [INFO] Building rotation CQM with 5 farms × 6 families × 3 periods
+11:26:07 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+11:26:07 [INFO]   Rotation matrix: 86.1% negative synergies
+11:26:07 [INFO]   Spatial graph: 10 neighbor pairs (k=4)
+11:26:07 [INFO]   CQM built: 90 variables, 15 constraints
+11:26:07 [INFO] Solving ground truth with Gurobi...
+11:28:08 [INFO] Attempting direct QPU (n_vars=36, num_reads=100)...
+11:28:08 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=50.0)...
+11:28:08 [INFO]   [DirectQPU] BQM: 120 vars, 1860 interactions
+11:28:08 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+11:29:23 [INFO]   [DirectQPU] Found embedding: 651 physical qubits, max chain 9, in 74.0s
+11:29:23 [INFO]   [DirectQPU] Sampling on QPU (100 reads)...
+11:29:25 [INFO]   [DirectQPU] Success! obj=2.4794, QPU_access=0.034s, embed=73.98s
+11:29:25 [INFO] Attempting clique decomposition (100 reads per subproblem)...
+...
+============================================================================================================================================
+
+Scale                Method                            Obj    Gap%     Wall    Solve    Embed      QPU  Viol Status      
+--------------------------------------------------------------------------------------------------------------------------------------------
+rotation_micro_25    Ground Truth (Gurobi)          4.0782     0.0  120.102  120.005      N/A      N/A     0 ✓ Opt       
+                     direct_qpu                     2.4794    39.2    77.07    74.01    73.98    0.034     1 ⚠ 1v        
+                     clique_decomp                  1.8010    55.8     9.71     0.18      N/A    0.178     0 ✓ Feas      
+                     decomposition_Multilevel(5)_QPU   0.6244    84.7     3.79     0.05     0.16    0.054     1 ⚠ 1v        
+                     decomposition_PlotBased_QPU    0.6475    84.1     6.54     0.17     0.32    0.171     1 ⚠ 1v        
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Wall  = Total wall-clock time (seconds)
+  Solve = Solve time (QPU access + classical decomposition)
+  Embed = Total embedding time (all methods use QPU)
+  QPU   = Total QPU access time (all methods use QPU)
+  Viol  = Number of constraint violations
+
+Results saved to: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/qpu_benchmark_results/qpu_benchmark_20251210_112945.json
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_run_miqp.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+SIGNIFICANT SCENARIOS BENCHMARK: Gurobi vs QPU
+================================================================================
+
+Importing libraries...
+✓ Gurobi available
+✓ D-Wave libraries available
+✓ Clique decomposition available
+[HierarchicalSolver] Loading modules...
+  ✓ QPU available (DWaveCliqueSampler)
+[HierarchicalSolver] Ready!
+✓ Hierarchical solver available
+
+
+================================================================================
+SIGNIFICANT SCENARIOS BENCHMARK
+Gurobi vs QPU Comprehensive Comparison
+================================================================================
+
+Run Configuration:
+...
+H    0     0                       7.6106247  271.74288  3471%     -    0s
+H    0     0                       7.6805863  271.74288  3438%     -    0s
+     0     0  271.74288    0   95    7.68059  271.74288  3438%     -    0s
+H    0     0                       7.9036084  271.74288  3338%     -    0s
+H    0     0                       7.9298559  271.74288  3327%     -    0s
+H    0     0                       7.9602725  271.74288  3314%     -    0s
+H    0     0                       8.0155415  271.74288  3290%     -    0s
+H    0     0                       8.0405314  271.74288  3280%     -    0s
+H    0     0                       8.1620188  271.74288  3229%     -    0s
+H    0     0                       8.2192713  271.74288  3206%     -    0s
+H    0     0                       8.2961659  271.74288  3176%     -    0s
+H    0     0                       8.6625220  271.74288  3037%     -    0s
+     0     2  271.74288    0   95    8.66252  271.74288  3037%     -    0s
+H 5177  3777                       8.6767570  209.31657  2312%   3.6    3s
+H 5900  4399                       8.6859587  208.62503  2302%   3.6    3s
+  7836  5927     cutoff   52         8.68596  204.73516  2257%   3.7    5s
+ 15246 12111  157.89231   33   55    8.68596  199.30038  2195%   3.7   10s
+ 23362 17780     cutoff   54         8.68596  194.66812  2141%   3.7   15s
+ 30459 23477   10.87092   51   37    8.68596  192.36776  2115%   3.7   20s
+ 37852 29036  119.52006   31   59    8.68596  190.61929  2095%   3.7   25s
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/ALTERNATIVE_FORMULATIONS_ANALYSIS.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  11 DEC 2025 09:54
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**ALTERNATIVE_FORMULATIONS_ANALYSIS.tex
+(./ALTERNATIVE_FORMULATIONS_ANALYSIS.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texl
+ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/
+2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2025
+/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive/2025/
+texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/2025/t
+exmf-dist/fonts/type1/public/amsfonts/cm/cmtt9.pfb></usr/local/texlive/2025/tex
+mf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/texmf
+-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on ALTERNATIVE_FORMULATIONS_ANALYSIS.pdf (13 pages, 282877 bytes
+).
+PDF statistics:
+ 420 PDF objects out of 1000 (max. 8388607)
+ 363 compressed objects within 4 object streams
+ 224 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_output.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+====================================================================================================
+BENCHMARK: 25 FARMS - ALL METHODS
+====================================================================================================
+
+Importing libraries...
+  Done!
+
+Configuration:
+  N_FARMS = 25
+  N_FOODS = 27
+  EMBEDDING_TIMEOUT = 300s
+  SOLVE_TIMEOUT = 120s
+
+Initializing Pegasus P16 topology...
+  Nodes: 5640, Edges: 40484
+
+Running 13 configurations...
+
+[1/13] Testing CQM + None
+
+...
+
+Configuration:
+  N_FARMS = 25
+  N_FOODS = 27
+  EMBEDDING_TIMEOUT = 300s
+  SOLVE_TIMEOUT = 120s
+
+Initializing Pegasus P16 topology...
+  Nodes: 5640, Edges: 40484
+
+Running 13 configurations...
+
+[1/13] Testing CQM + None
+
+  [CQM] + [None]
+    Building CQM...
+    Solving CQM (675 vars)...
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_run.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   E M B E D D I N G   A N D   S O L V I N G   B E N C H M A R K   v 2 . 0 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T e s t i n g :   F o r m u l a t i o n s      D e c o m p o s i t i o n s      S o l v e r s 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ [ 1 / 6 ]   I m p o r t i n g   l i b r a r i e s . . . 
+ 
+     [ O K ]   R e a l   d a t a   l o a d e r s   a v a i l a b l e   ( s c e n a r i o s ,   f a r m _ s a m p l e r ,   p a t c h _ s a m p l e r ) 
+ 
+     [ O K ]   I m p o r t s   d o n e   i n   1 0 . 1 2 s 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ C O M P R E H E N S I V E   E M B E D D I N G   A N D   S O L V I N G   B E N C H M A R K   v 2 . 0 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ 
+ 
+ [ 1 / 4 ]   I n i t i a l i z i n g . . . 
+ 
+     U s i n g   s i m u l a t e d   P e g a s u s   P 1 6   t o p o l o g y 
+ 
+     [ O K ]   T a r g e t   g r a p h :   5 6 4 0   n o d e s ,   4 0 4 8 4   e d g e s 
+ 
+     T o t a l   c o n f i g u r a t i o n s   t o   t e s t :   1 5 
+ 
+     P r o b l e m   s i z e s :   [ 2 5 ] 
+ 
+     F o r m u l a t i o n s :   [ ' C Q M ' ,   ' B Q M ' ] 
+ 
+...
+ 
+ 
+ [ 4 / 4 ]   S u m m a r y . . . 
+ 
+ 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ B E N C H M A R K   C O M P L E T E 
+ 
+ = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ 
+ T o t a l   e x p e r i m e n t s :   1 5 
+ 
+ T o t a l   b e n c h m a r k   t i m e :   6 4 0 8 . 5 s   ( 1 0 6 . 8   m i n ) 
+ 
+ 
+ 
+ S u c c e s s f u l   e m b e d d i n g s :   1 0 / 1 4 
+ 
+ S u c c e s s f u l   s o l v e s :   1 0 / 1 5 
+ 
+ 
+ 
+ B e s t   c o n f i g u r a t i o n s   b y   p r o b l e m   s i z e   ( b y   t o t a l   t i m e ) : 
+ 
+     2 5   f a r m s :   C Q M   +   N o n e   ( 0 . 0 s   t o t a l ) 
+ 
+ 
+ 
+ O u t p u t   f i l e s : 
+ 
+     -   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ b e n c h m a r k _ r e s u l t s \ b e n c h m a r k _ r e s u l t s _ 2 0 2 5 1 1 2 9 _ 1 7 0 3 3 1 . j s o n 
+ 
+     -   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ b e n c h m a r k _ r e s u l t s \ b e n c h m a r k _ r e s u l t s _ 2 0 2 5 1 1 2 9 _ 1 7 0 3 3 1 . c s v 
+ 
+     -   D : \ P r o j e c t s \ O Q I - U C 0 0 2 - D W a v e \ @ t o d o \ b e n c h m a r k _ r e s u l t s \ b e n c h m a r k _ s u m m a r y _ 2 0 2 5 1 1 2 9 _ 1 7 0 3 3 1 . m d 
+ 
+ ```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_25farms.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Potentially, Gurobi results are present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK v2.0
+================================================================================
+Testing: Formulations × Decompositions × Solvers
+================================================================================
+
+[1/6] Importing libraries...
+  [OK] Real data loaders available (scenarios, farm_sampler, patch_sampler)
+  [OK] Imports done in 3.88s
+
+================================================================================
+COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK v2.0
+================================================================================
+
+[1/4] Initializing...
+  Using simulated Pegasus P16 topology
+  [OK] Target graph: 5640 nodes, 40484 edges
+  Total configurations to test: 15
+  Problem sizes: [25]
+  Formulations: ['CQM', 'BQM', 'SparseBQM']
+...
+        Creating model and optimizing...
+        [DONE] in 0.03s (OPTIMAL, bqm_energy=-1617301.1969)
+      Actual objective: 0.000000 (BQM energy: -8086505.9844)
+    Result: Embed=[OK] (1527.2s), Solve=[OK] (0.1s) [5/5 optimal], Total=1527.3s
+
+  [5/15] n_farms=25, form=BQM, decomp=Multilevel
+    Building BQM...
+    Building Patch CQM (25 patches, 27 foods) with REAL data...
+    Converting Patch_CQM to BQM...
+    Applying decomposition: Multilevel...
+      Created 2 partition(s)
+    Running embedding study...
+      Embedding 2 partitions...
+        Partition 1/2 (400 vars)...
+      Testing embedding: 400 vars, 66272 edges (density=0.414)
+      Running minorminer (timeout=300s)...
+      [FAILED] No embedding (tried for 535.5s)
+        Partition 2/2 (360 vars)...
+      Testing embedding: 360 vars, 52203 edges (density=0.403)
+      Running minorminer (timeout=300s)...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_final.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  • 6 families (native) - Small problems
+  • 27→6 aggregated - Large problems (existing)
+  • 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Test Point: test_360
+================================================================================
+
+  Variant: Native 6-Family
+  -----------------------------------------------------------------------
+...
+   - Good classical baseline (Gurobi finds strong solutions)
+   - 15-20% quantum gap (fair comparison)
+   - Limited to small-medium problems
+
+⚠️ AGGREGATED 27→6:
+   - Degraded classical baseline (averaging hurts Gurobi)
+   - Artificially large quantum gap (>100%)
+   - Unfair comparison - NOT RECOMMENDED
+
+✅ HYBRID 27-FOOD:
+   - Strong classical baseline (full expressiveness preserved)
+   - Consistent quantum performance
+   - Scales to large problems with decomposition
+   - RECOMMENDED for all problem sizes
+
+With optimized Gurobi settings (MIPGap=10%, MIPFocus=1, early stopping):
+- All three formulations tested under same conditions
+- Fair apples-to-apples comparison
+- Clear demonstration of aggregation artifact
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_run.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK
+================================================================================
+Testing: Formulations × Decompositions × Solvers
+================================================================================
+
+[1/6] Importing libraries...
+  ✅ Imports done in 2.61s
+
+[2/6] Getting target graph (QPU topology)...
+  Using simulated Pegasus P16 topology
+  ✅ Target graph: 5640 nodes, 40484 edges
+
+================================================================================
+TESTING PROBLEM SIZE: 25 units
+================================================================================
+
+[3/6] Farm Scenario (25 farms)...
+  Building Farm CQM...
+    Building Farm CQM (25 farms, 27 foods)...
+...
+      Testing embedding: 15 vars, 0 edges (density=0.000)
+      Running minorminer (timeout=180s)...
+      ✓ Embedded in 0.0s (chains: max=1, mean=1.0)
+      Solving BQM (675 vars, 648 quad)...
+        Creating model and optimizing...
+        ✓ Done in 0.01s (status=2)
+
+[5/6] Saving results...
+  ✅ Results saved to /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/comprehensive_benchmark_20251127_161355.json
+
+[6/6] Summary...
+
+================================================================================
+BENCHMARK COMPLETE
+================================================================================
+Total experiments: 13
+Output: /Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/benchmark_results/comprehensive_benchmark_20251127_161355.json
+
+Successful embeddings: 2/11
+Successful solves: 10/13
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_scaling_corrected.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  • 6 families (native) - Small problems
+  • 27→6 aggregated - Large problems (existing)
+  • 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Test Point: test_360
+================================================================================
+
+  Variant: Native 6-Family
+  -----------------------------------------------------------------------
+...
+   - Good classical baseline (Gurobi finds strong solutions)
+   - 15-20% quantum gap (fair comparison)
+   - Limited to small-medium problems
+
+⚠️ AGGREGATED 27→6:
+   - Degraded classical baseline (averaging hurts Gurobi)
+   - Artificially large quantum gap (>100%)
+   - Unfair comparison - NOT RECOMMENDED
+
+✅ HYBRID 27-FOOD:
+   - Strong classical baseline (full expressiveness preserved)
+   - Consistent quantum performance
+   - Scales to large problems with decomposition
+   - RECOMMENDED for all problem sizes
+
+With optimized Gurobi settings (MIPGap=10%, MIPFocus=1, early stopping):
+- All three formulations tested under same conditions
+- Fair apples-to-apples comparison
+- Clear demonstration of aggregation artifact
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_scaling_v2.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  • 6 families (native) - Small problems
+  • 27→6 aggregated - Large problems (existing)
+  • 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Test Point: test_360
+================================================================================
+
+  Variant: Native 6-Family
+  -----------------------------------------------------------------------
+...
+   - Good classical baseline (Gurobi finds strong solutions)
+   - 15-20% quantum gap (fair comparison)
+   - Limited to small-medium problems
+
+⚠️ AGGREGATED 27→6:
+   - Degraded classical baseline (averaging hurts Gurobi)
+   - Artificially large quantum gap (>100%)
+   - Unfair comparison - NOT RECOMMENDED
+
+✅ HYBRID 27-FOOD:
+   - Strong classical baseline (full expressiveness preserved)
+   - Consistent quantum performance
+   - Scales to large problems with decomposition
+   - RECOMMENDED for all problem sizes
+
+With optimized Gurobi settings (MIPGap=10%, MIPFocus=1, early stopping):
+- All three formulations tested under same conditions
+- Fair apples-to-apples comparison
+- Clear demonstration of aggregation artifact
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/CRITICAL_ANALYSIS_MOHSENI_ET_AL.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  10 DEC 2025 14:43
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**CRITICAL_ANALYSIS_MOHSENI_ET_AL.tex
+(./CRITICAL_ANALYSIS_MOHSENI_ET_AL.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+sr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr
+/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/l
+ocal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/loc
+al/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/
+texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/tex
+live/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texl
+ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texliv
+e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
+2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt9.pfb></usr/local/texlive/2025
+/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on CRITICAL_ANALYSIS_MOHSENI_ET_AL.pdf (22 pages, 307972 bytes).
+
+PDF statistics:
+ 845 PDF objects out of 1000 (max. 8388607)
+ 777 compressed objects within 8 object streams
+ 329 named destinations out of 1000 (max. 500000)
+ 545 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/FINAL_QUANTUM_ADVANTAGE_REPORT.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  11 DEC 2025 14:32
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**FINAL_QUANTUM_ADVANTAGE_REPORT.tex
+(./FINAL_QUANTUM_ADVANTAGE_REPORT.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+ 570403 words of font info for 80 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 75i,9n,79p,935b,531s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
+></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></
+usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></us
+r/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr
+/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/
+local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/l
+ocal/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1000.pfb></usr/loc
+al/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local
+/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on FINAL_QUANTUM_ADVANTAGE_REPORT.pdf (9 pages, 149512 bytes).
+PDF statistics:
+ 196 PDF objects out of 1000 (max. 8388607)
+ 163 compressed objects within 2 object streams
+ 89 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/formulation_comparison.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  12 DEC 2025 20:29
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**formulation_comparison.tex
+(./formulation_comparison.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/lo
+cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texl
+ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texli
+ve/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texliv
+e/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local/texlive/
+2025/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025
+/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on formulation_comparison.pdf (8 pages, 234741 bytes).
+PDF statistics:
+ 248 PDF objects out of 1000 (max. 8388607)
+ 198 compressed objects within 2 object streams
+ 97 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/hybrid_rerun.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+HYBRID FORMULATION TEST: 20, 25, 50 farms
+================================================================================
+
+Testing: 27-food variables + 6-family synergy structure
+Expected: Consistent 15-20% gap (no formulation jump!)
+
+================================================================================
+RUNNING HYBRID FORMULATION TESTS
+================================================================================
+
+
+================================================================================
+Testing 20 farms (27 foods)
+================================================================================
+
+Run 1/2:
+  Loading hybrid data for 20 farms...
+Generated 250 farms for rotation_250farms_27foods
+Total land: 1187.91 ha
+...
+    270       15 6 families (native)  13.892713   6.279979  1.609172
+    360       20 6 families (native)  15.788613   5.244158  2.145570
+    450       25     27→6 aggregated 134.761118   8.752506  0.595530
+    900       50     27→6 aggregated 133.795634   4.318915  1.191067
+   1800      100     27→6 aggregated 130.086175   2.212707  2.382114
+   1620       20   27 foods (hybrid)  81.279521 111.720885  2.630000
+   2025       25   27 foods (hybrid)  54.721715  91.907514  3.237500
+   4050       50   27 foods (hybrid) 110.810618  77.700236  6.275000
+
+================================================================================
+KEY OBSERVATION:
+================================================================================
+
+If hybrid formulation works as expected:
+- Gap at 1620 vars (20 farms, 27 foods): ~15-20%
+- Gap at 2025 vars (25 farms, 27 foods): ~15-20% (NOT 135%!)
+- Gap at 4050 vars (50 farms, 27 foods): ~15-20%
+
+This would prove the 135% gap was a formulation artifact!
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/INTEGRATION_GUIDE_SCENARIOS.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  11 DEC 2025 14:32
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**INTEGRATION_GUIDE_SCENARIOS.tex
+(./INTEGRATION_GUIDE_SCENARIOS.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+ 1141 hyphenation exceptions out of 8191
+ 98i,11n,101p,610b,2076s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
+></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
+/usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></u
+sr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr
+/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/l
+ocal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local
+/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/
+texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on INTEGRATION_GUIDE_SCENARIOS.pdf (11 pages, 192944 bytes).
+PDF statistics:
+ 630 PDF objects out of 1000 (max. 8388607)
+ 589 compressed objects within 6 object streams
+ 434 named destinations out of 1000 (max. 500000)
+ 13 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/latest_run.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE EMBEDDING AND SOLVING BENCHMARK
+================================================================================
+Testing: Formulations × Decompositions × Solvers
+================================================================================
+
+[1/6] Importing libraries...
+  ✅ Imports done in 3.53s
+
+[2/6] Getting target graph (QPU topology)...
+  Using simulated Pegasus P16 topology
+  ✅ Target graph: 5640 nodes, 40484 edges
+
+================================================================================
+TESTING PROBLEM SIZE: 25 units
+================================================================================
+
+[3/6] Farm Scenario (25 farms)...
+  Building Farm CQM...
+    Building Farm CQM (25 farms, 27 foods)...
+...
+    Building Patch Ultra-Sparse BQM (25 patches, 27 foods)...
+      Testing embedding: 675 vars, 648 edges (density=0.001)
+      Running minorminer (timeout=180s)...
+Traceback (most recent call last):
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_embedding_and_solving_benchmark.py", line 879, in <module>
+    results = run_comprehensive_benchmark()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/comprehensive_embedding_and_solving_benchmark.py", line 757, in run_comprehensive_benchmark
+    (patch_bqm_ultra, patch_bqm_ultra_meta, "UltraSparse_BQM"),
+     ^^^^^^^^^^^^^^^
+NameError: name 'patch_bqm_ultra' is not defined
+      ✓ Embedded in 0.8s (chains: max=1, mean=1.0)
+      Solving BQM (675 vars, 648 quad)...
+        Creating model and optimizing...
+        ✓ Done in 0.01s (status=2)
+
+  Testing decompositions on embeddable formulations...
+
+
+ERROR: name 'patch_bqm_ultra' is not defined
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/QPU_Decomposition_Methods_Technical_Report.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  3 DEC 2025 18:05
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**QPU_Decomposition_Methods_Technical_Report.tex
+(./QPU_Decomposition_Methods_Technical_Report.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/lo
+cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/
+texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/tex
+live/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texliv
+e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2025
+/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2025/t
+exmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive/2025/te
+xmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/2025/tex
+mf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on QPU_Decomposition_Methods_Technical_Report.pdf (13 pages, 269
+637 bytes).
+PDF statistics:
+ 298 PDF objects out of 1000 (max. 8388607)
+ 244 compressed objects within 3 object streams
+ 129 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/rotation_qpu_100reads.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Potentially, QPU results are present.
+
+**Content Summary:**
+```
+09:25:54 [INFO] Loading scenario 'rotation_micro_25'...
+09:25:54 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+09:25:54 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+09:25:54 [INFO]   Total area: 100.00 ha
+09:25:54 [INFO] Building CQM...
+09:25:54 [INFO]   Detected rotation scenario - using 3-period formulation
+09:25:54 [INFO] Building rotation CQM with 5 farms × 6 families × 3 periods
+09:25:54 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+09:25:54 [INFO]   Rotation matrix: 86.1% negative synergies
+09:25:54 [INFO]   Spatial graph: 10 neighbor pairs (k=4)
+09:25:54 [INFO]   CQM built: 90 variables, 15 constraints
+09:25:54 [INFO] Attempting direct QPU (n_vars=36, num_reads=100)...
+09:25:54 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=None)...
+09:25:54 [INFO]   [DirectQPU] BQM: 120 vars, 1860 interactions
+09:25:54 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+09:26:55 [INFO]   [DirectQPU] Found embedding: 651 physical qubits, max chain 9, in 60.0s
+09:26:55 [INFO]   [DirectQPU] Sampling on QPU (100 reads)...
+09:26:57 [INFO]   [DirectQPU] Success! obj=0.0000, QPU_access=0.034s, embed=59.98s
+09:26:57 [INFO] Loading scenario 'rotation_small_50'...
+09:26:57 [INFO] Loaded scenario 'rotation_small_50': 10 plots × 6 foods = 66 variables
+...
+09:28:51 [INFO] Attempting direct QPU (n_vars=126, num_reads=100)...
+09:28:51 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=None)...
+09:28:51 [INFO]   [DirectQPU] BQM: 480 vars, 8304 interactions
+09:28:51 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+09:32:44 [WARNING]   [DirectQPU] No embedding found in 232.4s
+09:32:44 [INFO] Loading scenario 'rotation_large_200'...
+09:32:44 [INFO] Loaded scenario 'rotation_large_200': 50 plots × 6 foods = 306 variables
+09:32:44 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+09:32:44 [INFO]   Total area: 99.98 ha
+09:32:44 [INFO] Building CQM...
+09:32:44 [INFO]   Detected rotation scenario - using 3-period formulation
+09:32:44 [INFO] Building rotation CQM with 50 farms × 6 families × 3 periods
+09:32:44 [INFO]   Rotation gamma: 0.35, Frustration: 88%, One-hot penalty: 1.5
+09:32:44 [INFO]   Rotation matrix: 91.7% negative synergies
+09:32:44 [INFO]   Spatial graph: 115 neighbor pairs (k=4)
+09:32:45 [INFO]   CQM built: 900 variables, 150 constraints
+09:32:45 [INFO] Attempting direct QPU (n_vars=306, num_reads=100)...
+09:32:45 [INFO]   [DirectQPU] Converting CQM to BQM (lagrange=None)...
+09:32:45 [INFO]   [DirectQPU] BQM: 1200 vars, 20220 interactions
+09:32:45 [INFO]   [DirectQPU] Finding embedding (timeout: 200s)...
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/rotation_qpu_test.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+09:23:21 [INFO] Loading scenario 'rotation_micro_25'...
+09:23:21 [INFO] Loaded scenario 'rotation_micro_25': 5 plots × 6 foods = 36 variables
+09:23:21 [INFO]   Food groups: ['Plant_Foods', 'Proteins']
+09:23:21 [INFO]   Total area: 100.00 ha
+09:23:21 [INFO] Building CQM...
+09:23:21 [INFO]   Detected rotation scenario - using 3-period formulation
+09:23:21 [INFO] Building rotation CQM with 5 farms × 6 families × 3 periods
+09:23:21 [INFO]   Rotation gamma: 0.2, Frustration: 70%, One-hot penalty: 3.0
+09:23:21 [INFO]   Rotation matrix: 86.1% negative synergies
+09:23:21 [INFO]   Spatial graph: 10 neighbor pairs (k=4)
+09:23:21 [INFO]   CQM built: 90 variables, 15 constraints
+09:23:21 [INFO] Solving ground truth with Gurobi...
+================================================================================
+QPU BENCHMARK v2.0: Pure Quantum Annealing (No Hybrid)
+================================================================================
+
+[1/5] Importing core libraries...
+  Core imports: 1.97s
+[2/5] Importing D-Wave QPU libraries (no hybrid)...
+  ✓ DWaveSampler (direct QPU) available
+...
+  D-Wave token configured (length: 45)
+
+Using scenarios: ['rotation_micro_25']
+Methods: ['ground_truth', 'direct_qpu']
+QPU Available: True
+Louvain Available: True
+Spectral Available: True
+Num reads configurations: [100]
+
+================================================================================
+SCENARIO: rotation_micro_25
+================================================================================
+  Data load: 0.02s
+  CQM build: 0.45s
+  CQM: 90 vars, 15 constraints
+
+  [Ground Truth] Solving with Gurobi...
+Set parameter Username
+Set parameter LicenseID to value 2728803
+Academic license - for non-commercial use only - expires 2026-10-28
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/rotation_scenarios_report.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  8 DEC 2025 14:54
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**rotation_scenarios_report.tex
+(./rotation_scenarios_report.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+/usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></
+usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></us
+r/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/
+local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/lo
+cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texl
+ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texli
+ve/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texliv
+e/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
+Output written on rotation_scenarios_report.pdf (6 pages, 204614 bytes).
+PDF statistics:
+ 220 PDF objects out of 1000 (max. 8388607)
+ 178 compressed objects within 2 object streams
+ 47 named destinations out of 1000 (max. 500000)
+ 145 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/scaling_test.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Yes, both QPU and Gurobi results are likely present.
+
+**Content Summary:**
+```
+================================================================================
+COMPREHENSIVE SCALING TEST: 25-1500 Variables
+================================================================================
+
+Testing three formulations across full variable range:
+  • 6 families (native) - Small problems
+  • 27→6 aggregated - Large problems (existing)
+  • 27 foods (hybrid) - All sizes
+
+================================================================================
+RUNNING COMPREHENSIVE SCALING TEST
+================================================================================
+
+
+================================================================================
+Formulation: 6_families
+================================================================================
+
+  Testing: 5 farms × 6 foods = 90 variables
+  Loading: 5 farms × 6 foods from rotation_micro_25
+...
+   2430   27_hybrid   14.560257   310.747142       timeout     14.57750  0.118424 44.015176
+   3240   27_hybrid   18.123169   485.108640       timeout     18.02000  0.569264 55.888092
+   4050   27_hybrid -450.000000   513.969935       timeout     21.46250  0.000000 49.899994
+   4860   27_hybrid -540.000000   375.873195       timeout     24.90500  0.000000 31.532986
+
+================================================================================
+KEY INSIGHTS:
+================================================================================
+
+Variable Range: 90 - 4860
+Average Gap: 16.4%
+Average Speedup: 26.2×
+Gurobi Timeout Rate: 6/11 
+                     (55%)
+
+With optimized Gurobi settings (MIPGap=10%, early stopping):
+- Better solutions found faster
+- More consistent performance across problem sizes
+- Fairer quantum vs classical comparison
+
+```
+---
+## File Analysis: `/Users/edoardospigarolo/Documents/OQI-UC002-DWave/@todo/statistical_comparison_methodology.log`
+
+**File Type:** LOG
+
+**Speedup Related:** Unclear from initial analysis.
+
+**Content Summary:**
+```
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.10.31)  11 DEC 2025 15:26
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**statistical_comparison_methodology.tex
+(./statistical_comparison_methodology.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+...
+live/2025/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local
+/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/tex
+live/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texli
+ve/2025/texmf-dist/fonts/type1/public/cm-super/sfrm0600.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/cm-super/sfrm0900.pfb></usr/local/texlive/202
+5/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2025/
+texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2025/te
+xmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local/texlive/2025/texm
+f-dist/fonts/type1/public/cm-super/sfti1095.pfb></usr/local/texlive/2025/texmf-
+dist/fonts/type1/public/cm-super/sftt1095.pfb>
+Output written on statistical_comparison_methodology.pdf (18 pages, 418203 byte
+s).
+PDF statistics:
+ 657 PDF objects out of 1000 (max. 8388607)
+ 587 compressed objects within 6 object streams
+ 149 named destinations out of 1000 (max. 500000)
+ 585 words of extra memory for PDF output out of 10000 (max. 10000000)
+
+```

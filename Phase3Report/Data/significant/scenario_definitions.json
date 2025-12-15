@@ -1,0 +1,66 @@
+{
+  "cliff_easy_4farms": {
+    "description": "Simple binary (4 farms) - should be FAST",
+    "n_farms": 4,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "FAST",
+    "hardness_reason": "Below cliff threshold, simple formulation"
+  },
+  "cliff_transition_10farms": {
+    "description": "Rotation with 10 farms - RIGHT at the cliff",
+    "n_farms": 10,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "VARIABLE (can be fast or timeout)",
+    "hardness_reason": "Critical threshold - formulation determines outcome"
+  },
+  "cliff_hard_15farms": {
+    "description": "Rotation with 15 farms - past the cliff",
+    "n_farms": 15,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "TIMEOUT",
+    "hardness_reason": "Above cliff, rotation constraints make it hard"
+  },
+  "scale_small_5farms": {
+    "description": "5 farms with full constraints",
+    "n_farms": 5,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "TIMEOUT (with diversity+rotation)",
+    "hardness_reason": "Small but constrained"
+  },
+  "scale_medium_20farms": {
+    "description": "20 farms with full constraints",
+    "n_farms": 20,
+    "n_foods": 6,
+    "n_periods": 3,
+    "expected_behavior": "TIMEOUT",
+    "hardness_reason": "Medium scale, classical struggles"
+  },
+  "scale_large_25farms": {
+    "description": "25 farms - D-Wave hierarchical test",
+    "n_farms": 25,
+    "n_foods": 27,
+    "n_periods": 3,
+    "expected_behavior": "TIMEOUT for Gurobi, feasible for QPU",
+    "hardness_reason": "Large scale with aggregation"
+  },
+  "scale_xlarge_50farms": {
+    "description": "50 farms - D-Wave hierarchical test",
+    "n_farms": 50,
+    "n_foods": 27,
+    "n_periods": 3,
+    "expected_behavior": "TIMEOUT for Gurobi, feasible for QPU",
+    "hardness_reason": "Very large, classical intractable"
+  },
+  "scale_xxlarge_100farms": {
+    "description": "100 farms - ultimate test",
+    "n_farms": 100,
+    "n_foods": 27,
+    "n_periods": 3,
+    "expected_behavior": "TIMEOUT for Gurobi",
+    "hardness_reason": "Maximum scale tested"
+  }
+}

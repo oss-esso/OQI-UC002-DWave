@@ -1,0 +1,9 @@
+scenario_id,description,n_farms,n_foods,expected,gurobi_obj,gurobi_time,gurobi_status,qpu_obj,qpu_time,qpu_method,qpu_status
+cliff_easy_4farms,Simple binary (4 farms) - should be FAST,4,6,FAST,,,,,,,
+cliff_transition_10farms,Rotation with 10 farms - RIGHT at the cliff,10,6,VARIABLE (can be fast or timeout),7.174692355363064,60.00281500816345,MEDIUM,6.488827795272849,35.0308141708374,spatial_temporal,MEDIUM
+cliff_hard_15farms,Rotation with 15 farms - past the cliff,15,6,TIMEOUT,11.526557122912862,300.00669407844543,TIMEOUT,10.410154866584758,47.056864976882935,spatial_temporal,MEDIUM
+scale_small_5farms,5 farms with full constraints,5,6,TIMEOUT (with diversity+rotation),4.078209151759545,30.00436282157898,MEDIUM,3.745500016872332,17.12266516685486,clique_decomp,MEDIUM
+scale_medium_20farms,20 farms with full constraints,20,6,TIMEOUT,14.893791207352791,300.00598907470703,TIMEOUT,12.977097365015828,55.37224006652832,clique_decomp,MEDIUM
+scale_large_25farms,25 farms - D-Wave hierarchical test,25,27,"TIMEOUT for Gurobi, feasible for QPU",12.322366321050083,300.3317811489105,TIMEOUT,0.0,35.318368911743164,hierarchical_qpu,MEDIUM
+scale_xlarge_50farms,50 farms - D-Wave hierarchical test,50,27,"TIMEOUT for Gurobi, feasible for QPU",23.581251663185185,300.6479229927063,TIMEOUT,0.0,67.25249171257019,hierarchical_qpu,MEDIUM
+scale_xxlarge_100farms,100 farms - ultimate test,100,27,TIMEOUT for Gurobi,46.085942684031465,300.86454606056213,TIMEOUT,0.0,137.06976985931396,hierarchical_qpu,TIMEOUT
