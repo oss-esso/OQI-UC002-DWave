@@ -48,14 +48,33 @@ sys.path.insert(0, project_root)
 # ============================================================================
 
 TEST_CONFIG = {
-    'farm_sizes': [25, 50, 100],      # Scaling tests (continuation of 5-20)
-    'n_crops': 27,                     # Full food diversity
-    'n_families': 6,                   # After aggregation
+    # First 17 scenarios matching Gurobi timeout test
+    # Format: (n_farms, n_foods, scenario_name)
+    'scenarios': [
+        (5, 6, 'rotation_micro_25'),           # 1: 90 vars
+        (10, 6, 'rotation_small_50'),          # 2: 180 vars
+        (15, 6, 'rotation_15farms_6foods'),    # 3: 270 vars
+        (20, 6, 'rotation_medium_100'),        # 4: 360 vars
+        (25, 6, 'rotation_25farms_6foods'),    # 5: 450 vars
+        (40, 6, 'rotation_large_200'),         # 6: 720 vars
+        (50, 6, 'rotation_50farms_6foods'),    # 7: 900 vars
+        (75, 6, 'rotation_75farms_6foods'),    # 8: 1350 vars
+        (100, 6, 'rotation_100farms_6foods'),  # 9: 1800 vars
+        (25, 27, 'rotation_25farms_27foods'),  # 10: 2025 vars
+        (150, 6, 'rotation_150farms_6foods'),  # 11: 2700 vars
+        (50, 27, 'rotation_50farms_27foods'),  # 12: 4050 vars
+        (75, 27, 'rotation_75farms_27foods'),  # 13: 6075 vars
+        (100, 27, 'rotation_100farms_27foods'),# 14: 8100 vars
+        (150, 27, 'rotation_150farms_27foods'),# 15: 12150 vars
+        (200, 27, 'rotation_200farms_27foods'),# 16: 16200 vars
+        (250, 27, 'rotation_250farms_27foods'),# 17: 20250 vars
+    ],
     'n_periods': 3,                    # Rotation periods
     'num_reads': 100,                  # QPU reads per cluster (same as statistical test)
     'num_iterations': 3,               # Boundary coordination iterations
-    'runs_per_method': 2,              # Statistical variance (same as statistical_comparison_test.py)
-    'classical_timeout': 300,          # Gurobi timeout (5 min, SAME as statistical_comparison_test.py)
+    'runs_per_method': 1,              # Single run per scenario (no statistics)
+    'classical_timeout': 100,          # Gurobi timeout (100s, SAME as timeout test)
+    'skip_gurobi': False,              # Run Gurobi first to verify formulation
     
     # CRITICAL: Cluster size must create problems comparable to statistical test
     # Statistical test: 5-25 farms = 90-450 vars (6 families × 3 periods)
@@ -131,69 +150,92 @@ print("[5/5] Setup complete!\n")
 # DATA LOADING
 # ============================================================================
 
-def load_hierarchical_data(n_farms: int) -> Dict:
+def load_hierarchical_data(n_farms: int, n_foods: int, scenario_name: str) -> Dict:
     """
     Load data for hierarchical solver test.
-    Uses rotation scenarios with 27 foods.
+    Uses EXACT same approach as test_gurobi_timeout.py for comparability.
+    
+    Args:
+        n_farms: Number of farms
+        n_foods: Number of foods (6 for families, 27 for full)
+        scenario_name: Exact scenario name to load
     """
-    # Select appropriate base scenario
-    if n_farms <= 25:
-        scenario = 'rotation_250farms_27foods'
-        farms_limit = 25
-    elif n_farms <= 50:
-        scenario = 'rotation_250farms_27foods'
-        farms_limit = 50
-    elif n_farms <= 100:
-        scenario = 'rotation_250farms_27foods'
-        farms_limit = 100
-    else:
-        scenario = 'rotation_500farms_27foods'
-        farms_limit = n_farms
+    print(f"    Loading scenario: {scenario_name} ({n_farms} farms, {n_foods} foods)...", flush=True)
     
-    print(f"    Loading {scenario} (limiting to {farms_limit} farms)...")
+    # Use EXACT same logic as test_gurobi_timeout.py
+    from test_gurobi_timeout import load_food_data_as_dict
     
-    # Load scenario
-    farms, foods, food_groups, config = load_food_data(scenario)
+    # Map to actual scenario names (SAME as Gurobi timeout test)
+    if n_foods == 6:
+        if n_farms <= 5:
+            base_scenario = 'rotation_micro_25'
+        elif n_farms <= 10:
+            base_scenario = 'rotation_small_50'
+        elif n_farms <= 15:
+            base_scenario = 'rotation_15farms_6foods'
+        elif n_farms <= 20:
+            base_scenario = 'rotation_medium_100'
+        elif n_farms <= 25:
+            base_scenario = 'rotation_25farms_6foods'
+        elif n_farms <= 40:
+            base_scenario = 'rotation_large_200'
+        elif n_farms <= 50:
+            base_scenario = 'rotation_50farms_6foods'
+        elif n_farms <= 75:
+            base_scenario = 'rotation_75farms_6foods'
+        elif n_farms <= 100:
+            base_scenario = 'rotation_100farms_6foods'
+        elif n_farms <= 150:
+            base_scenario = 'rotation_150farms_6foods'
+        else:
+            base_scenario = 'rotation_large_200'
+    else:  # 27 foods
+        if n_farms <= 25:
+            base_scenario = 'rotation_25farms_27foods'
+        elif n_farms <= 50:
+            base_scenario = 'rotation_50farms_27foods'
+        elif n_farms <= 75:
+            base_scenario = 'rotation_75farms_27foods'
+        elif n_farms <= 100:
+            base_scenario = 'rotation_100farms_27foods'
+        elif n_farms <= 150:
+            base_scenario = 'rotation_150farms_27foods'
+        elif n_farms <= 200:
+            base_scenario = 'rotation_200farms_27foods'
+        elif n_farms <= 250:
+            base_scenario = 'rotation_250farms_27foods'
+        elif n_farms <= 350:
+            base_scenario = 'rotation_350farms_27foods'
+        elif n_farms <= 500:
+            base_scenario = 'rotation_500farms_27foods'
+        else:
+            base_scenario = 'rotation_1000farms_27foods'
     
-    params = config.get('parameters', {})
-    weights = params.get('weights', {
-        'nutritional_value': 0.25,
-        'nutrient_density': 0.2,
-        'environmental_impact': 0.25,
-        'affordability': 0.15,
-        'sustainability': 0.15
-    })
+    # Load using exact same function
+    data = load_food_data_as_dict(base_scenario)
     
-    # Get land availability
-    la = params.get('land_availability', {})
-    farm_names = list(la.keys())[:farms_limit]
-    la = {f: la[f] for f in farm_names}
-    total_area = sum(la.values())
+    # Adjust farm count if needed (SAME as Gurobi test)
+    if len(data['farm_names']) != n_farms:
+        if len(data['farm_names']) > n_farms:
+            data['farm_names'] = data['farm_names'][:n_farms]
+            data['land_availability'] = {k: v for k, v in list(data['land_availability'].items())[:n_farms]}
+        else:
+            original_farms = data['farm_names'].copy()
+            while len(data['farm_names']) < n_farms:
+                idx = len(data['farm_names']) - len(original_farms)
+                farm = original_farms[idx % len(original_farms)]
+                new_farm = f"{farm}_dup{idx}"
+                data['farm_names'].append(new_farm)
+                data['land_availability'][new_farm] = data['land_availability'][farm]
     
-    # Food data
-    food_names = list(foods.keys())
-    food_benefits = {}
-    for food in food_names:
-        food_data = foods.get(food, {})
-        benefit = sum(food_data.get(attr, 0.5) * w for attr, w in weights.items())
-        food_benefits[food] = benefit
+    data['n_farms'] = len(data['farm_names'])
+    data['n_foods'] = len(data['food_names'])
+    data['total_area'] = sum(data['land_availability'].values())
+    data['scenario_name'] = scenario_name
     
-    data = {
-        'foods': foods,
-        'food_names': food_names,
-        'food_groups': food_groups,
-        'food_benefits': food_benefits,
-        'weights': weights,
-        'land_availability': la,
-        'farm_names': farm_names,
-        'total_area': total_area,
-        'n_farms': len(farm_names),
-        'n_foods': len(food_names),
-        'config': config,
-    }
-    
-    print(f"    ✓ Loaded: {len(farm_names)} farms × {len(food_names)} foods × 3 periods")
-    print(f"      Variables: {len(farm_names) * len(food_names) * 3:,}")
+    print(f"    ✓ Loaded: {data['n_farms']} farms × {data['n_foods']} foods × 3 periods", flush=True)
+    print(f"      Variables: {data['n_farms'] * data['n_foods'] * 3:,}", flush=True)
+    print(f"      Total area: {data['total_area']:.2f} ha (avg {data['total_area']/data['n_farms']:.2f} ha/farm)", flush=True)
     
     return data
 
@@ -288,10 +330,10 @@ def solve_gurobi_ground_truth(data: Dict, timeout: int = 900) -> Dict:
     print(f"      [3/7] Creating Gurobi model and setting parameters...", flush=True)
     model = gp.Model("RotationGroundTruth")
     model.setParam('OutputFlag', 0)
-    model.setParam('TimeLimit', timeout)  # Wall-clock timeout in seconds
-    model.setParam('MIPGap', 0.1)  # 10% gap tolerance (find good solutions quickly)
-    model.setParam('MIPFocus', 1)  # Focus on finding feasible solutions
-    model.setParam('ImproveStartTime', 30)  # Stop if no improvement after 30s
+    model.setParam('TimeLimit', timeout)  # SAME as timeout test: 100s
+    model.setParam('MIPGap', 0.01)  # SAME as timeout test: 1% gap
+    model.setParam('MIPFocus', 1)  # SAME as timeout test
+    model.setParam('ImproveStartTime', 30)  # SAME as timeout test
     model.setParam('Threads', 0)
     model.setParam('Presolve', 2)
     model.setParam('Cuts', 2)
@@ -548,10 +590,18 @@ def solve_hierarchical_quantum(data: Dict, config: Dict = None) -> Dict:
         qpu_time = timings.get('level2_qpu', 0)
         postproc_time = timings.get('level3_postprocessing', 0)
         
+        # Get objectives before and after post-processing
+        obj_before = result.get('objective_before_postprocessing', 0)
+        obj_after = result['objective']
+        obj_improvement = obj_after - obj_before
+        obj_improvement_pct = (obj_improvement / abs(obj_before) * 100) if abs(obj_before) > 1e-6 else 0
+        
         print(f"      ✓ Hierarchical QPU: {total_time:.1f}s")
         print(f"        Level 1 (agg+decomp): {timings['level1_decomposition']:.3f}s")
         print(f"        Level 2 (QPU): {timings['level2_quantum']:.1f}s (QPU access: {qpu_time:.2f}s)")
         print(f"        Level 3 (post-process): {postproc_time:.3f}s")
+        print(f"        Objective BEFORE post-process: {obj_before:.4f}")
+        print(f"        Objective AFTER post-process:  {obj_after:.4f} ({obj_improvement:+.4f}, {obj_improvement_pct:+.1f}%)")
         print(f"        Unique crops: {result['diversity_stats']['total_unique_crops']}/{data['n_foods']}")
         
         # Ensure all timing fields present for comparison
@@ -632,6 +682,19 @@ def calculate_statistics(results_list: List[Dict]) -> Dict:
         if postproc_times:
             stats['postproc_time_mean'] = np.mean(postproc_times)
     
+    # Pre/post-processing objectives (if available)
+    if any('objective_before_postprocessing' in r for r in successful):
+        obj_before = [r['objective_before_postprocessing'] for r in successful if 'objective_before_postprocessing' in r]
+        obj_after = [r['objective'] for r in successful if 'objective_before_postprocessing' in r]
+        improvements = [after - before for before, after in zip(obj_before, obj_after)]
+        improvement_pcts = [(after - before) / abs(before) * 100 if abs(before) > 1e-6 else 0 
+                           for before, after in zip(obj_before, obj_after)]
+        
+        if obj_before:
+            stats['objective_before_pp_mean'] = np.mean(obj_before)
+            stats['obj_improvement_mean'] = np.mean(improvements)
+            stats['obj_improvement_pct_mean'] = np.mean(improvement_pcts)
+    
     # Gurobi-specific timing breakdown (if available)
     if any('timings' in r and 'solve' in r['timings'] for r in successful):
         gurobi_solve = [r['timings']['solve'] for r in successful if 'timings' in r and 'solve' in r['timings']]
@@ -654,85 +717,90 @@ def run_hierarchical_statistical_test():
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    print("\n" + "="*80)
-    print("STARTING HIERARCHICAL STATISTICAL BENCHMARK")
-    print("="*80)
-    print(f"\nTest configuration:")
-    print(f"  Farm sizes: {TEST_CONFIG['farm_sizes']}")
-    print(f"  Runs per method: {TEST_CONFIG['runs_per_method']}")
-    print(f"  QPU reads: {TEST_CONFIG['num_reads']}")
-    print(f"  Boundary iterations: {TEST_CONFIG['num_iterations']}")
-    print(f"  Gurobi timeout: {TEST_CONFIG['classical_timeout']}s")
-    print(f"\nOutput directory: {OUTPUT_DIR}")
-    print("="*80)
+    print("\n" + "="*80, flush=True)
+    print("STARTING HIERARCHICAL STATISTICAL BENCHMARK", flush=True)
+    print("="*80, flush=True)
+    print(f"\nTest configuration:", flush=True)
+    print(f"  Scenarios: {len(TEST_CONFIG['scenarios'])}", flush=True)
+    print(f"  Runs per method: {TEST_CONFIG['runs_per_method']}", flush=True)
+    print(f"  QPU reads: {TEST_CONFIG['num_reads']}", flush=True)
+    print(f"  Boundary iterations: {TEST_CONFIG['num_iterations']}", flush=True)
+    print(f"  Gurobi timeout: {TEST_CONFIG['classical_timeout']}s", flush=True)
+    print(f"\nOutput directory: {OUTPUT_DIR}", flush=True)
+    print("="*80, flush=True)
     
     all_results = {}
     summary_data = []
     
-    for n_farms in TEST_CONFIG['farm_sizes']:
-        print(f"\n{'='*80}")
-        print(f"TESTING: {n_farms} FARMS")
-        print(f"{'='*80}")
+    for scenario_idx, (n_farms, n_foods, scenario_name) in enumerate(TEST_CONFIG['scenarios'], 1):
+        print(f"\n{'='*80}", flush=True)
+        print(f"SCENARIO {scenario_idx}/{len(TEST_CONFIG['scenarios'])}: {scenario_name}", flush=True)
+        print(f"{'='*80}", flush=True)
         
         # Load data
-        print(f"\n  [1/3] Loading data for {n_farms} farms...")
+        print(f"\n  [1/3] Loading data...", flush=True)
         try:
-            data = load_hierarchical_data(n_farms)
+            data = load_hierarchical_data(n_farms, n_foods, scenario_name)
         except Exception as e:
             print(f"    ❌ Data loading failed: {e}")
             continue
         
-        all_results[n_farms] = {
+        all_results[scenario_name] = {
             'data_info': {
                 'n_farms': data['n_farms'],
                 'n_foods': data['n_foods'],
                 'n_variables': data['n_farms'] * data['n_foods'] * 3,
-                'n_variables_aggregated': data['n_farms'] * 6 * 3,
+                'scenario_name': scenario_name,
             },
             'gurobi': [],
             'hierarchical_qpu': [],
         }
         
-        # Test Gurobi (ground truth)
-        print(f"\n  [2/3] Running Gurobi ground truth ({TEST_CONFIG['runs_per_method']} runs)...")
-        for run_idx in range(TEST_CONFIG['runs_per_method']):
-            print(f"    Run {run_idx + 1}/{TEST_CONFIG['runs_per_method']}:")
-            try:
-                result = solve_gurobi_ground_truth(data, TEST_CONFIG['classical_timeout'])
-                all_results[n_farms]['gurobi'].append(result)
-            except Exception as e:
-                print(f"      ❌ Gurobi run {run_idx + 1} failed: {e}")
-                traceback.print_exc()
+        # Test Gurobi (ground truth) - SKIPPED
+        if not TEST_CONFIG.get('skip_gurobi', False):
+            print(f"\n  [2/3] Running Gurobi ground truth ({TEST_CONFIG['runs_per_method']} runs)...")
+            for run_idx in range(TEST_CONFIG['runs_per_method']):
+                print(f"    Run {run_idx + 1}/{TEST_CONFIG['runs_per_method']}:")
+                try:
+                    result = solve_gurobi_ground_truth(data, TEST_CONFIG['classical_timeout'])
+                    all_results[scenario_name]['gurobi'].append(result)
+                except Exception as e:
+                    print(f"      ❌ Gurobi run {run_idx + 1} failed: {e}")
+                    traceback.print_exc()
+        else:
+            print(f"\n  [2/3] Skipping Gurobi (skip_gurobi=True)", flush=True)
         
         # Test Hierarchical QPU
-        print(f"\n  [3/3] Running Hierarchical QPU ({TEST_CONFIG['runs_per_method']} runs)...")
+        print(f"\n  [3/3] Running Hierarchical QPU ({TEST_CONFIG['runs_per_method']} runs)...", flush=True)
         for run_idx in range(TEST_CONFIG['runs_per_method']):
-            print(f"    Run {run_idx + 1}/{TEST_CONFIG['runs_per_method']}:")
+            print(f"    Run {run_idx + 1}/{TEST_CONFIG['runs_per_method']}:", flush=True)
             try:
                 result = solve_hierarchical_quantum(data)
-                all_results[n_farms]['hierarchical_qpu'].append(result)
+                all_results[scenario_name]['hierarchical_qpu'].append(result)
             except Exception as e:
                 print(f"      ❌ Hierarchical QPU run {run_idx + 1} failed: {e}")
                 traceback.print_exc()
         
         # Calculate statistics
-        print(f"\n  Computing statistics for {n_farms} farms...")
-        gurobi_stats = calculate_statistics(all_results[n_farms]['gurobi'])
-        quantum_stats = calculate_statistics(all_results[n_farms]['hierarchical_qpu'])
+        print(f"\n  Computing statistics for {scenario_name}...", flush=True)
+        gurobi_stats = calculate_statistics(all_results[scenario_name]['gurobi'])
+        quantum_stats = calculate_statistics(all_results[scenario_name]['hierarchical_qpu'])
         
-        all_results[n_farms]['statistics'] = {
+        all_results[scenario_name]['statistics'] = {
             'gurobi': gurobi_stats,
             'hierarchical_qpu': quantum_stats,
         }
         
-        # Summary for this size
-        if gurobi_stats['n_successful'] > 0 and quantum_stats['n_successful'] > 0:
+        # Summary for this size (skip Gurobi comparison when Gurobi is skipped)
+        if not TEST_CONFIG.get('skip_gurobi', False) and gurobi_stats['n_successful'] > 0 and quantum_stats['n_successful'] > 0:
             speedup = gurobi_stats['time_mean'] / quantum_stats['time_mean']
             gap = abs(gurobi_stats['objective_mean'] - quantum_stats['objective_mean']) / gurobi_stats['objective_mean'] * 100
             
             summary_data.append({
+                'scenario': scenario_name,
                 'n_farms': n_farms,
-                'n_vars': all_results[n_farms]['data_info']['n_variables_aggregated'],
+                'n_foods': n_foods,
+                'n_vars': all_results[scenario_name]['data_info']['n_variables'],
                 'gurobi_time': gurobi_stats['time_mean'],
                 'gurobi_obj': gurobi_stats['objective_mean'],
                 'quantum_time': quantum_stats['time_mean'],
@@ -744,10 +812,31 @@ def run_hierarchical_statistical_test():
                 'quantum_crops': quantum_stats['unique_crops_mean'],
             })
             
-            print(f"\n  ✅ {n_farms} farms summary:")
-            print(f"    Gurobi: {gurobi_stats['time_mean']:.1f}s, obj={gurobi_stats['objective_mean']:.4f}")
-            print(f"    Quantum: {quantum_stats['time_mean']:.1f}s, obj={quantum_stats['objective_mean']:.4f}")
-            print(f"    Speedup: {speedup:.2f}×, Gap: {gap:.2f}%, QPU: {quantum_stats.get('qpu_time_mean', 0):.2f}s")
+            print(f"\n  ✅ {scenario_name} summary:", flush=True)
+            print(f"    Gurobi: {gurobi_stats['time_mean']:.1f}s, obj={gurobi_stats['objective_mean']:.4f}", flush=True)
+            print(f"    Quantum: {quantum_stats['time_mean']:.1f}s, obj={quantum_stats['objective_mean']:.4f}", flush=True)
+            print(f"    Speedup: {speedup:.2f}×, Gap: {gap:.2f}%, QPU: {quantum_stats.get('qpu_time_mean', 0):.2f}s", flush=True)
+        elif quantum_stats['n_successful'] > 0:
+            # QPU-only summary when Gurobi skipped
+            summary_data.append({
+                'scenario': scenario_name,
+                'n_farms': n_farms,
+                'n_foods': n_foods,
+                'n_vars': all_results[scenario_name]['data_info']['n_variables'],
+                'quantum_time': quantum_stats['time_mean'],
+                'quantum_obj': quantum_stats['objective_mean'],
+                'quantum_obj_before_pp': quantum_stats.get('objective_before_pp_mean', 0),
+                'obj_improvement': quantum_stats.get('obj_improvement_mean', 0),
+                'obj_improvement_pct': quantum_stats.get('obj_improvement_pct_mean', 0),
+                'qpu_time': quantum_stats.get('qpu_time_mean', 0),
+                'quantum_crops': quantum_stats['unique_crops_mean'],
+            })
+            
+            print(f"\n  ✅ {scenario_name} summary:", flush=True)
+            print(f"    Quantum: {quantum_stats['time_mean']:.1f}s", flush=True)
+            print(f"    Obj before PP: {quantum_stats.get('objective_before_pp_mean', 0):.4f}", flush=True)
+            print(f"    Obj after PP:  {quantum_stats['objective_mean']:.4f} ({quantum_stats.get('obj_improvement_pct_mean', 0):+.1f}%)", flush=True)
+            print(f"    QPU: {quantum_stats.get('qpu_time_mean', 0):.2f}s, Crops: {quantum_stats['unique_crops_mean']:.0f}/{n_foods}", flush=True)
     
     # Save results
     print(f"\n{'='*80}")

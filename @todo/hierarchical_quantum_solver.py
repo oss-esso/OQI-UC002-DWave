@@ -330,7 +330,8 @@ def solve_cluster_sa(bqm: BinaryQuadraticModel,
 def solve_cluster_qpu(bqm: BinaryQuadraticModel,
                        var_map: Dict,
                        num_reads: int = 100,
-                       annealing_time: int = 20) -> Tuple[Dict, float, float, float]:
+                       annealing_time: int = 20,
+                       label: str = None) -> Tuple[Dict, float, float, float]:
     """
     Solve cluster BQM using D-Wave QPU.
     
@@ -353,7 +354,10 @@ def solve_cluster_qpu(bqm: BinaryQuadraticModel,
         sampler = DWaveCliqueSampler()
     
     # Solve
-    sampleset = sampler.sample(bqm, num_reads=num_reads, annealing_time=annealing_time)
+    if label:
+        sampleset = sampler.sample(bqm, num_reads=num_reads, annealing_time=annealing_time, label=label)
+    else:
+        sampleset = sampler.sample(bqm, num_reads=num_reads, annealing_time=annealing_time)
     
     wall_time = time.time() - start_time
     
@@ -640,10 +644,14 @@ def solve_hierarchical(data: Dict,
                 cluster, family_data, boundary_info[i], config
             )
             
+            # Create problem label
+            n_farms_total = len(family_data['farm_names'])
+            cluster_label = f"Hierarchical_Rotation_{n_farms_total}farms_cluster{i+1}of{n_clusters}_iter{iteration+1}"
+            
             # Solve
             if use_qpu and HAS_QPU:
                 sol, energy, wall_time, qpu_time = solve_cluster_qpu(
-                    bqm, var_map, num_reads, config.get('annealing_time', 20)
+                    bqm, var_map, num_reads, config.get('annealing_time', 20), label=cluster_label
                 )
                 iter_qpu_time += qpu_time
             else:
@@ -703,6 +711,9 @@ def solve_hierarchical(data: Dict,
     # =========================================================================
     level3_start = time.time()
     
+    # Store objective BEFORE post-processing (at family level)
+    objective_before_postprocessing = best_global_objective
+    
     if verbose:
         print("\n[LEVEL 3] Post-Processing: Family → Specific Crops")
     
@@ -748,6 +759,7 @@ def solve_hierarchical(data: Dict,
     result['family_solution'] = best_global_solution
     result['crop_solution'] = crop_solution
     result['objective'] = best_global_objective
+    result['objective_before_postprocessing'] = objective_before_postprocessing  # NEW: Track pre-PP objective
     result['violations'] = count_violations(best_global_solution, family_data, config)
     result['diversity_stats'] = diversity_stats
     result['success'] = True
