@@ -463,19 +463,21 @@ def calculate_family_objective(solution: Dict, family_data: Dict, config: Dict =
                     if v1 and v2:
                         obj += rotation_gamma * R[c1_idx, c2_idx] * area_frac
     
-    # 3. Diversity bonus
+    # 3. Diversity bonus (normalized by area)
     for farm in farm_names:
+        area_frac = land_availability.get(farm, 1.0) / total_area
         for family in families:
             used = any(solution.get((farm, family, t), 0) for t in range(1, n_periods + 1))
             if used:
-                obj += diversity_bonus
+                obj += diversity_bonus * area_frac
     
-    # 4. One-hot penalty
+    # 4. One-hot penalty (normalized by area)
     for farm in farm_names:
+        area_frac = land_availability.get(farm, 1.0) / total_area
         for t in range(1, n_periods + 1):
             count = sum(solution.get((farm, fam, t), 0) for fam in families)
             if count != 1:
-                obj -= one_hot_penalty * (count - 1) ** 2
+                obj -= one_hot_penalty * (count - 1) ** 2 * area_frac
     
     return obj
 

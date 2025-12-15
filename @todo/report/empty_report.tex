@@ -1,0 +1,150 @@
+\documentclass{oqireport}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+
+\title{Use Case Title}
+\subtitle{Phase 3 Report}
+\author{Authors}
+
+\begin{document}
+
+%\begin{itemize}
+    %\item link to the (openly accessible?) github
+%    \item discuss what has been done in this phase in terms of simulations of the quantum algorithm, how the problem was mapped to the simulator, data pre-processing, hyper-parameter tuning (if applicable)
+%    \item specify what (classical) hardware was used for the simulation
+%    \item specify what small scale (if applicable) and what real-world data was used, please link the datasets (if not already included in the linked github repository)
+%    \item discuss the results of the simulations and compare it to classical benchmarks, how do the results scale in terms of runtime, accuracy, ...
+%    \item extrapolate findings to larger scales
+%    \item how deal with noise, how did the performance degrade with different levels of noise, embeddings, data pre-processing (if applicable), strategize techniques to do better (error mitigation techniques, circuit depth reduction ...)
+%    \item justification to move on to phase 4 (based on previous points, what was done during phase 3? what are the results? why does this lay a good basis for moving on to phase 4 and implement the PoC on QPUs? if needed, re-assess resource estimation for QPU implementation)
+%    \item problems encountered (and how did you overcome them?) \\
+%    e.g.\ optimising transpilation in IBM machine, problems to differentiate between measurement of classical pre- and postprocessing to simulated quantum computing runtime, ... (only of no repetition of previously mentioned points)
+
+%    \item 4 sections. 1 Setting up the simulation (prerequisites), data, Pre-processing, mapping the problem, hyperparam tuning; 2 results, benchmarking, extrapoilation, noise models; 3 conclusion and discussion, strategizing about noise mitigation, justify move to phase 4, additional discussion of any other problems they encountered and how they can be overcome / circumvented / mitigated; 4th section: further refined impact design
+
+%\end{itemize}
+
+% Instructions to be deleted before submission
+\ \\
+\ \\
+\ \\
+\textit{
+Instructions and background: 
+\begin{itemize}
+    \item For each section the envisaged content is specified in italic. All of these comments should be removed before submitting the final document.
+    %\item Please be concise and respect the strict page limit of xx pages for the main part of the full proposal (excluding the Methods section, the Team Presentation section and References).
+    \item The purpose of the Phase 3 Report is to present and discuss the results from the hardware runs of the quantum solution to the real-world problem as discussed and laid out in the Full Proposal (completed in Phase 2).
+    Problems encountered are discussed and solutions / mitigation techniques are proposed to overcome them in future work if needed. 
+    The results and the discussion thereof are then used as a basis to look into the differences between what was expected from the Full Proposal, and what was actually achieved. An update on the impact design concludes the report.
+    \item The depth of detail expected in this report is such that an outside user could read the report and reproduce the work you have done. It should be in a similar style to that of a scientific paper.
+\end{itemize}
+}
+
+\newpage
+
+\maketitle
+
+\begin{abstract}
+    % Instructions to be deleted before submission
+    \textit{Please add a short summary of what has been achieved in Phase 3 of the OQI Use Case and what were the most important findings. Max 250 words.}
+\end{abstract}
+
+\subsubsection*{Relevant SDGs}
+    % Instructions to be deleted before submission
+    \textit{Please list the relevant UN SDGs}
+
+\subsubsection*{Link to GitHub Repository}
+    % Instructions to be deleted before submission
+    \textit{Please provide the link to the github repository, where your code and datasets for the OQI Use Case are stored.}
+
+\section{Setting up on hardware}
+
+% Instructions to be deleted before submission
+\textit{
+Describe and discuss what has been done in this phase in terms of running your algorithm on quantum hardware, how the problem was mapped to the QPU, data pre-processing, hyper-parameter tuning (if applicable), post-processing results, etc.
+This section should include specification of the quantum hardware used for the runs. 
+It also includes describing the small scale (if applicable) and  real-world data used, its source and its relevance in the targeted context. Please link the datasets (if not already included in the linked github repository).
+}
+
+\section{Results}
+
+% Instructions to be deleted before submission
+\textit{
+Present the results of the runs and put them in context. That includes: explain why you chose the problem sizes you did, and if they were related to the limits of the hardware, compare them to classical benchmarks (refer to the benchmarking strategy stated in the Full Proposal). Please also discuss how the results scale in terms of runtime, accuracy, and/or energy efficiency etc. and extrapolate findings to larger scales (is there a potential regime of advantage at larger scales or for future FTQC hardware?). 
+Use graphs and tables where possible to aid in the description of your results. Present averages of your findings over multiple instances, using error bars and normalized accuracy rates where possible.
+}
+
+
+\section{Discussion and Conclusions}
+
+% Instructions to be deleted before submission
+\textit{
+Discuss all relevant aspects and learning from the hardware runs. How did the performance degrade with the effects of noise, the scale of the instances, or embeddings of the problem, how was the data pre-processed (if applicable) and could this have been done in a better way. Further discuss techniques that could be used in a future work, outside OQI, to improve the performance (error mitigation techniques, circuit construction and depth reduction, data pre-processing, code optimisation, etc.).
+Please name and discuss  problems encountered and how you overcame them (e.g.\ optimising transpilation on IBM machine, noise mitigation strategies, how to measure the time-complexity, etc.) Finally, discuss how your results differ from what was expected and where the sources of discrepancies come from, and can these errors/gaps in findings be measured or bounded?  
+}
+
+
+\section{Impact assessment: Updates to the Full Proposal}
+
+% Instructions to be deleted before submission
+\textit{
+Based on the results of the runs, and the further analysis using the OQI impact framework tool, please re-assess the anticipated impact of the Use Case once it could be deployed in real-world. Please expand on what was discussed in the Full Proposal and discuss any updates in this regard.
+}
+
+% \section{Moving to Phase 4}
+% \textit{This section is relevant for justifying the feasibility of your Use Case to move on to Phase 4 with implementation on QPUs (based on the results and discussion). Why does this lay a good basis for  implementing the Proof of Concept on QPUs? 
+% Re-assess the resource estimation for QPU implementation based on the findings from the simulation.
+% }
+
+%\section*{Team Presentation}
+
+%\begin{center}
+%\begin{tabular}{ | m{5em} | m{4em}| m{5em} | m{15em} | m{8em} | } 
+% \hline
+% Team Member 
+% (First name, Last name)
+% & Affiliation & Country (of the affiliation) & Relevant domain expertise for the project 
+%(i) Quantum computing, 
+%ii) SDG domain, 
+%iii) Application domain, 
+%iv) Classical computation (e.g. AI, ML, chemistry, operation research, fluid dynamics, etc.), 
+%v) other)
+%& Short Bio (3-5 sentences) 
+% \\ 
+% \hline 
+%  &  &  &  & \\ 
+% \hline
+% &  &  &  & \\ 
+% \hline
+%  &  &  &  & \\ 
+% \hline
+%  &  &  &  & \\ 
+% \hline
+%\end{tabular}
+%\end{center}
+
+\bibliographystyle{alpha}
+\bibliography{sample}
+
+% Instructions to be deleted before submission
+\subsection*{How to add Citations and a References List}
+\textit{This section can be deleted later.}\\
+
+You can upload a \verb|.bib| file containing your BibTeX entries, created with JabRef; or import your \href{https://www.overleaf.com/blog/184}{Mendeley}, CiteULike or Zotero library as a \verb|.bib| file. You can then cite entries from it, like this: \cite{greenwade93}. Just remember to specify a bibliography style, as well as the filename of the \verb|.bib|.
+
+You can find a \href{https://www.overleaf.com/help/97-how-to-include-a-bibliography-using-bibtex}{video tutorial here} to learn more about BibTeX.
+
+\end{document}

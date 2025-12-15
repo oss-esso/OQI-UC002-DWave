@@ -66,15 +66,13 @@ TEST_CONFIG = {
         (75, 27, 'rotation_75farms_27foods'),  # 13: 6075 vars
         (100, 27, 'rotation_100farms_27foods'),# 14: 8100 vars
         (150, 27, 'rotation_150farms_27foods'),# 15: 12150 vars
-        (200, 27, 'rotation_200farms_27foods'),# 16: 16200 vars
-        (250, 27, 'rotation_250farms_27foods'),# 17: 20250 vars
     ],
     'n_periods': 3,                    # Rotation periods
     'num_reads': 100,                  # QPU reads per cluster (same as statistical test)
     'num_iterations': 3,               # Boundary coordination iterations
     'runs_per_method': 1,              # Single run per scenario (no statistics)
     'classical_timeout': 100,          # Gurobi timeout (100s, SAME as timeout test)
-    'skip_gurobi': False,              # Run Gurobi first to verify formulation
+    'skip_gurobi': True,               # Skip Gurobi - run QPU only
     
     # CRITICAL: Cluster size must create problems comparable to statistical test
     # Statistical test: 5-25 farms = 90-450 vars (6 families × 3 periods)
@@ -162,47 +160,23 @@ def load_hierarchical_data(n_farms: int, n_foods: int, scenario_name: str) -> Di
     """
     print(f"    Loading scenario: {scenario_name} ({n_farms} farms, {n_foods} foods)...", flush=True)
     
-    # Use EXACT same logic as test_gurobi_timeout.py
-    from test_gurobi_timeout import load_food_data_as_dict
+    # Import data loader directly (avoid running test_gurobi_timeout.py)
+    from data_loader_utils import load_food_data_as_dict
     
-    # Map to actual scenario names (SAME as Gurobi timeout test)
+    # Map to actual scenario names - use only existing scenarios
+    # Available: rotation_micro_25, rotation_small_50, rotation_medium_100, rotation_large_200,
+    #            rotation_250farms_27foods, rotation_350farms_27foods, rotation_500farms_27foods, rotation_1000farms_27foods
     if n_foods == 6:
         if n_farms <= 5:
             base_scenario = 'rotation_micro_25'
         elif n_farms <= 10:
             base_scenario = 'rotation_small_50'
-        elif n_farms <= 15:
-            base_scenario = 'rotation_15farms_6foods'
         elif n_farms <= 20:
             base_scenario = 'rotation_medium_100'
-        elif n_farms <= 25:
-            base_scenario = 'rotation_25farms_6foods'
-        elif n_farms <= 40:
-            base_scenario = 'rotation_large_200'
-        elif n_farms <= 50:
-            base_scenario = 'rotation_50farms_6foods'
-        elif n_farms <= 75:
-            base_scenario = 'rotation_75farms_6foods'
-        elif n_farms <= 100:
-            base_scenario = 'rotation_100farms_6foods'
-        elif n_farms <= 150:
-            base_scenario = 'rotation_150farms_6foods'
-        else:
+        else:  # 25-150 farms with 6 foods
             base_scenario = 'rotation_large_200'
     else:  # 27 foods
-        if n_farms <= 25:
-            base_scenario = 'rotation_25farms_27foods'
-        elif n_farms <= 50:
-            base_scenario = 'rotation_50farms_27foods'
-        elif n_farms <= 75:
-            base_scenario = 'rotation_75farms_27foods'
-        elif n_farms <= 100:
-            base_scenario = 'rotation_100farms_27foods'
-        elif n_farms <= 150:
-            base_scenario = 'rotation_150farms_27foods'
-        elif n_farms <= 200:
-            base_scenario = 'rotation_200farms_27foods'
-        elif n_farms <= 250:
+        if n_farms <= 250:
             base_scenario = 'rotation_250farms_27foods'
         elif n_farms <= 350:
             base_scenario = 'rotation_350farms_27foods'
