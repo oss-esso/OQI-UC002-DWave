@@ -19,15 +19,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import Normalize
-import seaborn as sns
 from itertools import product
 from typing import Dict, List, Tuple
 import os
 from tqdm import tqdm
 
-# Set style for beautiful plots
-plt.style.use('seaborn-v0_8-whitegrid')
-sns.set_palette("husl")
+# Import unified plot configuration
+from plot_config import (
+    setup_publication_style, QUALITATIVE_COLORS, METHOD_COLORS,
+    FOOD_GROUP_COLORS, save_figure, add_value_labels
+)
+
+# Apply publication style
+setup_publication_style()
 
 
 def load_food_data(excel_path: str = "Inputs/Combined_Food_Data.xlsx") -> pd.DataFrame:
@@ -176,9 +180,8 @@ def plot_top_crop_distribution(results_df: pd.DataFrame, save_path: str = None):
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved: {save_path}")
-    plt.show()
+        save_figure(fig, save_path)
+    plt.close(fig)
 
 
 def plot_benefit_heatmap(results_df: pd.DataFrame, foods_list: List[str], 
@@ -199,24 +202,22 @@ def plot_benefit_heatmap(results_df: pd.DataFrame, foods_list: List[str],
     
     fig, ax = plt.subplots(figsize=(16, 10))
     
-    im = ax.imshow(benefit_matrix, aspect='auto', cmap='RdYlGn')
+    im = ax.imshow(benefit_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest')
     
     ax.set_yticks(range(len(foods_list)))
-    ax.set_yticklabels(foods_list, fontsize=10)
-    ax.set_xlabel('Weight Combination Index (sampled)', fontsize=12)
-    ax.set_ylabel('Crop', fontsize=12)
-    ax.set_title('🌾 Crop Benefits Across Weight Combinations\n(Green = High Benefit, Red = Low)', 
-                 fontsize=14, fontweight='bold')
+    ax.set_yticklabels(foods_list)
+    ax.set_xlabel(r'Weight Combination Index (sampled)')
+    ax.set_ylabel(r'Crop')
+    ax.set_title(r'\textbf{Crop Benefits Across Weight Combinations}', pad=20)
     
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-    cbar.set_label('Benefit Score', fontsize=11)
+    cbar.set_label(r'Benefit Score')
     
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved: {save_path}")
-    plt.show()
+        save_figure(fig, save_path)
+    plt.close(fig)
 
 
 def plot_ranking_variability(results_df: pd.DataFrame, foods_list: List[str], 
@@ -237,29 +238,31 @@ def plot_ranking_variability(results_df: pd.DataFrame, foods_list: List[str],
     # Create box plot data
     box_data = [ranking_data[food] for food in sorted_foods]
     
-    bp = ax.boxplot(box_data, vert=False, patch_artist=True)
+    bp = ax.boxplot(box_data, vert=False, patch_artist=True, 
+                    boxprops=dict(linewidth=1.5),
+                    whiskerprops=dict(linewidth=1.5),
+                    medianprops=dict(linewidth=2, color='darkred'))
     
-    # Color boxes by median ranking
-    colors = plt.cm.RdYlGn_r(np.linspace(0.1, 0.9, len(sorted_foods)))
+    # Color boxes using qualitative palette
+    n_foods = len(sorted_foods)
+    colors = [QUALITATIVE_COLORS[i % len(QUALITATIVE_COLORS)] for i in range(n_foods)]
     for patch, color in zip(bp['boxes'], colors):
         patch.set_facecolor(color)
-        patch.set_alpha(0.7)
+        patch.set_alpha(0.6)
     
-    ax.set_yticklabels(sorted_foods, fontsize=11)
-    ax.set_xlabel('Ranking (1 = Best, 27 = Worst)', fontsize=12)
-    ax.set_title('📊 Crop Ranking Variability Across Weight Combinations\n(Box = 25th-75th percentile)', 
-                 fontsize=14, fontweight='bold')
+    ax.set_yticklabels(sorted_foods)
+    ax.set_xlabel(r'Ranking (1 = Best, 27 = Worst)')
+    ax.set_title(r'\textbf{Crop Ranking Variability Across Weight Combinations}', pad=20)
     
     # Add vertical line at median
-    ax.axvline(x=14, color='gray', linestyle='--', alpha=0.5, label='Middle rank (14)')
+    ax.axvline(x=14, color='gray', linestyle='--', alpha=0.5, linewidth=1.5, label='Middle rank (14)')
     ax.legend()
     
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved: {save_path}")
-    plt.show()
+        save_figure(fig, save_path)
+    plt.close(fig)
 
 
 def plot_weight_sensitivity(results_df: pd.DataFrame, focus_crops: List[str], 
@@ -277,7 +280,8 @@ def plot_weight_sensitivity(results_df: pd.DataFrame, focus_crops: List[str],
     
     fig, ax = plt.subplots(figsize=(12, 8))
     
-    colors = plt.cm.tab20(np.linspace(0, 1, len(focus_crops)))
+    # Use consistent qualitative colors
+    colors = [QUALITATIVE_COLORS[i % len(QUALITATIVE_COLORS)] for i in range(len(focus_crops))]
     
     for crop, color in zip(focus_crops, colors):
         # Group by the weight value and calculate mean benefit
@@ -302,18 +306,16 @@ def plot_weight_sensitivity(results_df: pd.DataFrame, focus_crops: List[str],
         ax.fill_between(weight_vals, mean_benefits - std_benefits, mean_benefits + std_benefits, 
                         alpha=0.2, color=color)
     
-    ax.set_xlabel(weight_labels[weight_name], fontsize=12)
-    ax.set_ylabel('Average Benefit Score', fontsize=12)
-    ax.set_title(f'📈 Sensitivity to {weight_labels[weight_name]}\n(Shaded area = standard deviation)', 
-                 fontsize=14, fontweight='bold')
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
+    ax.set_xlabel(weight_labels[weight_name])
+    ax.set_ylabel(r'Average Benefit Score')
+    ax.set_title(r'\textbf{Sensitivity to ' + weight_labels[weight_name] + r'}', pad=20)
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved: {save_path}")
-    plt.show()
+        save_figure(fig, save_path)
+    plt.close(fig)
 
 
 def plot_spinach_dominance_analysis(results_df: pd.DataFrame, df: pd.DataFrame, 
@@ -335,86 +337,97 @@ def plot_spinach_dominance_analysis(results_df: pd.DataFrame, df: pd.DataFrame,
         ax = axes[0, i] if i < 3 else axes[1, i-3]
         
         if len(spinach_wins) > 0:
-            ax.hist(spinach_wins[col], alpha=0.6, label='Spinach #1', color='green', 
-                    bins=10, density=True)
+            ax.hist(spinach_wins[col], alpha=0.6, label=r'Spinach \#1', 
+                    color=QUALITATIVE_COLORS[2], bins=10, density=True, edgecolor='black', linewidth=0.5)
         if len(spinach_loses) > 0:
-            ax.hist(spinach_loses[col], alpha=0.6, label='Other #1', color='red', 
-                    bins=10, density=True)
+            ax.hist(spinach_loses[col], alpha=0.6, label=r'Other \#1', 
+                    color=QUALITATIVE_COLORS[0], bins=10, density=True, edgecolor='black', linewidth=0.5)
         
-        ax.set_xlabel(label, fontsize=10)
-        ax.set_ylabel('Density', fontsize=10)
-        ax.legend(fontsize=8)
+        ax.set_xlabel(label)
+        ax.set_ylabel(r'Density')
+        ax.legend()
     
-    # Bottom right: Spinach attributes radar chart
+    # Bottom right: Spinach attributes bar chart
     ax_radar = axes[1, 2]
     spinach_data = df[df['Food_Name'] == 'Spinach'].iloc[0]
     attrs = ['nutritional_value', 'nutrient_density', 'environmental_impact', 
              'affordability', 'sustainability']
     values = [spinach_data[attr] for attr in attrs]
     
-    # Simple bar chart instead of radar for clarity
-    colors_bar = ['#2ecc71', '#3498db', '#e74c3c', '#f39c12', '#9b59b6']
-    bars = ax_radar.bar(range(len(attrs)), values, color=colors_bar)
+    # Use consistent color palette
+    colors_bar = QUALITATIVE_COLORS[:len(attrs)]
+    bars = ax_radar.bar(range(len(attrs)), values, color=colors_bar, alpha=0.7, edgecolor='black', linewidth=1.5)
     ax_radar.set_xticks(range(len(attrs)))
-    ax_radar.set_xticklabels(['Nutr.\nValue', 'Nutr.\nDensity', 'Env.\nImpact', 
-                              'Afford.', 'Sustain.'], fontsize=9)
-    ax_radar.set_ylabel('Score (0-1)', fontsize=10)
-    ax_radar.set_title('Spinach Attributes', fontsize=11, fontweight='bold')
+    ax_radar.set_xticklabels([r'Nutr. Value', r'Nutr. Density', r'Env. Impact', 
+                              r'Afford.', r'Sustain.'])
+    ax_radar.set_ylabel(r'Score (0-1)')
+    ax_radar.set_title(r'\textbf{Spinach Attributes}', pad=10)
     ax_radar.set_ylim(0, 1)
     
     # Add value labels on bars
     for bar, val in zip(bars, values):
         ax_radar.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, 
-                      f'{val:.2f}', ha='center', fontsize=9)
+                      f'{val:.2f}', ha='center', fontsize=8)
     
-    fig.suptitle('🥬 Why Spinach Dominates: Weight Distribution Analysis', 
-                 fontsize=14, fontweight='bold', y=1.02)
+    fig.suptitle(r'\textbf{Why Spinach Dominates: Weight Distribution Analysis}', y=1.02)
     
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved: {save_path}")
-    plt.show()
+        save_figure(fig, save_path)
+    plt.close(fig)
 
 
 def plot_parallel_coordinates(results_df: pd.DataFrame, top_n: int = 10, 
                               save_path: str = None):
     """
     Parallel coordinates plot showing weight combinations where different crops win.
+    Manual implementation without pandas to avoid seaborn dependency.
     """
-    from pandas.plotting import parallel_coordinates
-    
     # Get the most common winning crops
     top_winners = results_df['top_crop'].value_counts().head(top_n).index.tolist()
     
     # Filter to these crops
     filtered = results_df[results_df['top_crop'].isin(top_winners)].copy()
     
-    # Select columns for parallel coordinates
-    plot_cols = ['w_nutr_val', 'w_nutr_den', 'w_env_imp', 'w_afford', 'w_sustain', 'top_crop']
-    plot_df = filtered[plot_cols].copy()
-    plot_df.columns = ['Nutr. Value', 'Nutr. Density', 'Env. Impact', 
-                       'Affordability', 'Sustainability', 'Winner']
+    # Sample for readability
+    if len(filtered) > 500:
+        filtered = filtered.sample(n=500, random_state=42)
     
     fig, ax = plt.subplots(figsize=(14, 8))
     
-    # Sample for readability
-    if len(plot_df) > 500:
-        plot_df = plot_df.sample(n=500, random_state=42)
+    # Normalize weights to 0-1 for plotting
+    weight_cols = ['w_nutr_val', 'w_nutr_den', 'w_env_imp', 'w_afford', 'w_sustain']
+    x_positions = list(range(len(weight_cols)))
     
-    parallel_coordinates(plot_df, 'Winner', ax=ax, alpha=0.3)
+    # Color by crop
+    crop_colors = {crop: QUALITATIVE_COLORS[i % len(QUALITATIVE_COLORS)] 
+                   for i, crop in enumerate(top_winners)}
     
-    ax.set_title('🎯 Weight Combinations by Winning Crop\n(Parallel Coordinates)', 
-                 fontsize=14, fontweight='bold')
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
+    # Plot lines for each weight combination
+    for _, row in filtered.iterrows():
+        y_vals = [row[col] for col in weight_cols]
+        color = crop_colors[row['top_crop']]
+        ax.plot(x_positions, y_vals, color=color, alpha=0.3, linewidth=1)
+    
+    # Customize axes
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([r'Nutr. Value', r'Nutr. Density', r'Env. Impact', 
+                        r'Affordability', r'Sustainability'])
+    ax.set_ylabel(r'Weight Value')
+    ax.set_title(r'\textbf{Weight Combinations by Winning Crop}', pad=20)
+    ax.set_ylim(-0.05, 1.05)
+    
+    # Create legend
+    handles = [plt.Line2D([0], [0], color=crop_colors[crop], linewidth=2, label=crop) 
+               for crop in top_winners]
+    ax.legend(handles=handles, loc='center left', bbox_to_anchor=(1, 0.5))
     
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved: {save_path}")
-    plt.show()
+        save_figure(fig, save_path)
+    plt.close(fig)
 
 
 def create_summary_table(results_df: pd.DataFrame, df: pd.DataFrame) -> pd.DataFrame:

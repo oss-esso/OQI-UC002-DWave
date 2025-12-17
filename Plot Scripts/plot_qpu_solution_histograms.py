@@ -17,27 +17,29 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 from pathlib import Path
-import seaborn as sns
 from collections import defaultdict, Counter
+import sys
 
-# Set style for professional plots
-plt.style.use('seaborn-v0_8-whitegrid')
-sns.set_context("paper", font_scale=1.2)
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
-plt.rcParams['axes.labelweight'] = 'bold'
-plt.rcParams['axes.titleweight'] = 'bold'
-plt.rcParams['figure.dpi'] = 150
+# Add project root to path for imports
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Import unified plot configuration
+from plot_config import (
+    setup_publication_style, QUALITATIVE_COLORS, METHOD_COLORS,
+    FOOD_GROUP_COLORS, FOOD_GROUPS, FOOD_TO_GROUP,
+    save_figure, get_crop_color, get_method_color, METHOD_DISPLAY_NAMES
+)
+
+# Apply publication style
+setup_publication_style()
 
 # Paths
-PROJECT_ROOT = Path(__file__).parent.parent
 QPU_RESULTS_DIR = PROJECT_ROOT / "@todo" / "qpu_benchmark_results"
 OUTPUT_DIR = PROJECT_ROOT / "professional_plots"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-# Food groups definition
-FOOD_GROUPS = {
-    'Meats': ['Beef', 'Chicken', 'Egg', 'Lamb', 'Pork'],
+# Food groups and colors are imported from plot_config
     'Fruits': ['Apple', 'Avocado', 'Banana', 'Durian', 'Guava', 'Mango', 'Orange', 'Papaya', 'Watermelon'],
     'Legumes': ['Chickpeas', 'Peanuts', 'Tempeh', 'Tofu'],
     'Grains': ['Corn', 'Potato'],

@@ -16,23 +16,22 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 from pathlib import Path
-import seaborn as sns
 from collections import defaultdict, Counter
+import sys
 
-# Use LaTeX-like rendering for professional look
-plt.rcParams.update({
-    'font.family': 'serif',
-    'font.size': 10,
-    'axes.labelsize': 11,
-    'axes.titlesize': 12,
-    'legend.fontsize': 9,
-    'xtick.labelsize': 9,
-    'ytick.labelsize': 9,
-    'figure.dpi': 150,
-    'savefig.dpi': 300,
-    'axes.grid': True,
-    'grid.alpha': 0.3,
-})
+# Add project root to path for imports
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Import unified plot configuration
+from plot_config import (
+    setup_publication_style, QUALITATIVE_COLORS, METHOD_COLORS,
+    FOOD_GROUP_COLORS, FOOD_GROUPS, FOOD_TO_GROUP,
+    save_figure, get_crop_color, get_method_color, METHOD_DISPLAY_NAMES
+)
+
+# Apply publication style
+setup_publication_style()
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent

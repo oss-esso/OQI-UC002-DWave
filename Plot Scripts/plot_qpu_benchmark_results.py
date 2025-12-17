@@ -23,41 +23,37 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 from pathlib import Path
-import seaborn as sns
 from collections import defaultdict
+import sys
 
-# Set style for professional plots
-plt.style.use('seaborn-v0_8-whitegrid')
-sns.set_context("paper", font_scale=1.3)
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
-plt.rcParams['axes.labelweight'] = 'bold'
-plt.rcParams['axes.titleweight'] = 'bold'
-plt.rcParams['figure.dpi'] = 150
+# Add project root to path for imports
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Import unified plot configuration
+from plot_config import (
+    setup_publication_style, QUALITATIVE_COLORS, METHOD_COLORS,
+    save_figure, get_method_color
+)
+
+# Apply publication style
+setup_publication_style()
 
 # Paths
-PROJECT_ROOT = Path(__file__).parent.parent
 BENCHMARK_DIR = PROJECT_ROOT / "Benchmarks" / "COMPREHENSIVE"
 QPU_RESULTS_DIR = PROJECT_ROOT / "@todo" / "qpu_benchmark_results"
 OUTPUT_DIR = PROJECT_ROOT / "professional_plots"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-# Color scheme - distinct colors for each method
-COLORS = {
-    # Classical solvers
-    'PuLP': '#E63946',
-    'Gurobi': '#E63946',
+# Color scheme - use unified colors from plot_config
+COLORS = METHOD_COLORS.copy()
+# Add any additional color mappings if needed
+COLORS.update({
     'GurobiQUBO': '#D62828',
-    
-    # Hybrid solvers
     'DWave_Hybrid': '#118AB2',
     'DWave_CQM': '#118AB2',
     'DWave_BQM': '#073B4C',
-    
-    # Pure QPU methods (6 decomposition methods) - distinct color palette
-    'PlotBased_QPU': '#E76F51',       # Coral/Orange
-    'Multilevel(5)_QPU': '#F4A261',   # Sandy brown
-    'Multilevel(10)_QPU': '#2A9D8F',  # Teal
+})
     'Louvain_QPU': '#264653',         # Dark slate
     'Spectral(10)_QPU': '#9B5DE5',    # Purple
     'cqm_first_PlotBased': '#8338EC', # Violet
