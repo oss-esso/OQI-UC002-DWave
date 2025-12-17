@@ -206,12 +206,12 @@ def plot_benefit_heatmap(results_df: pd.DataFrame, foods_list: List[str],
     
     ax.set_yticks(range(len(foods_list)))
     ax.set_yticklabels(foods_list)
-    ax.set_xlabel(r'Weight Combination Index (sampled)')
-    ax.set_ylabel(r'Crop')
-    ax.set_title(r'\textbf{Crop Benefits Across Weight Combinations}', pad=20)
+    ax.set_xlabel('Weight Combination Index (sampled)', fontweight='bold')
+    ax.set_ylabel('Crop', fontweight='bold')
+    ax.set_title('Crop Benefits Across Weight Combinations', fontweight='bold', pad=20)
     
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-    cbar.set_label(r'Benefit Score')
+    cbar.set_label('Benefit Score', fontweight='bold')
     
     plt.tight_layout()
     
@@ -251,8 +251,8 @@ def plot_ranking_variability(results_df: pd.DataFrame, foods_list: List[str],
         patch.set_alpha(0.6)
     
     ax.set_yticklabels(sorted_foods)
-    ax.set_xlabel(r'Ranking (1 = Best, 27 = Worst)')
-    ax.set_title(r'\textbf{Crop Ranking Variability Across Weight Combinations}', pad=20)
+    ax.set_xlabel('Ranking (1 = Best, 27 = Worst)', fontweight='bold')
+    ax.set_title('Crop Ranking Variability Across Weight Combinations', fontweight='bold', pad=20)
     
     # Add vertical line at median
     ax.axvline(x=14, color='gray', linestyle='--', alpha=0.5, linewidth=1.5, label='Middle rank (14)')
@@ -306,9 +306,9 @@ def plot_weight_sensitivity(results_df: pd.DataFrame, focus_crops: List[str],
         ax.fill_between(weight_vals, mean_benefits - std_benefits, mean_benefits + std_benefits, 
                         alpha=0.2, color=color)
     
-    ax.set_xlabel(weight_labels[weight_name])
-    ax.set_ylabel(r'Average Benefit Score')
-    ax.set_title(r'\textbf{Sensitivity to ' + weight_labels[weight_name] + r'}', pad=20)
+    ax.set_xlabel(weight_labels[weight_name], fontweight='bold')
+    ax.set_ylabel('Average Benefit Score', fontweight='bold')
+    ax.set_title(f'Sensitivity to {weight_labels[weight_name]}', fontweight='bold', pad=20)
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
     plt.tight_layout()
@@ -337,14 +337,14 @@ def plot_spinach_dominance_analysis(results_df: pd.DataFrame, df: pd.DataFrame,
         ax = axes[0, i] if i < 3 else axes[1, i-3]
         
         if len(spinach_wins) > 0:
-            ax.hist(spinach_wins[col], alpha=0.6, label=r'Spinach \#1', 
+            ax.hist(spinach_wins[col], alpha=0.6, label='Spinach #1', 
                     color=QUALITATIVE_COLORS[2], bins=10, density=True, edgecolor='black', linewidth=0.5)
         if len(spinach_loses) > 0:
-            ax.hist(spinach_loses[col], alpha=0.6, label=r'Other \#1', 
+            ax.hist(spinach_loses[col], alpha=0.6, label='Other #1', 
                     color=QUALITATIVE_COLORS[0], bins=10, density=True, edgecolor='black', linewidth=0.5)
         
-        ax.set_xlabel(label)
-        ax.set_ylabel(r'Density')
+        ax.set_xlabel(label, fontweight='bold')
+        ax.set_ylabel('Density', fontweight='bold')
         ax.legend()
     
     # Bottom right: Spinach attributes bar chart
@@ -358,10 +358,10 @@ def plot_spinach_dominance_analysis(results_df: pd.DataFrame, df: pd.DataFrame,
     colors_bar = QUALITATIVE_COLORS[:len(attrs)]
     bars = ax_radar.bar(range(len(attrs)), values, color=colors_bar, alpha=0.7, edgecolor='black', linewidth=1.5)
     ax_radar.set_xticks(range(len(attrs)))
-    ax_radar.set_xticklabels([r'Nutr. Value', r'Nutr. Density', r'Env. Impact', 
-                              r'Afford.', r'Sustain.'])
-    ax_radar.set_ylabel(r'Score (0-1)')
-    ax_radar.set_title(r'\textbf{Spinach Attributes}', pad=10)
+    ax_radar.set_xticklabels(['Nutr. Value', 'Nutr. Density', 'Env. Impact', 
+                              'Afford.', 'Sustain.'])
+    ax_radar.set_ylabel('Score (0-1)', fontweight='bold')
+    ax_radar.set_title('Spinach Attributes', fontweight='bold', pad=10)
     ax_radar.set_ylim(0, 1)
     
     # Add value labels on bars
@@ -369,7 +369,7 @@ def plot_spinach_dominance_analysis(results_df: pd.DataFrame, df: pd.DataFrame,
         ax_radar.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, 
                       f'{val:.2f}', ha='center', fontsize=8)
     
-    fig.suptitle(r'\textbf{Why Spinach Dominates: Weight Distribution Analysis}', y=1.02)
+    fig.suptitle('Why Spinach Dominates: Weight Distribution Analysis', fontweight='bold', y=1.02)
     
     plt.tight_layout()
     
@@ -412,10 +412,10 @@ def plot_parallel_coordinates(results_df: pd.DataFrame, top_n: int = 10,
     
     # Customize axes
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([r'Nutr. Value', r'Nutr. Density', r'Env. Impact', 
-                        r'Affordability', r'Sustainability'])
-    ax.set_ylabel(r'Weight Value')
-    ax.set_title(r'\textbf{Weight Combinations by Winning Crop}', pad=20)
+    ax.set_xticklabels(['Nutr. Value', 'Nutr. Density', 'Env. Impact', 
+                        'Affordability', 'Sustainability'])
+    ax.set_ylabel('Weight Value', fontweight='bold')
+    ax.set_title('Weight Combinations by Winning Crop', fontweight='bold', pad=20)
     ax.set_ylim(-0.05, 1.05)
     
     # Create legend

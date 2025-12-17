@@ -53,7 +53,6 @@ COLORS.update({
     'DWave_Hybrid': '#118AB2',
     'DWave_CQM': '#118AB2',
     'DWave_BQM': '#073B4C',
-})
     'Louvain_QPU': '#264653',         # Dark slate
     'Spectral(10)_QPU': '#9B5DE5',    # Purple
     'cqm_first_PlotBased': '#8338EC', # Violet
@@ -63,7 +62,7 @@ COLORS.update({
     # New HybridGrid methods - green shades
     'HybridGrid(5,9)_QPU': '#06D6A0',   # Bright green
     'HybridGrid(10,9)_QPU': '#1B9AAA',  # Teal-blue
-}
+})
 
 MARKERS = {
     'PuLP': 'o',

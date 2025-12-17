@@ -18,17 +18,18 @@ import numpy as np
 
 def setup_publication_style():
     """
-    Configure matplotlib for publication-quality plots with LaTeX rendering.
+    Configure matplotlib for publication-quality plots.
+    Uses native matplotlib rendering for better compatibility.
     Call this at the start of every plotting script.
     """
     plt.rcParams.update({
-        # Use LaTeX for text rendering
-        'text.usetex': True,
-        'text.latex.preamble': r'\usepackage{amsmath} \usepackage{amssymb}',
+        # Use native matplotlib rendering (not LaTeX)
+        # This avoids LaTeX compilation issues with special characters
+        'text.usetex': False,
         
         # Font configuration
         'font.family': 'serif',
-        'font.serif': ['Computer Modern Roman'],
+        'font.serif': ['DejaVu Serif', 'Times New Roman'],
         'font.size': 10,
         'axes.labelsize': 11,
         'axes.titlesize': 12,
@@ -112,6 +113,8 @@ METHOD_COLORS = {
     'Spectral(10)_QPU': '#5CDB95',
     'cqm_first_PlotBased': '#8338EC',
     'coordinated': '#FF6B6B',
+    'HybridGrid(5,9)_QPU': '#06D6A0',
+    'HybridGrid(10,9)_QPU': '#1B9AAA',
 }
 
 # Food group colors
@@ -155,6 +158,8 @@ METHOD_DISPLAY_NAMES = {
     'Spectral(10)_QPU': 'Spectral(10) QPU',
     'cqm_first_PlotBased': 'CQM-First PlotBased',
     'coordinated': 'Coordinated',
+    'HybridGrid(5,9)_QPU': 'HybridGrid(5,9) QPU',
+    'HybridGrid(10,9)_QPU': 'HybridGrid(10,9) QPU',
 }
 
 

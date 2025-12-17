@@ -15,6 +15,7 @@ This file maps the figures included in the report (the attached images) to the P
 - Consistent LaTeX-style formatting
 - Unified color palettes (qualitative, sequential, diverging)
 - Method-specific colors (consistent across all plots)
+  - **Includes HybridGrid(5,9)_QPU and HybridGrid(10,9)_QPU**
 - Food group colors
 - Helper functions for saving figures in multiple formats
 - Publication-quality matplotlib settings

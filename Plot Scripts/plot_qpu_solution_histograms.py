@@ -40,6 +40,7 @@ OUTPUT_DIR = PROJECT_ROOT / "professional_plots"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Food groups and colors are imported from plot_config
+food_groups = {
     'Fruits': ['Apple', 'Avocado', 'Banana', 'Durian', 'Guava', 'Mango', 'Orange', 'Papaya', 'Watermelon'],
     'Legumes': ['Chickpeas', 'Peanuts', 'Tempeh', 'Tofu'],
     'Grains': ['Corn', 'Potato'],
@@ -363,7 +364,7 @@ def plot_unique_crops_heatmap(solutions, output_path):
         for i in range(len(all_crops)):
             for j in range(len(methods)):
                 if matrix[i, j] == 1:
-                    ax.text(j, i, '✓', ha='center', va='center', fontsize=10, color='darkgreen')
+                    ax.text(j, i, 'OK', ha='center', va='center', fontsize=10, color='darkgreen')
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
