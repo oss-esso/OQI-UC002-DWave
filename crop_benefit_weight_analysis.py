@@ -27,11 +27,15 @@ from tqdm import tqdm
 # Import unified plot configuration
 from plot_config import (
     setup_publication_style, QUALITATIVE_COLORS, METHOD_COLORS,
-    FOOD_GROUP_COLORS, save_figure, add_value_labels
+    FOOD_GROUP_COLORS, save_figure, add_value_labels,
+    get_sequential_cmap, get_diverging_cmap, get_color_palette
 )
 
 # Apply publication style
 setup_publication_style()
+
+# Override constrained_layout for this script since we use colorbars with tight_layout
+plt.rcParams['figure.constrained_layout.use'] = False
 
 
 def load_food_data(excel_path: str = "Inputs/Combined_Food_Data.xlsx") -> pd.DataFrame:
@@ -202,7 +206,7 @@ def plot_benefit_heatmap(results_df: pd.DataFrame, foods_list: List[str],
     
     fig, ax = plt.subplots(figsize=(16, 10))
     
-    im = ax.imshow(benefit_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest')
+    im = ax.imshow(benefit_matrix, aspect='auto', cmap=get_diverging_cmap(), interpolation='nearest')
     
     ax.set_yticks(range(len(foods_list)))
     ax.set_yticklabels(foods_list)

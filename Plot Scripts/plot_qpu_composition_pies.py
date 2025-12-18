@@ -53,42 +53,15 @@ for group, foods in FOOD_GROUPS.items():
     for food in foods:
         FOOD_TO_GROUP[food] = group
 
-# Qualitative color palette (matching plot_benchmark_results.py)
-QUALITATIVE_COLORS = [
-    '#E63946', '#F4A261', '#2A9D8F', '#264653', '#E9C46A',
-    '#8338EC', '#06FFA5', '#FF6B6B', '#4ECDC4', '#95E1D3',
-    '#F38181', '#AA96DA', '#FCBAD3', '#A8D8EA', '#FFD93D',
-]
-
-# Method colors
-METHOD_COLORS = {
-    'Gurobi': '#E63946',
-    'PuLP': '#E63946',
-    'PlotBased_QPU': '#06FFA5',
-    'Multilevel(5)_QPU': '#2EC4B6',
-    'Multilevel(10)_QPU': '#20A39E',
-    'Louvain_QPU': '#3DDC97',
-    'Spectral(10)_QPU': '#5CDB95',
-    'cqm_first_PlotBased': '#8338EC',
-    'coordinated': '#FF6B6B',
-}
-
-METHOD_DISPLAY_NAMES = {
-    'Gurobi': 'Gurobi (Optimal)',
-    'PlotBased_QPU': 'PlotBased QPU',
-    'Multilevel(5)_QPU': 'Multilevel(5) QPU',
-    'Multilevel(10)_QPU': 'Multilevel(10) QPU',
-    'Louvain_QPU': 'Louvain QPU',
-    'Spectral(10)_QPU': 'Spectral(10) QPU',
-    'cqm_first_PlotBased': 'CQM-First PlotBased',
-    'coordinated': 'Coordinated',
-}
+# Colors and display names now imported from plot_config
+# This includes HybridGrid methods and uses professional ColorBrewer palette
 
 
 def load_qpu_benchmark_data():
-    """Load QPU benchmark results."""
-    data = {'small_scale': None, 'large_scale': None}
+    """Load QPU benchmark results including HybridGrid data."""
+    data = {'small_scale': None, 'large_scale': None, 'hybridgrid': []}
     
+    # Load original benchmark files (no HybridGrid)
     small_file = QPU_RESULTS_DIR / "qpu_benchmark_20251201_160444.json"
     large_file = QPU_RESULTS_DIR / "qpu_benchmark_20251201_200012.json"
     
@@ -102,15 +75,33 @@ def load_qpu_benchmark_data():
             data['large_scale'] = json.load(f)
         print(f"  Loaded: {large_file.name}")
     
+    # Load HybridGrid data from December 3rd+ files
+    hybridgrid_files = [
+        "qpu_benchmark_20251203_110358.json",
+        "qpu_benchmark_20251203_121526.json",
+        "qpu_benchmark_20251203_130020.json",
+        "qpu_benchmark_20251203_133144.json",
+    ]
+    
+    for filename in hybridgrid_files:
+        filepath = QPU_RESULTS_DIR / filename
+        if filepath.exists():
+            with open(filepath) as f:
+                hg_data = json.load(f)
+                data['hybridgrid'].append(hg_data)
+            print(f"  Loaded HybridGrid: {filename}")
+    
     return data
 
 
 def extract_compositions(qpu_data):
     """
     Extract solution compositions in format: {method: {scale: {crop: percentage}}}
+    Includes data from both the original QPU benchmark files and HybridGrid results.
     """
     compositions = defaultdict(dict)
     
+    # Process original benchmark files
     for scale_type in ['small_scale', 'large_scale']:
         if qpu_data[scale_type] is None:
             continue
@@ -129,7 +120,7 @@ def extract_compositions(qpu_data):
                         for crop, area in crop_areas.items()
                     }
             
-            # QPU methods
+            # QPU methods (non-HybridGrid)
             for method_name, method_result in result.get('method_results', {}).items():
                 if not method_result.get('success', False):
                     continue
@@ -145,6 +136,38 @@ def extract_compositions(qpu_data):
                         crop: (area / total_area) * 100 
                         for crop, area in crop_areas.items()
                     }
+    
+    # Process HybridGrid data
+    for hg_dataset in qpu_data.get('hybridgrid', []):
+        for result in hg_dataset.get('results', []):
+            n_farms = result['n_farms']
+            total_area = result['metadata'].get('total_area', 100.0)
+            
+            # HybridGrid methods
+            for method_name, method_result in result.get('method_results', {}).items():
+                if not method_result.get('success', False):
+                    continue
+                if 'solution' not in method_result:
+                    continue
+                
+                sol = method_result['solution']
+                
+                # Clean up method name
+                if 'HybridGrid(5,9)' in method_name:
+                    display_name = 'HybridGrid(5,9)_QPU'
+                elif 'HybridGrid(10,9)' in method_name:
+                    display_name = 'HybridGrid(10,9)_QPU'
+                else:
+                    continue  # Skip non-HybridGrid methods in these files
+                
+                crop_areas = extract_crop_areas(sol, n_farms)
+                if crop_areas:
+                    # Don't overwrite if already exists for this scale
+                    if n_farms not in compositions[display_name]:
+                        compositions[display_name][n_farms] = {
+                            crop: (area / total_area) * 100 
+                            for crop, area in crop_areas.items()
+                        }
     
     return dict(compositions)
 
@@ -182,6 +205,7 @@ def extract_quality_metrics(qpu_data):
         'pass_rate': [],
     })
     
+    # Process original benchmark files
     for scale_type in ['small_scale', 'large_scale']:
         if qpu_data[scale_type] is None:
             continue
@@ -206,12 +230,44 @@ def extract_quality_metrics(qpu_data):
                 metrics['Gurobi']['utilization'].append(total_allocated / total_area)
                 metrics['Gurobi']['n_crops'].append(len(crop_areas))
             
-            # QPU methods
+            # QPU methods (non-HybridGrid)
             for method_name, method_result in result.get('method_results', {}).items():
                 if not method_result.get('success', False):
                     continue
                 
                 display_name = method_name.replace('decomposition_', '')
+                sol = method_result.get('solution', {})
+                
+                metrics[display_name]['n_farms'].append(n_farms)
+                metrics[display_name]['objective_value'].append(method_result.get('objective', 0))
+                violations = method_result.get('violations', 0)
+                metrics[display_name]['violations'].append(violations)
+                metrics[display_name]['pass_rate'].append(1.0 if violations == 0 else 0.0)
+                
+                crop_areas = extract_crop_areas(sol, n_farms)
+                total_allocated = sum(crop_areas.values()) if crop_areas else 0
+                metrics[display_name]['utilization'].append(total_allocated / total_area)
+                metrics[display_name]['n_crops'].append(len(crop_areas))
+    
+    # Process HybridGrid data
+    for hg_dataset in qpu_data.get('hybridgrid', []):
+        for result in hg_dataset.get('results', []):
+            n_farms = result['n_farms']
+            total_area = result['metadata'].get('total_area', 100.0)
+            
+            # HybridGrid methods
+            for method_name, method_result in result.get('method_results', {}).items():
+                if not method_result.get('success', False):
+                    continue
+                
+                # Clean up method name
+                if 'HybridGrid(5,9)' in method_name:
+                    display_name = 'HybridGrid(5,9)_QPU'
+                elif 'HybridGrid(10,9)' in method_name:
+                    display_name = 'HybridGrid(10,9)_QPU'
+                else:
+                    continue  # Skip non-HybridGrid methods
+                
                 sol = method_result.get('solution', {})
                 
                 metrics[display_name]['n_farms'].append(n_farms)

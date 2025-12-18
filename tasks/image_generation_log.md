@@ -12,17 +12,22 @@ This file maps the figures included in the report (the attached images) to the P
 ## Unified Plot Configuration
 
 **NEW**: All plot scripts now import `plot_config.py` which provides:
-- Consistent LaTeX-style formatting
-- Unified color palettes (qualitative, sequential, diverging)
-- Method-specific colors (consistent across all plots)
+- **Professional typography**: Larger, bold titles (16pt) and labels (14pt)
+- **Enhanced gridlines**: Visible major and minor grids
+- **Custom color palettes**:
+  - **Qualitative palette** (20 colors): For line plots, bar charts, categorical data
+  - **Sequential colormap** ('Greens'): For all heatmaps and continuous data
+  - **Diverging colormap** ('RdBu_r'): For comparative/deviation data
+- **Method-specific colors**: Consistent across all plots
   - **Includes HybridGrid(5,9)_QPU and HybridGrid(10,9)_QPU**
-- Food group colors
-- Helper functions for saving figures in multiple formats
+- **Food group colors**: Teal, Orange, Green, Gold, Magenta
+- **Helper functions**: `get_sequential_cmap()`, `get_diverging_cmap()`, `get_color_palette(n)`
 - Publication-quality matplotlib settings
 
 **Benefits:**
-- All figures use the same fonts, sizes, and styling
-- Consistent color schemes across all visualizations
+- All figures use identical fonts, sizes, colors, and styling
+- Completely consistent color schemes across ALL visualizations
+- Colorblind-friendly and print-safe palettes
 - No seaborn dependency - pure matplotlib
 - Easy to adjust all plots by editing one configuration file
 
@@ -113,11 +118,17 @@ python3 "Plot Scripts/plot_qpu_solution_histograms.py"
 
 To change the appearance of ALL plots, edit `plot_config.py`:
 - **Fonts**: Modify the `setup_publication_style()` function
-- **Colors**: Update `QUALITATIVE_COLORS`, `METHOD_COLORS`, or `FOOD_GROUP_COLORS`
+- **Qualitative colors** (line plots/bars): Update `QUALITATIVE_COLORS` list
+- **Sequential colormap** (heatmaps): Change `SEQUENTIAL_CMAP = 'Greens'` to another colormap
+- **Diverging colormap** (deviation plots): Change `DIVERGING_CMAP = 'RdBu_r'` to another colormap
+- **Method colors**: Update `METHOD_COLORS` dictionary
+- **Food group colors**: Update `FOOD_GROUP_COLORS` dictionary
 - **LaTeX**: Toggle `text.usetex` setting in `setup_publication_style()`
 - **DPI/Quality**: Adjust `savefig.dpi` setting
 
 After making changes, regenerate all plots to apply the new style consistently.
+
+**Note**: All heatmaps/gradients now use the same sequential colormap ('Greens') for consistency.
 
 ---
 

@@ -28,7 +28,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from plot_config import (
     setup_publication_style, QUALITATIVE_COLORS, METHOD_COLORS,
     FOOD_GROUP_COLORS, FOOD_GROUPS, FOOD_TO_GROUP,
-    save_figure, get_crop_color, get_method_color, METHOD_DISPLAY_NAMES
+    save_figure, get_crop_color, get_method_color, METHOD_DISPLAY_NAMES,
+    get_sequential_cmap, get_diverging_cmap, get_color_palette
 )
 
 # Apply publication style
@@ -74,21 +75,7 @@ COLORS = {
     'Vegetables': '#264653',
 }
 
-# Food-specific colors
-FOOD_COLORS = {
-    # Meats - reds
-    'Beef': '#8B0000', 'Chicken': '#CD5C5C', 'Egg': '#F08080', 'Lamb': '#DC143C', 'Pork': '#FF6347',
-    # Fruits - oranges/yellows
-    'Apple': '#FF4500', 'Avocado': '#9ACD32', 'Banana': '#FFD700', 'Durian': '#DAA520', 
-    'Guava': '#FF69B4', 'Mango': '#FFA500', 'Orange': '#FF8C00', 'Papaya': '#FFDAB9', 'Watermelon': '#FF6B6B',
-    # Legumes - greens
-    'Chickpeas': '#8FBC8F', 'Peanuts': '#D2B48C', 'Tempeh': '#BC8F8F', 'Tofu': '#F5F5DC',
-    # Grains - browns/yellows
-    'Corn': '#F0E68C', 'Potato': '#DEB887',
-    # Vegetables - blues/greens
-    'Cabbage': '#90EE90', 'Cucumber': '#98FB98', 'Eggplant': '#9370DB', 
-    'Long bean': '#3CB371', 'Pumpkin': '#FF7F50', 'Spinach': '#228B22', 'Tomatoes': '#FF4500',
-}
+# Individual crop colors are generated dynamically using get_crop_color() from plot_config
 
 
 def load_qpu_benchmark_data():
@@ -347,7 +334,7 @@ def plot_unique_crops_heatmap(solutions, output_path):
                         matrix[i, j] = 1
         
         # Plot heatmap
-        im = ax.imshow(matrix, cmap='YlGn', aspect='auto', vmin=0, vmax=1)
+        im = ax.imshow(matrix, cmap=get_sequential_cmap(), aspect='auto', vmin=0, vmax=1)
         
         ax.set_xticks(np.arange(len(methods)))
         ax.set_xticklabels([m[:12] for m in methods], rotation=45, ha='right', fontsize=8)
@@ -518,7 +505,7 @@ def plot_detailed_scale_comparison(solutions, scale, output_path):
         sorted_crops = sorted(crop_counts.items(), key=lambda x: -x[1])
         crops = [c[0] for c in sorted_crops]
         counts = [c[1] for c in sorted_crops]
-        colors = [FOOD_COLORS.get(c, '#888888') for c in crops]
+        colors = [get_crop_color(c, food_group_colors=True) for c in crops]
         
         bars = ax.barh(crops, counts, color=colors, alpha=0.85, edgecolor='white')
         

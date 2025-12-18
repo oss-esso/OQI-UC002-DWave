@@ -4,8 +4,36 @@ Unified Plot Configuration for Publication-Quality Figures
 This module provides consistent styling, colors, and formatting across all 
 visualization scripts in the OQI-UC002-DWave project.
 
+GUARANTEED CONSISTENCY:
+- All line plots use the same 20-color qualitative palette
+- All heatmaps/gradients use 'Greens' sequential colormap
+- All diverging plots use 'RdBu_r' colormap
+- All method-specific colors are defined once and used everywhere
+- Professional typography with bold 16pt titles, 14pt labels
+
+USAGE:
+```python
+from plot_config import (
+    setup_publication_style,
+    get_sequential_cmap,    # Returns 'Greens' for all heatmaps
+    get_diverging_cmap,     # Returns 'RdBu_r' for diverging data
+    get_color_palette,      # Returns n colors from qualitative palette
+    METHOD_COLORS,          # Dict of method-specific colors
+    FOOD_GROUP_COLORS,      # Dict of food group colors
+    save_figure             # Save in multiple formats
+)
+
+setup_publication_style()  # Call once at start of script
+
+# Use consistent heatmap colormap
+plt.imshow(data, cmap=get_sequential_cmap())
+
+# Use consistent line colors
+colors = get_color_palette(5)  # Get 5 distinct colors
+```
+
 Author: OQI-UC002-DWave Project
-Date: 2025-12-17
+Date: 2025-12-18
 """
 
 import matplotlib.pyplot as plt
@@ -19,7 +47,7 @@ import numpy as np
 def setup_publication_style():
     """
     Configure matplotlib for publication-quality plots.
-    Uses native matplotlib rendering for better compatibility.
+    Professional style with enhanced visibility and clarity.
     Call this at the start of every plotting script.
     """
     plt.rcParams.update({
@@ -27,103 +55,162 @@ def setup_publication_style():
         # This avoids LaTeX compilation issues with special characters
         'text.usetex': False,
         
-        # Font configuration
+        # Font configuration - Larger and more prominent
         'font.family': 'serif',
-        'font.serif': ['DejaVu Serif', 'Times New Roman'],
-        'font.size': 10,
-        'axes.labelsize': 11,
-        'axes.titlesize': 12,
-        'legend.fontsize': 9,
-        'xtick.labelsize': 9,
-        'ytick.labelsize': 9,
+        'font.serif': ['Computer Modern Roman', 'Times New Roman', 'DejaVu Serif'],
+        'font.size': 12,
+        'axes.labelsize': 14,
+        'axes.titlesize': 16,
+        'axes.labelweight': 'bold',
+        'axes.titleweight': 'bold',
+        'legend.fontsize': 11,
+        'xtick.labelsize': 11,
+        'ytick.labelsize': 11,
         
         # Figure quality
         'figure.dpi': 150,
+        'figure.constrained_layout.use': True,
         'savefig.dpi': 300,
         'savefig.bbox': 'tight',
-        'savefig.pad_inches': 0.05,
+        'savefig.pad_inches': 0.1,
+        'savefig.transparent': False,
         
-        # Grid and axes
+        # Grid configuration - More visible and professional
         'axes.grid': True,
-        'grid.alpha': 0.3,
+        'axes.grid.which': 'major',
+        'axes.grid.axis': 'both',
+        'grid.alpha': 0.4,
         'grid.linestyle': '--',
-        'grid.linewidth': 0.5,
+        'grid.linewidth': 0.8,
         'axes.axisbelow': True,
         
-        # Line and marker properties
-        'lines.linewidth': 2,
-        'lines.markersize': 6,
-        'patch.linewidth': 0.5,
-        
-        # Legend
-        'legend.frameon': True,
-        'legend.framealpha': 0.9,
-        'legend.fancybox': True,
-        'legend.edgecolor': 'gray',
-        
-        # Spine visibility
+        # Axes configuration with proper arrows
+        'axes.linewidth': 1.3,
+        'axes.labelpad': 10,
+        'axes.titlepad': 15,
         'axes.spines.top': False,
         'axes.spines.right': False,
+        'axes.spines.left': True,
+        'axes.spines.bottom': True,
+        
+        # Tick configuration - Enhanced visibility
+        'xtick.direction': 'out',
+        'ytick.direction': 'out',
+        'xtick.major.size': 6,
+        'ytick.major.size': 6,
+        'xtick.major.width': 1.3,
+        'ytick.major.width': 1.3,
+        'xtick.minor.size': 3,
+        'ytick.minor.size': 3,
+        'xtick.minor.width': 1.0,
+        'ytick.minor.width': 1.0,
+        'xtick.minor.visible': True,
+        'ytick.minor.visible': True,
+        
+        # Line and marker properties - Thinner and more refined
+        'lines.linewidth': 1.5,
+        'lines.markersize': 5,
+        'lines.markeredgewidth': 1.0,
+        'patch.linewidth': 0.8,
+        
+        # Legend - Professional appearance
+        'legend.frameon': True,
+        'legend.framealpha': 0.95,
+        'legend.fancybox': False,
+        'legend.edgecolor': 'black',
+        'legend.shadow': False,
+        
+        # Error bars
+        'errorbar.capsize': 3,
     })
 
 
 # ============================================================================
-# Unified Color Palette
+# Unified Color Palette - Custom Professional Design
 # ============================================================================
 
-# Primary qualitative palette (for different methods/categories)
+# Primary qualitative palette (20 colors for line plots, bar charts, etc.)
+# Designed for maximum distinguishability and colorblind-friendliness
+# Based on scientific visualization best practices
 QUALITATIVE_COLORS = [
-    '#E63946',  # Red
-    '#F4A261',  # Orange
-    '#2A9D8F',  # Teal
-    '#264653',  # Dark blue-gray
-    '#E9C46A',  # Yellow
-    '#8338EC',  # Purple
-    '#06FFA5',  # Bright green
-    '#FF6B6B',  # Light red
-    '#4ECDC4',  # Cyan
-    '#95E1D3',  # Mint
-    '#F38181',  # Pink
-    '#AA96DA',  # Lavender
-    '#FCBAD3',  # Light pink
-    '#A8D8EA',  # Light blue
-    '#FFD93D',  # Bright yellow
+    '#1F77B4',  # Blue (primary)
+    '#FF7F0E',  # Orange (secondary)
+    '#2CA02C',  # Green
+    '#D62728',  # Red
+    '#9467BD',  # Purple
+    '#8C564B',  # Brown
+    '#E377C2',  # Pink
+    '#7F7F7F',  # Gray
+    '#BCBD22',  # Yellow-green
+    '#17BECF',  # Cyan
+    '#AEC7E8',  # Light blue
+    '#FFBB78',  # Light orange
+    '#98DF8A',  # Light green
+    '#FF9896',  # Light red
+    '#C5B0D5',  # Light purple
+    '#C49C94',  # Light brown
+    '#F7B6D2',  # Light pink
+    '#C7C7C7',  # Light gray
+    '#DBDB8D',  # Light yellow
+    '#9EDAE5',  # Light cyan
 ]
 
-# Sequential palette (for gradients/heatmaps)
+# Sequential palette for heatmaps/gradients (light to dark blue-green)
+# Professional gradient suitable for continuous data
 SEQUENTIAL_PALETTE = [
-    '#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6',
-    '#4292c6', '#2171b5', '#08519c', '#08306b'
+    '#F7FCF5',  # Very light green (lightest)
+    '#E5F5E0',  # Light green
+    '#C7E9C0',  # Medium-light green
+    '#A1D99B',  # Medium green
+    '#74C476',  # Medium-dark green
+    '#41AB5D',  # Dark green
+    '#238B45',  # Darker green
+    '#006D2C',  # Very dark green
+    '#00441B',  # Darkest green
 ]
 
-# Diverging palette (for comparing positive/negative)
+# Diverging palette for positive/negative or comparative data
+# Balanced red-white-blue for showing deviation from center
 DIVERGING_PALETTE = [
-    '#d7191c', '#fdae61', '#ffffbf', '#a6d96a', '#1a9641'
+    '#B2182B',  # Dark red (negative extreme)
+    '#D6604D',  # Red
+    '#F4A582',  # Light red
+    '#FDDBC7',  # Very light red
+    '#F7F7F7',  # White (neutral)
+    '#D1E5F0',  # Very light blue
+    '#92C5DE',  # Light blue
+    '#4393C3',  # Blue
+    '#2166AC',  # Dark blue (positive extreme)
 ]
 
-# Method-specific colors (consistent across all plots)
+# Colormap names for matplotlib (for consistency across all heatmaps)
+SEQUENTIAL_CMAP = 'Greens'      # Use 'Greens' colormap everywhere for sequential data
+DIVERGING_CMAP = 'RdBu_r'       # Use 'RdBu_r' (reversed) for diverging data
+QUALITATIVE_CMAP = 'tab20'      # Use 'tab20' for categorical data if needed
+
+# Method-specific colors (consistent across all plots) - using professional palette
 METHOD_COLORS = {
-    'Gurobi': '#E63946',
-    'PuLP': '#E63946',
-    'D-Wave Hybrid': '#3B82F6',
-    'PlotBased_QPU': '#06FFA5',
-    'Multilevel(5)_QPU': '#2EC4B6',
-    'Multilevel(10)_QPU': '#20A39E',
-    'Louvain_QPU': '#3DDC97',
-    'Spectral(10)_QPU': '#5CDB95',
-    'cqm_first_PlotBased': '#8338EC',
-    'coordinated': '#FF6B6B',
-    'HybridGrid(5,9)_QPU': '#06D6A0',
-    'HybridGrid(10,9)_QPU': '#1B9AAA',
+    'Gurobi': '#D95F02',        # Orange (optimal baseline)
+    'PuLP': '#D95F02',          # Orange (optimal baseline)
+    'D-Wave Hybrid': '#1B9E77', # Teal (hybrid approach)
+    'PlotBased_QPU': '#7570B3', # Purple
+    'Multilevel(5)_QPU': '#E7298A',   # Magenta
+    'Multilevel(10)_QPU': '#66A61E',  # Green
+    'Louvain_QPU': '#E6AB02',         # Gold
+    'Spectral(10)_QPU': '#A6761D',    # Brown
+    'cqm_first_PlotBased': '#377EB8', # Blue
+    'coordinated': '#984EA3',         # Violet
+    'HybridGrid(5,9)_QPU': '#4DAF4A', # Light green
+    'HybridGrid(10,9)_QPU': '#FF7F00',# Bright orange
 }
 
-# Food group colors
+# Food group colors (using professional palette)
 FOOD_GROUP_COLORS = {
-    'Vegetables': '#2A9D8F',  # Teal
-    'Grains': '#E9C46A',      # Yellow
-    'Legumes': '#06FFA5',     # Green
-    'Fruits': '#F4A261',      # Orange
-    'Meats': '#E63946',       # Red
+    'Vegetables': '#1B9E77',  # Teal
+    'Grains': '#E6AB02',      # Gold
+    'Legumes': '#66A61E',     # Green
+    'Fruits': '#D95F02',      # Orange
+    'Meats': '#E7298A',       # Magenta
 }
 
 # Food groups definition
@@ -190,6 +277,50 @@ def get_crop_color(crop_name, food_group_colors=True):
 def get_method_color(method_name):
     """Get consistent color for a method."""
     return METHOD_COLORS.get(method_name, QUALITATIVE_COLORS[0])
+
+
+def get_qualitative_cmap():
+    """
+    Get the standard qualitative colormap for line plots and bar charts.
+    Returns a matplotlib colormap object.
+    """
+    from matplotlib.colors import ListedColormap
+    return ListedColormap(QUALITATIVE_COLORS)
+
+
+def get_sequential_cmap():
+    """
+    Get the standard sequential colormap for heatmaps/gradients.
+    Returns matplotlib colormap name (string).
+    """
+    return SEQUENTIAL_CMAP
+
+
+def get_diverging_cmap():
+    """
+    Get the standard diverging colormap for comparative data.
+    Returns matplotlib colormap name (string).
+    """
+    return DIVERGING_CMAP
+
+
+def get_color_palette(n_colors):
+    """
+    Get n colors from the qualitative palette with cycling if needed.
+    
+    Args:
+        n_colors: Number of colors needed
+        
+    Returns:
+        List of hex color strings
+    """
+    if n_colors <= len(QUALITATIVE_COLORS):
+        return QUALITATIVE_COLORS[:n_colors]
+    else:
+        # Cycle through colors if more are needed
+        import itertools
+        cycle = itertools.cycle(QUALITATIVE_COLORS)
+        return [next(cycle) for _ in range(n_colors)]
 
 
 def format_large_number(x, pos=None):
