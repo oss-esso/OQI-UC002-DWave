@@ -151,22 +151,54 @@ def load_scenario_data(scenario: Dict) -> Dict:
     return data
 
 def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
-    """Solve with Gurobi and track timeout behavior."""
+    """Solve with Gurobi and track timeout behavior + extract full solution."""
     print(f"\n{'='*70}")
     print(f"Testing: {scenario['name']}")
     print(f"Size: {scenario['n_farms']} farms × {scenario['n_foods']} foods = {scenario['n_vars']} vars")
     print(f"{'='*70}")
     
     result = {
-        'scenario': scenario['name'],
-        'n_vars': scenario['n_vars'],
-        'status': 'unknown',
-        'objective': None,
-        'runtime': None,
-        'mip_gap': None,
-        'hit_timeout': False,
-        'hit_improve_limit': False,
-        'stopped_reason': 'unknown',
+        'metadata': {
+            'benchmark_type': 'GUROBI_TIMEOUT_TEST',
+            'solver': 'gurobi',
+            'scenario': scenario['name'],
+            'n_farms': scenario['n_farms'],
+            'n_foods': scenario['n_foods'],
+            'n_periods': scenario['n_periods'],
+            'timestamp': datetime.now().isoformat()
+        },
+        'result': {
+            'scenario': scenario['name'],
+            'n_vars': scenario['n_vars'],
+            'status': 'unknown',
+            'objective_value': None,
+            'solve_time': None,
+            'mip_gap': None,
+            'hit_timeout': False,
+            'hit_improve_limit': False,
+            'stopped_reason': 'unknown',
+            'solution_selections': {},  # Binary decision variables
+            'solution_areas': {},       # Area allocations (binary × farm_area)
+            'total_covered_area': 0.0,
+            'validation': {},           # Constraint verification
+            'solver': 'gurobi',
+            'success': False,
+        },
+        'decomposition_specific': {
+            'used_decomposition': False,
+            'method': 'monolithic',
+            'n_partitions': 1,
+            'notes': 'Classical Gurobi solve - no decomposition used'
+        },
+        'benchmark_info': {
+            'n_farms': scenario['n_farms'],
+            'n_foods': scenario['n_foods'],
+            'n_periods': scenario['n_periods'],
+            'total_land': sum(data['land_availability'].values()) if 'land_availability' in data else 0.0,
+            'timeout': config['timeout'],
+            'mip_gap_target': config['mip_gap'],
+            'timestamp': datetime.now().isoformat()
+        }
     }
     
     start_time = time.time()
@@ -178,6 +210,9 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
         model.setParam('MIPGap', config['mip_gap'])
         model.setParam('MIPFocus', config['mip_focus'])
         model.setParam('ImproveStartTime', config['improve_start_time'])
+        model.setParam('Threads', 0)  # Use all cores - MATCH hierarchical test
+        model.setParam('Presolve', 2)  # Aggressive presolve - MATCH hierarchical test
+        model.setParam('Cuts', 2)  # Aggressive cuts - MATCH hierarchical test
         
         n_farms = scenario['n_farms']
         n_foods = scenario['n_foods']
@@ -226,7 +261,8 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
                     distances.append((dist, f2_idx, f2))
             distances.sort()
             for _, f2_idx, f2 in distances[:k_neighbors]:
-                if (f2_idx, f1_idx) not in [(e[1], e[0]) for e in neighbor_edges]:
+                # Check if EITHER direction already exists (prevent double-counting)
+                if (f1_idx, f2_idx) not in neighbor_edges and (f2_idx, f1_idx) not in neighbor_edges:
                     neighbor_edges.append((f1_idx, f2_idx))
         
         # Variables
@@ -310,52 +346,132 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
         model.optimize()
         
         runtime = time.time() - start_time
-        result['runtime'] = runtime
+        result['result']['solve_time'] = runtime
         
         # Analyze stopping reason
         if model.Status == GRB.OPTIMAL:
-            result['status'] = 'optimal'
-            result['stopped_reason'] = 'optimal_found'
-            result['objective'] = model.ObjVal
-            result['mip_gap'] = 0.0
+            result['result']['status'] = 'optimal'
+            result['result']['stopped_reason'] = 'optimal_found'
+            result['result']['objective_value'] = model.ObjVal
+            result['result']['mip_gap'] = 0.0
+            result['result']['success'] = True
         elif model.Status == GRB.TIME_LIMIT:
-            result['status'] = 'timeout'
-            result['hit_timeout'] = True
-            result['stopped_reason'] = 'timeout_300s'
+            result['result']['status'] = 'timeout'
+            result['result']['hit_timeout'] = True
+            result['result']['stopped_reason'] = 'timeout_300s'
             if model.SolCount > 0:
-                result['objective'] = model.ObjVal
-                result['mip_gap'] = model.MIPGap * 100
+                result['result']['objective_value'] = model.ObjVal
+                result['result']['mip_gap'] = model.MIPGap * 100
+                result['result']['success'] = True
         elif model.SolCount > 0:
-            result['status'] = 'feasible'
-            result['objective'] = model.ObjVal
-            result['mip_gap'] = model.MIPGap * 100
+            result['result']['status'] = 'feasible'
+            result['result']['objective_value'] = model.ObjVal
+            result['result']['mip_gap'] = model.MIPGap * 100
+            result['result']['success'] = True
             # Check if stopped due to ImproveStartTime
             if runtime < config['timeout'] - 5:
-                result['hit_improve_limit'] = True
-                result['stopped_reason'] = 'no_improvement_30s'
+                result['result']['hit_improve_limit'] = True
+                result['result']['stopped_reason'] = 'no_improvement_30s'
             else:
-                result['stopped_reason'] = 'mip_gap_reached'
+                result['result']['stopped_reason'] = 'mip_gap_reached'
         else:
-            result['status'] = 'no_solution'
-            result['stopped_reason'] = 'infeasible'
+            result['result']['status'] = 'no_solution'
+            result['result']['stopped_reason'] = 'infeasible'
+            result['result']['success'] = False
+        
+        # ================================================================
+        # EXTRACT SOLUTION (binary variables and areas)
+        # ================================================================
+        if model.SolCount > 0:
+            print("\nExtracting solution...")
+            
+            # Extract binary decision variables
+            for i, farm in enumerate(farm_names):
+                farm_area = land_availability[farm]
+                for j, food in enumerate(food_names):
+                    for t in range(1, n_periods + 1):
+                        var = Y[(i, j, t)]
+                        val = var.X  # Binary value (0 or 1)
+                        
+                        var_name = f"{farm}_{food}_t{t}"
+                        result['result']['solution_selections'][var_name] = float(val)
+                        
+                        # Calculate area allocation (binary × farm_area)
+                        area = val * farm_area
+                        result['result']['solution_areas'][var_name] = float(area)
+            
+            # Calculate total covered area
+            result['result']['total_covered_area'] = sum(result['result']['solution_areas'].values())
+            
+            # ================================================================
+            # VALIDATE SOLUTION
+            # ================================================================
+            print("Validating solution...")
+            violations = []
+            
+            # Check 1: One-hot constraint (1-2 crops per farm per period)
+            for i, farm in enumerate(farm_names):
+                for t in range(1, n_periods + 1):
+                    crops_selected = sum(
+                        result['result']['solution_selections'][f"{farm}_{food}_t{t}"]
+                        for food in food_names
+                    )
+                    if crops_selected < 1 or crops_selected > 2:
+                        violations.append({
+                            'type': 'one_hot_violation',
+                            'farm': farm,
+                            'period': t,
+                            'crops_selected': crops_selected,
+                            'expected': '1-2 crops'
+                        })
+            
+            # Check 2: Rotation constraint (no same crop consecutive periods)
+            for i, farm in enumerate(farm_names):
+                for j, food in enumerate(food_names):
+                    for t in range(1, n_periods):
+                        val_t = result['result']['solution_selections'][f"{farm}_{food}_t{t}"]
+                        val_t1 = result['result']['solution_selections'][f"{farm}_{food}_t{t+1}"]
+                        if val_t > 0.5 and val_t1 > 0.5:  # Both selected
+                            violations.append({
+                                'type': 'rotation_violation',
+                                'farm': farm,
+                                'food': food,
+                                'periods': f"t{t} and t{t+1}",
+                                'message': 'Same crop in consecutive periods'
+                            })
+            
+            result['result']['validation'] = {
+                'is_valid': len(violations) == 0,
+                'n_violations': len(violations),
+                'violations': violations[:10],  # Limit to first 10
+                'summary': f"{'Valid' if len(violations) == 0 else 'Invalid'}: {len(violations)} violations found"
+            }
+            
+            print(f"  Solution: {len(result['result']['solution_selections'])} variables extracted")
+            print(f"  Total area: {result['result']['total_covered_area']:.2f} ha")
+            print(f"  Validation: {result['result']['validation']['summary']}")
         
         # Display results
         print(f"\n{'='*70}")
         print(f"RESULTS: {scenario['name']}")
         print(f"{'='*70}")
-        print(f"Status:         {result['status']}")
-        print(f"Stopped reason: {result['stopped_reason']}")
+        print(f"Status:         {result['result']['status']}")
+        print(f"Stopped reason: {result['result']['stopped_reason']}")
         print(f"Runtime:        {runtime:.2f}s / {config['timeout']}s")
-        print(f"Objective:      {result['objective']}")
-        print(f"MIP Gap:        {result['mip_gap']:.2f}%" if result['mip_gap'] else "MIP Gap:        N/A")
-        print(f"Hit timeout:    {'YES ⚠️' if result['hit_timeout'] else 'NO'}")
+        print(f"Objective:      {result['result']['objective_value']}")
+        print(f"MIP Gap:        {result['result']['mip_gap']:.2f}%" if result['result']['mip_gap'] else "MIP Gap:        N/A")
+        print(f"Hit timeout:    {'YES ⚠️' if result['result']['hit_timeout'] else 'NO'}")
+        if model.SolCount > 0:
+            print(f"Variables:      {len(result['result']['solution_selections'])} extracted")
+            print(f"Total area:     {result['result']['total_covered_area']:.2f} ha")
+            print(f"Validation:     {result['result']['validation']['summary']}")
         print(f"{'='*70}")
         
     except Exception as e:
         print(f"ERROR: {e}")
-        result['status'] = 'error'
-        result['stopped_reason'] = 'error'
-        result['runtime'] = time.time() - start_time
+        result['result']['status'] = 'error'
+        result['result']['stopped_reason'] = 'error'
+        result['result']['solve_time'] = time.time() - start_time
     
     return result
 
@@ -393,12 +509,12 @@ print()
 print(f"{'Scenario':<40} {'Vars':>6} {'Runtime':>10} {'Timeout':>8} {'Stopped Reason':<20}")
 print("-"*95)
 for r in all_results:
-    timeout_str = "YES" if r['hit_timeout'] else "NO"
-    print(f"{r['scenario']:<40} {r['n_vars']:>6} {r['runtime']:>9.1f}s {timeout_str:>8} {r['stopped_reason']:<20}")
+    timeout_str = "YES" if r['result']['hit_timeout'] else "NO"
+    print(f"{r['metadata']['scenario']:<40} {r['result']['n_vars']:>6} {r['result']['solve_time']:>9.1f}s {timeout_str:>8} {r['result']['stopped_reason']:<20}")
 print("-"*95)
 
-timeout_count = sum(1 for r in all_results if r['hit_timeout'])
-improve_stop_count = sum(1 for r in all_results if r['hit_improve_limit'])
+timeout_count = sum(1 for r in all_results if r['result']['hit_timeout'])
+improve_stop_count = sum(1 for r in all_results if r['result']['hit_improve_limit'])
 
 print(f"\nTimeout hits: {timeout_count}/{len(all_results)} ({timeout_count/len(all_results)*100:.0f}%)")
 print(f"ImproveStartTime stops: {improve_stop_count}/{len(all_results)} ({improve_stop_count/len(all_results)*100:.0f}%)")

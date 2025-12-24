@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from hybrid_formulation import build_hybrid_rotation_matrix, detect_decomposition_strategy
 from src.scenarios import load_food_data
+from data_loader_utils import load_food_data_as_dict  # Use same loader as other tests!
 
 print("="*80)
 print("COMPREHENSIVE SCALING TEST: 25-1500 Variables")
@@ -105,7 +106,11 @@ os.environ['DWAVE_API_TOKEN'] = os.environ.get('DWAVE_API_TOKEN', DEFAULT_DWAVE_
 # ============================================================================
 
 def load_data_for_test(test_config: Dict) -> Dict:
-    """Load data based on test configuration."""
+    """
+    Load data based on test configuration.
+    
+    CRITICAL: Uses load_food_data_as_dict for consistency with other tests.
+    """
     n_farms = test_config['n_farms']
     n_foods_requested = test_config['n_foods']
     scenario = test_config['scenario']
@@ -116,82 +121,55 @@ def load_data_for_test(test_config: Dict) -> Dict:
     if aggregate_to_6:
         print(f"    -> Will aggregate 27 foods to 6 families")
     
-    # Load scenario
-    farms, foods, food_groups, config = load_food_data(scenario)
+    # CRITICAL: Use load_food_data_as_dict for consistency with other tests!
+    # This ensures identical benefits and land areas across all tests
+    base_data = load_food_data_as_dict(scenario)
     
-    # Land availability - Load from scenario params (EXACT same as statistical test)
-    params = config.get('parameters', {})
-    land_availability = params.get('land_availability', {})
-    all_farm_names = list(land_availability.keys())
+    # Get base values
+    farm_names = base_data['farm_names']
+    land_availability = base_data['land_availability']
+    food_names = base_data['food_names']
+    food_benefits = base_data['food_benefits']
+    config = base_data.get('config', {})
     
-    # Extend if needed (matching statistical_comparison_test.py logic)
-    if len(all_farm_names) < n_farms:
-        for i in range(len(all_farm_names), n_farms):
-            land_availability[f'Farm_{i+1}'] = np.random.uniform(15, 35)
-        all_farm_names = list(land_availability.keys())
+    # Adjust farm count if needed
+    if len(farm_names) != n_farms:
+        if len(farm_names) > n_farms:
+            # Trim
+            farm_names = farm_names[:n_farms]
+            land_availability = {f: land_availability[f] for f in farm_names}
+        else:
+            # Extend with random areas
+            original_farms = farm_names.copy()
+            while len(farm_names) < n_farms:
+                idx = len(farm_names)
+                template_farm = original_farms[idx % len(original_farms)]
+                new_farm = f"{template_farm}_ext{idx}"
+                farm_names.append(new_farm)
+                land_availability[new_farm] = land_availability[template_farm]
     
-    # Trim to exact count
-    farm_names = all_farm_names[:n_farms]
-    land_availability = {f: land_availability[f] for f in farm_names}
     total_area = sum(land_availability.values())
     
-    # Food data - Extract from scenario (EXACT same as statistical test)
-    params = config.get('parameters', {})
-    weights = params.get('weights', {
-        'nutritional_value': 0.25,
-        'nutrient_density': 0.2,
-        'environmental_impact': 0.25,
-        'affordability': 0.15,
-        'sustainability': 0.15
-    })
-    
-    # Handle aggregation if requested
-    if aggregate_to_6:
-        # Load 27 foods first
-        all_food_names = list(foods.keys())[:27]
-        
-        # Calculate individual food benefits
-        individual_benefits = {}
-        for food in all_food_names:
-            benefit = (
-                weights.get('nutritional_value', 0) * foods[food].get('nutritional_value', 0.5) +
-                weights.get('nutrient_density', 0) * foods[food].get('nutrient_density', 0.5) -
-                weights.get('environmental_impact', 0) * foods[food].get('environmental_impact', 0.5) +
-                weights.get('affordability', 0) * foods[food].get('affordability', 0.5) +
-                weights.get('sustainability', 0) * foods[food].get('sustainability', 0.5)
-            )
-            individual_benefits[food] = benefit
-        
-        # Aggregate to 6 families
-        from food_grouping import aggregate_foods_to_families, FOOD_TO_FAMILY
-        
-        # Create family groups and average benefits
-        family_names = ['Legumes', 'Grains', 'Vegetables', 'Roots', 'Fruits', 'Other']
-        food_benefits = {}
-        for family in family_names:
-            family_foods = [f for f in all_food_names if FOOD_TO_FAMILY.get(f, 'Other') == family]
-            if family_foods:
-                avg_benefit = np.mean([individual_benefits.get(f, 0.5) for f in family_foods])
-                food_benefits[family] = avg_benefit * 1.1  # Aggregation boost
-            else:
-                food_benefits[family] = 0.5
-        
-        food_names = family_names
+    # Handle food count and aggregation
+    if aggregate_to_6 and len(food_names) > 6:
+        # Aggregate 27 → 6 families
+        from food_grouping import aggregate_foods_to_families
+        agg_data = aggregate_foods_to_families(base_data)
+        food_names = agg_data['food_names']
+        food_benefits = agg_data['food_benefits']
         n_foods = 6
         print(f"    → Aggregated to {n_foods} families with averaged benefits")
+    elif n_foods_requested == 27 and len(food_names) < 27:
+        # Need 27 foods but scenario has fewer - use different scenario
+        full_data = load_food_data_as_dict('rotation_250farms_27foods')
+        food_names = full_data['food_names'][:27]
+        food_benefits = {f: full_data['food_benefits'].get(f, 0.5) for f in food_names}
+        n_foods = 27
     else:
-        # No aggregation - use foods directly (EXACT same as statistical test)
-        food_names = list(foods.keys())[:n_foods_requested]
-        food_benefits = {}
-        for food in food_names:
-            benefit = (
-                weights.get('nutritional_value', 0) * foods[food].get('nutritional_value', 0) +
-                weights.get('nutrient_density', 0) * foods[food].get('nutrient_density', 0) -
-                weights.get('environmental_impact', 0) * foods[food].get('environmental_impact', 0) +
-                weights.get('affordability', 0) * foods[food].get('affordability', 0) +
-                weights.get('sustainability', 0) * foods[food].get('sustainability', 0)
-            )
-            food_benefits[food] = benefit
+        # Use foods directly (native formulation)
+        if len(food_names) > n_foods_requested:
+            food_names = food_names[:n_foods_requested]
+            food_benefits = {f: food_benefits[f] for f in food_names}
         n_foods = len(food_names)
     
     # Build rotation matrix
@@ -222,14 +200,13 @@ def load_data_for_test(test_config: Dict) -> Dict:
     
     strategy = detect_decomposition_strategy(n_farms, n_foods, N_PERIODS)
     
+    print(f"  -> Final problem: {n_farms} farms x {n_foods} foods = {n_farms * n_foods * N_PERIODS} variables")
+    
     return {
-        'foods': foods,
         'food_names': food_names,
-        'food_groups': food_groups,
         'food_benefits': food_benefits,
-        'weights': weights,
         'land_availability': land_availability,
-        'farm_names': farm_names,  # FIXED: Use trimmed list, not all_farm_names
+        'farm_names': farm_names,
         'total_area': total_area,
         'n_farms': n_farms,
         'n_foods': n_foods,
@@ -295,7 +272,7 @@ def solve_gurobi(data: Dict, timeout: int = 300) -> Dict:
     model = gp.Model("ScalingTest")
     model.setParam('OutputFlag', 0)
     model.setParam('TimeLimit', timeout)
-    model.setParam('MIPGap', 0.1)  # 10% gap tolerance
+    model.setParam('MIPGap', 0.01)  # 1% gap tolerance - MATCH test_gurobi_timeout.py
     model.setParam('MIPFocus', 1)  # Focus on feasible solutions
     model.setParam('ImproveStartTime', 30)  # Stop if no improvement after 30s
     model.setParam('Threads', 0)  # Use all available cores (MATCH statistical test)
@@ -374,13 +351,30 @@ def solve_gurobi(data: Dict, timeout: int = 300) -> Dict:
     
     model.setObjective(obj, GRB.MAXIMIZE)
     
-    # Constraints
+    # Constraints - MUST MATCH test_gurobi_timeout.py EXACTLY
+    
+    # One-hot constraints: min 1 and max 2 crops per farm per period
     for f in farm_names:
         for t in range(1, N_PERIODS + 1):
             model.addConstr(
                 gp.quicksum(Y[(f, c, t)] for c in food_names) <= 2,
                 name=f"max_crops_{f}_t{t}"
             )
+            model.addConstr(
+                gp.quicksum(Y[(f, c, t)] for c in food_names) >= 1,
+                name=f"min_crops_{f}_t{t}"
+            )
+    
+    # Rotation constraints: no same crop in consecutive periods
+    for f in farm_names:
+        for c in food_names:
+            for t in range(1, N_PERIODS):  # t=1 to n_periods-1
+                model.addConstr(
+                    Y[(f, c, t)] + Y[(f, c, t + 1)] <= 1,
+                    name=f"rotation_{f}_{c}_t{t}"
+                )
+    
+    model.update()
     
     # Solve
     solve_start = time.time()

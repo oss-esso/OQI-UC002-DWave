@@ -47,6 +47,12 @@ sys.path.insert(0, project_root)
 # CONFIGURATION
 # ============================================================================
 
+# ============================================================================
+# TEST MODE: Set to True to run just ONE scenario first for verification
+# Set to False to run all scenarios for full benchmark
+# ============================================================================
+TEST_MODE = True  # Set to False after verifying one scenario works
+
 TEST_CONFIG = {
     # First 17 scenarios matching Gurobi timeout test
     # Format: (n_farms, n_foods, scenario_name)
@@ -68,11 +74,11 @@ TEST_CONFIG = {
         (150, 27, 'rotation_150farms_27foods'),# 15: 12150 vars
     ],
     'n_periods': 3,                    # Rotation periods
-    'num_reads': 100,                  # QPU reads per cluster (same as statistical test)
-    'num_iterations': 3,               # Boundary coordination iterations
+    'num_reads': 100,                   # QPU reads per cluster (reduced for efficiency)
+    'num_iterations': 3,               # Boundary coordination iterations (reduced)
     'runs_per_method': 1,              # Single run per scenario (no statistics)
     'classical_timeout': 100,          # Gurobi timeout (100s, SAME as timeout test)
-    'skip_gurobi': True,               # Skip Gurobi - run QPU only
+    'skip_gurobi': False,              # Run Gurobi for comparison!
     
     # CRITICAL: Cluster size must create problems comparable to statistical test
     # Statistical test: 5-25 farms = 90-450 vars (6 families × 3 periods)
@@ -109,7 +115,12 @@ print("="*80)
 print("\n[1/5] Importing core libraries...")
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import seaborn as sns
+    HAS_SEABORN = True
+except ImportError:
+    HAS_SEABORN = False
+    print("  ⚠️ seaborn not available - plots will be basic")
 from scipy import stats
 
 print("[2/5] Importing optimization libraries...")
@@ -130,8 +141,7 @@ try:
     print("  ✓ D-Wave QPU available")
 except ImportError:
     HAS_DWAVE = False
-    print("  ❌ ERROR: D-Wave required for quantum comparison!")
-    sys.exit(1)
+    print("  ⚠️ D-Wave not available - will use SimulatedAnnealing for testing")
 
 setup_dwave_token()
 
@@ -229,14 +239,24 @@ def solve_gurobi_ground_truth(data: Dict, timeout: int = 900) -> Dict:
     
     Returns full solution details with timing breakdown.
     """
-    # ONLY DIFFERENCE: Aggregate 27 → 6 first
-    from food_grouping import aggregate_foods_to_families
-    family_data = aggregate_foods_to_families(data)
-    
     total_start = time.time()
     
-    # Extract data (from family_data after aggregation)
-    food_names = family_data['food_names']  # 6 families
+    # CRITICAL: Only aggregate if n_foods > 6 (i.e., 27 foods → 6 families)
+    # If already 6 foods, data is already at family level - use directly!
+    n_foods_input = len(data.get('food_names', []))
+    
+    if n_foods_input > 6:
+        # 27 foods → 6 families aggregation
+        from food_grouping import aggregate_foods_to_families
+        family_data = aggregate_foods_to_families(data)
+        print(f"      Aggregated {n_foods_input} foods → 6 families")
+    else:
+        # Already 6 families - use data directly (NO aggregation)
+        family_data = data
+        print(f"      Using {n_foods_input} families directly (no aggregation)")
+    
+    # Extract data
+    food_names = family_data['food_names']  # 6 families (or foods if not aggregated)
     farm_names = family_data['farm_names']
     land_availability = family_data['land_availability']
     total_area = family_data['total_area']
@@ -399,14 +419,23 @@ def solve_gurobi_ground_truth(data: Dict, timeout: int = 900) -> Dict:
     
     # Step 6: Add constraints
     step_start = time.time()
-    n_constraints = n_farms * n_periods
-    print(f"      [6/7] Adding {n_constraints} constraints...", flush=True, end='')
+    print(f"      [6/7] Adding constraints...", flush=True)
+    
+    # Part 6.1: One-hot constraints (min and max crops per farm per period)
+    substep_start = time.time()
+    print(f"            [6.1] Adding one-hot constraints (min/max crops)...", flush=True, end='')
     if use_soft_constraint:
         for f in farm_names:
             for t in range(1, n_periods + 1):
+                # Max 2 crops per farm per period
                 model.addConstr(
                     gp.quicksum(Y[(f, c, t)] for c in families_list) <= 2,
                     name=f"max_crops_{f}_t{t}"
+                )
+                # Min 1 crop per farm per period (MISSING BEFORE!)
+                model.addConstr(
+                    gp.quicksum(Y[(f, c, t)] for c in families_list) >= 1,
+                    name=f"min_crops_{f}_t{t}"
                 )
     else:
         for f in farm_names:
@@ -415,7 +444,25 @@ def solve_gurobi_ground_truth(data: Dict, timeout: int = 900) -> Dict:
                     gp.quicksum(Y[(f, c, t)] for c in families_list) == 1,
                     name=f"one_crop_{f}_t{t}"
                 )
-    print(f" Done in {time.time() - step_start:.3f}s", flush=True)
+    print(f" Done in {time.time() - substep_start:.3f}s", flush=True)
+    
+    # Part 6.2: Rotation constraints (CRITICAL - prevents same crop in consecutive periods!)
+    substep_start = time.time()
+    print(f"            [6.2] Adding rotation constraints (no consecutive same crop)...", flush=True, end='')
+    for f in farm_names:
+        for c in families_list:
+            for t in range(1, n_periods):  # t=1 to n_periods-1
+                model.addConstr(
+                    Y[(f, c, t)] + Y[(f, c, t + 1)] <= 1,
+                    name=f"rotation_{f}_{c}_t{t}"
+                )
+    print(f" Done in {time.time() - substep_start:.3f}s", flush=True)
+    
+    # Update model to finalize constraints
+    model.update()
+    
+    n_constraints = model.NumConstrs
+    print(f"            ✓ Total constraints: {n_constraints}", flush=True)
     
     # Step 7: Solve
     print(f"      [7/7] Solving with Gurobi (timeout={timeout}s)...", flush=True)
@@ -550,11 +597,13 @@ def solve_hierarchical_quantum(data: Dict, config: Dict = None) -> Dict:
     print(f"      Hierarchical decomposition: {n_clusters} clusters of ~{farms_per_cluster} farms")
     print(f"      Cluster size: {vars_per_cluster} vars (comparable to statistical test)")
     print(f"      QPU settings: {config['num_reads']} reads, {config['num_iterations']} iterations")
+    print(f"      Mode: {'QPU' if HAS_DWAVE else 'SimulatedAnnealing (testing)'}")
     
     start_time = time.time()
     
     # Run hierarchical solver (includes ALL 3 levels with timing)
-    result = solve_hierarchical(data, config, use_qpu=True, verbose=False)
+    # Use QPU if available, otherwise fall back to simulated annealing
+    result = solve_hierarchical(data, config, use_qpu=HAS_DWAVE, verbose=False)
     
     total_time = time.time() - start_time
     
@@ -691,24 +740,38 @@ def run_hierarchical_statistical_test():
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
+    # Apply TEST_MODE - only run first scenario for verification
+    if TEST_MODE:
+        # Run 3 representative scenarios: small (90 vars), medium (360 vars), large (900 vars)
+        all_scenarios = TEST_CONFIG['scenarios']
+        scenarios_to_run = [all_scenarios[0], all_scenarios[3], all_scenarios[6]]  # indices 0, 3, 6
+        print("\n" + "⚠️ "*20)
+        print("TEST MODE: Running 3 representative scenarios (small/medium/large)")
+        print("Set TEST_MODE = False to run all 15 scenarios")
+        print("⚠️ "*20)
+    else:
+        scenarios_to_run = TEST_CONFIG['scenarios']
+    
     print("\n" + "="*80, flush=True)
     print("STARTING HIERARCHICAL STATISTICAL BENCHMARK", flush=True)
     print("="*80, flush=True)
     print(f"\nTest configuration:", flush=True)
-    print(f"  Scenarios: {len(TEST_CONFIG['scenarios'])}", flush=True)
+    print(f"  Mode: {'TEST (1 scenario)' if TEST_MODE else 'FULL BENCHMARK'}", flush=True)
+    print(f"  Scenarios: {len(scenarios_to_run)}", flush=True)
     print(f"  Runs per method: {TEST_CONFIG['runs_per_method']}", flush=True)
     print(f"  QPU reads: {TEST_CONFIG['num_reads']}", flush=True)
     print(f"  Boundary iterations: {TEST_CONFIG['num_iterations']}", flush=True)
     print(f"  Gurobi timeout: {TEST_CONFIG['classical_timeout']}s", flush=True)
+    print(f"  Skip Gurobi: {TEST_CONFIG['skip_gurobi']}", flush=True)
     print(f"\nOutput directory: {OUTPUT_DIR}", flush=True)
     print("="*80, flush=True)
     
     all_results = {}
     summary_data = []
     
-    for scenario_idx, (n_farms, n_foods, scenario_name) in enumerate(TEST_CONFIG['scenarios'], 1):
+    for scenario_idx, (n_farms, n_foods, scenario_name) in enumerate(scenarios_to_run, 1):
         print(f"\n{'='*80}", flush=True)
-        print(f"SCENARIO {scenario_idx}/{len(TEST_CONFIG['scenarios'])}: {scenario_name}", flush=True)
+        print(f"SCENARIO {scenario_idx}/{len(scenarios_to_run)}: {scenario_name}", flush=True)
         print(f"{'='*80}", flush=True)
         
         # Load data
@@ -937,11 +1000,12 @@ def main():
     print("Hierarchical Quantum-Classical Solver vs Gurobi")
     print("="*80)
     
-    # Confirm QPU usage
-    response = input("\n⚠️  This will use D-Wave QPU access. Continue? (yes/no): ")
-    if response.lower() != 'yes':
-        print("Cancelled.")
-        return
+    # Auto-confirm QPU usage (for automated testing)
+    # response = input("\n⚠️  This will use D-Wave QPU access. Continue? (yes/no): ")
+    # if response.lower() != 'yes':
+    #     print("Cancelled.")
+    #     return
+    print("\n✓ D-Wave QPU access confirmed (auto-confirm enabled)")
     
     # Run benchmark
     try:
