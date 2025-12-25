@@ -361,9 +361,37 @@ def solve_cluster_qpu(bqm: BinaryQuadraticModel,
     
     wall_time = time.time() - start_time
     
-    # Extract QPU timing
+    # Extract QPU timing - detailed breakdown
     timing = sampleset.info.get('timing', {})
-    qpu_time = timing.get('qpu_access_time', 0) / 1e6  # Convert µs to s
+    
+    # qpu_access_time: Total time QPU was accessed (includes programming, sampling, readout)
+    qpu_access_time = timing.get('qpu_access_time', 0) / 1e6  # Convert µs to s
+    
+    # qpu_sampling_time: Actual quantum annealing time (the "real" QPU compute time)
+    qpu_sampling_time = timing.get('qpu_sampling_time', 0) / 1e6  # Convert µs to s
+    
+    # qpu_anneal_time_per_sample: Time for single anneal
+    qpu_anneal_time = timing.get('qpu_anneal_time_per_sample', annealing_time) / 1e6  # µs to s
+    
+    # qpu_programming_time: Time to program the QPU
+    qpu_programming_time = timing.get('qpu_programming_time', 0) / 1e6  # µs to s
+    
+    # qpu_readout_time_per_sample: Time to read results
+    qpu_readout_time = timing.get('qpu_readout_time_per_sample', 0) / 1e6  # µs to s
+    
+    # Store detailed timing
+    detailed_timing = {
+        'wall_time': wall_time,
+        'qpu_access_time': qpu_access_time,
+        'qpu_sampling_time': qpu_sampling_time,
+        'qpu_anneal_time_per_sample': qpu_anneal_time,
+        'qpu_programming_time': qpu_programming_time,
+        'qpu_readout_time_per_sample': qpu_readout_time,
+        'num_reads': num_reads,
+    }
+    
+    # For backward compatibility, qpu_time returns qpu_access_time
+    qpu_time = qpu_access_time
     
     # Extract best solution
     best_sample = sampleset.first.sample
@@ -378,7 +406,7 @@ def solve_cluster_qpu(bqm: BinaryQuadraticModel,
             key = reverse_map[var_name]
             solution[key] = int(value)
     
-    return solution, best_energy, wall_time, qpu_time
+    return solution, best_energy, wall_time, qpu_time, detailed_timing
 
 
 # ============================================================================
@@ -620,6 +648,8 @@ def solve_hierarchical(data: Dict,
     
     total_solve_time = 0
     total_qpu_time = 0
+    total_qpu_sampling_time = 0  # Actual quantum annealing time
+    total_qpu_programming_time = 0  # QPU programming time
     iteration_results = []
     
     best_global_solution = None
@@ -632,6 +662,8 @@ def solve_hierarchical(data: Dict,
         iter_start = time.time()
         iter_solve_time = 0
         iter_qpu_time = 0
+        iter_qpu_sampling_time = 0
+        iter_qpu_programming_time = 0
         
         # Update boundary info (except first iteration)
         if iteration > 0:
@@ -652,10 +684,13 @@ def solve_hierarchical(data: Dict,
             
             # Solve
             if use_qpu and HAS_QPU:
-                sol, energy, wall_time, qpu_time = solve_cluster_qpu(
+                sol, energy, wall_time, qpu_time, detailed_timing = solve_cluster_qpu(
                     bqm, var_map, num_reads, config.get('annealing_time', 20), label=cluster_label
                 )
                 iter_qpu_time += qpu_time
+                # Accumulate detailed QPU timing
+                iter_qpu_sampling_time += detailed_timing.get('qpu_sampling_time', 0)
+                iter_qpu_programming_time += detailed_timing.get('qpu_programming_time', 0)
             else:
                 sol, energy, wall_time = solve_cluster_sa(bqm, var_map, num_reads)
             
@@ -683,6 +718,8 @@ def solve_hierarchical(data: Dict,
         iter_time = time.time() - iter_start
         total_solve_time += iter_solve_time
         total_qpu_time += iter_qpu_time
+        total_qpu_sampling_time += iter_qpu_sampling_time
+        total_qpu_programming_time += iter_qpu_programming_time
         
         iteration_results.append({
             'iteration': iteration + 1,
@@ -690,6 +727,8 @@ def solve_hierarchical(data: Dict,
             'violations': global_violations,
             'solve_time': iter_solve_time,
             'qpu_time': iter_qpu_time,
+            'qpu_sampling_time': iter_qpu_sampling_time,
+            'qpu_programming_time': iter_qpu_programming_time,
             'total_time': iter_time,
         })
         
@@ -700,12 +739,16 @@ def solve_hierarchical(data: Dict,
     result['timings']['level2_quantum'] = level2_time
     result['timings']['level2_solve'] = total_solve_time
     result['timings']['level2_qpu'] = total_qpu_time
+    result['timings']['level2_qpu_sampling'] = total_qpu_sampling_time  # Actual annealing time
+    result['timings']['level2_qpu_programming'] = total_qpu_programming_time
     
     result['levels']['quantum_solving'] = {
         'iterations': iteration_results,
         'best_objective': best_global_objective,
         'total_solve_time': total_solve_time,
         'total_qpu_time': total_qpu_time,
+        'total_qpu_sampling_time': total_qpu_sampling_time,
+        'total_qpu_programming_time': total_qpu_programming_time,
     }
     
     # =========================================================================
@@ -757,7 +800,9 @@ def solve_hierarchical(data: Dict,
     
     result['timings']['total'] = total_time
     result['wall_time'] = total_time  # For compatibility with statistical_comparison_test
-    result['qpu_time'] = total_qpu_time  # For compatibility with statistical_comparison_test
+    result['qpu_time'] = total_qpu_time  # Total QPU access time (includes embedding, programming, readout)
+    result['qpu_sampling_time'] = total_qpu_sampling_time  # Actual quantum annealing time only
+    result['qpu_programming_time'] = total_qpu_programming_time  # QPU programming time
     result['family_solution'] = best_global_solution
     result['crop_solution'] = crop_solution
     result['objective'] = best_global_objective
@@ -772,7 +817,10 @@ def solve_hierarchical(data: Dict,
         print("="*70)
         print(f"Total time: {total_time:.2f}s")
         print(f"  Level 1 (decomposition): {level1_time:.2f}s")
-        print(f"  Level 2 (quantum solve): {level2_time:.2f}s (QPU: {total_qpu_time:.3f}s)")
+        print(f"  Level 2 (quantum solve): {level2_time:.2f}s")
+        print(f"    - QPU access time: {total_qpu_time:.3f}s")
+        print(f"    - QPU sampling (annealing): {total_qpu_sampling_time*1000:.2f}ms")
+        print(f"    - QPU programming: {total_qpu_programming_time*1000:.2f}ms")
         print(f"  Level 3 (post-process): {level3_time:.4f}s")
         print(f"\nObjective: {best_global_objective:.4f}")
         print(f"Violations: {result['violations']}")

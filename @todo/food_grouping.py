@@ -21,6 +21,7 @@ from collections import defaultdict
 # ============================================================================
 
 # Complete mapping of 27 foods to 6 families
+# NOTE: Includes both formal names and common variations
 FOOD_TO_FAMILY = {
     # Legumes (nitrogen-fixing, protein-rich)
     'Beans': 'Legumes',
@@ -29,11 +30,16 @@ FOOD_TO_FAMILY = {
     'Chickpeas': 'Legumes',
     'Soybeans': 'Legumes',
     'Groundnuts': 'Legumes',
+    'Peanuts': 'Legumes',  # Also groundnuts
+    'Long bean': 'Legumes',
+    'Tempeh': 'Legumes',  # Made from soybeans
+    'Tofu': 'Legumes',  # Made from soybeans
     
     # Grains (cereals, carbohydrate-rich)
     'Wheat': 'Grains',
     'Rice': 'Grains',
     'Maize': 'Grains',
+    'Corn': 'Grains',  # Same as maize
     'Millet': 'Grains',
     'Sorghum': 'Grains',
     'Barley': 'Grains',
@@ -42,14 +48,23 @@ FOOD_TO_FAMILY = {
     # Vegetables (leafy and other vegetables)
     'Cabbage': 'Vegetables',
     'Tomatoes': 'Vegetables',
+    'Tomato': 'Vegetables',
     'Peppers': 'Vegetables',
     'Onions': 'Vegetables',
     'Lettuce': 'Vegetables',
     'Spinach': 'Vegetables',
     'Cucumbers': 'Vegetables',
+    'Cucumber': 'Vegetables',
+    'Eggplant': 'Vegetables',
+    'Pumpkin': 'Vegetables',
+    'Broccoli': 'Vegetables',
+    'Cauliflower': 'Vegetables',
+    'Celery': 'Vegetables',
+    'Carrot': 'Vegetables',
     
     # Roots (tubers and root vegetables)
     'Potatoes': 'Roots',
+    'Potato': 'Roots',
     'Cassava': 'Roots',
     'Yams': 'Roots',
     'Carrots': 'Roots',
@@ -57,17 +72,33 @@ FOOD_TO_FAMILY = {
     
     # Fruits (tree and vine fruits)
     'Bananas': 'Fruits',
+    'Banana': 'Fruits',
     'Oranges': 'Fruits',
+    'Orange': 'Fruits',
     'Mangoes': 'Fruits',
+    'Mango': 'Fruits',
     'Apples': 'Fruits',
+    'Apple': 'Fruits',
     'Grapes': 'Fruits',
+    'Avocado': 'Fruits',
+    'Durian': 'Fruits',
+    'Guava': 'Fruits',
+    'Papaya': 'Fruits',
+    'Watermelon': 'Fruits',
+    'Pineapple': 'Fruits',
+    'Kiwi': 'Fruits',
     
-    # Other (nuts, herbs, spices, miscellaneous)
+    # Other (meats, nuts, herbs, spices, miscellaneous)
     'Nuts': 'Other',
     'Herbs': 'Other',
     'Spices': 'Other',
     'Coffee': 'Other',
     'Tea': 'Other',
+    'Beef': 'Other',
+    'Chicken': 'Other',
+    'Egg': 'Other',
+    'Lamb': 'Other',
+    'Pork': 'Other',
 }
 
 # Family to specific crops mapping (for post-processing)
