@@ -36,6 +36,7 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from data_loader_utils import load_food_data_as_dict
+from hybrid_formulation import build_hybrid_rotation_matrix
 
 print("="*80)
 print("COMPREHENSIVE SCALING TEST: Full Solution Details")
@@ -164,20 +165,11 @@ def solve_gurobi_full(data: Dict, scenario: Dict, timeout: int = 100) -> Dict:
     one_hot_penalty = 3.0
     diversity_bonus = 0.15
     k_neighbors = 4
-    frustration_ratio = 0.7
-    negative_strength = -0.8
     
-    # Build rotation synergy matrix (MIQP)
-    rng = np.random.RandomState(42)
-    R = np.zeros((n_foods, n_foods))
-    for i in range(n_foods):
-        for j in range(n_foods):
-            if i == j:
-                R[i, j] = negative_strength * 1.5
-            elif rng.random() < frustration_ratio:
-                R[i, j] = rng.uniform(negative_strength * 1.2, negative_strength * 0.3)
-            else:
-                R[i, j] = rng.uniform(0.02, 0.20)
+    # FIXED: Use centralized hybrid rotation matrix (27x27) from hybrid_formulation.py
+    # This ensures consistency between Gurobi and quantum solvers (formulation consistency)
+    R = build_hybrid_rotation_matrix(food_names, seed=42)
+    print(f"    Using hybrid rotation matrix: {R.shape[0]}x{R.shape[1]}")
     
     # Create spatial neighbor graph
     side = int(np.ceil(np.sqrt(n_farms)))
@@ -360,21 +352,31 @@ def solve_quantum_qpu(data: Dict, scenario: Dict) -> Dict:
     food_benefits = data['food_benefits']
     total_area = data['total_area']
     
-    # Configure hierarchical solver
+    # Configure hierarchical solver - FAST settings for SA testing
     config = DEFAULT_CONFIG.copy()
     config['n_periods'] = N_PERIODS
-    config['num_reads'] = 100  # QPU reads per cluster
-    config['num_iterations'] = 3  # Boundary coordination iterations
+    config['num_reads'] = 20  # Reduced for faster SA
+    config['num_iterations'] = 1  # Single iteration for speed
     config['farms_per_cluster'] = min(10, max(5, n_farms // 5))  # Adaptive cluster size
     
     try:
-        # Call the hierarchical quantum solver with USE_QPU=True
+        # Call the hierarchical quantum solver with USE_QPU=False (Simulated Annealing)
+        import signal
+        
+        def sa_timeout_handler(signum, frame):
+            raise TimeoutError("SA solver exceeded 100s timeout")
+        
+        signal.signal(signal.SIGALRM, sa_timeout_handler)
+        signal.alarm(100)  # 100 second timeout for SA
+        
         result = solve_hierarchical(
             data=data,
             config=config,
-            use_qpu=True,  # USE REAL QPU!
+            use_qpu=False,  # USE SIMULATED ANNEALING for testing
             verbose=False
         )
+        
+        signal.alarm(0)  # Cancel alarm
         
         # Extract results
         family_solution = result.get('family_solution', {})

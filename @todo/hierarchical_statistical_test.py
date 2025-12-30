@@ -74,8 +74,8 @@ TEST_CONFIG = {
         (150, 27, 'rotation_150farms_27foods'),# 15: 12150 vars
     ],
     'n_periods': 3,                    # Rotation periods
-    'num_reads': 100,                   # QPU reads per cluster (reduced for efficiency)
-    'num_iterations': 3,               # Boundary coordination iterations (reduced)
+    'num_reads': 20,                    # FAST: reduced reads for SA testing
+    'num_iterations': 1,               # FAST: single iteration for speed
     'runs_per_method': 1,              # Single run per scenario (no statistics)
     'classical_timeout': 100,          # Gurobi timeout (100s, SAME as timeout test)
     'skip_gurobi': False,              # Run Gurobi for comparison!
@@ -151,6 +151,8 @@ from hierarchical_quantum_solver import (
     DEFAULT_CONFIG,
 )
 from src.scenarios import load_food_data
+from hybrid_formulation import build_hybrid_rotation_matrix
+from food_grouping import create_family_rotation_matrix
 
 print("[5/5] Setup complete!\n")
 
@@ -281,19 +283,18 @@ def solve_gurobi_ground_truth(data: Dict, timeout: int = 900) -> Dict:
     
     print(f"      Model: {n_farms} farms × {n_families} families × {n_periods} periods ({n_farms * n_families * n_periods} vars)")
     
-    # Step 1: Build rotation matrix
+    # Step 1: Build rotation matrix using centralized function (FORMULATION CONSISTENCY)
+    # Use create_family_rotation_matrix for 6-family problems, build_hybrid_rotation_matrix for 27-food
     step_start = time.time()
     print(f"      [1/7] Building rotation matrix ({n_families}×{n_families})...", flush=True)
-    np.random.seed(42)
-    R = np.zeros((n_families, n_families))
-    for i in range(n_families):
-        for j in range(n_families):
-            if i == j:
-                R[i, j] = negative_strength * 1.5
-            elif np.random.random() < frustration_ratio:
-                R[i, j] = np.random.uniform(negative_strength * 1.2, negative_strength * 0.3)
-            else:
-                R[i, j] = np.random.uniform(0.02, 0.20)
+    if n_families == 6:
+        # 6-family problem: use the family rotation matrix template
+        R = create_family_rotation_matrix(seed=42)
+        print(f"            Using 6x6 family rotation matrix template")
+    else:
+        # 27-food problem: use the full hybrid rotation matrix
+        R = build_hybrid_rotation_matrix(families_list, seed=42)
+        print(f"            Using {n_families}x{n_families} hybrid rotation matrix")
     print(f"            ✓ Done in {time.time() - step_start:.3f}s", flush=True)
     
     # Step 2: Build spatial neighbor graph
@@ -597,13 +598,33 @@ def solve_hierarchical_quantum(data: Dict, config: Dict = None) -> Dict:
     print(f"      Hierarchical decomposition: {n_clusters} clusters of ~{farms_per_cluster} farms")
     print(f"      Cluster size: {vars_per_cluster} vars (comparable to statistical test)")
     print(f"      QPU settings: {config['num_reads']} reads, {config['num_iterations']} iterations")
-    print(f"      Mode: {'QPU' if HAS_DWAVE else 'SimulatedAnnealing (testing)'}")
+    print(f"      Mode: SimulatedAnnealing (testing)")
     
     start_time = time.time()
     
-    # Run hierarchical solver (includes ALL 3 levels with timing)
-    # Use QPU if available, otherwise fall back to simulated annealing
-    result = solve_hierarchical(data, config, use_qpu=HAS_DWAVE, verbose=False)
+    # Run hierarchical solver with 100s timeout for SA
+    import signal
+    
+    def sa_timeout_handler(signum, frame):
+        raise TimeoutError("SA solver exceeded 100s timeout")
+    
+    signal.signal(signal.SIGALRM, sa_timeout_handler)
+    signal.alarm(100)  # 100 second timeout
+    
+    try:
+        result = solve_hierarchical(data, config, use_qpu=False, verbose=False)
+        signal.alarm(0)  # Cancel alarm
+    except TimeoutError as e:
+        signal.alarm(0)
+        print(f"      ⚠️ SA timeout: {e}")
+        return {
+            'success': False,
+            'objective': 0,
+            'time': 100.0,
+            'qpu_time': 0,
+            'unique_crops': 0,
+            'error': str(e)
+        }
     
     total_time = time.time() - start_time
     
@@ -654,6 +675,7 @@ def calculate_statistics(results_list: List[Dict]) -> Dict:
     if not results_list or not any(r.get('success', False) for r in results_list):
         return {
             'n_runs': len(results_list),
+            'n_successful': 0,
             'success_rate': 0.0,
         }
     

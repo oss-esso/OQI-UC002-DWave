@@ -805,6 +805,7 @@ def solve_hierarchical(data: Dict,
     result['qpu_programming_time'] = total_qpu_programming_time  # QPU programming time
     result['family_solution'] = best_global_solution
     result['crop_solution'] = crop_solution
+    result['solution'] = best_global_solution  # For benchmark compatibility (alias for family_solution)
     result['objective'] = best_global_objective
     result['objective_before_postprocessing'] = objective_before_postprocessing  # NEW: Track pre-PP objective
     result['violations'] = count_violations(best_global_solution, family_data, config)

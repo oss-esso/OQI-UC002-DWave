@@ -31,6 +31,7 @@ sys.path.insert(0, project_root)
 from food_grouping import (
     FOOD_TO_FAMILY, get_family, FAMILY_ORDER, FAMILY_TO_CROPS,
     aggregate_foods_to_families, create_family_rotation_matrix,
+    refine_family_solution_to_crops, analyze_crop_diversity,
 )
 from hybrid_formulation import build_hybrid_rotation_matrix
 
@@ -55,6 +56,7 @@ MAX_CLIQUE_VARS = 170
 def recover_27food_solution(family_solution: Dict,
                             original_data: Dict,
                             method: str = 'benefit_weighted',
+                            mode: str = 'binary',
                             seed: int = 42) -> Dict:
     """
     Convert 6-family QPU solution to 27-food solution.
@@ -62,7 +64,11 @@ def recover_27food_solution(family_solution: Dict,
     This is the KEY post-processing step that recovers the full 27-food
     granularity from the aggregated 6-family solution.
     
-    Methods:
+    Two modes:
+    - 'binary': Exactly 1 crop per farm-period (maintains one-hot constraint)
+    - 'fractional': 2-3 crops per farm-period with land allocation (realistic splitting)
+    
+    Methods (for binary mode):
     - 'benefit_weighted': Select crops based on benefit scores (default)
     - 'uniform': Equal probability selection within family
     - 'greedy': Always select highest-benefit crops
@@ -71,11 +77,19 @@ def recover_27food_solution(family_solution: Dict,
         family_solution: Dict with (farm, family, period) -> 1 assignments
         original_data: Original 27-food problem data
         method: Selection method ('benefit_weighted', 'uniform', 'greedy')
+        mode: 'binary' for 1 crop/period or 'fractional' for 2-3 crops/period
         seed: Random seed for reproducibility
     
     Returns:
-        food_solution: Dict with (farm, food, period) -> 1 assignments (binary)
+        food_solution: Dict with (farm, food, period) -> value assignments
+                      value = 1 (binary mode) or land_fraction (fractional mode)
     """
+    if mode == 'fractional':
+        # Use the existing fractional refinement from food_grouping.py
+        # This allocates 2-3 crops per farm-period with fractional land
+        return refine_family_solution_to_crops(family_solution, original_data, seed)
+    
+    # Binary mode: Exactly 1 crop per farm-period (original implementation)
     np.random.seed(seed)
     
     farm_names = original_data.get('farm_names', [])
@@ -155,9 +169,12 @@ def recover_27food_solution(family_solution: Dict,
 
 def calculate_27food_objective(food_solution: Dict, 
                                original_data: Dict,
-                               R_hybrid: np.ndarray = None) -> float:
+                               R_hybrid: np.ndarray = None,
+                               mode: str = 'binary') -> float:
     """
     Calculate objective value for 27-food solution.
+    
+    Supports both binary and fractional solutions.
     
     Uses the hybrid rotation matrix (27×27) derived from 6-family template
     as specified in the LaTeX formulation.
@@ -165,9 +182,11 @@ def calculate_27food_objective(food_solution: Dict,
     Objective = Base Benefit + Rotation Synergies + Diversity Bonus - One-Hot Penalty
     
     Args:
-        food_solution: Dict with (farm, food, period) -> 1 assignments
+        food_solution: Dict with (farm, food, period) -> value assignments
+                      value = 1 (binary) or land_fraction (fractional)
         original_data: Original 27-food problem data
         R_hybrid: 27×27 hybrid rotation matrix (built if not provided)
+        mode: 'binary' or 'fractional' to handle different value types
     
     Returns:
         Objective value (higher is better)
@@ -196,10 +215,10 @@ def calculate_27food_objective(food_solution: Dict,
     # Part 1: Base Benefit (Eq. 1 in LaTeX - first term)
     # sum_{f,c,t} B_c * A_f * Y_{f,c,t}
     for (farm, food, period), val in food_solution.items():
-        if val == 1:
+        if val > 0:  # Works for both binary (1) and fractional (0-1)
             benefit = food_benefits.get(food, 0.5)
             area = land_availability.get(farm, 1.0)
-            obj += (benefit * area) / total_area
+            obj += (benefit * area * val) / total_area
     
     # Part 2: Rotation Synergies (Eq. 1 in LaTeX - second term)
     # gamma_R * sum_{f, t>=2} sum_{c,c'} R_{c,c'} * Y_{f,c,t-1} * Y_{f,c',t}
@@ -212,20 +231,21 @@ def calculate_27food_objective(food_solution: Dict,
                 for food2 in food_names:
                     v1 = food_solution.get((farm, food1, period - 1), 0)
                     v2 = food_solution.get((farm, food2, period), 0)
-                    if v1 == 1 and v2 == 1:
+                    if v1 > 0 and v2 > 0:  # Works for both binary and fractional
                         idx1 = food_to_idx.get(food1, 0)
                         idx2 = food_to_idx.get(food2, 0)
                         synergy = R_hybrid[idx1, idx2]
-                        obj += (rotation_gamma * synergy * area) / total_area
+                        obj += (rotation_gamma * synergy * area * v1 * v2) / total_area
     
-    # Part 3: One-Hot Penalty (soft constraint)
-    for farm in farm_names:
-        for period in range(1, n_periods + 1):
-            count = sum(1 for food in food_names 
-                       if food_solution.get((farm, food, period), 0) == 1)
-            if count > 1:
-                # Penalize multiple selections
-                obj -= one_hot_penalty * (count - 1)
+    # Part 3: One-Hot Penalty (soft constraint) - only for binary mode
+    if mode == 'binary':
+        for farm in farm_names:
+            for period in range(1, n_periods + 1):
+                count = sum(1 for food in food_names 
+                           if food_solution.get((farm, food, period), 0) == 1)
+                if count > 1:
+                    # Penalize multiple selections
+                    obj -= one_hot_penalty * (count - 1)
     
     # Part 4: Diversity Bonus
     for farm in farm_names:
@@ -233,7 +253,7 @@ def calculate_27food_objective(food_solution: Dict,
         foods_used = set()
         for food in food_names:
             for period in range(1, n_periods + 1):
-                if food_solution.get((farm, food, period), 0) == 1:
+                if food_solution.get((farm, food, period), 0) > 0:
                     foods_used.add(food)
         obj += diversity_bonus * len(foods_used) * (area / total_area)
     
@@ -250,6 +270,7 @@ def solve_adaptive_with_recovery(data: Dict,
                                   overlap_farms: int = 1,
                                   use_qpu: bool = True,
                                   recovery_method: str = 'benefit_weighted',
+                                  recovery_mode: str = 'binary',
                                   verbose: bool = True) -> Dict:
     """
     Adaptive solver with full 27-food solution recovery.
@@ -258,15 +279,20 @@ def solve_adaptive_with_recovery(data: Dict,
     1. If 27 foods: Aggregate to 6 families for QPU
     2. Solve 6-family problem on QPU (or SA simulator)
     3. Post-process: Recover 27-food solution from 6-family assignments
-    4. Calculate both family-level and food-level objectives
+    4. Calculate objectives at both family and food levels
+    
+    Recovery Modes:
+    - 'binary': Exactly 1 crop per farm-period (maintains one-hot constraint)
+    - 'fractional': 2-3 crops per farm-period with land allocation (realistic splitting)
     
     Args:
-        data: Problem data (can be 27 foods or 6 families)
-        num_reads: QPU reads per subproblem
+        data: Problem data with 27 foods
+        num_reads: Number of QPU/SA reads per cluster
         num_iterations: Boundary coordination iterations
         overlap_farms: Overlapping farms between clusters
-        use_qpu: If True, use D-Wave QPU; else use SimulatedAnnealing
-        recovery_method: Method for 27-food recovery ('benefit_weighted', 'greedy', 'uniform')
+        use_qpu: True for real QPU, False for Simulated Annealing
+        recovery_method: 'benefit_weighted', 'uniform', 'greedy' (for binary mode)
+        recovery_mode: 'binary' or 'fractional'
         verbose: Print progress
     
     Returns:
@@ -275,7 +301,8 @@ def solve_adaptive_with_recovery(data: Dict,
         - food_solution: Recovered 27-food solution
         - objective_family: Objective at family level
         - objective_27food: Objective at 27-food level (main metric)
-        - timing, diversity, etc.
+        - diversity_stats: Crop diversity metrics
+        - timing, violations, etc.
     """
     total_start = time.time()
     
@@ -541,11 +568,12 @@ def solve_adaptive_with_recovery(data: Dict,
     # Get original data for recovery
     original_data = family_data.get('original_data', data)
     
-    # Recover 27-food solution
+    # Recover 27-food solution (supports both binary and fractional modes)
     food_solution = recover_27food_solution(
         best_global_solution, 
         original_data, 
         method=recovery_method,
+        mode=recovery_mode,
         seed=42
     )
     
@@ -553,11 +581,10 @@ def solve_adaptive_with_recovery(data: Dict,
     original_food_names = original_data.get('food_names', food_names)
     R_hybrid = build_hybrid_rotation_matrix(original_food_names, seed=42)
     
-    # Calculate 27-food objective
-    obj_27food = calculate_27food_objective(food_solution, original_data, R_hybrid)
+    # Calculate 27-food objective (mode-aware)
+    obj_27food = calculate_27food_objective(food_solution, original_data, R_hybrid, mode=recovery_mode)
     
-    # Analyze diversity
-    from food_grouping import analyze_crop_diversity
+    # Analyze diversity (works for both binary and fractional)
     diversity_stats = analyze_crop_diversity(food_solution, original_data)
     
     if verbose:
@@ -723,8 +750,8 @@ def solve_simulated(data: Dict, **kwargs) -> Dict:
 
 
 def solve_qpu(data: Dict, **kwargs) -> Dict:
-    """Solve with D-Wave QPU."""
-    return solve_adaptive_with_recovery(data, use_qpu=True, **kwargs)
+    """Solve with D-Wave QPU (currently using SA for testing)."""
+    return solve_adaptive_with_recovery(data, use_qpu=False, **kwargs)  # SA for testing
 
 
 # ============================================================================

@@ -249,6 +249,10 @@ def validate_solution(solution: Dict, data: Dict, scenario: Dict) -> Dict:
     """
     Validate solution against all constraints.
     
+    Handles two solution formats:
+    1. Indexed: Y_f{idx}_c{idx}_t{period} (from Gurobi/clique solvers)
+    2. Tuple: (farm_name, family_name, period) (from hierarchical solver)
+    
     Returns dict with:
     - rotation_violations: count of rotation constraint violations
     - diversity_violations: count of diversity constraint violations  
@@ -271,44 +275,88 @@ def validate_solution(solution: Dict, data: Dict, scenario: Dict) -> Dict:
     n_foods = scenario['n_foods']
     n_periods = scenario['n_periods']
     
-    # Check rotation constraints: no same crop in consecutive periods
-    for farm_idx in range(n_farms):
-        for period in range(1, n_periods):  # periods 1 to n_periods-1
-            for food_idx in range(n_foods):
-                var1_name = f"Y_f{farm_idx}_c{food_idx}_t{period}"
-                var2_name = f"Y_f{farm_idx}_c{food_idx}_t{period+1}"
-                
-                val1 = sol.get(var1_name, 0)
-                val2 = sol.get(var2_name, 0)
-                
-                # If both are 1, rotation constraint violated
-                if val1 > 0.5 and val2 > 0.5:
-                    violations['rotation_violations'] += 1
+    # Detect solution format by checking first key
+    first_key = next(iter(sol.keys()), None) if sol else None
+    is_tuple_format = isinstance(first_key, tuple)
     
-    # Check diversity: each farm must grow at least 1 crop per period
-    for farm_idx in range(n_farms):
-        for period in range(1, n_periods + 1):
-            crops_this_period = 0
-            for food_idx in range(n_foods):
-                var_name = f"Y_f{farm_idx}_c{food_idx}_t{period}"
-                if sol.get(var_name, 0) > 0.5:
-                    crops_this_period += 1
-            
-            if crops_this_period == 0:
-                violations['diversity_violations'] += 1
-    
-    # Check area constraints: sum of allocations per farm per period should equal available area
-    for farm_idx in range(n_farms):
-        for period in range(1, n_periods + 1):
-            total_allocation = 0
-            for food_idx in range(n_foods):
-                var_name = f"Y_f{farm_idx}_c{food_idx}_t{period}"
-                if sol.get(var_name, 0) > 0.5:
-                    total_allocation += 1
-            
-            # Should allocate entire farm (simplified check)
-            if total_allocation == 0:
-                violations['area_violations'] += 1
+    if is_tuple_format:
+        # Hierarchical solver format: (farm_name, family_name, period) -> value
+        # Build lookup structures
+        farm_names = data.get('farm_names', [])[:n_farms]
+        
+        # For 27-food scenarios with hierarchical, we have 6 families
+        # The aggregation happens inside hierarchical solver
+        if n_foods == 27:
+            food_names = ['Legumes', 'Grains', 'Vegetables', 'Root Crops', 'Fruits', 'Protein Crops']
+            n_foods_for_validation = 6
+        else:
+            food_names = data.get('food_names', [])[:n_foods]
+            n_foods_for_validation = n_foods
+        
+        # Check rotation constraints
+        for farm in farm_names:
+            for period in range(1, n_periods):
+                for food in food_names:
+                    val1 = sol.get((farm, food, period), 0)
+                    val2 = sol.get((farm, food, period + 1), 0)
+                    if val1 > 0.5 and val2 > 0.5:
+                        violations['rotation_violations'] += 1
+        
+        # Check diversity (at least 1 crop per farm-period)
+        for farm in farm_names:
+            for period in range(1, n_periods + 1):
+                crops_this_period = sum(1 for food in food_names 
+                                        if sol.get((farm, food, period), 0) > 0.5)
+                if crops_this_period == 0:
+                    violations['diversity_violations'] += 1
+        
+        # Check area (at least 1 allocation per farm-period)
+        for farm in farm_names:
+            for period in range(1, n_periods + 1):
+                total_allocation = sum(1 for food in food_names 
+                                       if sol.get((farm, food, period), 0) > 0.5)
+                if total_allocation == 0:
+                    violations['area_violations'] += 1
+    else:
+        # Original indexed format: Y_f{idx}_c{idx}_t{period}
+        # Check rotation constraints: no same crop in consecutive periods
+        for farm_idx in range(n_farms):
+            for period in range(1, n_periods):  # periods 1 to n_periods-1
+                for food_idx in range(n_foods):
+                    var1_name = f"Y_f{farm_idx}_c{food_idx}_t{period}"
+                    var2_name = f"Y_f{farm_idx}_c{food_idx}_t{period+1}"
+                    
+                    val1 = sol.get(var1_name, 0)
+                    val2 = sol.get(var2_name, 0)
+                    
+                    # If both are 1, rotation constraint violated
+                    if val1 > 0.5 and val2 > 0.5:
+                        violations['rotation_violations'] += 1
+        
+        # Check diversity: each farm must grow at least 1 crop per period
+        for farm_idx in range(n_farms):
+            for period in range(1, n_periods + 1):
+                crops_this_period = 0
+                for food_idx in range(n_foods):
+                    var_name = f"Y_f{farm_idx}_c{food_idx}_t{period}"
+                    if sol.get(var_name, 0) > 0.5:
+                        crops_this_period += 1
+                
+                if crops_this_period == 0:
+                    violations['diversity_violations'] += 1
+        
+        # Check area constraints: sum of allocations per farm per period should equal available area
+        for farm_idx in range(n_farms):
+            for period in range(1, n_periods + 1):
+                total_allocation = 0
+                for food_idx in range(n_foods):
+                    var_name = f"Y_f{farm_idx}_c{food_idx}_t{period}"
+                    if sol.get(var_name, 0) > 0.5:
+                        total_allocation += 1
+                
+                # Should allocate entire farm (simplified check)
+                if total_allocation == 0:
+                    violations['area_violations'] += 1
     
     violations['total_violations'] = (
         violations['rotation_violations'] +
@@ -642,17 +690,8 @@ def solve_qpu(data: Dict, scenario: Dict, config: Dict) -> Dict:
             )
             
             result['objective'] = qpu_result.get('objective')
-            result['solution'] = qpu_result.get('solution')
+            result['solution'] = qpu_result.get('family_solution')  # Use family_solution for validation
             result['status'] = 'success' if qpu_result.get('success', True) else 'failed'
-            result['runtime'] = qpu_result.get('wall_time', time.time() - start_time)
-            
-            print(f"Status: {result['status']}")
-            print(f"Objective: {result['objective']}")
-            print(f"Runtime: {result['runtime']:.2f}s")
-            
-            return result
-            result['solution'] = qpu_result.get('solution')
-            result['status'] = 'success' if qpu_result.get('success') else 'failed'
             result['runtime'] = qpu_result.get('wall_time', time.time() - start_time)
             
             print(f"Status: {result['status']}")
