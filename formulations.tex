@@ -1,0 +1,157 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{a4paper, margin=1in}
+
+\title{Mathematical Formulations for Crop Rotation Optimization}
+\author{OQI-UC002-DWave Project}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+    This document provides a formal mathematical description of the different optimization models implemented across the project's Python scripts. Understanding these formulations is critical to interpreting the benchmark results and the rationale behind the "Honest Benchmark Plan".
+\end{abstract}
+
+\section{Core Definitions}
+Let's first define the common sets and indices used across all formulations:
+\begin{itemize}
+    \item $F$: Set of farms, indexed by $f$.
+    \item $C$: Set of crops (foods), indexed by $c$. In our case, $|C|=27$.
+    \item $G$: Set of crop families (or groups), indexed by $g$. In our case, $|G|=6$.
+    \item $T$: Set of time periods (years), indexed by $t$. In our case, $|T|=3$.
+\end{itemize}
+
+The primary decision variable in all models is a binary variable indicating whether a crop is planted on a specific farm in a specific year.
+
+\section{Formulation 1: The True Ground Truth MIQP}
+\label{sec:miqp}
+This is the full, non-simplified Mixed-Integer Quadratic Program (MIQP) found in `test_gurobi_timeout.py`. It represents the true complexity of the problem.
+
+\subsection{Decision Variable}
+Let $y_{f,c,t}$ be a binary variable:
+\[
+    y_{f,c,t} = \begin{cases} 
+    1 & \text{if crop } c \in C \text{ is planted on farm } f \in F \text{ in year } t \in T \\
+    0 & \text{otherwise}
+    \end{cases}
+\]
+
+\subsection{Objective Function}
+The objective is to maximize the total normalized benefit, which is a sum of several components:
+\[
+    \text{maximize} \quad \left( \text{Benefit} + \text{Temporal} + \text{Spatial} - \text{Penalty} + \text{Diversity} \right)
+\]
+
+\paragraph{1. Base Benefit (Linear)}
+This term represents the intrinsic value of planting a crop, weighted by the farm's area.
+\[
+    \text{Benefit} = \sum_{f \in F} \sum_{c \in C} \sum_{t \in T} \frac{B_c \cdot A_f}{A_{total}} \cdot y_{f,c,t}
+\]
+where $B_c$ is the benefit of crop $c$, $A_f$ is the area of farm $f$, and $A_{total}$ is the total area of all farms.
+
+\paragraph{2. Temporal Synergy (Quadratic)}
+This term models the effect of crop rotation on the same farm over consecutive years.
+\[
+    \text{Temporal} = \gamma_{rot} \sum_{f \in F} \sum_{t=2}^{T} \sum_{c_1 \in C} \sum_{c_2 \in C} \frac{A_f}{A_{total}} \cdot R_{c_1,c_2} \cdot y_{f,c_1,t-1} \cdot y_{f,c_2,t}
+\]
+where $\gamma_{rot}$ is a weighting coefficient and $R$ is a $|C| \times |C|$ synergy matrix.
+
+\paragraph{3. Spatial Synergy (Quadratic)}
+This term models the effect of planting crops on neighboring farms in the same year.
+\[
+    \text{Spatial} = \gamma_{spat} \sum_{(f_1, f_2) \in N} \sum_{t \in T} \sum_{c_1 \in C} \sum_{c_2 \in C} \frac{R_{c_1,c_2}}{A_{total}} \cdot y_{f_1,c_1,t} \cdot y_{f_2,c_2,t}
+\]
+where $N$ is the set of neighboring farm pairs and $\gamma_{spat}$ is a weighting coefficient.
+
+\paragraph{4. One-Hot Penalty (Quadratic)}
+This term penalizes deviations from planting exactly one crop per farm-year, enforcing a "soft" one-hot constraint.
+\[
+    \text{Penalty} = \lambda_{oh} \sum_{f \in F} \sum_{t \in T} \left( \left(\sum_{c \in C} y_{f,c,t}\right) - 1 \right)^2
+\]
+where $\lambda_{oh}$ is the penalty coefficient.
+
+\paragraph{5. Diversity Bonus (Linear)}
+This term rewards planting a crop on a farm at least once during the planning horizon.
+\[
+    \text{Diversity} = \lambda_{div} \sum_{f \in F} \sum_{c \in C} \mathbb{I}\left(\sum_{t \in T} y_{f,c,t} > 0\right)
+\]
+where $\lambda_{div}$ is the diversity bonus coefficient and $\mathbb{I}(\cdot)$ is the indicator function. This is typically linearized in Gurobi.
+
+\subsection{Constraints}
+\begin{enumerate}
+    \item \textbf{Maximum Crops (Soft Constraint):} To allow for some flexibility, the model constrains the number of crops per farm-year to be at most 2.
+    \[ \forall f \in F, \forall t \in T: \quad \sum_{c \in C} y_{f,c,t} \le 2 \]
+    \item \textbf{Minimum Crops (Soft Constraint):} Ensures at least one crop is planted.
+    \[ \forall f \in F, \forall t \in T: \quad \sum_{c \in C} y_{f,c,t} \ge 1 \]
+    \item \textbf{Rotation Constraint:} Prevents planting the same crop on the same farm in consecutive years.
+    \[ \forall f \in F, \forall c \in C, \forall t \in \{1, \dots, T-1\}: \quad y_{f,c,t} + y_{f,c,t+1} \le 1 \]
+\end{enumerate}
+
+\section{Formulation 2: Hierarchical (Aggregated) QUBO}
+This formulation, found in `hierarchical_quantum_solver.py`, is a significant simplification of the true problem. It aggregates 27 crops into 6 families and solves this smaller problem as a QUBO.
+
+\subsection{Decision Variable}
+The variable now represents crop *families*.
+\[
+    Y_{f,g,t} = \begin{cases} 
+    1 & \text{if family } g \in G \text{ is planted on farm } f \in F \text{ in year } t \in T \\
+    0 & \text{otherwise}
+    \end{cases}
+\]
+
+\subsection{Objective Function (QUBO)}
+The objective is to minimize a QUBO, which is equivalent to maximizing the negative of the objective. The signs are flipped compared to the MIQP.
+\[
+    \text{minimize} \quad H(Y) = \sum_{i} h_i Y_i + \sum_{i<j} J_{i,j} Y_i Y_j
+\]
+Where $Y_i$ are the binary variables $Y_{f,g,t}$, and the linear ($h_i$) and quadratic ($J_{i,j}$) coefficients are derived from the same economic and agronomic principles as the MIQP, but on the aggregated 6-family space.
+
+\paragraph{Linear Biases ($h_i$)}
+\[
+    h_{f,g,t} = -\frac{B'_g \cdot A_f}{A_{total}} - \frac{\lambda_{div}}{T} - \lambda_{oh}
+\]
+The terms correspond to the aggregated family benefit ($B'_g$), the diversity bonus, and the linear part of the one-hot penalty.
+
+\paragraph{Quadratic Couplings ($J_{i,j}$)}
+\begin{enumerate}
+    \item \textbf{Temporal Synergy}: Between variables on the same farm in consecutive years.
+    \[ J_{(f,g_1,t-1), (f,g_2,t)} = -\gamma_{rot} \frac{A_f}{A_{total}} \cdot R'_{g_1,g_2} \]
+    where $R'$ is now a small $6 \times 6$ family synergy matrix.
+    \item \textbf{Spatial Synergy}: Between variables on neighboring farms in the same year.
+    \[ J_{(f_1,g_1,t), (f_2,g_2,t)} = -\gamma_{spat} \frac{R'_{g_1,g_2}}{A_{total}} \]
+    \item \textbf{One-Hot Penalty}: Between variables on the same farm in the same year.
+    \[ J_{(f,g_1,t), (f,g_2,t)} = 2 \cdot \lambda_{oh} \quad \text{for } g_1 \neq g_2 \]
+\end{enumerate}
+
+\section{Formulation 3: Hybrid 27-Food BQM}
+This formulation from `hybrid_formulation.py` attempts a compromise. It uses the full 27-crop variable space but constructs the synergy matrix from the 6-family template.
+
+\subsection{Decision Variable}
+Same as the MIQP: $y_{f,c,t}$ for all 27 crops.
+
+\subsection{Objective Function (BQM/QUBO)}
+The structure is similar to the Aggregated QUBO, but the indices are over the full set of crops $C$. The key difference lies in the synergy matrix.
+\[
+    \text{minimize} \quad H(y) = \sum_{i} h'_i y_i + \sum_{i<j} J'_{i,j} y_i y_j
+\]
+
+\paragraph{Synergy Matrix Construction}
+Let $\text{fam}(c)$ be the function that maps a crop $c$ to its family $g$. The $|C| \times |C|$ synergy matrix $R$ is constructed from the $6 	imes 6$ family matrix $R'$:
+\[
+    R_{c_1, c_2} = R'_{\text{fam}(c_1), \text{fam}(c_2)} + \epsilon
+\]
+where $\epsilon$ is a small random noise term to differentiate individual crops within the same family.
+
+\paragraph{Quadratic Couplings ($J'_{i,j}$)}
+The quadratic couplings are then derived using this hybrid matrix $R$:
+\[
+    J'_{(f,c_1,t-1), (f,c_2,t)} = -\gamma_{rot} \frac{A_f}{A_{total}} \cdot R_{c_1,c_2}
+\]
+The rest of the BQM follows a similar pattern to the MIQP, but with signs flipped for minimization.
+
+\end{document}

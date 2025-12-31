@@ -1,0 +1,142 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2025-12-31T20:25:53.414143+00:00",
+  "runs": [
+    {
+      "mode": "gurobi-true-ground-truth",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "classical",
+      "backend": "Gurobi",
+      "timeout_s": 60,
+      "status": "timeout",
+      "objective_miqp": 5.67476724431572,
+      "objective_model": 5.674767244315724,
+      "feasible": true,
+      "timestamp_utc": "2025-12-31T20:23:08.223569+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "mip_gap": 166.93461430650402,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "timing": {
+        "total_wall_time": 60.13301968574524,
+        "model_build_time": 0.030408859252929688,
+        "solve_time": 60.10261082649231,
+        "postprocess_time": 0.0,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0
+      },
+      "constraint_violations": {
+        "one_hot_violations": 0,
+        "rotation_violations": 0,
+        "total_violations": 0,
+        "details": []
+      }
+    },
+    {
+      "mode": "qpu-native-6-family",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "sa",
+      "backend": "SimulatedAnnealingSampler",
+      "timeout_s": 60,
+      "status": "feasible",
+      "objective_miqp": 3.6414447318702416,
+      "objective_model": 48.78015396381923,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T20:24:08.466581+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 50,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "timing": {
+        "total_wall_time": 34.68574094772339,
+        "model_build_time": 0.0029354095458984375,
+        "solve_time": 34.50780010223389,
+        "postprocess_time": 0.0,
+        "refinement_time": 0.17500543594360352,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0,
+        "gurobi_reference_time": 60.10261082649231,
+        "speedup_vs_wall": 1.7417108783646142
+      },
+      "constraint_violations": {
+        "one_hot_violations": 0,
+        "rotation_violations": 1,
+        "total_violations": 1,
+        "details": [
+          {
+            "type": "rotation",
+            "farm": "Farm4",
+            "food": "Legumes",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "sa",
+      "backend": "SimulatedAnnealingSampler",
+      "timeout_s": 60,
+      "status": "feasible",
+      "objective_miqp": 3.641662776380236,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T20:24:43.178886+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 50,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "timing": {
+        "total_wall_time": 70.20925664901733,
+        "model_build_time": 0.0,
+        "solve_time": 70.18241906166077,
+        "postprocess_time": 0.0,
+        "refinement_time": 0.01842355728149414,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0,
+        "gurobi_reference_time": 60.10261082649231,
+        "speedup_vs_wall": 0.8563770190606774
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          5
+        ],
+        "n_clusters": 1,
+        "iterations": 2,
+        "farms_per_cluster": 10
+      },
+      "constraint_violations": {
+        "one_hot_violations": 0,
+        "rotation_violations": 1,
+        "total_violations": 1,
+        "details": [
+          {
+            "type": "rotation",
+            "farm": "Farm4",
+            "food": "Vegetables",
+            "periods": "t2 and t3",
+            "message": "Same crop in consecutive periods"
+          }
+        ]
+      }
+    }
+  ]
+}

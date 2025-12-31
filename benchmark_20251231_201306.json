@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2025-12-31T19:13:06.351159+00:00",
+  "runs": [
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_25farms_27foods",
+      "n_farms": 25,
+      "n_foods": 27,
+      "n_vars": 2025,
+      "n_periods": 3,
+      "sampler": "sa",
+      "backend": "SimulatedAnnealingSampler",
+      "timeout_s": 60.0,
+      "status": "feasible",
+      "objective_miqp": 12.414878031294846,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T19:06:45.005009+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 50,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "timing": {
+        "total_wall_time": 381.3295738697052,
+        "model_build_time": 0.0,
+        "solve_time": 381.2871744632721,
+        "postprocess_time": 0.0,
+        "refinement_time": 0.02255082130432129,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.005047321319580078
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          10,
+          10,
+          5
+        ],
+        "n_clusters": 3,
+        "iterations": 2,
+        "farms_per_cluster": 10
+      },
+      "constraint_violations": {
+        "one_hot_violations": 0,
+        "rotation_violations": 5,
+        "total_violations": 5,
+        "details": [
+          {
+            "type": "rotation",
+            "farm": "Farm8",
+            "food": "Vegetables",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          },
+          {
+            "type": "rotation",
+            "farm": "Farm12",
+            "food": "Vegetables",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          },
+          {
+            "type": "rotation",
+            "farm": "Farm19",
+            "food": "Other",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          },
+          {
+            "type": "rotation",
+            "farm": "Farm24",
+            "food": "Legumes",
+            "periods": "t2 and t3",
+            "message": "Same crop in consecutive periods"
+          },
+          {
+            "type": "rotation",
+            "farm": "Farm25",
+            "food": "Fruits",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          }
+        ]
+      }
+    }
+  ]
+}

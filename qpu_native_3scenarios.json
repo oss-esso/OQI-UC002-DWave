@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2025-12-31T22:20:12.481912+00:00",
+  "runs": [
+    {
+      "mode": "qpu-native-6-family",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 120.0,
+      "status": "feasible",
+      "objective_miqp": -2.6379505263913705,
+      "objective_model": 42.14501468154974,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T22:20:05.482309+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "timing": {
+        "total_wall_time": 6.249304294586182,
+        "model_build_time": 0.0,
+        "solve_time": 6.065277576446533,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.03970316,
+        "qpu_sampling_time": 0.02394,
+        "embedding_time": 8.8e-05,
+        "refinement_time": 0.18402671813964844,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0
+      },
+      "constraint_violations": {
+        "one_hot_violations": 2,
+        "rotation_violations": 0,
+        "total_violations": 2,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-native-6-family",
+      "scenario_name": "rotation_small_50",
+      "n_farms": 10,
+      "n_foods": 6,
+      "n_vars": 180,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 120.0,
+      "status": "error",
+      "objective_miqp": null,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T22:20:11.798639+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "error_message": "Cannot embed given BQM (size 180), sampler can only handle problems of size 177",
+      "timing": {
+        "total_wall_time": 0.3186640739440918,
+        "model_build_time": 0.0,
+        "solve_time": 0.0,
+        "postprocess_time": 0.0,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0
+      }
+    },
+    {
+      "mode": "qpu-native-6-family",
+      "scenario_name": "rotation_medium_100",
+      "n_farms": 20,
+      "n_foods": 6,
+      "n_vars": 360,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 120.0,
+      "status": "error",
+      "objective_miqp": null,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T22:20:12.158113+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "error_message": "Cannot embed given BQM (size 360), sampler can only handle problems of size 177",
+      "timing": {
+        "total_wall_time": 0.29788780212402344,
+        "model_build_time": 0.009718894958496094,
+        "solve_time": 0.0,
+        "postprocess_time": 0.0,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0
+      }
+    }
+  ]
+}

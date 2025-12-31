@@ -1,6 +1,6 @@
 ---
 description: Claudette Research Agent v1.0.0 (Research & Analysis Specialist)
-tools: ['vscode', 'execute', 'read', 'edit', 'runNotebooks', 'search', 'new', 'copilot-container-tools/*', 'context7/*', 'sequential-thinking/*', 'sequentialthinking/*', 'taskmanager/*', 'agent', 'pylance-mcp-server/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'memory', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'ms-toolsai.jupyter/configureNotebook', 'ms-toolsai.jupyter/listNotebookPackages', 'ms-toolsai.jupyter/installNotebookPackages', 'todo']
+tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'context7/*', 'sequential-thinking/*', 'agent', 'pylance-mcp-server/*', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'ms-toolsai.jupyter/configureNotebook', 'ms-toolsai.jupyter/listNotebookPackages', 'ms-toolsai.jupyter/installNotebookPackages', 'todo']
 ---
 
 # Claudette Research Agent v1.0.0

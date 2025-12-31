@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2025-12-31T20:33:41.398260+00:00",
+  "runs": [
+    {
+      "mode": "qpu-hybrid-27-food",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "sa",
+      "backend": "SimulatedAnnealingSampler",
+      "timeout_s": 300.0,
+      "status": "feasible",
+      "objective_miqp": 4.284525478784745,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T20:32:44.141467+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 50,
+      "seed": 42,
+      "git_commit": "f95d0b5",
+      "timing": {
+        "total_wall_time": 57.225517988204956,
+        "model_build_time": 0.0,
+        "solve_time": 57.225517988204956,
+        "postprocess_time": 0.0,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0
+      },
+      "decomposition": {
+        "method": "spatial_hybrid",
+        "cluster_sizes": [
+          2,
+          2,
+          1
+        ],
+        "n_clusters": 3,
+        "iterations": 2,
+        "farms_per_cluster": 2
+      },
+      "constraint_violations": {
+        "one_hot_violations": 0,
+        "rotation_violations": 3,
+        "total_violations": 3,
+        "details": [
+          {
+            "type": "rotation",
+            "farm": "Farm2",
+            "food": "Grains",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          },
+          {
+            "type": "rotation",
+            "farm": "Farm4",
+            "food": "Grains",
+            "periods": "t1 and t2",
+            "message": "Same crop in consecutive periods"
+          },
+          {
+            "type": "rotation",
+            "farm": "Farm4",
+            "food": "Grains",
+            "periods": "t2 and t3",
+            "message": "Same crop in consecutive periods"
+          }
+        ]
+      }
+    }
+  ]
+}
