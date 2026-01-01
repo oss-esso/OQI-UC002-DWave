@@ -135,6 +135,69 @@ def build_hybrid_rotation_matrix(
     return R
 
 
+def repair_rotation_violations(
+    solution: Dict[Tuple[int, int, int], int],
+    n_farms: int,
+    n_foods: int,
+    n_periods: int,
+    seed: int = 42
+) -> Dict[Tuple[int, int, int], int]:
+    """
+    Post-process a solution to fix rotation constraint violations.
+    
+    For each violation (same crop c in periods t and t+1 on farm f),
+    change one of them to a different crop that's not used in that period.
+    
+    Args:
+        solution: Dict mapping (farm_idx, food_idx, period) -> 1
+        n_farms: Number of farms
+        n_foods: Number of foods/families
+        n_periods: Number of periods
+        seed: Random seed
+    
+    Returns:
+        Repaired solution dict
+    """
+    import numpy as np
+    rng = np.random.RandomState(seed)
+    
+    repaired = dict(solution)
+    
+    # Find and fix rotation violations
+    for f_idx in range(n_farms):
+        for c_idx in range(n_foods):
+            for t in range(1, n_periods):
+                y_t = repaired.get((f_idx, c_idx, t), 0)
+                y_t1 = repaired.get((f_idx, c_idx, t + 1), 0)
+                
+                if y_t == 1 and y_t1 == 1:
+                    # Violation found - fix by changing crop in period t+1
+                    # Find crops used in t+1
+                    used_in_t1 = set()
+                    for c in range(n_foods):
+                        if repaired.get((f_idx, c, t + 1), 0) == 1:
+                            used_in_t1.add(c)
+                    
+                    # Find crops used in t (to avoid creating new violation)
+                    used_in_t = set()
+                    for c in range(n_foods):
+                        if repaired.get((f_idx, c, t), 0) == 1:
+                            used_in_t.add(c)
+                    
+                    # Find unused crops in t+1 that weren't used in t
+                    available = [c for c in range(n_foods) 
+                                if c not in used_in_t1 and c not in used_in_t]
+                    
+                    if available:
+                        # Remove violating crop from t+1
+                        repaired.pop((f_idx, c_idx, t + 1), None)
+                        # Add replacement crop
+                        new_crop = rng.choice(available)
+                        repaired[(f_idx, new_crop, t + 1)] = 1
+    
+    return repaired
+
+
 # ===========================================================================
 # Mode 1: QPU-Native-6-Family
 # ===========================================================================
@@ -279,7 +342,7 @@ def solve_native_6family(
         
         # EXPLICIT ROTATION CONSTRAINT: Y_{f,c,t} + Y_{f,c,t+1} <= 1
         # Penalizes same crop in consecutive periods (hard constraint)
-        rotation_constraint_penalty = 5.0  # Strong penalty to enforce constraint
+        rotation_constraint_penalty = 10.0  # Strong penalty to enforce constraint
         for f_idx in range(n_farms):
             for c_idx in range(n_foods):
                 for t in range(1, n_periods):
@@ -351,6 +414,11 @@ def solve_native_6family(
             if var_name in reverse_map and value == 1:
                 key = reverse_map[var_name]
                 solution[key] = 1
+        
+        # POST-PROCESSING: Repair rotation violations
+        solution = repair_rotation_violations(
+            solution, n_farms, n_foods, n_periods, seed=seed
+        )
         
         entry.solution = solution
         
@@ -633,7 +701,7 @@ def solve_hierarchical_aggregated(
                                 bqm.add_quadratic(vars_this[i], vars_this[j], 2 * one_hot_penalty)
                 
                 # EXPLICIT ROTATION CONSTRAINT: Y_{f,c,t} + Y_{f,c,t+1} <= 1
-                rotation_constraint_penalty = 5.0
+                rotation_constraint_penalty = 10.0
                 for f_idx, farm in enumerate(cluster_farms):
                     farm_global_idx = farm_names.index(farm)
                     for c_idx in range(n_foods_agg):
@@ -719,6 +787,11 @@ def solve_hierarchical_aggregated(
         for cluster_sol in cluster_solutions:
             if cluster_sol:
                 global_solution.update(cluster_sol)
+        
+        # POST-PROCESSING: Repair rotation violations
+        global_solution = repair_rotation_violations(
+            global_solution, n_farms, n_foods_agg, n_periods, seed=seed
+        )
         
         entry.status = "feasible"
         logger.solve_done(entry.status, entry.timing.solve_time)
@@ -987,7 +1060,7 @@ def solve_hybrid_27food(
                                 bqm.add_quadratic(vars_this[i], vars_this[j], 2 * one_hot_penalty)
                 
                 # EXPLICIT ROTATION CONSTRAINT: Y_{f,c,t} + Y_{f,c,t+1} <= 1
-                rotation_constraint_penalty = 5.0
+                rotation_constraint_penalty = 10.0
                 for farm in cluster_farms:
                     f_global_idx = farm_names.index(farm)
                     for c_idx in range(n_foods):

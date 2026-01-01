@@ -53,25 +53,61 @@ from unified_benchmark.quantum_solvers import solve, HAS_DIMOD, HAS_QPU
 
 
 # Default scenarios for each mode
+# Comprehensive scaling from 5 to 200 farms, both 6-food and 27-food
 DEFAULT_SCENARIOS = {
     "gurobi-true-ground-truth": [
-        "rotation_micro_25",      # 5 farms × 6 foods
-        "rotation_small_50",      # 10 farms × 6 foods
-        "rotation_25farms_27foods",  # 25 farms × 27 foods
+        # 6-food scenarios
+        "rotation_micro_25",           # 5 farms × 6 foods
+        "rotation_small_50",           # 10 farms × 6 foods
+        "rotation_15farms_6foods",     # 15 farms × 6 foods
+        "rotation_medium_100",         # 20 farms × 6 foods
+        "rotation_25farms_6foods",     # 25 farms × 6 foods
+        "rotation_50farms_6foods",     # 50 farms × 6 foods
+        "rotation_75farms_6foods",     # 75 farms × 6 foods
+        "rotation_100farms_6foods",    # 100 farms × 6 foods
+        "rotation_large_200",          # 200 farms × 6 foods
+        # 27-food scenarios
+        "rotation_25farms_27foods",    # 25 farms × 27 foods
+        "rotation_50farms_27foods",    # 50 farms × 27 foods
+        "rotation_100farms_27foods",   # 100 farms × 27 foods
+        "rotation_200farms_27foods",   # 200 farms × 27 foods
     ],
     "qpu-native-6-family": [
-        "rotation_micro_25",      # 5 farms × 6 foods
-        "rotation_small_50",      # 10 farms × 6 foods
-        "rotation_medium_100",    # 20 farms × 6 foods
+        # Native BQM for 6-food problems (best for small-medium)
+        "rotation_micro_25",           # 5 farms × 6 foods = 90 vars
+        "rotation_small_50",           # 10 farms × 6 foods = 180 vars
+        "rotation_15farms_6foods",     # 15 farms × 6 foods = 270 vars
+        "rotation_medium_100",         # 20 farms × 6 foods = 360 vars
+        "rotation_25farms_6foods",     # 25 farms × 6 foods = 450 vars
+        "rotation_50farms_6foods",     # 50 farms × 6 foods = 900 vars
+        "rotation_75farms_6foods",     # 75 farms × 6 foods = 1350 vars
+        "rotation_100farms_6foods",    # 100 farms × 6 foods = 1800 vars
+        "rotation_large_200",          # 200 farms × 6 foods = 3600 vars
     ],
     "qpu-hierarchical-aggregated": [
-        "rotation_micro_25",      # 5 farms (will aggregate to 6)
-        "rotation_25farms_27foods",  # 25 farms × 27 foods
-        "rotation_50farms_27foods",  # 50 farms × 27 foods
+        # Hierarchical decomposition with 27→6 aggregation
+        # Good for medium-large 27-food problems
+        "rotation_micro_25",           # 5 farms (will aggregate to 6)
+        "rotation_small_50",           # 10 farms × 6 foods
+        "rotation_15farms_6foods",     # 15 farms × 6 foods
+        "rotation_medium_100",         # 20 farms × 6 foods
+        "rotation_25farms_6foods",     # 25 farms × 6 foods
+        "rotation_50farms_6foods",     # 50 farms × 6 foods
+        "rotation_75farms_6foods",     # 75 farms × 6 foods
+        "rotation_100farms_6foods",    # 100 farms × 6 foods
+        "rotation_large_200",          # 200 farms × 6 foods
+        # 27-food scenarios
+        "rotation_25farms_27foods",    # 25 farms × 27 foods
+        "rotation_50farms_27foods",    # 50 farms × 27 foods
+        "rotation_100farms_27foods",   # 100 farms × 27 foods
+        "rotation_200farms_27foods",   # 200 farms × 27 foods
     ],
     "qpu-hybrid-27-food": [
-        "rotation_25farms_27foods",  # 25 farms × 27 foods
-        "rotation_50farms_27foods",  # 50 farms × 27 foods
+        # Hybrid solver for large 27-food problems
+        "rotation_25farms_27foods",    # 25 farms × 27 foods = 2025 vars
+        "rotation_50farms_27foods",    # 50 farms × 27 foods = 4050 vars
+        "rotation_100farms_27foods",   # 100 farms × 27 foods = 8100 vars
+        "rotation_200farms_27foods",   # 200 farms × 27 foods = 16200 vars
     ],
 }
 

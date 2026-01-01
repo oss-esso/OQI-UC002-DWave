@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2025-12-31T22:59:15.529028+00:00",
+  "runs": [
+    {
+      "mode": "qpu-native-6-family",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": 0.5464334363287351,
+      "objective_model": 45.32019435641651,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T22:59:11.963616+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 3.53173565864563,
+        "model_build_time": 0.0019919872283935547,
+        "solve_time": 3.2791409492492676,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.03970316,
+        "qpu_sampling_time": 0.02394,
+        "embedding_time": 3.2e-05,
+        "refinement_time": 0.24534082412719727,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.002955913543701172
+      },
+      "constraint_violations": {
+        "one_hot_violations": 1,
+        "rotation_violations": 0,
+        "total_violations": 1,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    }
+  ]
+}

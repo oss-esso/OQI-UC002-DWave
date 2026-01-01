@@ -354,7 +354,8 @@ def convert_family_solution_to_27food(
     """
     Refine a 6-family solution to 27-food solution.
     
-    For each (farm, family, period) = 1, randomly select one crop from that family.
+    For each (farm, family, period) = 1, select one crop from that family.
+    ENSURES: No same crop appears in consecutive periods (rotation constraint).
     
     Args:
         family_solution: Family-level solution (6 families)
@@ -386,29 +387,57 @@ def convert_family_solution_to_27food(
     
     food_to_idx = {f: i for i, f in enumerate(food_names)}
     
-    # Refine solution
-    refined = {}
+    # Group by farm and sort by period to handle rotation constraint
+    farm_periods = {}
     for (f_idx, fam_idx, period), value in family_solution.items():
         if value == 0:
             continue
+        if f_idx not in farm_periods:
+            farm_periods[f_idx] = {}
+        if period not in farm_periods[f_idx]:
+            farm_periods[f_idx][period] = []
+        farm_periods[f_idx][period].append(fam_idx)
+    
+    # Refine solution with rotation constraint enforcement
+    refined = {}
+    
+    for f_idx, periods_data in farm_periods.items():
+        # Track what foods were assigned in previous period for this farm
+        prev_foods = set()
         
-        # Get family name
-        if fam_idx < len(FAMILY_ORDER):
-            family = FAMILY_ORDER[fam_idx]
-        else:
-            family = "Other"
-        
-        # Get foods in this family
-        foods = family_to_foods.get(family, [])
-        if not foods:
-            # Fallback: use any food
-            foods = food_names
-        
-        # Randomly select one food
-        selected_food = rng.choice(foods)
-        c_idx = food_to_idx[selected_food]
-        
-        refined[(f_idx, c_idx, period)] = 1
+        for period in sorted(periods_data.keys()):
+            current_foods = set()
+            
+            for fam_idx in periods_data[period]:
+                # Get family name
+                if fam_idx < len(FAMILY_ORDER):
+                    family = FAMILY_ORDER[fam_idx]
+                else:
+                    family = "Other"
+                
+                # Get foods in this family
+                foods = family_to_foods.get(family, [])
+                if not foods:
+                    # Fallback: use any food
+                    foods = food_names
+                
+                # Filter out foods used in previous period (rotation constraint)
+                available_foods = [f for f in foods if food_to_idx[f] not in prev_foods]
+                
+                if not available_foods:
+                    # If all foods in family were used in prev period, use any from family
+                    # This can happen when family has only 1 food
+                    available_foods = foods
+                
+                # Select one food
+                selected_food = rng.choice(available_foods)
+                c_idx = food_to_idx[selected_food]
+                
+                refined[(f_idx, c_idx, period)] = 1
+                current_foods.add(c_idx)
+            
+            # Update previous foods for next period
+            prev_foods = current_foods
     
     return refined
 

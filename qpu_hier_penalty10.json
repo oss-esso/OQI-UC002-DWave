@@ -1,0 +1,1509 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2025-12-31T23:27:47.777203+00:00",
+  "runs": [
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_micro_25",
+      "n_farms": 5,
+      "n_foods": 6,
+      "n_vars": 90,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -4.578729360218661,
+      "objective_model": null,
+      "feasible": true,
+      "timestamp_utc": "2025-12-31T23:10:37.615986+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 7.505619764328003,
+        "model_build_time": 0.0,
+        "solve_time": 7.347408056259155,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.11909148,
+        "qpu_sampling_time": 0.07182,
+        "refinement_time": 0.15821170806884766,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          5
+        ],
+        "n_clusters": 1,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 0,
+        "rotation_violations": 0,
+        "total_violations": 0,
+        "details": []
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_small_50",
+      "n_farms": 10,
+      "n_foods": 6,
+      "n_vars": 180,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -21.73847770778134,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:10:45.162157+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 16.693984508514404,
+        "model_build_time": 0.0,
+        "solve_time": 16.667057514190674,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.23220976000000004,
+        "qpu_sampling_time": 0.137646,
+        "refinement_time": 0.023113727569580078,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0018079280853271484
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          1
+        ],
+        "n_clusters": 2,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 6,
+        "rotation_violations": 0,
+        "total_violations": 6,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_15farms_6foods",
+      "n_farms": 15,
+      "n_foods": 6,
+      "n_vars": 270,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -31.7601619856935,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:11:01.891483+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 17.846304655075073,
+        "model_build_time": 0.004654884338378906,
+        "solve_time": 17.814683198928833,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.24408216,
+        "qpu_sampling_time": 0.14951399999999998,
+        "refinement_time": 0.02231740951538086,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.002650737762451172
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          6
+        ],
+        "n_clusters": 2,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 9,
+        "rotation_violations": 0,
+        "total_violations": 9,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm5",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_medium_100",
+      "n_farms": 20,
+      "n_foods": 6,
+      "n_vars": 360,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -36.577299908500024,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:11:19.770237+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 28.220736503601074,
+        "model_build_time": 0.0,
+        "solve_time": 28.180199146270752,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.36150884,
+        "qpu_sampling_time": 0.21966,
+        "refinement_time": 0.03001689910888672,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.008711814880371094
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          2
+        ],
+        "n_clusters": 3,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 13,
+        "rotation_violations": 0,
+        "total_violations": 13,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm3",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm12",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm12",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm17",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_25farms_6foods",
+      "n_farms": 25,
+      "n_foods": 6,
+      "n_vars": 450,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -53.381497562587604,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:11:48.028026+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 30.04628825187683,
+        "model_build_time": 0.0,
+        "solve_time": 30.016382932662964,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.37103724000000005,
+        "qpu_sampling_time": 0.22917600000000002,
+        "refinement_time": 0.02430129051208496,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0050029754638671875
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          7
+        ],
+        "n_clusters": 3,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 19,
+        "rotation_violations": 0,
+        "total_violations": 19,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm3",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm12",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm16",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_50farms_6foods",
+      "n_farms": 50,
+      "n_foods": 6,
+      "n_vars": 900,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -116.73111124838931,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:12:18.114422+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 52.35362696647644,
+        "model_build_time": 0.0,
+        "solve_time": 52.321799755096436,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.74652848,
+        "qpu_sampling_time": 0.4628099999999999,
+        "refinement_time": 0.020461082458496094,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.010367393493652344
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          5
+        ],
+        "n_clusters": 6,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 39,
+        "rotation_violations": 0,
+        "total_violations": 39,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm4",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_75farms_6foods",
+      "n_farms": 75,
+      "n_foods": 6,
+      "n_vars": 1350,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -174.1239506029073,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:13:10.501074+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 80.14824318885803,
+        "model_build_time": 0.0,
+        "solve_time": 80.09625172615051,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 1.09282812,
+        "qpu_sampling_time": 0.667212,
+        "refinement_time": 0.03599834442138672,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.015431880950927734
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          3
+        ],
+        "n_clusters": 9,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 58,
+        "rotation_violations": 0,
+        "total_violations": 58,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm3",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_100farms_6foods",
+      "n_farms": 100,
+      "n_foods": 6,
+      "n_vars": 1800,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -229.23972260868717,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:14:30.680344+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 105.93311738967896,
+        "model_build_time": 0.0,
+        "solve_time": 105.87043619155884,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 1.4871173600000003,
+        "qpu_sampling_time": 0.9196260000000003,
+        "refinement_time": 0.03336906433105469,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.028311967849731445
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          1
+        ],
+        "n_clusters": 12,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 76,
+        "rotation_violations": 0,
+        "total_violations": 76,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm17",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_large_200",
+      "n_farms": 50,
+      "n_foods": 6,
+      "n_vars": 900,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -106.42484049272639,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:16:16.655069+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 51.82637906074524,
+        "model_build_time": 0.0,
+        "solve_time": 51.79101872444153,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.7465296800000002,
+        "qpu_sampling_time": 0.4628099999999999,
+        "refinement_time": 0.025829076766967773,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.009531259536743164
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          5
+        ],
+        "n_clusters": 6,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 33,
+        "rotation_violations": 0,
+        "total_violations": 33,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm7",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm12",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_25farms_27foods",
+      "n_farms": 25,
+      "n_foods": 27,
+      "n_vars": 2025,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -58.286531832630104,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:17:08.549916+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 25.40713906288147,
+        "model_build_time": 0.0,
+        "solve_time": 25.379534244537354,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.37103724000000005,
+        "qpu_sampling_time": 0.22917600000000002,
+        "refinement_time": 0.020737886428833008,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.00536346435546875
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          7
+        ],
+        "n_clusters": 3,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 18,
+        "rotation_violations": 0,
+        "total_violations": 18,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm3",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm4",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm7",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm12",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm12",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_50farms_27foods",
+      "n_farms": 50,
+      "n_foods": 27,
+      "n_vars": 4050,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -127.0381168780345,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:17:34.005673+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 54.53555250167847,
+        "model_build_time": 0.0,
+        "solve_time": 54.49855661392212,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 0.7465304800000001,
+        "qpu_sampling_time": 0.4628099999999999,
+        "refinement_time": 0.031415462493896484,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.0039827823638916016
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          5
+        ],
+        "n_clusters": 6,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 38,
+        "rotation_violations": 0,
+        "total_violations": 38,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm3",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm7",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm8",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_100farms_27foods",
+      "n_farms": 100,
+      "n_foods": 27,
+      "n_vars": 8100,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -259.22652718500666,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:18:28.617630+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 146.0589816570282,
+        "model_build_time": 0.0,
+        "solve_time": 145.7321903705597,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 1.4871193600000003,
+        "qpu_sampling_time": 0.9196260000000003,
+        "refinement_time": 0.2760345935821533,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.027541637420654297
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          1
+        ],
+        "n_clusters": 12,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 77,
+        "rotation_violations": 0,
+        "total_violations": 77,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm6",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm11",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "qpu-hierarchical-aggregated",
+      "scenario_name": "rotation_200farms_27foods",
+      "n_farms": 200,
+      "n_foods": 27,
+      "n_vars": 16200,
+      "n_periods": 3,
+      "sampler": "qpu",
+      "backend": "DWaveCliqueSampler",
+      "timeout_s": 600,
+      "status": "feasible",
+      "objective_miqp": -518.2793826561089,
+      "objective_model": null,
+      "feasible": false,
+      "timestamp_utc": "2025-12-31T23:20:54.743680+00:00",
+      "hostname": "MSI",
+      "area_constant": 1.0,
+      "num_reads": 100,
+      "seed": 42,
+      "git_commit": "435050d",
+      "timing": {
+        "total_wall_time": 412.97207975387573,
+        "model_build_time": 0.0010001659393310547,
+        "solve_time": 412.7107138633728,
+        "postprocess_time": 0.0,
+        "qpu_access_time": 2.8713440400000017,
+        "qpu_sampling_time": 1.7836199999999982,
+        "refinement_time": 0.13879990577697754,
+        "area_normalization_time": 0.0,
+        "miqp_recompute_time": 0.09169554710388184
+      },
+      "decomposition": {
+        "method": "spatial_grid",
+        "cluster_sizes": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          2
+        ],
+        "n_clusters": 23,
+        "iterations": 3,
+        "farms_per_cluster": 9
+      },
+      "constraint_violations": {
+        "one_hot_violations": 159,
+        "rotation_violations": 0,
+        "total_violations": 159,
+        "details": [
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm1",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm2",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm3",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm9",
+            "period": 3,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 1,
+            "count": 0,
+            "expected": ">=1"
+          },
+          {
+            "type": "min_crops",
+            "farm": "Farm10",
+            "period": 2,
+            "count": 0,
+            "expected": ">=1"
+          }
+        ]
+      }
+    }
+  ]
+}
