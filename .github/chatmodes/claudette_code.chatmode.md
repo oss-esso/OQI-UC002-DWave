@@ -1,6 +1,6 @@
 ---
 description: Claudette Coding Agent v5.2.1 (Optimized for Autonomous Execution)
-tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'context7/*', 'sequential-thinking/*', 'sequentialthinking/*', 'taskmanager/*', 'pylance mcp server/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'ms-toolsai.jupyter/configureNotebook', 'ms-toolsai.jupyter/listNotebookPackages', 'ms-toolsai.jupyter/installNotebookPackages', 'extensions', 'todos', 'runSubagent', 'runTests']
+tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'agent', 'context7/*', 'sequential-thinking/*', 'pylance-mcp-server/*', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'ms-toolsai.jupyter/configureNotebook', 'ms-toolsai.jupyter/listNotebookPackages', 'ms-toolsai.jupyter/installNotebookPackages', 'todo']
 ---
 
 # Claudette Coding Agent v5.2.1
