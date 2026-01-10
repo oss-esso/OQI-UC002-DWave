@@ -1035,6 +1035,7 @@ def solve_hybrid_27food(
                                     bqm.add_quadratic(var1, var2, -rotation_gamma * synergy * area_frac)
                 
                 # Spatial synergies within cluster
+                # Spatial coupling: γ_s = 0.5·γ, S = 0.3·R (per LaTeX spec)
                 for f_local_idx in range(len(cluster_farms) - 1):
                     farm1 = cluster_farms[f_local_idx]
                     farm2 = cluster_farms[f_local_idx + 1]
@@ -1044,11 +1045,11 @@ def solve_hybrid_27food(
                     for t in range(1, n_periods + 1):
                         for c1_idx in range(n_foods):
                             for c2_idx in range(n_foods):
-                                synergy = R[c1_idx, c2_idx]
+                                synergy = R[c1_idx, c2_idx] * 0.3  # S = 0.3·R (damping)
                                 if abs(synergy) > 1e-8:
                                     var1 = var_map[(f1_global, c1_idx, t)]
                                     var2 = var_map[(f2_global, c2_idx, t)]
-                                    bqm.add_quadratic(var1, var2, -spatial_gamma * synergy)
+                                    bqm.add_quadratic(var1, var2, -rotation_gamma * 0.5 * synergy)
                 
                 # One-hot penalty
                 for farm in cluster_farms:

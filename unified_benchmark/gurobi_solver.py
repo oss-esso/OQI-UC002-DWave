@@ -171,13 +171,16 @@ def solve_gurobi_ground_truth(
                                    Y[(f_idx, c1_idx, t-1)] * Y[(f_idx, c2_idx, t)]
         
         # Part 3: Spatial Synergy (Quadratic)
+        # Spatial coupling: γ_s = 0.5·γ, S = 0.3·R (per LaTeX spec)
+        # Note: No area normalization - spatial interactions are about adjacency, not farm size
+        effective_spatial_gamma = rotation_gamma * 0.5 * 0.3
         for (f1_idx, f2_idx) in neighbor_edges:
             for t in range(1, n_periods + 1):
                 for c1_idx in range(n_foods):
                     for c2_idx in range(n_foods):
                         synergy = R[c1_idx, c2_idx]
                         if abs(synergy) > 1e-8:
-                            obj += (spatial_gamma * synergy / total_area) * \
+                            obj += (effective_spatial_gamma * synergy) * \
                                    Y[(f1_idx, c1_idx, t)] * Y[(f2_idx, c2_idx, t)]
         
         # Part 4: Soft One-Hot Penalty (Quadratic)
