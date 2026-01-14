@@ -1,9 +1,11 @@
-\documentclass{oqireport}
+ \documentclass{oqireport}
 
 %% Language and font encodings
 \usepackage[english]{babel}
 \usepackage[T1]{fontenc}
 \usepackage{array}
+\usepackage{longtable}
+\usepackage{pdflscape}
 
 %% Sets page size and margins
 \usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
@@ -62,7 +64,7 @@ Our goal is to demonstrate the usage of such methods in the resolution of a food
 
 \subsubsection*{Relevant SDGs}
 \begin{itemize}
-    \item SDG 2: Zero Hunger
+    \item \textbf{SDG 2: Zero Hunger}
     \item SDG 3: Good Health and Well-being
     \item SDG 12: Responsible Consumption and Production
     \item SDG 13: Climate Action
@@ -81,11 +83,14 @@ Key challenges include:
     \item Addressing the fundamental issue that healthy diets remain unaffordable for many populations
 \end{itemize}
 
-\textbf{Who is affected:} Both local and global populations are impacted, with particular vulnerability among low-income communities and regions with limited arable land. Cities consume about 70\% of the world's food while occupying only 3\% of Earth's surface, making urban food systems critical intervention points \cite{ZOU2022100624}.
+\textbf{Who is affected:} Both local and global populations are impacted, with particular vulnerability among low-income communities and regions with limited arable land. 
 
-\textbf{Geographies and demographics:} The affected populations are widespread, but the specific optimization setting depends on the chosen region, types of crops, and local producer profiles. By 2050, 68\% of the world's population will live in urban regions, consuming 80\% of total food production \cite{ZOU2022100624}.
+\textbf{Geographies and demographics:} The affected populations are widespread, but the solution depends on the chosen region, types of crops, and local producer profiles. By 2050, 68\% of the world's population will live in uraban regions, consuming 80\% of total food production while cities occupy only 3\% of Earth's surface \cite{ZOU2022100624}.
 
 \textbf{Criticality and risks:} risks include persistent malnutrition, unsustainable land use, and economic disparities. Climate change will further exacerbate these challenges, with 70\% of studies indicating crop yield declines by the 2030s \cite{ZOU2022100624}.
+
+When we consider crop planning that is coordinated across the entire supply chain, we face a fundamental optimization challenge: given a fixed amount of farms and arable land, how can we best allocate these resources to feed the maximum number of people in a nutritionally intelligent way, at the lowest cost to the population, while minimizing environmental harm?
+
 
 \section{Description of the computational challenges}
 
@@ -109,7 +114,6 @@ Our objective can in a first approximation be expressed as:
     \text{subject to } &\text{Area, Crops}
     \label{eq:generalized objective}
 \end{align}
-
 where $G_i$ are the goals above and $w_i$ are the weights we associated to them.
 
 
@@ -118,7 +122,7 @@ This formulation is easily converted into a Linear Program (LP) \cite{Dantzig195
 
 
 \paragraph{Decision Variables}
-Let $A_{f,c}$ denote the area - in hectares - assigned to food $c$ on farm $f$, wether it is a crop or an animal.
+Let $A_{f,c}$ denote the area - in hectares - assigned to food $c$ on farm $f$, whether it is a crop or an animal.
 
 Introduce auxiliary binary variables $Y_{f,c}$, where:
 \begin{equation}
@@ -136,7 +140,7 @@ U_c = \begin{cases}
 \end{cases}
 \end{equation}
 
-These $U_c$ variables are essential for correctly enforcing food group diversity constraints, which require counting the number of \textit{distinct} foods selected rather than the total number of plot-crop assignments.
+The variables $U_c$ are essential for correctly enforcing food group diversity constraints, which require counting the number of \textit{distinct} foods selected rather than the total number of plot-crop assignments.
 
 With this formulation the problem is now expressed as a MILP: the area $A_{f,c} \in [0, A_{max}]$\footnote{The minimum area here is set to 0 as it is the lowest bound when not planted, but the interval could also be expressed as the disjoint $\{0\}\cup[A_{c, min}, A_{max}]$ if the minimum area is relevant - for example when considering to build shelter for animals} is now expressed through the combination of a (semi)continuous variable $A_{f,c} \in [-\infty, A_{max}]$  and a binary variable $Y_{f,c}$. 
 
@@ -162,13 +166,13 @@ To provide a model that is as close as possible to real world scenarios, the fol
 
 
 
-\subsection{Classical computational approaches (\cite{CLAUTIAUX2025707})}
+\subsection{Classical computational approaches \cite{CLAUTIAUX2025707}}
 \label{sub:classical}
 
 \input{diagram_hardness}
 
 
-Classical MILP solvers have achieved remarkable sophistication through the systematic integration of several foundational algorithmic components, such as branch-and-bound methodology, cutting-plane techniques (branch-and-cut), column generation (branch-and-price), primal heuristic strategies. The branch-and-bound algorithm forms the cornerstone of modern MILP solvers, employing a recursive partitioning strategy that systematically explores the integer feasible region through variable fixation and continuous LP relaxations at each node of the enumeration tree \cite{achterberg2007constraint, wolsey1998integer}. The algorithm's efficiency derives from its pruning mechanism, whereby nodes with relaxation bounds that cannot improve upon the current incumbent solution are eliminated, thereby substantially reducing the computational search space.
+Classical MILP solvers have achieved remarkable sophistication through the systematic integration of several foundational algorithmic components, such as branch-and-bound methodology, cutting-plane techniques (branch-and-cut), column generation (branch-and-price), primal heuristic strategies \cite{reference missing}. The branch-and-bound algorithm forms the cornerstone of modern MILP solvers, employing a recursive partitioning strategy that systematically explores the integer feasible region through variable fixation and continuous LP relaxations at each node of the enumeration tree \cite{achterberg2007constraint, wolsey1998integer}. The algorithm's efficiency derives from its pruning mechanism, whereby nodes with relaxation bounds that cannot improve upon the current incumbent solution are eliminated, thereby substantially reducing the computational search space.
 
 
 
@@ -197,7 +201,7 @@ Despite their remarkable sophistication, classical MILP solvers face several fun
 
 \subsection{Description of the potential quantum computing solution}\label{PoC}
 
-The optimization model of interest (e.g.\ \cite{esteso_sustainable_2023}) is typically posed as a mixed-integer linear program (MILP): linear cost terms subject to hard inequality constraints. Industrial MILP solvers such as Gurobi exploit that linear structure and the combinatorial structure of integer variables to produce effective exact and heuristic methods. However, many physically- and quantum-inspired methods operate natively on unconstrained, often nonlinear cost landscapes - most notably the Quadratic Unconstrained Binary Optimization (QUBO) formulation, which is equivalent to a classical interacting-spin model.
+The optimization model of interest (e.g.\ \cite{esteso_sustainable_2023}) is typically posed as a mixed-integer linear program (MILP): linear cost terms subject to hard inequality constraints. Industrial MILP solvers such as Gurobi exploit the linear structure and the combinatorial structure of integer variables to produce effective exact and heuristic methods. However, many physically- and quantum-inspired methods operate natively on unconstrained, often nonlinear cost landscapes - most notably the Quadratic Unconstrained Binary Optimization (QUBO) formulation, which is equivalent to a classical interacting-spin model.
 
 Converting a MILP into QUBO usually proceeds in two steps: (1) represent real-valued variables by binary arrays up to some chosen precision, and (2) turn constraints into soft quadratic penalty terms \cite{wang_quantum-inspired_2022}. That conversion is convenient for annealers and Ising-type machines, but it typically destroys the original problem structure that MILP solvers exploit.
 
@@ -784,93 +788,72 @@ Please describe the steps to deliver a successful proof of concept, from code wr
 \newpage
 \section{Impact design}
 
+% Instructions to be deleted before submission
+\textit{
+Anticipating a future deployment of the full-scale quantum solution in the real-world, please assess the impact of the proposed solution. An impact framework toolkit will soon be available to guide you through this assessment.
+\begin{itemize}
+\item At a local level, please assess the impact of your proposed solution on people, planet, and prosperity conducted across short-, medium-, and long-term timeframes. Detail the impacted areas and expected outcomes, documenting all assumptions and supporting references.
+\item At a global level, how transposable is the use case to other contexts? What are other geographies or populations that would benefit from the proposed quantum solution (provide facts and references)? Would the conditions be conducive to a similar proof of concept (e.g. access to data)?
+\item At a macro-level, please assess the interlinkages between SDGs to positively or negatively impact other SDGs (benefits vs risks), including mitigation measures if any?
+\end{itemize}
+}
+
+
 \subsection{Local Impact Assessment}
 
-This quantum-enabled food production optimization solution targets multiple dimensions of sustainable development across different time horizons. The anticipated impacts span nutritional security, environmental sustainability, and economic prosperity for agricultural communities.
+The food production optimization solution targets multiple dimensions of sustainable development across different time horizons. The anticipated impacts span nutritional security, environmental sustainability, and economic prosperity for agricultural communities.
 
 \subsubsection{Short-Term Impacts (0-2 years)}
 
 \textbf{SDG 2 (Zero Hunger):} The solution delivers optimized crop planning outputs that balance nutritional value, affordability, and environmental impact. Through quantum-classical hybrid optimization, the system produces planting assignments across diversified food groups that can be implemented immediately by farming communities. This addresses SDG Target 2.3 (doubling agricultural productivity of small-scale producers) and 2.4 (ensuring sustainable food production systems).
 
-\textbf{Positive Interlinkages:} Better nutrition from diversified crops improves health outcomes and reduces disease burden (SDG 3). Increased agricultural productivity through optimization reduces poverty in rural areas (SDG 1) and creates decent work opportunities (SDG 8). The optimized planning also reduces food waste and resource use (SDG 12).
 
-\textbf{Negative Interlinkages \& Mitigation:} Without proper environmental constraints in the optimization model, intensive agriculture may increase GHG emissions (SDG 13), strain water resources (SDG 6), and harm terrestrial ecosystems (SDG 15). To mitigate these trade-offs, the optimization explicitly includes environmental impact scores from life-cycle assessments and constrains solutions to minimize land use, water consumption, and carbon footprint while maintaining nutritional adequacy.
 
 \textbf{SDG 1 (No Poverty):} By optimizing crop selection toward higher-value, market-appropriate foods, the system enables immediate income increases for small-scale farmers. Household income surveys demonstrate measurable improvements in earnings from optimized crop sales compared to traditional planting patterns. This directly supports Target 1.2 (reducing poverty by at least half).
 
-\textbf{Positive Interlinkages:} Food security reduces poverty through improved nutrition and health (SDG 2), while economic growth lifts vulnerable populations out of poverty (SDG 8).
 
-\textbf{Negative Interlinkages \& Mitigation:} Climate policies embedded in the optimization may increase short-term costs for poor households (SDG 13). Mitigation includes phased implementation with transition support, subsidies for sustainable inputs, and ensuring affordability remains a weighted objective in the optimization function.
 
-\textbf{SDG 5 (Gender Equality):} The platform's participatory design process actively engages women farmers in crop planning decisions. Gender-disaggregated surveys measure increased participation rates in agricultural decision-making, addressing Target 5.a (equal rights to economic resources and land access).
-
-\textbf{Positive Interlinkages:} Women's empowerment improves food security through better household nutrition management (SDG 2) and gender equality boosts overall economic growth (SDG 8).
-
-\textbf{Negative Interlinkages \& Mitigation:} Technology access gaps may worsen gender disparities if digital literacy is unequal (SDG 9). Mitigation strategies include targeted training programs for women farmers, mobile-friendly interfaces, and community-based support systems ensuring equitable access.
 
 \textbf{SDG 8 (Decent Work and Economic Growth):} Diversified crop production creates additional employment opportunities in sustainable agriculture, from planting through harvest and post-harvest processing. Employment surveys document new labor positions generated by optimized farming operations, supporting Target 8.5 (full employment and decent work with equal pay).
 
-\textbf{Positive Interlinkages:} Economic growth reduces poverty (SDG 1) and innovation infrastructure drives job creation (SDG 9).
 
-\textbf{Negative Interlinkages \& Mitigation:} Economic growth without environmental safeguards may increase emissions (SDG 13). The optimization explicitly constrains environmental impacts while maximizing economic value, balancing growth with sustainability.
 
 \textbf{SDG 9 (Industry, Innovation and Infrastructure):} The deployment of the digital mapping and quantum optimization platform provides stakeholders with accessible technology tools for agricultural planning, directly supporting SDG Target 9.a (facilitating sustainable infrastructure development in developing countries).
 
-\textbf{Positive Interlinkages:} Innovation infrastructure drives economic growth and job creation (SDG 8), enables smart planning for sustainable cities (SDG 11), and strengthens partnerships through data sharing (SDG 17).
 
-\textbf{Negative Interlinkages \& Mitigation:} Technology production and operation increase energy demand (SDG 13), generate electronic waste (SDG 12), and may worsen inequalities if access is uneven (SDG 10). Mitigation strategies include: using renewable energy for computing infrastructure, designing for minimal computational overhead through efficient hybrid algorithms, providing open-source tools to ensure equitable access, and incorporating training programs to bridge the digital divide.
 
 \textbf{SDG 10 (Reduced Inequalities):} Platform design prioritizes accessibility for smallholder farmers, with usage metrics tracking the percentage of small-scale producers accessing quantum planning tools. This addresses Target 10.2 (promoting social inclusion of all).
 
-\textbf{Positive Interlinkages:} Reduced inequality lifts vulnerable populations (SDG 1) and fair wages support economic growth (SDG 8).
 
-\textbf{Negative Interlinkages \& Mitigation:} Technology adoption may widen gaps without inclusive policies (SDG 9). Mitigation includes: zero-cost access models, offline-capable tools, agricultural extension partnerships for technology dissemination, and community facilitators bridging the digital divide.
 
 \textbf{SDG 17 (Partnerships for the Goals):} Implementation establishes multi-stakeholder partnerships between research institutions, government agencies, NGOs, and farmer cooperatives for technology deployment. Partnership agreements and MOUs document collaboration frameworks, supporting Target 17.16 (enhanced global partnerships).
 
-\textbf{Positive Interlinkages:} Partnerships enable technology transfer (SDG 9) and improve food systems through collaboration (SDG 2).
 
-\textbf{Negative Interlinkages \& Mitigation:} Unequal partnerships may reinforce power imbalances (SDG 10). Mitigation includes: participatory governance structures, farmer representatives in decision-making bodies, transparent benefit-sharing agreements, and capacity building to equalize negotiating power.
 
 \subsubsection{Mid-Term Impacts (2-5 years)}
 
 \textbf{SDG 2 (Zero Hunger):} Sustained implementation of optimized crop plans leads to measurable improvements in micronutrient intake. Biomarker analysis (blood/urine samples) can quantify changes in key nutrients (iron, vitamin A, zinc, folate) among participating households, addressing SDG Target 2.2 (ending all forms of malnutrition). Household Dietary Diversity Scores (HDDS) track the number of food groups consumed, demonstrating improved dietary variety.
 
-\textbf{SDG 5 (Gender Equality):} Women's economic empowerment advances through increased control over agricultural income. Gender-disaggregated household surveys measure the share of women making decisions about spending farm income, supporting Target 5.5 (full participation in leadership and decision-making).
-
-\textbf{Positive Interlinkages:} Women's empowerment strengthens food security (SDG 2) and gender equality drives economic growth (SDG 8).
-
-\textbf{Negative Interlinkages \& Mitigation:} Persistent technology access gaps may worsen gender disparities (SDG 9). Ongoing mitigation includes: women-led farmer groups, female extension workers, gender-responsive training programs, and monitoring gender-disaggregated impact metrics.
 
 \textbf{SDG 6 (Clean Water and Sanitation):} Optimized crop selection favoring water-efficient species reduces total agricultural water consumption per season. Water meter readings and irrigation monitoring systems quantify improvements, addressing Target 6.4 (substantially increasing water-use efficiency).
 
-\textbf{Positive Interlinkages:} Clean water improves health outcomes (SDG 3) and water management protects ecosystems (SDG 15).
 
-\textbf{Negative Interlinkages \& Mitigation:} Agricultural water use may compete with drinking water needs (SDG 2) in water-scarce regions. Mitigation includes: integrated water resource management, rainwater harvesting systems, drip irrigation technologies, and drought-resistant crop varieties in the optimization portfolio.
 
 \textbf{SDG 10 (Reduced Inequalities):} Income inequality among farmers decreases as smallholders adopt optimized practices previously accessible only to larger operations. Gini coefficient calculations track changes in income distribution, supporting Target 10.1 (income growth of bottom 40\%).
 
-\textbf{Positive Interlinkages:} Reduced inequality lifts vulnerable populations (SDG 1) and fair wages support economic growth (SDG 8).
 
-\textbf{Negative Interlinkages \& Mitigation:} Technology adoption gaps may widen inequalities without inclusive policies (SDG 9). Continued mitigation through: differentiated support for smaller farms, cooperative models pooling resources, and progressive pricing structures favoring disadvantaged farmers.
 
 \textbf{SDG 12 (Responsible Consumption and Production):} Farms adopting sustainable production methods increase measurably. Practice surveys and certification records document implementation of environmentally-sound techniques, addressing Target 12.2 (sustainable management of natural resources).
 
-\textbf{Positive Interlinkages:} Responsible consumption reduces emissions (SDG 13) and reduced waste protects ecosystems (SDG 15).
 
-\textbf{Negative Interlinkages \& Mitigation:} Consumption limits may slow short-term economic growth (SDG 8). Mitigation through: market development for sustainable products commanding premium prices, certification programs adding value, and demonstrating long-term economic benefits of sustainable practices.
 
 \textbf{SDG 13 (Climate Action):} The environmental optimization component, when consistently applied, contributes to measurable reductions in CO$_2$ emissions from agricultural activities. This supports climate mitigation efforts while maintaining food security.
 
-\textbf{Positive Interlinkages:} Climate action drives renewable energy adoption (SDG 7) and protects terrestrial (SDG 15) and marine (SDG 14) ecosystems through reduced agricultural runoff and land conversion.
 
-\textbf{Negative Interlinkages \& Mitigation:} Climate policies and optimization constraints may increase costs for poor households (SDG 1) and temporarily limit agricultural expansion options (SDG 2) or slow economic growth during transition (SDG 8). Mitigation requires careful policy design: gradual implementation timelines, subsidies for sustainable inputs, technical assistance for farmers, and ensuring that optimization weights balance affordability with environmental objectives.
 
 \textbf{SDG 15 (Life on Land):} Biodiversity on participating farmland improves through sustainable land use practices. Ecological surveys measuring species richness and abundance document ecosystem health, addressing Target 15.5 (reducing degradation and halting biodiversity loss).
 
-\textbf{Positive Interlinkages:} Ecosystem protection supports climate action (SDG 13) and forests regulate water cycles (SDG 6).
 
-\textbf{Negative Interlinkages \& Mitigation:} Land conservation may limit agricultural expansion (SDG 2) in land-scarce contexts. Mitigation through: intensification on existing farmland via optimization rather than extensification, agroforestry systems integrating conservation with production, and payment for ecosystem services programs compensating farmers for conservation.
 
 \subsubsection{Long-Term Impacts (5-10 years)}
 
@@ -878,33 +861,82 @@ This quantum-enabled food production optimization solution targets multiple dime
 
 \textbf{SDG 1 (No Poverty):} Poverty rates in farming communities decline measurably as sustained agricultural improvements compound over time. Economic surveys comparing household incomes to national poverty thresholds document the share of farming households moving above poverty lines, approaching Target 1.1 (eradicating extreme poverty).
 
-\textbf{Positive Interlinkages:} Food security reduces poverty through sustained nutrition (SDG 2) and economic growth lifts people out of poverty (SDG 8).
 
-\textbf{Negative Interlinkages \& Mitigation:} Climate policies may continue affecting poor households (SDG 13). Long-term mitigation includes: establishing social protection systems, developing climate-resilient livelihoods diversification, and ensuring optimization maintains affordability as a core objective across all time horizons.
 
 \textbf{SDG 3 (Good Health and Well-being):} Reduced malnutrition and improved dietary diversity lower healthcare costs at the community level through decreased incidence of nutrition-related diseases. Average monthly household healthcare expenditure declines measurably, addressing Target 3.9 (reducing deaths and illnesses from pollution and contamination). This creates a positive feedback loop with agricultural productivity.
 
-\textbf{Positive Interlinkages:} Improved health enables better agricultural productivity (SDG 2), better educational outcomes (SDG 4), and supports economic growth through a healthier workforce (SDG 8).
 
-\textbf{Negative Interlinkages \& Mitigation:} Healthcare infrastructure expansion may increase energy use and emissions (SDG 13) and generate medical waste (SDG 12). Mitigation includes integrating preventive health approaches that reduce infrastructure needs, using renewable energy for health facilities, and implementing waste management systems.
 
 \textbf{SDG 8 (Decent Work and Economic Growth):} Agricultural sector contribution to regional GDP increases measurably as productivity gains scale across farming communities. Economic impact assessments document the sector's enhanced role in sustainable growth, supporting Target 8.1 (sustaining per capita economic growth).
 
-\textbf{Positive Interlinkages:} Economic growth reduces poverty (SDG 1) and innovation drives job creation (SDG 9).
 
-\textbf{Negative Interlinkages \& Mitigation:} Economic growth may increase emissions without green policies (SDG 13). Long-term mitigation through: mainstreaming environmental safeguards in agricultural policy, carbon pricing or offset mechanisms, and demonstrating that sustainable intensification supports both growth and climate goals.
 
 \textbf{SDG 13 (Climate Action):} Cumulative emissions reductions from optimized agricultural systems contribute to global warming mitigation efforts, with measurable impacts on regional climate resilience. GHG monitoring tools, soil tests, and energy-use records document greenhouse gas reduction per farming season, supporting Target 13.2 (integrating climate measures into policies and planning).
 
-\textbf{Positive Interlinkages:} Climate action drives renewable energy adoption (SDG 7), protects terrestrial ecosystems (SDG 15), and benefits ocean health (SDG 14).
 
-\textbf{Negative Interlinkages \& Mitigation:} Climate policies may affect poor households (SDG 1) and limit agricultural options (SDG 2). Long-term mitigation requires: just transition frameworks ensuring equitable distribution of costs and benefits, investment in climate adaptation alongside mitigation, and continuous optimization refinement balancing multiple objectives.
 
 \textbf{SDG 15 (Life on Land):} Soil quality improves on farms using optimized agriculture, preventing land degradation. Soil testing at baseline and regular intervals measures composite indicators (organic matter, nutrients, pH), addressing Target 15.3 (combating desertification and restoring degraded land).
 
+
+
+\subsubsection{Interlinkages}
+
+\begin{itemize}
+\item \textbf{SDG1}\par
+\textbf{Positive Interlinkages:} Poverty reduction enables better access to nutritious food and improved health (SDG 2, SDG 3), supports educational attainment (SDG 4), and strengthens economic participation and productivity (SDG 8).
+
+\textbf{Negative Interlinkages \& Mitigation:} Climate policies embedded in the optimization may increase short-term costs for poor households (SDG 13). Mitigation includes phased implementation with transition support, subsidies for sustainable inputs, social protection systems, climate-resilient livelihoods diversification, and ensuring affordability remains a weighted objective in the optimization function across all time horizons.
+
+\item \textbf{SDG2}\par
+\textbf{Positive Interlinkages:} Better nutrition from diversified crops improves health outcomes and reduces disease burden (SDG 3). Increased agricultural productivity through optimization reduces poverty in rural areas (SDG 1) and creates decent work opportunities (SDG 8). The optimized planning also reduces food waste and resource use (SDG 12).
+
+\textbf{Negative Interlinkages \& Mitigation:} Without proper environmental constraints in the optimization model, intensive agriculture may increase GHG emissions (SDG 13), strain water resources (SDG 6), and harm terrestrial ecosystems (SDG 15). To mitigate these trade-offs, the optimization explicitly includes environmental impact scores from life-cycle assessments and constrains solutions to minimize land use, water consumption, and carbon footprint while maintaining nutritional adequacy.
+
+\item \textbf{SDG3}\par
+\textbf{Positive Interlinkages:} Better health outcomes enable improved agricultural productivity (SDG 2), better educational outcomes (SDG 4), and support economic growth through a healthier workforce (SDG 8).
+
+\textbf{Negative Interlinkages \& Mitigation:} Healthcare infrastructure expansion may increase energy use and emissions (SDG 13) and generate medical waste (SDG 12). Mitigation includes integrating preventive health approaches that reduce infrastructure needs, using renewable energy for health facilities, and implementing waste management systems.
+
+\item \textbf{SDG6}\par
+\textbf{Positive Interlinkages:} Improved water access and quality directly enhance health outcomes (SDG 3), and sustainable water management protects ecosystems (SDG 15).
+
+\textbf{Negative Interlinkages \& Mitigation:} Agricultural water use may compete with drinking water needs (SDG 2) in water-scarce regions. Mitigation includes: integrated water resource management, rainwater harvesting systems, drip irrigation technologies, and drought-resistant crop varieties in the optimization portfolio.
+
+\item \textbf{SDG8}\par
+\textbf{Positive Interlinkages:} Economic growth reduces poverty (SDG 1) and innovation infrastructure drives job creation (SDG 9).
+
+\textbf{Negative Interlinkages \& Mitigation:} Economic growth without environmental safeguards may increase emissions (SDG 13). The optimization explicitly constrains environmental impacts while maximizing economic value, balancing growth with sustainability. Long-term mitigation includes mainstreaming environmental safeguards in agricultural policy, carbon pricing or offset mechanisms, and demonstrating that sustainable intensification supports both growth and climate goals.
+
+\item \textbf{SDG9}\par
+\textbf{Positive Interlinkages:} Innovation infrastructure drives economic growth and job creation (SDG 8), enables smart planning for sustainable cities (SDG 11), and strengthens partnerships through data sharing (SDG 17).
+
+\textbf{Negative Interlinkages \& Mitigation:} Technology production and operation increase energy demand (SDG 13), generate electronic waste (SDG 12), and may worsen inequalities if access is uneven (SDG 10). Mitigation strategies include: using renewable energy for computing infrastructure, designing for minimal computational overhead through efficient hybrid algorithms, providing open-source tools to ensure equitable access, and incorporating training programs to bridge the digital divide.
+
+\item \textbf{SDG10}\par
+\textbf{Positive Interlinkages:} Reduced inequality lifts vulnerable populations (SDG 1) and fair wages support economic growth (SDG 8).
+
+\textbf{Negative Interlinkages \& Mitigation:} Poverty reduction efforts that rely heavily on technology adoption may inadvertently widen inequalities if access is uneven (SDG 9, SDG 10). Mitigation includes zero-cost access models, offline-capable tools, agricultural extension partnerships for technology dissemination, community facilitators bridging the digital divide, differentiated support for smaller farms, cooperative models pooling resources, and progressive pricing structures favoring disadvantaged farmers.
+
+\item \textbf{SDG12}\par
+\textbf{Positive Interlinkages:} Responsible consumption reduces emissions (SDG 13) and reduced waste protects ecosystems (SDG 15).
+
+\textbf{Negative Interlinkages \& Mitigation:} Consumption limits may slow short-term economic growth (SDG 8). Mitigation through: market development for sustainable products commanding premium prices, certification programs adding value, and demonstrating long-term economic benefits of sustainable practices.
+
+\item \textbf{SDG13}\par
+\textbf{Positive Interlinkages:} Climate action drives renewable energy adoption (SDG 7) and protects terrestrial (SDG 15) and marine (SDG 14) ecosystems through reduced agricultural runoff and land conversion.
+
+\textbf{Negative Interlinkages \& Mitigation:} Climate policies and optimization constraints may increase costs for poor households (SDG 1), temporarily limit agricultural expansion options (SDG 2), and slow economic growth during transition (SDG 8). Mitigation requires careful policy design including gradual implementation timelines, subsidies for sustainable inputs, technical assistance for farmers, just transition frameworks ensuring equitable distribution of costs and benefits, investment in climate adaptation alongside mitigation, and continuous optimization refinement balancing affordability with environmental objectives.
+
+\item \textbf{SDG15}\par
 \textbf{Positive Interlinkages:} Ecosystem protection supports climate action (SDG 13) and forests regulate water cycles (SDG 6).
 
-\textbf{Negative Interlinkages \& Mitigation:} Land conservation may limit agricultural expansion (SDG 2). Long-term mitigation through: landscape-level planning balancing production and conservation zones, restoration of degraded lands for agricultural use, and demonstrating that soil health improvements boost long-term productivity, aligning conservation with food security.
+\textbf{Negative Interlinkages \& Mitigation:} Land conservation may limit agricultural expansion (SDG 2) in land-scarce contexts. Mitigation includes intensification on existing farmland via optimization rather than extensification, agroforestry systems integrating conservation with production, payment for ecosystem services programs compensating farmers for conservation, landscape-level planning balancing production and conservation zones, restoration of degraded lands for agricultural use, and demonstrating that soil health improvements boost long-term productivity, aligning conservation with food security.
+
+\item \textbf{SDG17}\par
+\textbf{Positive Interlinkages:} Effective partnerships facilitate technology transfer and innovation adoption (SDG 9) and strengthen food systems through multi-stakeholder collaboration (SDG 2).
+
+\textbf{Negative Interlinkages \& Mitigation:} Unequal partnerships may reinforce power imbalances (SDG 10). Mitigation includes: participatory governance structures, farmer representatives in decision-making bodies, transparent benefit-sharing agreements, and capacity building to equalize negotiating power.
+\end{itemize}
 
 \subsection{Global Transposability}
 
@@ -923,43 +955,42 @@ The quantum-enabled crop optimization approach is highly transposable to diverse
 
 \textbf{Data Requirements \& Feasibility:} The proof of concept requires three data categories: (1) nutritional composition and environmental impact scores (available from GAIN databases and life-cycle assessments), (2) local food preferences and prices (collectible through household surveys and market data), and (3) farm characteristics and constraints (accessible through agricultural census data or participatory mapping). These data types are increasingly available through global initiatives like the Food Systems Dashboard, making deployment feasible in most contexts with appropriate partnerships.
 
-\textbf{Computational Accessibility:} Hybrid quantum-classical solvers democratize access by allowing classical preprocessing (available on standard hardware) while reserving quantum resources for the combinatorially hard optimization core. As quantum computing infrastructure expands through cloud services (D-Wave Leap, IBM Quantum, etc.), even resource-limited regions can access computational capacity through partnerships with research institutions or development organizations.
+
 
 \subsection{SDG Interlinkages and Responsible Innovation}
 
 The quantum optimization approach creates a complex network of SDG interlinkages that must be carefully managed to maximize synergies and minimize trade-offs \cite{Fanzo2022,UNFSS_Planet_2023,Sylvester2024}.
 
-\textbf{Key Synergies to Amplify:}
+
 \begin{itemize}
-\item \textbf{Nutrition-Health-Productivity Nexus:} The primary pathway from SDG 2 $\rightarrow$ SDG 3 $\rightarrow$ SDG 8 creates reinforcing benefits. Optimizing for nutritional density directly improves health outcomes, which in turn enhances workforce productivity and agricultural capacity, creating a virtuous cycle. This nexus also reduces poverty (SDG 1) through improved earning capacity.
+\item \textbf{Nutrition-Health-Productivity:} The primary pathway from SDG 2 $\rightarrow$ SDG 3 $\rightarrow$ SDG 8 creates reinforcing benefits. Optimizing for nutritional density directly improves health outcomes, which in turn enhances workforce productivity and agricultural capacity.
 
-\item \textbf{Technology-Innovation-Partnership Chain:} The quantum computing application (SDG 9) strengthens international partnerships (SDG 17) by demonstrating cutting-edge technology transfer to developing contexts while building local technical capacity. This chain enables knowledge sharing, reduces inequalities through accessible technology (SDG 10), and drives economic growth (SDG 8).
+\item \textbf{Technology-Innovation-Partnership:} The quantum computing application (SDG 9) strengthens international partnerships (SDG 17) by demonstrating cutting-edge technology transfer to developing contexts while building local technical capacity. This chain enables knowledge sharing, reduces inequalities through accessible technology (SDG 10), and drives economic growth (SDG 8).
 
-\item \textbf{Climate-Ecosystem Protection:} Environmental optimization constraints simultaneously address SDG 13 (climate action), SDG 15 (terrestrial ecosystems), SDG 6 (water management), and SDG 14 (marine ecosystems) through integrated land-use planning. This cluster of synergies demonstrates that responsible consumption and production (SDG 12) creates co-benefits across environmental goals.
+\item \textbf{Climate-Ecosystem Protection:} Environmental optimization constraints simultaneously address SDG 13 (climate action), SDG 15 (terrestrial ecosystems), SDG 6 (water management), and SDG 14 (marine ecosystems) through integrated land-use planning.
 
-\item \textbf{Gender-Empowerment-Development Loop:} Women's participation in agricultural decision-making (SDG 5) strengthens food security (SDG 2), improves household nutrition (SDG 3), and boosts economic productivity (SDG 8). Gender equality acts as a multiplier for development outcomes across multiple dimensions.
 
-\item \textbf{Poverty-Food-Economics Triangle:} The interconnection between poverty reduction (SDG 1), food security (SDG 2), and economic growth (SDG 8) forms a mutually reinforcing triangle. Agricultural optimization addressing all three simultaneously achieves greater total impact than addressing any single goal in isolation.
+
+\item \textbf{Poverty-Food-Economics:} The interconnection between poverty reduction (SDG 1), food security (SDG 2), and economic growth (SDG 8) forms a mutually reinforcing triangle. Agricultural optimization addressing all three simultaneously achieves greater total impact than addressing any single goal in isolation.
 \end{itemize}
 
 \textbf{Critical Trade-offs Requiring Active Management:}
 \begin{itemize}
-\item \textbf{Productivity-Environment Tension:} The fundamental trade-off between maximizing food production (SDG 2) and minimizing environmental impact (SDGs 6, 13, 14, 15) requires explicit multi-objective optimization. The solution implements configurable weights in the objective function, allowing stakeholders to navigate this trade-space based on local priorities and constraints. Sensitivity analysis reveals optimal balance points where nutritional adequacy, affordability, and environmental sustainability coexist.
+\item \textbf{Productivity-Environment Tension:} The fundamental trade-off between maximizing food production (SDG 2) and minimizing environmental impact (SDGs 6, 13, 14, 15) requires explicit multi-objective optimization. Sufficient analysis reveals optimal balance points where nutritional adequacy, affordability, and environmental sustainability coexist.
 
-\item \textbf{Technology Access and Digital Divide:} While quantum optimization provides powerful capabilities (SDG 9), it risks exacerbating inequalities (SDG 10) if access is limited to well-resourced actors. This tension particularly affects women and smallholder farmers. Mitigation strategies include: open-source software releases, capacity-building programs with gender-responsive design, user-friendly interfaces requiring minimal technical expertise, partnerships with agricultural extension services ensuring smallholder farmer access, and community-based facilitator models bridging the digital divide.
+\item \textbf{Technology Access and Digital Divide:} While quantum optimization provides powerful capabilities (SDG 9), it risks exacerbating inequalities (SDG 10) if access is limited to well-resourced actors. Mitigation strategies include: open-source software releases, capacity-building programs, user-friendly interfaces requiring minimal technical expertise, partnerships with agricultural extension services ensuring smallholder farmer access, and community-based facilitator models bridging the digital divide.
 
 \item \textbf{Climate Policy Costs:} Environmental optimization may increase short-term costs for implementing sustainable practices, potentially harming poor households (SDG 1) and slowing immediate economic growth (SDG 8). This trade-off requires careful balancing between climate action (SDG 13) and poverty reduction. Complementary policy interventions include: transition subsidies protecting vulnerable households, technical assistance reducing implementation costs, market development for sustainable products commanding premium prices, payments for ecosystem services compensating farmers for environmental benefits, and staged implementation allowing gradual adaptation.
 
-\item \textbf{Water Allocation Conflicts:} Optimizing agricultural water efficiency (SDG 6) may compete with expanding food production (SDG 2) in water-scarce regions. This trade-off necessitates: integrated water resource management frameworks, investment in water-saving technologies (drip irrigation, rainwater harvesting), inclusion of water footprint metrics in the optimization objective, and drought-resistant crop varieties in the solution portfolio.
 
-\item \textbf{Conservation-Production Balance:} Protecting biodiversity and preventing land degradation (SDG 15) may constrain agricultural expansion (SDG 2), creating tension between environmental protection and food security. Resolution requires: landscape-level planning designating conservation and production zones, sustainable intensification on existing farmland rather than extensification into natural areas, agroforestry and agroecological approaches integrating conservation with production, and demonstrating that ecosystem health supports long-term agricultural productivity.
+% \item \textbf{Conservation-Production Balance:} Protecting biodiversity and preventing land degradation (SDG 15) may constrain agricultural expansion (SDG 2), creating tension between environmental protection and food security. Resolution requires: landscape-level planning designating conservation and production zones, sustainable intensification on existing farmland rather than extensification into natural areas, agroforestry and agroecological approaches integrating conservation with production, and demonstrating that ecosystem health supports long-term agricultural productivity.
 
-\item \textbf{Gender-Technology Gap:} Technology deployment (SDG 9) may worsen gender disparities (SDG 5) if women have lower digital literacy or access to training. Targeted mitigation includes: women-led farmer groups, female extension workers, gender-disaggregated monitoring of platform access and usage, and explicit design requirements ensuring women's needs are addressed in technology development.
-\end{itemize}
+
 
 \textbf{Monitoring and Adaptive Management:} Responsible innovation requires ongoing assessment of both intended and unintended consequences. The impact framework includes: baseline and endline surveys for all indicator measurements, participatory monitoring engaging farming communities, regular SDG interlinkage assessments using network analysis methods \cite{Fanzo2022}, and adaptive optimization that adjusts objective weights based on observed outcomes and stakeholder feedback. This ensures the solution remains aligned with holistic sustainable development goals rather than optimizing narrow metrics at the expense of broader welfare.
 
 
+\end{itemize}
 
 
 
