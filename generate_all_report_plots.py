@@ -962,15 +962,12 @@ def plot_comprehensive_scaling(
     output_dir: Path | str = "phase3_results_plots",
 ) -> Path:
     """
-    Create 2x3 comprehensive scaling plot matching the reference style.
+    Create 1x3 comprehensive scaling plot.
 
     Subplots:
-        (0,0) Gap vs Variables - by formulation
-        (0,1) Objectives comparison - Gurobi vs Quantum
-        (0,2) Speedup vs Variables - log scale
-        (1,0) Time comparison bars - Gurobi vs QPU Total
-        (1,1) QPU time stacked - Total vs Pure QPU
-        (1,2) QPU Efficiency - % time in quantum
+        (0) Objectives comparison - Gurobi vs Quantum
+        (1) Time comparison bars - Gurobi vs QPU Total
+        (2) QPU time stacked - Total vs Pure QPU
 
     Args:
         df: DataFrame from prepare_scaling_data_60s().
@@ -982,13 +979,13 @@ def plot_comprehensive_scaling(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
 
     # =========================================================================
-    # Plot 2: Objectives - Gurobi vs Quantum
+    # Plot 1: Objectives - Gurobi vs Quantum
     # =========================================================================
-    ax = axes[0, 1]
+    ax = axes[0]
     for formulation in ["6-Family", "27-Food"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
@@ -1023,12 +1020,10 @@ def plot_comprehensive_scaling(
     ax.legend(fontsize=8, loc="best", ncol=2)
     ax.grid(True, alpha=0.3)
 
-
-
     # =========================================================================
-    # Plot 4: Time Comparison - Gurobi vs QPU Total
+    # Plot 2: Time Comparison - Gurobi vs QPU Total
     # =========================================================================
-    ax = axes[1, 0]
+    ax = axes[1]
     x_pos = np.arange(len(df))
     width = 0.35
 
@@ -1078,9 +1073,9 @@ def plot_comprehensive_scaling(
     ax.axhline(y=60, color="red", linestyle="--", alpha=0.3, label="Timeout (60s)")
 
     # =========================================================================
-    # Plot 5: Pure QPU Time vs Total Time
+    # Plot 3: Pure QPU Time vs Total Time
     # =========================================================================
-    ax = axes[1, 1]
+    ax = axes[2]
     for formulation in ["6-Family", "27-Food"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
@@ -1881,10 +1876,10 @@ def plot_violation_impact(
     explained_pct = (df["gap"].sum() - adj_gaps.sum()) / df["gap"].sum() * 100 if df["gap"].sum() > 0 else 0
 
     # Create figure
-    fig, axes = plt.subplots(1, 3, figsize=(18, 10))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     # Panel 1: Violation rate by scenario
-    ax = axes[0, 0]
+    ax = axes[0]
     colors = ["red" if r > 10 else "orange" if r > 5 else "green" for r in df["violation_rate"]]
     ax.bar(range(len(df)), df["violation_rate"], color=colors, alpha=0.8, edgecolor="black")
     ax.set_xlabel("Scenario (sorted by size)", fontsize=12, fontweight="bold")
@@ -1902,8 +1897,8 @@ def plot_violation_impact(
     ax.grid(True, alpha=0.3, axis="y")
 
 
-    # Panel 3: Gap breakdown
-    ax = axes[0, 2]
+    # Panel 2: Gap breakdown
+    ax = axes[1]
     x = np.arange(len(df))
     width = 0.35
     ax.bar(x - width / 2, df["gap"], width, label="Total Gap", color="red", alpha=0.8)
@@ -1916,8 +1911,8 @@ def plot_violation_impact(
     ax.legend()
     ax.grid(True, alpha=0.3, axis="y")
 
-    # Panel 4: Adjusted objective comparison
-    ax = axes[1, 0]
+    # Panel 3: Adjusted objective comparison
+    ax = axes[2]
     x = np.arange(len(df))
     width = 0.25
     ax.bar(x - width, df["gurobi_obj"], width, label="Gurobi", color="green", alpha=0.8)
@@ -2773,7 +2768,7 @@ def plot_qpu_benchmark_small_scale(
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle(
-        "QPU Benchmark: Small-Scale Problems (10-100 Farms)",
+        "QPU Benchmark: Small-Scale Problems (10-50 Farms)",
         fontsize=14, fontweight="bold", y=0.98,
     )
 
@@ -2790,8 +2785,8 @@ def plot_qpu_benchmark_small_scale(
                        color=_BENCHMARK_COLORS["Gurobi"], label="Gurobi", alpha=0.9)
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            # Filter HybridGrid to ≤100 farms for small-scale plot
-            max_farms = 100 if "HybridGrid" in method else float("inf")
+            # Filter HybridGrid to ≤50 farms for small-scale plot
+            max_farms = 50 if "HybridGrid" in method else float("inf")
             qpu_times = [
                 t for i, t in enumerate(metrics[method]["qpu_time"])
                 if t > 0 and metrics[method]["n_farms"][i] <= max_farms
@@ -2823,8 +2818,8 @@ def plot_qpu_benchmark_small_scale(
         )
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            # Filter HybridGrid to ≤100 farms for small-scale plot
-            max_farms = 100 if "HybridGrid" in method else float("inf")
+            # Filter HybridGrid to ≤50 farms for small-scale plot
+            max_farms = 50 if "HybridGrid" in method else float("inf")
             farms = [f for f in metrics[method]["n_farms"] if f <= max_farms]
             objs = [
                 metrics[method]["objective"][i]
@@ -2848,8 +2843,8 @@ def plot_qpu_benchmark_small_scale(
     ax = axes[1, 0]
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            # Filter HybridGrid to ≤100 farms for small-scale plot
-            max_farms = 100 if "HybridGrid" in method else float("inf")
+            # Filter HybridGrid to ≤50 farms for small-scale plot
+            max_farms = 50 if "HybridGrid" in method else float("inf")
             farms = [f for f in metrics[method]["n_farms"] if f <= max_farms]
             gaps = [
                 metrics[method]["gap"][i]
@@ -2872,15 +2867,15 @@ def plot_qpu_benchmark_small_scale(
 
     # Panel 4: Violations
     ax = axes[1, 1]
-    # For small-scale, only show farms ≤100
-    all_farms = sorted({f for m in metrics.values() for f in m["n_farms"] if f <= 100})
+    # For small-scale, only show farms ≤50
+    all_farms = sorted({f for m in metrics.values() for f in m["n_farms"] if f <= 50})
     x = np.arange(len(all_farms))
     width = 0.12
     plotted = 0
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            # Filter HybridGrid to ≤100 farms for small-scale plot
-            max_farms = 100 if "HybridGrid" in method else float("inf")
+            # Filter HybridGrid to ≤50 farms for small-scale plot
+            max_farms = 50 if "HybridGrid" in method else float("inf")
             viols = [
                 metrics[method]["violations"][metrics[method]["n_farms"].index(f)]
                 if f in metrics[method]["n_farms"] and f <= max_farms else 0
