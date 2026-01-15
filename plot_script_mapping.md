@@ -91,7 +91,8 @@ Generates 2 comprehensive multi-panel plots:
 ---
 
 ### Script: `generate_split_formulation_plots.py`
-**Purpose:** Detailed analysis by problem configuration (farms × foods × periods)
+**Purpose:** Detailed analysis by problem configuration (farms × foods × periods)  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_baseline_60s.json`
 
 Generates 2 plots:
 
@@ -162,7 +163,8 @@ Generates the following plots:
 
 ### Script: `assess_violation_impact.py`
 
-**Purpose:** Impact assessment of different violation types on solution quality
+**Purpose:** Impact assessment of different violation types on solution quality  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_baseline_60s.json`
 
 Generates the following plots:
 
@@ -179,7 +181,8 @@ Generates the following plots:
 
 ### Script: `evaluate_violation_impact.py`
 
-**Purpose:** Quantitative evaluation of repair heuristics for violations
+**Purpose:** Quantitative evaluation of repair heuristics for violations  
+**Data Sources:** `qpu_hier_repaired.json`, `qpu_hier_original.json`
 
 Generates the following plots:
 
@@ -195,7 +198,8 @@ Generates the following plots:
 
 ### Script: `Benchmark Scripts\benchmarks.py`
 
-**Purpose:** General scalability benchmark across all solvers and formulations
+**Purpose:** General scalability benchmark across all solvers and formulations  
+**Data Sources:** `benchmark_*.json` files (auto-generated during benchmark runs)
 
 Generates the following plots:
 
@@ -218,26 +222,31 @@ Each formulation has dedicated scalability analysis:
 
 #### `Benchmark Scripts\benchmark_scalability_BQUBO.py`
 - **Formulation:** Binary QUBO (pure binary variables, linear objective)
+- **Data Sources:** `qpu_bqubo_results.json`, `gurobi_bqubo_baseline.json`
 - Generates: `scalability_benchmark_bqubo.png`, `scalability_table_bqubo.png`
 - **Key Metrics:** Embedding efficiency, chain break rate, qubit usage
 
 #### `Benchmark Scripts\benchmark_scalability_LQ.py`
 - **Formulation:** Linear-Quadratic (area variables + synergy terms)
+- **Data Sources:** `qpu_lq_results.json`, `gurobi_lq_baseline.json`
 - Generates: `scalability_benchmark_lq.png`, `scalability_table_lq.png`
 - **Key Metrics:** Quadratic term handling, synergy bonus impact
 
 #### `Benchmark Scripts\benchmark_scalability_NLD.py`
 - **Formulation:** Non-Linear Decomposed (Dantzig-Wolfe)
+- **Data Sources:** `qpu_nld_results.json`, `gurobi_nld_baseline.json`
 - Generates: `scalability_benchmark_nld.png`, `scalability_table_nld.png`
 - **Key Metrics:** Subproblem count, coordination overhead, convergence rate
 
 #### `Benchmark Scripts\benchmark_scalability_NLN.py`
 - **Formulation:** Non-Linear Native (full MIQP)
+- **Data Sources:** `qpu_nln_results.json`, `gurobi_nln_baseline.json`
 - Generates: `scalability_benchmark_nln.png`, `scalability_table.png`, `scalability_table_nln.png`
 - **Key Metrics:** QPU utilization, minor embedding quality
 
 #### `Benchmark Scripts\benchmark_scalability_PATCH.py`
 - **Formulation:** Patch-based decomposition (spatial clustering)
+- **Data Sources:** `qpu_patch_results.json`, `gurobi_patch_baseline.json`
 - Generates: `scalability_benchmark_patch.png`, `scalability_table_patch.png`
 - **Key Metrics:** Patch coordination, overlap handling, boundary effects
 
@@ -271,7 +280,8 @@ Generates the following plots:
 
 ### Script: `plot_qpu_composition_pies.py`
 
-**Purpose:** Solution composition analysis - what crops are selected and why
+**Purpose:** Solution composition analysis - what crops are selected and why  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_baseline_60s.json`
 
 Generates the following plots:
 
@@ -296,7 +306,8 @@ Generates the following plots:
 
 ### Script: `deep_dive_gap_analysis.py`
 
-**Purpose:** Detailed analysis of optimality gap components
+**Purpose:** Detailed analysis of optimality gap components  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_baseline_60s.json`, `gurobi_timeout_test_300s.json`
 
 Generates the following plots:
 
@@ -316,7 +327,8 @@ Generates the following plots:
 ### Script: `crop_benefit_weight_analysis.py`
 
 **Purpose:** Sensitivity analysis of benefit weights on crop selection  
-**Mathematical Model:** `B_c = w1*nutr_val + w2*nutr_den - w3*env_impact + w4*afford + w5*sustain`, where Σw_i = 1
+**Mathematical Model:** `B_c = w1*nutr_val + w2*nutr_den - w3*env_impact + w4*afford + w5*sustain`, where Σw_i = 1  
+**Data Sources:** `crop_data.csv`, `benefit_weights.json`
 
 Generates 6 plots in dedicated directory:
 
@@ -351,7 +363,8 @@ Generates 6 plots in dedicated directory:
 
 ### Script: `Phase3Report\Scripts\comprehensive_quantum_advantage_plots.py`
 
-**Purpose:** Master analysis combining ALL formulations and methods for final report
+**Purpose:** Master analysis combining ALL formulations and methods for final report  
+**Data Sources:** `qpu_hier_repaired.json`, `qpu_native_results.json`, `qpu_hybrid_results.json`, `gurobi_timeout_test_300s.json`
 
 Generates 5 comprehensive plots:
 
@@ -389,7 +402,8 @@ Generates 5 comprehensive plots:
 
 ### Script: `Phase3Report\Scripts\variable_scaling_analysis.py`
 
-**Purpose:** Deep dive into variable count impact on performance
+**Purpose:** Deep dive into variable count impact on performance  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_baseline_60s.json`
 
 Generates the following plots:
 
@@ -405,7 +419,8 @@ Generates the following plots:
 
 ### Script: `Phase3Report\Scripts\statistical_comparison_test.py`
 
-**Purpose:** Statistical significance testing (t-tests, effect sizes)
+**Purpose:** Statistical significance testing (t-tests, effect sizes)  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_timeout_test_300s.json`
 
 Generates the following plots:
 
@@ -432,7 +447,8 @@ Generates the following plots:
 
 ### Script: `visualize_repair_results.py`
 
-**Purpose:** Visualization of violation repair heuristics effectiveness
+**Purpose:** Visualization of violation repair heuristics effectiveness  
+**Data Sources:** `qpu_hier_original.json`, `qpu_hier_repaired.json`
 
 Generates the following plots:
 
@@ -449,7 +465,8 @@ Generates the following plots:
 
 ### Script: `compare_repair_and_impact.py`
 
-**Purpose:** Compare different repair strategies side-by-side
+**Purpose:** Compare different repair strategies side-by-side  
+**Data Sources:** `qpu_hier_original.json`, `qpu_hier_repaired.json`, `repair_results.json`
 
 Generates combined analysis plots showing:
 - Pareto frontier: violation reduction vs objective loss
@@ -460,7 +477,8 @@ Generates combined analysis plots showing:
 
 ### Script: `benchmark_synergy_speed.py`
 
-**Purpose:** Analyze impact of synergy term (LQ formulation) on solve time
+**Purpose:** Analyze impact of synergy term (LQ formulation) on solve time  
+**Data Sources:** `qpu_lq_results.json`, `synergy_benchmark.json`
 
 Generates analysis of:
 - Synergy benefit vs computational cost
@@ -472,21 +490,25 @@ Generates analysis of:
 ## 📉 FORMULATION-SPECIFIC SPEEDUP ANALYSIS
 
 ### Script: `Plot Scripts\plot_nln_speedup.py`
+**Data Sources:** `qpu_nln_results.json`, `gurobi_nln_baseline.json`
 - `nln_speedup_comparison.png`
 - `nln_solve_times_linear.png`
 **Analysis:** Non-linear native formulation speedup vs Gurobi
 
 ### Script: `Plot Scripts\plot_bqubo_speedup.py`
+**Data Sources:** `qpu_bqubo_results.json`, `gurobi_bqubo_baseline.json`
 - `bqubo_speedup_comparison.png`
 - `bqubo_solve_times_linear.png`
 **Analysis:** Binary QUBO formulation speedup characteristics
 
 ### Script: `Plot Scripts\plot_lq_speedup.py`
+**Data Sources:** `qpu_lq_results.json`, `gurobi_lq_baseline.json`
 - `lq_speedup_comparison.png`
 - `lq_solve_times_linear.png`
 **Analysis:** Linear-quadratic formulation with synergy terms
 
 ### Script: `Plot Scripts\plot_patch_speedup.py`
+**Data Sources:** `qpu_patch_results.json`, `gurobi_patch_baseline.json`
 - `patch_speedup_comparison.png`
 - `patch_solve_times_linear.png`
 **Analysis:** Patch-based decomposition performance
@@ -500,6 +522,8 @@ Each generates:
 ### Fitted Speedup Analysis Scripts
 
 These scripts add polynomial/power-law fits to speedup data:
+
+**Data Sources (common):** `qpu_nln_results.json`, `qpu_bqubo_results.json`, `qpu_lq_results.json`, `gurobi_baseline_60s.json`
 
 - `Plot Scripts\plot_fitted_speedup.py` → `nln_fitted_speedup_analysis.png`, `bqubo_fitted_speedup_analysis.png`
 - `Plot Scripts\plot_lq_fitted_speedup.py` → `lq_fitted_speedup_analysis.png`
@@ -518,7 +542,8 @@ These scripts add polynomial/power-law fits to speedup data:
 
 ### Script: `Plot Scripts\plot_qpu_solution_histograms.py`
 
-**Purpose:** Visual analysis of solution structure and crop selection patterns
+**Purpose:** Visual analysis of solution structure and crop selection patterns  
+**Data Sources:** `qpu_hier_repaired.json`, `crop_data.csv`
 
 Generates the following plots:
 
@@ -550,7 +575,8 @@ Generates the following plots:
 
 ### Script: `Plot Scripts\plot_qpu_benchmark_results.py`
 
-**Purpose:** Comprehensive benchmark summary visualization
+**Purpose:** Comprehensive benchmark summary visualization  
+**Data Sources:** `qpu_benchmark_summary_*.json`, `gurobi_baseline_60s.json`
 
 Generates the following plots:
 
@@ -576,6 +602,8 @@ Generates the following plots:
 
 ### Quality-Speedup Trade-off Scripts
 
+**Data Sources (common):** `qpu_*_results.json` (per formulation), `gurobi_*_baseline.json` (per formulation)
+
 - `Plot Scripts\plot_nln_quality_speedup.py` → `nln_comprehensive_quality_analysis.png`
 - `Plot Scripts\plot_bqubo_quality_speedup.py` → `bqubo_comprehensive_quality_analysis.png`
 - `Plot Scripts\plot_lq_quality_speedup.py` → `lq_comprehensive_quality_analysis.png`
@@ -593,7 +621,8 @@ Generates the following plots:
 
 ### Script: `Plot Scripts\plot_comprehensive_speedup.py`
 
-**Purpose:** Unified speedup comparison across ALL formulations
+**Purpose:** Unified speedup comparison across ALL formulations  
+**Data Sources:** `qpu_nln_results.json`, `qpu_bqubo_results.json`, `qpu_lq_results.json`, `qpu_nld_results.json`, `qpu_patch_results.json`, `gurobi_baseline_60s.json`
 
 Generates the following plots:
 
@@ -605,7 +634,8 @@ Generates the following plots:
 
 ### Script: `Plot Scripts\plot_comprehensive_results.py`
 
-**Purpose:** Comprehensive result summary across all metrics
+**Purpose:** Comprehensive result summary across all metrics  
+**Data Sources:** `qpu_hier_repaired.json`, `gurobi_baseline_60s.json`, `gurobi_timeout_test_300s.json`
 
 Generates 3 plots:
 
@@ -617,7 +647,8 @@ Generates 3 plots:
 
 ### Script: `Plot Scripts\plot_comprehensive_comparison.py`
 
-**Purpose:** Method comparison (same name as above, likely updated version)
+**Purpose:** Method comparison (same name as above, likely updated version)  
+**Data Sources:** `qpu_hier_repaired.json`, `qpu_native_results.json`, `qpu_hybrid_results.json`, `gurobi_baseline_60s.json`
 
 Generates the following plots:
 
@@ -632,17 +663,19 @@ Multiple scripts generate farm/patch-specific visualizations:
 
 ### Farm Results (PuLP solver)
 - `Plot Scripts\plot_farm_pulp_results.py` → 5 plots analyzing PuLP classical solver
+  - **Data Sources:** `farm_pulp_results.json`
   - Performance, quality, crop diversity, area distribution, advanced analysis
 
 ### Farm Results (CQM solver)
 - `Plot Scripts\plot_farm_cqm_results.py` → 5 plots analyzing D-Wave CQM solver
+  - **Data Sources:** `farm_cqm_results.json`
   - Same structure as PuLP for direct comparison
 
 ### Patch Results (multiple solvers)
-- `Plot Scripts\plot_patch_pulp_results.py`
-- `Plot Scripts\plot_patch_gurobi_results.py`
-- `Plot Scripts\plot_patch_cqm_results.py`
-- `Plot Scripts\plot_patch_bqm_results.py` (7 plots including violation details)
+- `Plot Scripts\plot_patch_pulp_results.py` → **Data Sources:** `patch_pulp_results.json`
+- `Plot Scripts\plot_patch_gurobi_results.py` → **Data Sources:** `patch_gurobi_results.json`
+- `Plot Scripts\plot_patch_cqm_results.py` → **Data Sources:** `patch_cqm_results.json`
+- `Plot Scripts\plot_patch_bqm_results.py` (7 plots including violation details) → **Data Sources:** `patch_bqm_results.json`
 
 **Common Metrics:**
 - Performance: solve time, success rate
@@ -674,7 +707,8 @@ These are older analysis scripts, likely superseded by main scripts:
 
 ### Script: `KSAT\generate_plots.py`
 
-**Purpose:** k-SAT problem analysis (combinatorial optimization benchmark)
+**Purpose:** k-SAT problem analysis (combinatorial optimization benchmark)  
+**Data Sources:** `KSAT/ksat_results.json`, `KSAT/instance_data.json`
 
 Generates 9 plots:
 
@@ -694,7 +728,8 @@ Generates 9 plots:
 
 ### Script: `KSAT\visualization.py`
 
-**Purpose:** Solution visualization for spatial conservation problems
+**Purpose:** Solution visualization for spatial conservation problems  
+**Data Sources:** `KSAT/solution_data.json`, `KSAT/grid_config.json`
 
 Generates 3 plots:
 

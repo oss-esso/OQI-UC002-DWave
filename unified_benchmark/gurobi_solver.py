@@ -228,14 +228,8 @@ def solve_gurobi_ground_truth(
                     name=f"min_crops_{f_idx}_{t}"
                 )
         
-        # Constraint 3: Rotation - no same crop in consecutive periods
-        for f_idx in range(n_farms):
-            for c_idx in range(n_foods):
-                for t in range(1, n_periods):
-                    model.addConstr(
-                        Y[(f_idx, c_idx, t)] + Y[(f_idx, c_idx, t + 1)] <= 1,
-                        name=f"rotation_{f_idx}_{c_idx}_{t}"
-                    )
+        # NOTE: Hard rotation constraint removed - relying on R[c,c] soft penalty in objective only
+        # The temporal synergy term with R[c,c] = -1.2 penalizes monoculture
         
         entry.timing.model_build_time = time.time() - build_start
         logger.model_build_done(entry.timing.model_build_time)

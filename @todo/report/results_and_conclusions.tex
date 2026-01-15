@@ -146,6 +146,13 @@ Converting the CQM formulation to QUBO via penalty encoding fundamentally alters
 
 \begin{figure}[ht]
 \centering
+\includegraphics[width=\textwidth]{../../paper_plots/study1_hybrid_performance.pdf}
+\caption{Hybrid solver performance analysis. (a)~Solve time scaling with problem size on log-log axes. Gurobi achieves sub-second performance on the native CQM formulation but times out on QUBO encodings at all scales beyond 10 patches. D-Wave's hybrid CQM solver maintains constant $\sim$5~second solve times regardless of problem size. D-Wave's BQM hybrid solver successfully handles QUBO problems where classical Gurobi fails. (b)~QPU contribution as percentage of total solve time, showing that actual quantum computation constitutes only 1--2\% of hybrid solver wall-clock time.}
+\label{fig:study1_hybrid_time}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
 \includegraphics[width=\textwidth]{../../paper_plots/fig1_time_comparison.pdf}
 \caption{Wall-clock time comparison between classical and quantum solvers across problem scales. The classical Gurobi solver (operating on CQM formulation) achieves sub-second solve times due to favorable problem structure. The D-Wave hybrid CQM solver maintains constant 5.3--5.5~second solve times regardless of scale, with actual QPU annealing time (shown in orange) remaining at 70~milliseconds---only 1.3\% of total time. This constant QPU contribution indicates that hybrid solver performance is dominated by classical preprocessing rather than quantum computation.}
 \label{fig:time_comparison_pub}
@@ -192,20 +199,27 @@ where $k$ represents coordination rounds (typically 1--3), $n_{\text{partitions}
 
 \begin{table}[ht]
 \centering
-\caption{Pure QPU time scaling using Multilevel(10) decomposition. Pure QPU time remains under 22~seconds even for 1,000-farm problems, while classical embedding search consumes 95--99\% of total runtime. This identifies embedding as the primary bottleneck for quantum advantage.}
+\caption{Pure QPU time scaling using Multilevel(10) decomposition. Pure QPU time remains under 27~seconds even for 1,000-farm problems, while classical overhead (embedding, coordination) consumes 96--98\% of total runtime. This identifies embedding as the primary bottleneck for quantum advantage.}
 \label{tab:qpu_scaling_pub}
 \begin{tabular}{@{}rrrrrr@{}}
 \toprule
-\textbf{Farms} & \textbf{Parts.} & \textbf{QPU (s)} & \textbf{Embed (s)} & \textbf{Total (s)} & \textbf{QPU \%} \\
+\textbf{Farms} & \textbf{Parts.} & \textbf{QPU (s)} & \textbf{Classical (s)} & \textbf{Total (s)} & \textbf{QPU \%} \\
 \midrule
-10 & 2 & 0.21 & 1.2 & 1.41 & 14.9 \\
-50 & 7 & 1.03 & 18.5 & 19.53 & 5.3 \\
-100 & 12 & 2.15 & 65.3 & 67.45 & 3.2 \\
-500 & 52 & 10.87 & 984.2 & 995.07 & 1.1 \\
-1,000 & 102 & 21.78 & 3,473.6 & 3,495.38 & 0.6 \\
+10 & 2 & 0.42 & 13.1 & 13.5 & 3.1 \\
+50 & 7 & 1.51 & 127.0 & 128.6 & 1.2 \\
+100 & 12 & 2.85 & 195.5 & 198.3 & 1.4 \\
+500 & 52 & 13.44 & 825.7 & 839.1 & 1.6 \\
+1,000 & 102 & 26.83 & 1605.9 & 1632.7 & 1.6 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{../../paper_plots/study2_qpu_decomposition.pdf}
+\caption{Pure QPU decomposition performance analysis across eight decomposition methods. (a)~Total solve time comparison on log-log axes. Gurobi (blue) achieves sub-second solutions while all QPU methods show times dominated by classical embedding overhead. Direct QPU fails beyond 15 farms due to embedding constraints. Multilevel(10) provides the best scaling. (b)~Time breakdown for the three methods supporting large-scale problems (Multilevel(10), CQM-first, Coordinated), showing pure QPU time (solid) versus classical overhead (hatched). At 1,000 farms, pure QPU time constitutes only 2--5\% of total computation. (c)~QPU efficiency (percentage of total time spent on actual quantum annealing) across all methods at small scales, revealing that Multilevel decompositions achieve the highest QPU utilization.}
+\label{fig:study2_decomposition}
+\end{figure}
 
 \begin{figure}[ht]
 \centering
@@ -260,6 +274,13 @@ rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & 5.35$\times$ & 157 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{../../paper_plots/study3_quantum_advantage.pdf}
+\caption{Hierarchical QPU quantum advantage analysis across 13 rotation optimization scenarios. (a)~Solve time comparison showing QPU (blue) completing within 10--100~seconds while Gurobi (orange) hits the 60-second timeout on 11 of 13 scenarios. (b)~Speedup factor (Gurobi time / QPU time) by scenario; green bars indicate quantum advantage ($>$1), red indicates classical advantage ($<$1). (c)~QPU time breakdown showing pure quantum annealing (dark blue) versus classical overhead (light blue); pure QPU time constitutes only 1--2\% of total wall-clock time. (d)~Speedup scaling with problem size, demonstrating that quantum advantage increases with problem complexity.}
+\label{fig:study3_quantum_advantage}
+\end{figure}
 
 \begin{figure}[ht]
 \centering

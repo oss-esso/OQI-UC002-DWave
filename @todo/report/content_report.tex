@@ -457,9 +457,9 @@ where $\lambda_{div}$ is the diversity bonus coefficient and $\mathbb{I}(\cdot)$
     \[ \forall f \in F, \forall t \in T: \quad \sum_{c \in C} Y_{f,c,t} \le 2 \]
     \item \textbf{Minimum Crops (Soft Constraint):} Ensures at least one crop is planted.
     \[ \forall f \in F, \forall t \in T: \quad \sum_{c \in C} Y_{f,c,t} \ge 1 \]
-    \item \textbf{Rotation Constraint:} Prevents planting the same crop on the same farm in consecutive periods.
-    \[ \forall f \in F, \forall c \in C, \forall t \in \{1, \dots, T-1\}: \quad Y_{f,c,t} + Y_{f,c,t+1} \le 1 \]
 \end{enumerate}
+
+\textbf{Note:} Rotation behavior (avoiding monoculture) is enforced through the temporal synergy objective term with $R_{c,c} < 0$ (monoculture penalty), rather than a hard constraint. This allows the optimization to naturally discourage same-crop consecutive planting while maintaining a smoother objective landscape.
 
 
 % \subsubsection{Objective Function}
@@ -575,132 +575,56 @@ This parameter calibration ensures our benchmark instances represent realistic a
 
 
 
-% Revised subsection for natural flow from formulations A and B
 
 \subsection{Conversion to Quantum-Annealer-Compatible Formats}
 
-The two formulations presented above—the binary CQM with hard constraints (Formulation A) and the hierarchical multi-period model with quadratic synergies (Formulation B)—require different quantum compilation strategies depending on the target hardware. Formulation A is directly compatible with Leap's hybrid CQM solvers, which handle constraints natively through quantum-classical decomposition. However, to benchmark pure quantum annealing performance and explore the full quantum solution space, we must convert these constrained models into unconstrained Binary Quadratic Models (BQMs) suitable for direct QPU execution.
-
-This conversion is particularly critical for Formulation B, where the interplay between temporal rotation synergies (Equation 7), spatial neighbor interactions (Equation 8), and structural constraints creates a highly frustrated energy landscape—precisely the regime where quantum tunneling effects may provide computational advantages over classical local search methods.
-
-\subsubsection{From CQM to BQM: The Penalty Method}
-
-The standard approach for quantum annealer compilation transforms hard constraints into soft penalties added to the objective function. For our crop allocation problem, this yields an unconstrained energy minimization:
-
+To solve on pure QPU hardware (without hybrid solvers), we convert the CQM constraints to penalty terms, yielding an unconstrained Binary Quadratic Model (BQM). The general transformation is:
 \begin{equation}
-\min \quad E(Y) = -\mathcal{O}(Y) + \sum_{i} \lambda_i \cdot P_i(Y)
+\min \quad E(Y) = -Z(Y) + \sum_{i} \lambda_i \cdot P_i(Y)
+\end{equation}
+where $-Z(Y)$ is the negated objective, $P_i(Y)$ are quadratic penalty terms for constraint violations, and $\lambda_i$ are penalty weights. The result is expressed in standard BQM form:
+\begin{equation}
+E(\mathbf{x}) = \sum_{i} h_i x_i + \sum_{i<j} J_{ij} x_i x_j
+\end{equation}
+where $h_i$ are linear biases and $J_{ij}$ are quadratic couplings.
+
+\subsubsection{BQM for Formulation A (Binary Crop Allocation)}
+
+For Formulation A with variables $Y_{f,c}$, the BQM components are:
+
+\textbf{Linear biases} (from objective):
+\begin{equation}
+h_{(f,c)} = -\frac{L_f \cdot B_c}{A_{\text{total}}}
 \end{equation}
 
-where:
-\begin{itemize}
-    \item $-\mathcal{O}(Y)$ is the negated objective from Equation 6 (minimization for quantum annealing convention)
-    \item $P_i(Y)$ encode constraint violations as quadratic penalties
-    \item $\lambda_i \gg 1$ are Lagrange multipliers that enforce constraints in the ground state
-\end{itemize}
-
-The resulting energy function $E(Y)$ must be expressed in the canonical BQM form native to quantum annealers:
-
+\textbf{Quadratic couplings} (from one-hot constraint penalty):
 \begin{equation}
-E(\mathbf{x}) = \sum_{i} h_i x_i + \sum_{i<j} J_{ij} x_i x_j + c
+J_{(f,c_1),(f,c_2)} = 2\lambda_{\text{oh}} \quad \forall c_1 \neq c_2
 \end{equation}
 
-where $h_i$ are linear biases (local fields), $J_{ij}$ are quadratic couplings (pairwise interactions), and $c$ is a constant offset. This Ising-type Hamiltonian maps directly to the physical energy of superconducting flux qubits in D-Wave's quantum processing units.
+The plot assignment constraint $\sum_c Y_{f,c} \leq 1$ becomes the penalty $P(Y) = \lambda_{\text{oh}} \left(\sum_c Y_{f,c} - 1\right)^2$, which expands to introduce the quadratic couplings above.
 
-\subsubsection{Complete BQM for Hierarchical Rotation Model}
+\textbf{Problem size:} $n = F \cdot C$ variables with $F \cdot \binom{C}{2}$ quadratic terms.
 
-For Formulation B, we construct the full BQM by systematically incorporating each objective component and constraint penalty. The complete energy function decomposes as:
+\subsubsection{BQM for Formulation B (Multi-Period Rotation)}
 
+For Formulation B with variables $Y_{f,c,t}$, the BQM includes additional terms from temporal and spatial synergies:
+
+\textbf{Linear biases}:
+\begin{equation}
+h_{(f,c,t)} = -\frac{B_c \cdot L_f}{A_{\text{total}}} + 2\lambda_{\text{oh}}
+\end{equation}
+
+\textbf{Quadratic couplings}:
 \begin{align}
-E(\mathbf{x}) &= \underbrace{-\text{Benefit}}_{\text{linear}} + \underbrace{(-\text{Temporal} - \text{Spatial})}_{\text{quadratic objective}} \nonumber \\
-&\quad + \underbrace{\text{Penalty}}_{\text{one-hot}} + \underbrace{(-\text{Diversity})}_{\text{linearized}} + \underbrace{\lambda_r \sum P_{\text{rotation}}}_{\text{constraint penalties}}
+J_{(f,c_1,t),(f,c_2,t+1)} &= -\gamma_{\text{rot}} \cdot \frac{R_{c_1,c_2} \cdot L_f}{A_{\text{total}}} && \text{(rotation synergy)} \\
+J_{(f_1,c_1,t),(f_2,c_2,t)} &= -\gamma_{\text{spat}} \cdot \frac{S_{c_1,c_2}}{A_{\text{total}}} && \text{(spatial coupling, } (f_1,f_2) \in \mathcal{E} \text{)} \\
+J_{(f,c_1,t),(f,c_2,t)} &= 2\lambda_{\text{oh}} && \text{(one-hot penalty, } c_1 \neq c_2 \text{)}
 \end{align}
 
-\paragraph{Linear Biases.}
-Combining the base benefit (Equation 6) with the one-hot penalty contribution yields:
+\textbf{Problem size:} $n = F \cdot C \cdot T$ variables. For a typical instance (5 farms, 6 crop families, 3 periods): $n = 90$ variables with approximately 765 quadratic terms.
 
-\begin{equation}
-h_{f,c,t} = -\frac{B_c \cdot L_f}{A_{\text{total}}} + 2\lambda_{\text{oh}} - \lambda_{\text{div}} \cdot \delta_{f,c}
-\end{equation}
-
-where $\delta_{f,c}$ is a linearization variable for the diversity bonus indicator function.
-
-\paragraph{Quadratic Couplings.}
-The quadratic terms arise from three distinct sources, each with different structural properties:
-
-\begin{enumerate}
-\item \textbf{Temporal rotation synergies} (Equation 7)—connecting consecutive time periods on the same farm:
-\begin{equation}
-J^{\text{temp}}_{(f,c_1,t),(f,c_2,t+1)} = -\gamma_{\text{rot}} \cdot \frac{R_{c_1,c_2} \cdot L_f}{A_{\text{total}}} \quad \forall t \in \{1, \ldots, T-1\}
-\end{equation}
-
-\item \textbf{Spatial neighbor interactions} (Equation 8)—coupling farms within the same period:
-\begin{equation}
-J^{\text{spat}}_{(f_1,c_1,t),(f_2,c_2,t)} = -\gamma_{\text{spat}} \cdot \frac{S_{c_1,c_2}}{A_{\text{total}}} \quad \forall (f_1,f_2) \in \mathcal{E}
-\end{equation}
-
-\item \textbf{One-hot penalty terms} (Equation 9)—enforcing single crop selection per farm-period:
-\begin{equation}
-J^{\text{oh}}_{(f,c_1,t),(f,c_2,t)} = 2\lambda_{\text{oh}} \quad \forall c_1 \neq c_2
-\end{equation}
-
-\item \textbf{Rotation constraint penalties}—preventing consecutive monoculture:
-\begin{equation}
-J^{\text{cons}}_{(f,c,t),(f,c,t+1)} = \lambda_r \quad \forall c \in C, \, t \in \{1, \ldots, T-1\}
-\end{equation}
-\end{enumerate}
-
-\paragraph{Graph Structure and Complexity.}
-The BQM interaction graph exhibits a rich hierarchical structure reflecting the multi-scale nature of the agricultural optimization:
-
-\begin{itemize}
-    \item \textbf{Intra-farm temporal chains:} Each farm generates a $C \times T$ subgraph with $(C-1) + C^2(T-1)$ edges (one-hot + rotation interactions)
-    
-    \item \textbf{Inter-farm spatial couplings:} The $k$-NN neighbor graph with $|\mathcal{E}|$ edges multiplies to $|\mathcal{E}| \cdot C \cdot T$ spatial interaction terms
-    
-    \item \textbf{Total problem size:} 
-    \begin{itemize}
-        \item Variables: $n = F \cdot C \cdot T$
-        \item Quadratic terms: $\mathcal{O}(F \cdot C^2 \cdot T + |\mathcal{E}| \cdot C \cdot T)$
-    \end{itemize}
-\end{itemize}
-
-For our benchmark instances with $F=5$ farms, $C=6$ crop families, $T=3$ periods, and $k=4$ nearest neighbors ($|\mathcal{E}| = 10$ edges in the grid):
-
-\begin{align}
-n &= 5 \times 6 \times 3 = 90 \text{ qubits} \\
-|J| &\approx 5 \times 36 \times 2 + 10 \times 6 \times 3 + 5 \times 15 \times 3 = 765 \text{ couplings}
-\end{align}
-
-This coupling density ($|J|/n^2 \approx 9.4\%$) falls within the operational range of current quantum annealers but approaches the limits where minor embedding overhead becomes significant.
-
-\subsubsection{The Penalty Weight Selection Challenge}
-
-The critical bottleneck in BQM compilation is selecting appropriate penalty weights $\{\lambda_{\text{oh}}, \lambda_r, \lambda_{\text{div}}\}$ that ensure constraints are satisfied in the ground state without distorting the objective landscape. This requires balancing three competing requirements:
-
-\begin{enumerate}
-    \item \textbf{Constraint enforcement:} $\lambda_i$ must exceed the maximum objective energy gain from violating constraint $i$
-    
-    \item \textbf{Numerical precision:} Coefficient dynamic range $\max(|J|)/\min(|J|)$ is limited by qubit precision (typically $\sim 10^4$ on current hardware)
-    
-    \item \textbf{Optimization fidelity:} Over-penalization creates steep energy barriers that obscure the original objective structure and impede quantum tunneling
-\end{enumerate}
-
-For the one-hot constraint, we derive a lower bound by considering the maximum benefit from planting all $C$ crops simultaneously:
-
-\begin{equation}
-\lambda_{\text{oh}} \geq \frac{B_{\max} \cdot L_{\max}}{A_{\text{total}}} \cdot C
-\end{equation}
-
-where $B_{\max} = \max_c B_c$ and $L_{\max} = \max_f L_f$. Setting $\lambda_{\text{oh}} = 3.0$ in our experiments provides a safety margin of approximately 2.5$\times$ above this theoretical minimum, based on the range $B_c \in [0.5, 1.0]$ in our test instances.
-
-The rotation constraint penalty $\lambda_r$ must similarly overcome the worst-case synergy benefit:
-
-\begin{equation}
-\lambda_r \geq \max_{c_1,c_2} \left| \gamma_{\text{rot}} \cdot R_{c_1,c_2} \cdot \frac{L_{\max}}{A_{\text{total}}} \right|
-\end{equation}
-
-In our implementation, we use fixed penalty weights derived from these theoretical bounds: $\lambda_{\text{oh}} = 3.0$ (one-hot constraint) and $\lambda_r = 10.0$ (rotation constraints), calibrated to balance constraint satisfaction with objective fidelity. While adaptive penalty tuning (iteratively increasing penalties until target feasibility is reached) could further optimize these values, our fixed choices prove sufficient across all test scenarios, achieving over 95\% feasibility in Study III experiments. This approach ensures consistent and reproducible quantum-classical benchmarking without the computational overhead of iterative penalty calibration.
-
+\textbf{Penalty weight selection:} We set $\lambda_{\text{oh}} = 3.0$ to ensure constraint satisfaction while preserving objective structure. If too small, constraints are violated; if too large, the solver cannot explore the true objective landscape.
 
 
 \subsubsection{Embedding on Pegasus Topology}

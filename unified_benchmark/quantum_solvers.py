@@ -340,15 +340,8 @@ def solve_native_6family(
                     for j in range(i + 1, len(vars_this)):
                         bqm.add_quadratic(vars_this[i], vars_this[j], 2 * one_hot_penalty)
         
-        # EXPLICIT ROTATION CONSTRAINT: Y_{f,c,t} + Y_{f,c,t+1} <= 1
-        # Penalizes same crop in consecutive periods (hard constraint)
-        rotation_constraint_penalty = 10.0  # Strong penalty to enforce constraint
-        for f_idx in range(n_farms):
-            for c_idx in range(n_foods):
-                for t in range(1, n_periods):
-                    var1 = var_map[(f_idx, c_idx, t)]
-                    var2 = var_map[(f_idx, c_idx, t+1)]
-                    bqm.add_quadratic(var1, var2, rotation_constraint_penalty)
+        # NOTE: Hard rotation constraint removed - relying on R[c,c] soft penalty in objective only
+        # The temporal synergy term with R[c,c] = -1.2 penalizes monoculture
         
         entry.timing.model_build_time = time.time() - build_start
         logger.model_build_done(entry.timing.model_build_time)
@@ -700,16 +693,7 @@ def solve_hierarchical_aggregated(
                             for j in range(i + 1, len(vars_this)):
                                 bqm.add_quadratic(vars_this[i], vars_this[j], 2 * one_hot_penalty)
                 
-                # EXPLICIT ROTATION CONSTRAINT: Y_{f,c,t} + Y_{f,c,t+1} <= 1
-                rotation_constraint_penalty = 10.0
-                for f_idx, farm in enumerate(cluster_farms):
-                    farm_global_idx = farm_names.index(farm)
-                    for c_idx in range(n_foods_agg):
-                        for t in range(1, n_periods):
-                            if (farm_global_idx, c_idx, t) in var_map and (farm_global_idx, c_idx, t+1) in var_map:
-                                var1 = var_map[(farm_global_idx, c_idx, t)]
-                                var2 = var_map[(farm_global_idx, c_idx, t+1)]
-                                bqm.add_quadratic(var1, var2, rotation_constraint_penalty)
+                # NOTE: Hard rotation constraint removed - relying on R[c,c] soft penalty in objective only
                 
                 # Boundary coordination from previous iteration
                 if iteration > 0 and cluster_idx > 0:
@@ -1060,16 +1044,7 @@ def solve_hybrid_27food(
                             for j in range(i + 1, len(vars_this)):
                                 bqm.add_quadratic(vars_this[i], vars_this[j], 2 * one_hot_penalty)
                 
-                # EXPLICIT ROTATION CONSTRAINT: Y_{f,c,t} + Y_{f,c,t+1} <= 1
-                rotation_constraint_penalty = 10.0
-                for farm in cluster_farms:
-                    f_global_idx = farm_names.index(farm)
-                    for c_idx in range(n_foods):
-                        for t in range(1, n_periods):
-                            if (f_global_idx, c_idx, t) in var_map and (f_global_idx, c_idx, t+1) in var_map:
-                                var1 = var_map[(f_global_idx, c_idx, t)]
-                                var2 = var_map[(f_global_idx, c_idx, t+1)]
-                                bqm.add_quadratic(var1, var2, rotation_constraint_penalty)
+                # NOTE: Hard rotation constraint removed - relying on R[c,c] soft penalty in objective only
                 
                 # Boundary coordination
                 if iteration > 0 and cluster_idx > 0:
