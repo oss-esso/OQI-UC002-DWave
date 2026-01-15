@@ -334,7 +334,7 @@ DEFAULT_GUROBI_60S_PATH = PROJECT_ROOT / "gurobi_baseline_60s.json"
 DEFAULT_GUROBI_300S_DIR = PROJECT_ROOT / "@todo" / "gurobi_timeout_verification"
 # The specific 300s file used in original assess_violation_impact.py and deep_dive_gap_analysis.py
 DEFAULT_GUROBI_300S_FILE = DEFAULT_GUROBI_300S_DIR / "gurobi_timeout_test_20251224_103144.json"
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "professional_plots"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "phase3_results_plots"
 
 
 def _determine_formulation(n_foods: int) -> str:
@@ -959,7 +959,7 @@ def prepare_scaling_data_60s() -> pd.DataFrame:
 
 def plot_comprehensive_scaling(
     df: pd.DataFrame,
-    output_dir: Path | str = "professional_plots",
+    output_dir: Path | str = "phase3_results_plots",
 ) -> Path:
     """
     Create 2x3 comprehensive scaling plot matching the reference style.
@@ -1205,7 +1205,7 @@ def prepare_scaling_data_300s() -> pd.DataFrame:
 
 def plot_split_analysis(
     df: pd.DataFrame,
-    output_dir: Path | str = "professional_plots",
+    output_dir: Path | str = "phase3_results_plots",
 ) -> Path:
     """
     Create 2x3 plot with split formulation analysis (6-Family vs 27-Food).
@@ -1445,7 +1445,7 @@ def plot_split_analysis(
 
 def plot_objective_gap_analysis(
     df: pd.DataFrame,
-    output_dir: Path | str = "professional_plots",
+    output_dir: Path | str = "phase3_results_plots",
 ) -> Path:
     """
     Deep dive into objective value gaps with scatter and regression analysis.
@@ -1881,7 +1881,7 @@ def plot_violation_impact(
     explained_pct = (df["gap"].sum() - adj_gaps.sum()) / df["gap"].sum() * 100 if df["gap"].sum() > 0 else 0
 
     # Create figure
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 10))
 
     # Panel 1: Violation rate by scenario
     ax = axes[0, 0]
@@ -2264,7 +2264,7 @@ DEEP DIVE FINDINGS
 
 
 def plot_qpu_advantage_corrected(
-    output_dir: str | Path = "professional_plots",
+    output_dir: str | Path = "phase3_results_plots",
     formats: list[str] | None = None,
 ) -> Path:
     """
@@ -2739,7 +2739,7 @@ def plot_qpu_benchmark_small_scale(
     Parameters
     ----------
     output_dir : Path, optional
-        Output directory (default: professional_plots)
+        Output directory (default: phase3_results_plots)
     formats : list[str], optional
         Output formats (default: ["png", "pdf"])
 
@@ -2749,7 +2749,7 @@ def plot_qpu_benchmark_small_scale(
         Path to saved figure
     """
     if output_dir is None:
-        output_dir = Path(__file__).parent / "professional_plots"
+        output_dir = Path(__file__).parent / "phase3_results_plots"
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
 
@@ -2790,10 +2790,16 @@ def plot_qpu_benchmark_small_scale(
                        color=_BENCHMARK_COLORS["Gurobi"], label="Gurobi", alpha=0.9)
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            qpu_times = [t for t in metrics[method]["qpu_time"] if t > 0]
+            # Filter HybridGrid to ≤100 farms for small-scale plot
+            max_farms = 100 if "HybridGrid" in method else float("inf")
+            qpu_times = [
+                t for i, t in enumerate(metrics[method]["qpu_time"])
+                if t > 0 and metrics[method]["n_farms"][i] <= max_farms
+            ]
             farms = [
                 metrics[method]["n_farms"][i]
-                for i, t in enumerate(metrics[method]["qpu_time"]) if t > 0
+                for i, t in enumerate(metrics[method]["qpu_time"])
+                if t > 0 and metrics[method]["n_farms"][i] <= max_farms
             ]
             if qpu_times:
                 ax.semilogy(
@@ -2817,12 +2823,20 @@ def plot_qpu_benchmark_small_scale(
         )
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            ax.plot(
-                metrics[method]["n_farms"], metrics[method]["objective"],
-                marker=_BENCHMARK_MARKERS.get(method, "o"), linestyle="-",
-                linewidth=2, markersize=8, color=_BENCHMARK_COLORS.get(method, "#888"),
-                label=method, alpha=0.8,
-            )
+            # Filter HybridGrid to ≤100 farms for small-scale plot
+            max_farms = 100 if "HybridGrid" in method else float("inf")
+            farms = [f for f in metrics[method]["n_farms"] if f <= max_farms]
+            objs = [
+                metrics[method]["objective"][i]
+                for i, f in enumerate(metrics[method]["n_farms"]) if f <= max_farms
+            ]
+            if farms:
+                ax.plot(
+                    farms, objs,
+                    marker=_BENCHMARK_MARKERS.get(method, "o"), linestyle="-",
+                    linewidth=2, markersize=8, color=_BENCHMARK_COLORS.get(method, "#888"),
+                    label=method, alpha=0.8,
+                )
     ax.set_xlabel("Number of Farms")
     ax.set_ylabel("Objective Value")
     ax.set_title("Solution Quality")
@@ -2834,12 +2848,20 @@ def plot_qpu_benchmark_small_scale(
     ax = axes[1, 0]
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
-            ax.plot(
-                metrics[method]["n_farms"], metrics[method]["gap"],
-                marker=_BENCHMARK_MARKERS.get(method, "o"), linestyle="-",
-                linewidth=2, markersize=8, color=_BENCHMARK_COLORS.get(method, "#888"),
-                label=method, alpha=0.8,
-            )
+            # Filter HybridGrid to ≤100 farms for small-scale plot
+            max_farms = 100 if "HybridGrid" in method else float("inf")
+            farms = [f for f in metrics[method]["n_farms"] if f <= max_farms]
+            gaps = [
+                metrics[method]["gap"][i]
+                for i, f in enumerate(metrics[method]["n_farms"]) if f <= max_farms
+            ]
+            if farms:
+                ax.plot(
+                    farms, gaps,
+                    marker=_BENCHMARK_MARKERS.get(method, "o"), linestyle="-",
+                    linewidth=2, markersize=8, color=_BENCHMARK_COLORS.get(method, "#888"),
+                    label=method, alpha=0.8,
+                )
     ax.axhline(y=0, color="green", linestyle="--", linewidth=1.5, alpha=0.7, label="Optimal")
     ax.axhline(y=10, color="orange", linestyle=":", linewidth=1.5, alpha=0.5, label="10% Gap")
     ax.set_xlabel("Number of Farms")
@@ -2850,22 +2872,28 @@ def plot_qpu_benchmark_small_scale(
 
     # Panel 4: Violations
     ax = axes[1, 1]
-    all_farms = sorted({f for m in metrics.values() for f in m["n_farms"]})
+    # For small-scale, only show farms ≤100
+    all_farms = sorted({f for m in metrics.values() for f in m["n_farms"] if f <= 100})
     x = np.arange(len(all_farms))
     width = 0.12
     plotted = 0
     for method in small_methods:
         if method in metrics and metrics[method]["n_farms"]:
+            # Filter HybridGrid to ≤100 farms for small-scale plot
+            max_farms = 100 if "HybridGrid" in method else float("inf")
             viols = [
                 metrics[method]["violations"][metrics[method]["n_farms"].index(f)]
-                if f in metrics[method]["n_farms"] else 0
+                if f in metrics[method]["n_farms"] and f <= max_farms else 0
                 for f in all_farms
             ]
-            ax.bar(
-                x + plotted * width, viols, width,
-                label=method, color=_BENCHMARK_COLORS.get(method, "#888"), alpha=0.8,
-            )
-            plotted += 1
+            # Only plot if there's any data for this method in the range
+            method_farms = [f for f in metrics[method]["n_farms"] if f <= max_farms]
+            if method_farms:
+                ax.bar(
+                    x + plotted * width, viols, width,
+                    label=method, color=_BENCHMARK_COLORS.get(method, "#888"), alpha=0.8,
+                )
+                plotted += 1
     ax.set_xlabel("Number of Farms")
     ax.set_ylabel("Constraint Violations")
     ax.set_title("Feasibility")
@@ -2902,7 +2930,7 @@ def plot_qpu_benchmark_large_scale(
     Parameters
     ----------
     output_dir : Path, optional
-        Output directory (default: professional_plots)
+        Output directory (default: phase3_results_plots)
     formats : list[str], optional
         Output formats (default: ["png", "pdf"])
 
@@ -2912,7 +2940,7 @@ def plot_qpu_benchmark_large_scale(
         Path to saved figure
     """
     if output_dir is None:
-        output_dir = Path(__file__).parent / "professional_plots"
+        output_dir = Path(__file__).parent / "phase3_results_plots"
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
 
@@ -3082,7 +3110,7 @@ def plot_qpu_benchmark_comprehensive(
     Parameters
     ----------
     output_dir : Path, optional
-        Output directory (default: professional_plots)
+        Output directory (default: phase3_results_plots)
     formats : list[str], optional
         Output formats (default: ["png", "pdf"])
 
@@ -3092,7 +3120,7 @@ def plot_qpu_benchmark_comprehensive(
         Path to saved figure
     """
     if output_dir is None:
-        output_dir = Path(__file__).parent / "professional_plots"
+        output_dir = Path(__file__).parent / "phase3_results_plots"
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
 
