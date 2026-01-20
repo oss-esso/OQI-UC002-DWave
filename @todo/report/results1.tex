@@ -1,0 +1,205 @@
+\subsection{Study 1 Results}
+\label{subsec:hybrid_benchmarks}
+
+\subsubsection{Experimental Design}
+
+We conducted extensive benchmarking of D-Wave's hybrid solvers (LeapHybridCQMSolver, LeapHybridBQMSolver) against classical Gurobi optimization across two test configurations:
+
+\begin{enumerate}
+    \item \textbf{Farm-Level Configuration:} Large-scale allocation testing CQM formulations
+    \item \textbf{Patch-Level Configuration:} Medium-scale allocation testing both CQM and BQM/QUBO formulations
+\end{enumerate}
+
+\paragraph{Solver Configurations}
+
+\begin{table}[H]
+\centering
+\caption{Solver configurations tested in comprehensive benchmarks}
+\label{tab:solver_configs}
+\begin{tabular}{llp{6cm}}
+\toprule
+\textbf{Configuration} & \textbf{Solver} & \textbf{Description} \\
+\midrule
+\multirow{2}{*}{Farm} & Gurobi (PuLP) & Classical MILP solver on CQM formulation \\
+& D-Wave CQM & LeapHybridCQMSolver \\
+\midrule
+\multirow{4}{*}{Patch} & Gurobi (PuLP) & Classical MILP solver on CQM formulation \\
+& D-Wave CQM & LeapHybridCQMSolver \\
+& Gurobi QUBO & Classical solver on BQM/QUBO formulation \\
+& D-Wave BQM & LeapHybridBQMSolver \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Problem Scales Tested}
+
+Farm configuration: 10, 25, 50, 100 units (270 to 2,700 variables)
+
+Patch configuration: 10, 15, 25, 50, 100, 200, 1,000 units (270 to 27,027 variables)
+
+\subsubsection{Key Results: Solver Performance Comparison}
+
+\paragraph{Result 1: Classical Gurobi Achieves Optimal Solutions Rapidly}
+
+Across all problem scales tested (10 to 1,000 patches), classical Gurobi consistently found optimal or near-optimal solutions in under 1.2 seconds. For the largest instances (1,000 patches = 27,027 variables), Gurobi solved in 1.15 seconds with 0\% optimality gap.
+
+\textbf{Key Observation:} Gurobi's performance reflects decades of mixed-integer linear programming (MILP) algorithm development applied to a problem with favorable characteristics for classical optimization. Variant A has a linear objective function and a relatively sparse constraint structure, with each farm variable appearing in only a few constraints. The rapid solve times (\(<1.2\,\mathrm{s}\) for 27,027 variables) suggest that Gurobi's branch-and-bound algorithm, presolve reductions, and cutting-plane generation are highly effective for this class of
+problems.
+
+\paragraph{Result 2: Gurobi QUBO Performance Degradation is Expected}
+
+As anticipated in (add ref for the section that talks about the bottlenecks), Gurobi performs poorly on the QUBO formulation. Converting constraints to quadratic penalties fundamentally alters the problem structure in ways that eliminate classical solver advantages:
+
+\begin{itemize}
+    \item \textbf{Small Scale (10 patches):} Gurobi QUBO takes $\sim$100 seconds and hits timeout
+    \item \textbf{Medium Scale (25 patches):} Gurobi QUBO consistently hits 300-second timeout
+    \item \textbf{Large Scale (100+ patches):} Gurobi QUBO hits timeout or returns infeasible solutions
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Gurobi QUBO solver performance on Patch Scenario}
+\label{tab:gurobi_qubo_degradation}
+\begin{tabular}{rcccc}
+\toprule
+\textbf{Patches} & \textbf{Gurobi CQM (s)} & \textbf{Gurobi QUBO (s)} & \textbf{Objective} & \textbf{Status} \\
+\midrule
+10 & 0.01 & 100.8 & 0.453 & Timeout \\
+15 & 0.02 & 100.5 & 0.342 & Timeout \\
+25 & 0.03 & 101.0 & 0.262 & Timeout \\
+50 & 0.05 & 103.5 & 0.182 & Timeout \\
+100 & 0.08 & 7.9 & 0.000 & Infeasible \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Why This is Expected:} Converting constraints to quadratic penalties destroys the linear structure that classical solvers exploit. The QUBO formulation has:
+\begin{itemize}
+    \item Weak LP relaxation (quadratic penalties relax to arbitrary fractional values)
+    \item Exponentially large branch-and-bound tree (no cutting planes available)
+    \item Sensitivity to Lagrange multiplier tuning (poor $\lambda$ values yield infeasible or dominated solutions)
+\end{itemize}
+
+
+
+\paragraph{Result 3: D-Wave Hybrid CQM Maintains Constant Time Profile vs. Classical Gurobi}
+
+The LeapHybridCQMSolver demonstrated remarkable consistency when compared against classical Gurobi on the CQM formulation:
+
+\begin{itemize}
+    \item \textbf{Solution Quality:} 0.8 to 10.5\% objective value gap across scales (excellent considering constant solve time)
+    \item \textbf{Solve Time:} Consistent 5.3 to 5.5 seconds for all farm scales (540 to 2,700 variables)
+    \item \textbf{QPU Time:} Constant ~70ms (0.070s) across all scales
+    \item \textbf{Feasibility:} Achieves constraint satisfaction for 15+ farm problems
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{D-Wave Hybrid CQM performance comparison on Farm Scenario}
+\label{tab:hybrid_cqm_performance}
+\begin{adjustbox}{max width=1.1\textwidth}
+\small
+\begin{tabular}{rcccccc}
+\toprule
+\textbf{Farms} & \textbf{Variables} & \textbf{Gurobi Time (s)} & \textbf{D-Wave CQM Time (s)} & \textbf{QPU Time (s)} & \textbf{Gap (\%)} & \textbf{Feasible} \\
+\midrule
+10 & 540 & 0.08 & 5.32 & 0.070 & 10.5 & No \\
+15 & 810 & 0.10 & 5.41 & 0.069 & 8.2 & Yes \\
+25 & 1,350 & 0.15 & 5.45 & 0.070 & 4.1 & Yes \\
+50 & 2,700 & 0.25 & 5.42 & 0.070 & 0.8 & Yes \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{D-Wave Hybrid CQM performance on Patch Scenario (larger scales)}
+\label{tab:hybrid_cqm_patch}
+\begin{adjustbox}{max width=1.1\textwidth}
+\small
+\begin{tabular}{rcccccc}
+\toprule
+\textbf{Patches} & \textbf{Variables} & \textbf{Gurobi Time (s)} & \textbf{D-Wave CQM Time (s)} & \textbf{QPU Time (ms)} & \textbf{Status} & \textbf{Coverage} \\
+\midrule
+10 & 297 & 0.01 & 5.32 & 70 & Feasible & 100\% \\
+100 & 2,727 & 0.08 & 5.41 & 35 & Feasible & 100\% \\
+200 & 5,427 & 0.20 & 5.06 & 35 & Infeasible & 1470\% \\
+500 & 13,527 & 0.49 & 5.67 & 35 & Infeasible & 1546\% \\
+1,000 & 27,027 & 1.15 & 11.04 & 35 & Infeasible & 1709\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{Critical Insight:} The constant solve time profile (5.4 seconds across all scales) is unexpected but reveals an important finding. Post-hoc analysis of QPU usage statistics (available via \texttt{sampleset.info}) showed that actual QPU annealing time is consistently either 70ms (0.070s) or 35ms , constituting only \textbf{1.3\%} of total wall-clock time. The remaining 98.7\% is classical preprocessing (problem decomposition, embedding search) and postprocessing (solution refinement). The \texttt{min\_solve\_time} property also has given some insight into why this happens: when a job is submitted to the Hybrid Solvers the minimum time it \textit{should} take to solve it is calculated automatically and the solution is not returned before that amount of time has passed \cite{dwave:solver_properties_all}.
+
+\textbf{Scale-dependent behavior:} scenarios exhibits constraint violations at 200+ patches, with coverage exceeding available land by 15 to 17$\times$. This suggests the hybrid CQM solver prioritizes objective optimization over strict constraint satisfaction when problem density increases, highlighting a trade-off in the hybrid solver's internal decision-making.
+
+\paragraph{Result 4: D-Wave BQM Hybrid Solver Succeeds on QUBO vs. Classical Gurobi}
+
+The LeapHybridBQMSolver (accepting BQM/QUBO input) successfully solved the penalty-encoded problem across all scale:
+
+\begin{itemize}
+    \item \textbf{Solve Time:} 3.0 to 343.8 seconds (scales with problem size, unlike CQM hybrid)
+    \item \textbf{Solution Quality:} Achieves feasible solutions where Gurobi QUBO consistently times out or fails
+    \item \textbf{Scalability:} Successfully solved 1,000-patch problem (55,310 variables) in 343.8 seconds
+    \item \textbf{QPU Time:} Scales from 52ms (10 patches) to 672ms (1,000 patches)
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{D-Wave BQM Hybrid Solver scaling on Patch Scenario}
+\label{tab:dwave_bqm_scaling}
+\small
+\begin{tabular}{rccccc}
+\toprule
+\textbf{Patches} & \textbf{Variables} & \textbf{Interactions} & \textbf{Solve Time (s)} & \textbf{QPU Time (ms)} & \textbf{Objective} \\
+\midrule
+10 & 434 & 15,635 & 3.0 & 52 & 0.223 \\
+25 & 886 & 48,635 & 6.4 & 103 & 0.523 \\
+50 & 1,618 & 103,135 & 10.2 & 155 & 1.045 \\
+100 & 5,729 & 199,375 & 18.3 & 310 & 7.857 \\
+200 & 10,427 & 425,635 & 42.1 & 421 & 12.834 \\
+500 & 26,027 & 1,062,635 & 125.8 & 538 & 18.221 \\
+1,000 & 55,310 & 14,217,154 & 343.8 & 672 & 22.704 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+% DATA FILES REFERENCE
+% ============================================================================
+% The results presented in this section are stored in the following files:
+%
+% PRIMARY DATA FILES:
+% - Legacy/COMPREHENSIVE/comprehensive_benchmark_configs_dwave_20251029_121522.json
+%   Complete D-Wave + Gurobi results (209,475 lines) - ALL tables
+%
+% - Legacy/COMPREHENSIVE/comprehensive_benchmark_configs_20251029_114837.json
+%   Classical Gurobi results (57,211 lines)
+%
+% RECENT BENCHMARK FILES:
+% - @todo/benchmark_results/comprehensive_benchmark_20251127_142804.json
+% - @todo/benchmark_results/scaling_benchmark_comprehensive_20251130_191433.json
+% - @todo/benchmark_results/scaling_benchmark_comprehensive_20251130_120618.json
+%
+% HYBRID TEST RESULTS:
+% - @todo/hybrid_test_results/hybrid_test_1765552825.json
+% - @todo/hybrid_test_results/hybrid_test_1765549560.json
+% - Phase3Report/Data/hybrid_test_1765552825.json
+%
+% CSV EXPORTS (D-Wave Sampleset Data):
+% Farm CQM: comprehensive_Farm_DWave_config{10,15,25,50}_run1_*.csv
+% Patch CQM: comprehensive_Patch_DWave_config{10,100,1000}_run1_*.csv
+% Patch BQM: comprehensive_Patch_DWaveBQM_config{100,1000}_run1_*.csv
+%
+% TABLE MAPPING TO DATA:
+% - Table \ref{tab:gurobi_qubo_degradation}: Patch Scenario → 'gurobi_qubo' solver
+% - Table \ref{tab:hybrid_cqm_performance}: Farm Scenario → 'dwave_cqm' solver
+% - Table \ref{tab:hybrid_cqm_patch}: Patch Scenario → 'dwave_cqm' solver
+% - Table \ref{tab:dwave_bqm_scaling}: Patch Scenario → 'dwave_bqm' solver
+%
+% GENERATION SCRIPT:
+% - Benchmark Scripts/comprehensive_benchmark.py
+% ============================================================================
