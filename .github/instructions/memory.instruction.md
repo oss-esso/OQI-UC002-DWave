@@ -33,3 +33,40 @@ When `cqm_to_bqm()` converts constraints to penalties:
 - Diagnostic script completed with progress bars
 - 10-variable analysis shows clear coefficient scaling issues
 - Next: 50-variable run, LaTeX report, scaled BQUBO implementation, Gurobi QUBO comparison script
+
+## Violation Healing Analysis (Jan 21, 2026)
+
+### Context
+Applied the same violation "healing" analysis from the rotation scenario to the benchmark data (small/large/comprehensive scales).
+
+### Key Findings
+
+**Feasibility Summary:**
+- Total method-scale combinations: 44
+- Feasible (0 violations): 28 (63.6%)
+- Infeasible (>0 violations): 16 (36.4%)
+
+**Methods Always Feasible:**
+- `cqm_first_PlotBased`
+- `Louvain_QPU`
+
+**Methods With Some Violations:**
+- `Spectral(10)_QPU`, `coordinated`, `Multilevel(10)_QPU`, `PlotBased_QPU`, `Multilevel(5)_QPU`, `HybridGrid(5,9)_QPU`, `HybridGrid(10,9)_QPU`
+
+**Critical Insight:**
+Unlike the rotation scenario, in the benchmark data:
+- Most infeasible solutions (14/16) have **NEGATIVE gaps** (QPU < Gurobi)
+- Only 2 entries have positive gaps (QPU > Gurobi)
+- For those 2 positive-gap entries, violations explain **95.1%** of the gap
+
+**Interpretation:**
+Violations are NOT helping QPU "cheat" to higher objectives. Instead, violations indicate difficulty in the optimization:
+- Problems are harder for QPU to solve
+- Both solution quality AND feasibility suffer together
+- Feasible solutions have better average performance than infeasible ones
+
+**Analysis Script:** `analyze_benchmark_violation_healing.py`
+**Output Files:** 
+- `phase3_results_plots/benchmark_violation_healing_analysis.png/pdf`
+- `phase3_results_plots/benchmark_violation_healing_table.png`
+- `phase3_results_plots/benchmark_violation_healing_data.csv`

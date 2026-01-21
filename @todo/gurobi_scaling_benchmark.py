@@ -73,8 +73,8 @@ LOG_SWEEP_VARIABLES = [
 ]
 
 # Gurobi settings (matching comprehensive_benchmark.py)
-GUROBI_TIMEOUT_PROOF = 900       # 10 minutes for optimality proof
-GUROBI_TIMEOUT_NO_PROOF = 300    # 100 seconds for quick solve (matches comprehensive)
+GUROBI_TIMEOUT_PROOF = 9000       # 150 minutes for optimality proof
+GUROBI_TIMEOUT_NO_PROOF = 3000    # 50 mins for quick solve (matches comprehensive)
 MIP_GAP_PROOF = 0.0              # Prove optimality
 MIP_GAP_NO_PROOF = 0.01          # 1% gap acceptable
 
@@ -251,7 +251,7 @@ def _solve_with_gurobipy(
         model.setParam("TimeLimit", timeout)
         model.setParam("MIPGap", mip_gap)
         model.setParam("Threads", 0)  # Use all cores
-        model.setParam("Presolve", 2)  # Aggressive presolve
+        model.setParam("Presolve", 0)  # Disable presolve - ineffective for this problem structure
         
         if with_optimality_proof:
             model.setParam("MIPFocus", 2)  # Focus on proving optimality
@@ -690,7 +690,7 @@ if __name__ == "__main__":
     parser.add_argument('--output-dir', type=str, default=None, help='Directory to save results')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--until-limit', action='store_true', help='Continue doubling variables until solver limit is hit')
-    parser.add_argument('--max-vars', type=int, default=1_000_000, help='Maximum number of variables when using --until-limit')
+    parser.add_argument('--max-vars', type=int, default=100_000_000, help='Maximum number of variables when using --until-limit (default: 100M)')
     parser.add_argument('--no-gurobi', action='store_true', help='Force fallback to PuLP/CBC even if gurobipy is available')
 
     args = parser.parse_args()
