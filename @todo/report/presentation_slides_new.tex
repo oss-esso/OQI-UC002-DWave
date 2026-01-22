@@ -1,0 +1,1333 @@
+% ============================================================================
+% QUANTUM FOOD OPTIMIZATION - BEAMER PRESENTATION
+% 40-Minute Technical Presentation
+% Author: Edoardo Spigarolo
+% ============================================================================
+
+\documentclass[aspectratio=169,10pt]{beamer}
+
+% ============================================================================
+% THEME AND COLORS
+% ============================================================================
+\usetheme{default}
+\usecolortheme{default}
+
+% Custom colors
+\definecolor{primaryBlue}{RGB}{0, 84, 147}
+\definecolor{secondaryBlue}{RGB}{0, 119, 182}
+\definecolor{accentTeal}{RGB}{0, 150, 136}
+\definecolor{accentGreen}{RGB}{76, 175, 80}
+\definecolor{warmOrange}{RGB}{255, 152, 0}
+\definecolor{alertRed}{RGB}{244, 67, 54}
+\definecolor{lightBg}{RGB}{245, 248, 250}
+\definecolor{darkText}{RGB}{33, 37, 41}
+\definecolor{mutedGray}{RGB}{108, 117, 125}
+
+% Set main colors
+\setbeamercolor{palette primary}{bg=primaryBlue,fg=white}
+\setbeamercolor{structure}{fg=primaryBlue}
+\setbeamercolor{frametitle}{fg=primaryBlue,bg=white}
+\setbeamercolor{normal text}{fg=darkText}
+\setbeamercolor{block title}{bg=primaryBlue,fg=white}
+\setbeamercolor{block body}{bg=lightBg,fg=darkText}
+\setbeamercolor{itemize item}{fg=primaryBlue}
+\setbeamercolor{itemize subitem}{fg=secondaryBlue}
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc,backgrounds,fit,arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{hyperref}
+\usepackage{fontawesome5}
+
+% Graphics path - use actual location of plots
+\graphicspath{{../plots/}}
+
+% ============================================================================
+% BEAMER SETTINGS
+% ============================================================================
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{itemize item}{\small$\bullet$}
+\setbeamertemplate{itemize subitem}{\scriptsize$\circ$}
+
+% Reduce margins for denser slides
+\setbeamersize{text margin left=0.5cm,text margin right=0.5cm}
+
+% ============================================================================
+% CUSTOM BOXES
+% ============================================================================
+\newtcolorbox{keybox}[1][]{
+    enhanced,colback=accentTeal!8,colframe=accentTeal,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+\newtcolorbox{resultbox}[1][]{
+    enhanced,colback=accentGreen!8,colframe=accentGreen,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+\newtcolorbox{warnbox}[1][]{
+    enhanced,colback=warmOrange!8,colframe=warmOrange,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+
+% ============================================================================
+% TITLE INFO
+% ============================================================================
+\title{\textbf{Food Production Optimization}}
+\subtitle{Quantum Annealing for Sustainable Agriculture --- Phase 3 \& 4 Report}
+\author{Edoardo Spigarolo}
+\institute{EPFL $|$ Open Quantum Initiative}
+\date{January 2026}
+
+% ============================================================================
+\begin{document}
+% ============================================================================
+
+% ----------------------------------------------------------------------------
+% TITLE SLIDE
+% ----------------------------------------------------------------------------
+\begin{frame}[plain]
+\begin{tikzpicture}[remember picture,overlay]
+    \fill[primaryBlue] (current page.north west) rectangle (current page.south east);
+    \node[white,font=\Huge\bfseries,align=center] at ([yshift=1.5cm]current page.center) {Food Production Optimization};
+    \node[white,font=\large,align=center] at ([yshift=0.3cm]current page.center) {Quantum Annealing for Sustainable Agriculture};
+    \node[white!80,font=\normalsize] at ([yshift=-0.8cm]current page.center) {Phase 3 \& 4 Report};
+    \node[white,font=\small] at ([yshift=-2.2cm]current page.center) {Edoardo Spigarolo};
+    \node[white!70,font=\footnotesize] at ([yshift=-2.8cm]current page.center) {EPFL $|$ Open Quantum Initiative $|$ January 2026};
+\end{tikzpicture}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+% OUTLINE
+% ----------------------------------------------------------------------------
+\begin{frame}{Outline}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Part I: Background \& Setup}
+\begin{enumerate}
+    \item Problem \& Motivation
+    \item Mathematical Formulation
+    \item Quantum Hardware Platform
+    \item Decomposition Strategies
+\end{enumerate}
+\vspace{0.3cm}
+\textbf{Part II: Experimental Studies}
+\begin{enumerate}\setcounter{enumi}{4}
+    \item Study 1: Hybrid Solver Benchmarking
+    \item Study 2: Pure QPU Decomposition
+    \item Study 3: Quantum Improvement
+\end{enumerate}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Part III: Analysis \& Discussion}
+\begin{enumerate}\setcounter{enumi}{7}
+    \item Results Comparison
+    \item Solution Quality Analysis
+    \item Hardware Effects \& Noise
+    \item Grid Refinement Analysis
+\end{enumerate}
+\vspace{0.3cm}
+\textbf{Part IV: Conclusions}
+\begin{enumerate}\setcounter{enumi}{11}
+    \item Key Takeaways
+    \item Impact Assessment
+    \item Future Directions
+\end{enumerate}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+% PART I: BACKGROUND
+% ============================================================================
+\section{Problem \& Motivation}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{The Challenge: Sustainable Food Production}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Multi-Objective Optimization Problem:}
+\begin{itemize}
+    \item Maximize nutritional value
+    \item Minimize environmental impact
+    \item Ensure economic affordability
+    \item Maintain long-term sustainability
+    \item Satisfy diversity constraints
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Problem Complexity:}
+\begin{itemize}
+    \item 27 crops across 5 food groups
+    \item Multiple farms with varying sizes
+    \item Min/max diversity constraints per group
+    \item Rotation synergies \& penalties (Variant B)
+\end{itemize}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Relevant SDGs:}
+\begin{itemize}
+    \item \textcolor{warmOrange}{\textbf{SDG 2:}} Zero Hunger
+    \item \textcolor{accentGreen}{\textbf{SDG 3:}} Good Health
+    \item \textcolor{accentTeal}{\textbf{SDG 12:}} Responsible Consumption
+    \item \textcolor{secondaryBlue}{\textbf{SDG 13:}} Climate Action
+\end{itemize}
+\vspace{0.3cm}
+\begin{keybox}
+\small\textbf{Why Quantum?}\\
+Classical solvers struggle with frustrated constraints and quadratic interactions. Quantum annealing naturally explores such energy landscapes.
+\end{keybox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Dataset: Real-World Agricultural Data}
+\small
+\textbf{Source:} Global Alliance for Improved Nutrition (GAIN) --- Bangladesh \& Indonesia
+
+\vspace{0.2cm}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{table}[h]\scriptsize
+\centering
+\begin{tabular}{lp{4.5cm}c}
+\toprule
+\textbf{Food Group} & \textbf{Crops} & \textbf{Count} \\
+\midrule
+Animal Protein & Beef, Chicken, Egg, Lamb, Pork & 5 \\
+Fruits & Apple, Avocado, Banana, Durian, Guava, Mango, Orange, Papaya, Watermelon & 9 \\
+Legumes & Chickpeas, Peanuts, Tempeh, Tofu & 4 \\
+Staples & Corn, Potato & 2 \\
+Vegetables & Cabbage, Cucumber, Eggplant, Long bean, Pumpkin, Spinach, Tomatoes & 7 \\
+\midrule
+\textbf{Total} & & \textbf{27} \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Benefit Score Calculation:}
+\begin{equation*}
+B_c = \sum_i w_i \cdot v_{i,c}
+\end{equation*}
+\vspace{-0.3cm}
+\begin{table}[h]\scriptsize
+\centering
+\begin{tabular}{lc}
+\toprule
+\textbf{Component} & \textbf{Weight} \\
+\midrule
+Nutritional Value & 25\% \\
+Nutrient Density & 20\% \\
+Environmental Impact & $-$20\% \\
+Affordability & 20\% \\
+Sustainability & 15\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+\vspace{0.1cm}
+\begin{warnbox}
+\scriptsize Environmental impact is \textbf{negatively weighted} to minimize harm.
+\end{warnbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Benefit Score Distribution}
+\centering
+\includegraphics[width=0.85\textwidth]{02_benefit_heatmap.png}
+\vspace{0.2cm}
+
+\small Heatmap of benefit scores (5 components) across 27 crops.
+\end{frame}
+
+% ============================================================================
+\section{Mathematical Formulation}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Variant A: Binary Crop Allocation (CQM)}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Decision Variables:}
+\begin{itemize}
+    \item $Y_{f,c} \in \{0,1\}$: crop $c$ assigned to farm $f$
+    \item $U_c \in \{0,1\}$: crop $c$ is used somewhere
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Objective:} Maximize area-weighted benefit
+\begin{equation*}
+\max Z = \frac{1}{A_{\text{total}}} \sum_{f,c} L_f \cdot B_c \cdot Y_{f,c}
+\end{equation*}
+\vspace{0.2cm}
+\textbf{Problem Size:}
+\begin{itemize}
+    \item Variables: $|\mathcal{F}| \times 27 + 27$
+    \item At 1,000 farms: 27,027 binary variables
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Constraints:}
+\vspace{0.1cm}
+
+\textcolor{primaryBlue}{\textbf{C1. Plot Assignment:}}
+\begin{equation*}
+\sum_{c} Y_{f,c} \leq 1 \quad \forall f
+\end{equation*}
+
+\textcolor{accentTeal}{\textbf{C2. Food Group Diversity:}}
+\begin{equation*}
+m_g \leq \sum_{c \in G_g} U_c \leq M_g \quad \forall g
+\end{equation*}
+
+\textcolor{accentGreen}{\textbf{C3. Area Bounds:}}
+\begin{equation*}
+a^{\min}_c \leq \sum_f L_f Y_{f,c} \leq a^{\max}_c \quad \forall c
+\end{equation*}
+
+\textcolor{warmOrange}{\textbf{C4. Linking:}}
+\begin{equation*}
+Y_{f,c} \leq U_c \quad \forall f,c
+\end{equation*}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Variant B: Multi-Period Rotation (Frustrated Constraints)}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Enhanced Formulation:}
+\begin{itemize}
+    \item 6 aggregated crop families (not 27 individual)
+    \item 3-period temporal horizon ($T=3$)
+    \item Quadratic rotation synergies
+    \item Frustrated spatial interactions
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Rotation Objective:}
+\begin{equation*}
+Z_{\text{rot}} = \sum_{f,t} \sum_{c,c'} S_{c,c'} \cdot x_{f,c,t} \cdot x_{f,c',t+1}
+\end{equation*}
+
+\textbf{Combined Objective:}
+\begin{equation*}
+\max Z = (1-\gamma) Z_{\text{base}} + \gamma Z_{\text{rot}}
+\end{equation*}
+where $\gamma = 0.2$ (rotation weight)
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Frustration Analysis:}
+\begin{itemize}
+    \item 70--88\% of rotation pairs have \textbf{negative} synergy
+    \item Creates rugged energy landscape
+    \item Classical branch-and-bound struggles
+\end{itemize}
+\vspace{0.2cm}
+\begin{warnbox}
+\small\textbf{Design Intent:}\\
+Variant B deliberately challenges classical solvers while remaining QPU-tractable.
+\end{warnbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Rotation Parameters: Literature Validation}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\begin{table}[h]\small
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parameter} & \textbf{Our Value} & \textbf{Literature} \\
+\midrule
+Rotation weight $\gamma$ & 0.2 & 0.1--0.3 \\
+Monoculture penalty & 24\% & 15--30\% \\
+Legume benefit & 16--25\% & 16--23\% \\
+Spatial dampening & 0.15 & 0.1--0.2 \\
+Frustration ratio & 70--88\% & 50--80\% \\
+Planning horizon $T$ & 3 years & 2--5 years \\
+\bottomrule
+\end{tabular}
+\end{table}
+\vspace{0.2cm}
+\begin{keybox}
+\scriptsize Based on 3,663 paired field-trial observations across six continents (Mudare et al., 2025).
+\end{keybox}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Synergy Matrix $S_{c,c'}$:}
+\begin{itemize}
+    \item Diagonal: Monoculture penalty ($-0.24$)
+    \item Legume$\to$Non-legume: Benefit ($+0.16$ to $+0.25$)
+    \item Most pairs: Negative or zero
+\end{itemize}
+\vspace{0.3cm}
+\textbf{Key Insight:}\\
+The high frustration ratio (70--88\%) creates an optimization landscape where quantum tunneling may outperform classical local search.
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Quantum Hardware Platform}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{D-Wave Advantage System Specifications}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{table}[h]\small
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Total Qubits & 5,760 \\
+Topology & Pegasus P16 \\
+Avg. Connectivity & 15 neighbors \\
+Native Clique & 15--20 qubits \\
+Annealing Time & 0.5--2,000 $\mu$s \\
+Thermalization & 1 ms (default) \\
+Chain Strength & Auto-scaled \\
+Max Variables & $\sim$5,000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Pegasus Topology Advantages:}
+\begin{itemize}
+    \item Native cliques of 15--20 fully connected qubits
+    \item 27-crop farm subproblems embed with minimal chains
+    \item Average chain length $\leq 1.2$
+\end{itemize}
+\vspace{0.2cm}
+\textbf{QPU Configuration:}
+\begin{itemize}
+    \item 100--500 samples/subproblem
+    \item Auto-scaled chain strength
+    \item Chain break rate: \textcolor{accentGreen}{\textbf{$<$2\%}}
+\end{itemize}
+\end{column}
+\end{columns}
+\vspace{0.2cm}
+\begin{keybox}
+\small\textbf{Classical Baseline:} Gurobi 12.0.1 with 300-second timeout, MIP gap tolerance 0.01\%.
+\end{keybox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{CQM to BQM Conversion}
+\small
+\textbf{Challenge:} QPU accepts only QUBO/Ising models, not CQM directly.
+
+\vspace{0.2cm}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Penalty Method:}
+\begin{equation*}
+H_{\text{BQM}} = -Z_{\text{obj}} + \sum_k \lambda_k \cdot (\text{violation}_k)^2
+\end{equation*}
+
+\textbf{Constraint Penalties:}
+\begin{itemize}
+    \item Plot assignment: $\lambda_1 = 10.0$
+    \item Diversity bounds: $\lambda_2 = 5.0$
+    \item Area constraints: $\lambda_3 = 2.0$
+    \item Linking constraints: $\lambda_4 = 8.0$
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Grid Refinement (Continuous$\to$Binary):}
+\begin{equation*}
+x_{\text{cont}} \approx \sum_{i=1}^{n} \frac{i}{n} \cdot b_i, \quad b_i \in \{0,1\}
+\end{equation*}
+
+\textbf{Convergence:}
+\begin{itemize}
+    \item Gap: 12.63\% at $n=5$ $\to$ 0.00\% at $n=100$
+    \item Rate: $O(n^{-1})$
+    \item Binary is 3.7$\times$ faster than continuous
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Decomposition Strategies}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Eight Decomposition Methods}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Basic Methods:}
+\begin{enumerate}
+    \item \textbf{Direct QPU} --- No decomposition\\
+    \scriptsize Embedding-limited ($<$500 vars)\normalsize
+    \item \textbf{PlotBased} --- Farm-level partition\\
+    \scriptsize 27 vars/farm, independent subproblems\normalsize
+    \item \textbf{Multilevel(5)} --- Hierarchical coarsening\\
+    \scriptsize $\sim$135 vars/partition\normalsize
+    \item \textbf{Multilevel(10)} --- Deeper hierarchy\\
+    \scriptsize $\sim$270 vars/partition, \textcolor{accentGreen}{\textbf{best scaling}}\normalsize
+\end{enumerate}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Advanced Methods:}
+\begin{enumerate}\setcounter{enumi}{4}
+    \item \textbf{Louvain} --- Community detection\\
+    \scriptsize Adaptive clustering based on graph structure\normalsize
+    \item \textbf{Spectral(10)} --- Spectral clustering\\
+    \scriptsize Fixed partition count using eigenvectors\normalsize
+    \item \textbf{CQM-First} --- Two-phase conversion\\
+    \scriptsize CQM$\to$partition$\to$BQM\normalsize
+    \item \textbf{Coordinated} --- Master-sub iteration\\
+    \scriptsize Iterative refinement with coordination\normalsize
+\end{enumerate}
+\end{column}
+\end{columns}
+\vspace{0.3cm}
+\begin{resultbox}
+\small\textbf{Why Decomposition?} Full problem at 1,000 farms = 27,027 variables. QPU capacity $\approx$ 5,000 variables. Must partition intelligently.
+\end{resultbox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Decomposition: Algorithm Overview}
+\small
+\textbf{Multilevel Decomposition (Best Performer):}
+\begin{enumerate}
+    \item \textbf{Coarsen:} Recursively merge farms into super-farms
+    \item \textbf{Partition:} Divide coarsened graph into QPU-sized chunks
+    \item \textbf{Uncoarsen:} Map solutions back to original farms
+    \item \textbf{Refine:} Local optimization at each level
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{PlotBased (Simplest):}
+\begin{itemize}
+    \item Each farm = independent subproblem
+    \item 27 variables per QPU call
+    \item No cross-farm coordination
+    \item Fast but lower quality
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Coordinated (Highest Quality):}
+\begin{itemize}
+    \item Master problem: global constraints
+    \item Subproblems: farm allocations
+    \item Iterative refinement
+    \item Slower but better solutions
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Experimental Studies}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Three Complementary Studies}
+\small
+\begin{columns}[T]
+\begin{column}{0.32\textwidth}
+\begin{block}{\centering Study 1}
+\centering
+\textbf{Hybrid Solver}\\
+\textbf{Benchmarking}\\[0.3cm]
+\scriptsize
+Problem: Variant A\\
+Scale: 10--1,000 farms\\
+D-Wave Hybrid vs Gurobi\\[0.2cm]
+\textcolor{primaryBlue}{Establish baseline}
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{\centering Study 2}
+\centering
+\textbf{Pure QPU}\\
+\textbf{Decomposition}\\[0.3cm]
+\scriptsize
+Problem: Variant A\\
+8 decomposition methods\\
+Scaling analysis\\[0.2cm]
+\textcolor{accentTeal}{Analyze QPU scaling}
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{\centering Study 3}
+\centering
+\textbf{Quantum}\\
+\textbf{Improvement}\\[0.3cm]
+\scriptsize
+Problem: Variant B\\
+13 benchmark scenarios\\
+Frustrated constraints\\[0.2cm]
+\textcolor{accentGreen}{Demonstrate advantage}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.4cm}
+\centering
+\begin{tikzpicture}
+\node[draw=primaryBlue,rounded corners,minimum width=2.5cm,minimum height=0.6cm] (s1) at (0,0) {\scriptsize Study 1};
+\node[draw=accentTeal,rounded corners,minimum width=2.5cm,minimum height=0.6cm] (s2) at (4,0) {\scriptsize Study 2};
+\node[draw=accentGreen,rounded corners,minimum width=2.5cm,minimum height=0.6cm] (s3) at (8,0) {\scriptsize Study 3};
+\draw[->,thick,gray] (s1) -- node[above,font=\tiny] {inform} (s2);
+\draw[->,thick,gray] (s2) -- node[above,font=\tiny] {enable} (s3);
+\end{tikzpicture}
+\end{frame}
+
+% ============================================================================
+\section{Study 1: Hybrid Solver Benchmarking}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 1: Hybrid Solver Performance}
+\centering
+\includegraphics[width=0.85\textwidth]{hybrid_formulation_comparison.png}
+\vspace{0.2cm}
+
+\small D-Wave Hybrid CQM Solver vs Gurobi across different formulations (Variant A).
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 1: Key Results}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Timing Comparison:}
+\begin{itemize}
+    \item \textbf{Gurobi:} Solves 27,027 vars in \textcolor{accentGreen}{\textbf{1.15 seconds}}
+    \item \textbf{D-Wave Hybrid:} Constant \textbf{5.3--5.5 seconds}
+    \item \textbf{Pure QPU time:} Only 70ms (\textbf{1.3\%} of hybrid)
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Solution Quality:}
+\begin{itemize}
+    \item Both achieve optimal or near-optimal solutions
+    \item Gurobi: 0.00\% MIP gap
+    \item Hybrid: Matches Gurobi objective
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{QUBO Conversion Test:}
+\begin{itemize}
+    \item Gurobi on QUBO: \textcolor{alertRed}{Timeout at 100+ seconds}
+    \item Objective: 0.000 (infeasible)
+    \item D-Wave BQM: Completes but lower quality
+\end{itemize}
+\vspace{0.2cm}
+\begin{warnbox}
+\small\textbf{Conclusion:}\\
+For well-structured \textbf{linear} problems (Variant A), classical solvers with decades of optimization outperform quantum approaches.
+\end{warnbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Study 2: Pure QPU Decomposition}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 2: Small-Scale QPU Benchmark}
+\centering
+\includegraphics[width=0.85\textwidth]{qpu_benchmark_comprehensive.png}
+\vspace{0.2cm}
+
+\small Comprehensive QPU benchmark: timing and quality across decomposition methods.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 2: Large-Scale QPU Benchmark}
+\centering
+\includegraphics[width=0.85\textwidth]{plot_time_comparison.png}
+\vspace{0.2cm}
+
+\small Timing comparison across methods at large scale.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 2: Comprehensive Scaling Analysis}
+\centering
+\includegraphics[width=0.85\textwidth]{comprehensive_scaling.png}
+\vspace{0.2cm}
+
+\small Comprehensive scaling analysis across problem sizes.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 2: Time Breakdown Analysis}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Pure QPU Time Scaling (Multilevel(10)):}
+\begin{table}[h]\scriptsize
+\centering
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{Farms} & \textbf{Parts} & \textbf{QPU (s)} & \textbf{Embed (s)} & \textbf{Total} & \textbf{QPU\%} \\
+\midrule
+10 & 2 & 0.21 & 1.2 & 1.41 & 14.9\% \\
+100 & 12 & 2.15 & 65.3 & 67.5 & 3.2\% \\
+500 & 52 & 10.87 & 984.2 & 995.1 & 1.1\% \\
+1,000 & 102 & 21.78 & 3,473.6 & 3,495.4 & 0.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+\vspace{0.2cm}
+\begin{keybox}
+\scriptsize\textbf{Key Finding:} Pure QPU time scales \textbf{linearly} $O(f)$. Embedding overhead dominates at 95--99\%.
+\end{keybox}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Bottleneck Analysis:}
+\begin{itemize}
+    \item Embedding: 95--99\% of total time
+    \item Pure QPU: $<$30s at 1,000 farms
+    \item Chain break rate: $<$2\%
+\end{itemize}
+\vspace{0.3cm}
+\textbf{Implication:}\\
+With better qubit connectivity (future hardware), embedding overhead would decrease dramatically.
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 2: Solution Quality Comparison}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Quality at 1,000-Farm Scale:}
+\begin{table}[h]\small
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \textbf{Objective} & \textbf{Gap} & \textbf{Crops} \\
+\midrule
+Gurobi (optimal) & 0.4292 & 0.0\% & 3 \\
+Coordinated & 0.2926 & 31.8\% & 25 \\
+Multilevel(10) & 0.2579 & 39.9\% & 27 \\
+Louvain & 0.2341 & 45.5\% & 22 \\
+PlotBased & 0.1842 & 57.1\% & 18 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Observations:}
+\begin{itemize}
+    \item Gurobi concentrates on 3 high-benefit crops
+    \item QPU methods use more diverse crops
+    \item Trade-off: objective vs diversity
+\end{itemize}
+\vspace{0.2cm}
+\begin{resultbox}
+\scriptsize\textbf{Diversity Paradox:}\\
+Lower objective but more diverse allocations may be agriculturally preferable.
+\end{resultbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Study 3: Quantum Improvement}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 3: Comprehensive Scaling (Variant B)}
+\centering
+\includegraphics[width=0.85\textwidth]{comprehensive_hardness_scaling_PER_FARM.png}
+\vspace{0.2cm}
+
+\small Scaling analysis of problem hardness per farm (Variant B).
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 3: Quantum Improvement Analysis}
+\centering
+\includegraphics[width=0.85\textwidth]{plot_gap_speedup_vs_vars.png}
+\vspace{0.2cm}
+
+\small Solution gap and speedup vs number of variables.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 3: Split Analysis (6-Family vs 27-Food)}
+\centering
+\includegraphics[width=0.85\textwidth]{plot_solution_quality_vs_vars.png}
+\vspace{0.2cm}
+
+\small Solution quality comparison vs problem size.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Study 3: Detailed Results}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{QPU vs Gurobi Benefit Comparison:}
+\begin{table}[h]\scriptsize
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} \\
+\midrule
+rotation\_micro\_25 & 90 & 6.17 & 4.86 & 0.79$\times$ \\
+rotation\_small\_50 & 180 & 8.69 & 21.79 & 2.51$\times$ \\
+rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
+50farms\_6foods & 900 & 26.92 & 109.67 & 4.07$\times$ \\
+100farms\_6foods & 1,800 & 53.77 & 229.14 & 4.26$\times$ \\
+200farms\_27foods & 16,200 & 93.52 & 500.59 & 5.35$\times$ \\
+\midrule
+\textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Key Statistics:}
+\begin{itemize}
+    \item \textbf{12/13} scenarios: QPU wins
+    \item Gurobi timeout: \textbf{11/13} (85\%)
+    \item Gurobi avg MIP gap: \textbf{16,308\%}
+    \item Improvement ratio: \textbf{2.51$\times$ to 5.35$\times$}
+\end{itemize}
+\vspace{0.2cm}
+\begin{resultbox}
+\small\textbf{Average Benefit Ratio:}\\
+\centering\Large\textbf{3.80$\times$}
+\end{resultbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Why Does Gurobi Struggle with Rotation?}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Classical Solver Barriers:}
+\begin{enumerate}
+    \item \textbf{Quadratic terms} break LP relaxation quality
+    \item \textbf{Frustrated constraints} create many local minima
+    \item \textbf{Poor bounds} $\Rightarrow$ no effective pruning
+    \item Branch-and-bound explores exponentially
+\end{enumerate}
+\vspace{0.2cm}
+\textbf{The Computational Cliff:}
+\begin{itemize}
+    \item Variant A (linear): 0.3 seconds
+    \item Variant B (quadratic): 300+ seconds timeout
+    \item Same scale, different formulation
+\end{itemize}
+\end{column}
+\begin{column}{0.43\textwidth}
+\begin{warnbox}
+\small\textbf{Non-Monotonic Hardness:}\\
+Problem difficulty is \textbf{formulation-dependent}, not just size-dependent.
+\end{warnbox}
+\vspace{0.3cm}
+\textbf{Quantum Advantage Mechanism:}
+\begin{itemize}
+    \item Quantum tunneling escapes local minima
+    \item Naturally explores rugged landscapes
+    \item Parallel exploration via superposition
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Results Analysis}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Violation Impact Assessment}
+\centering
+\includegraphics[width=0.85\textwidth]{combined_analysis_plots.png}
+\vspace{0.2cm}
+
+\small Combined analysis of solution quality and constraint satisfaction.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Solution Composition Analysis}
+\centering
+\includegraphics[width=0.9\textwidth]{qpu_solution_composition_pies.png}
+\vspace{0.2cm}
+
+\small Crop family distribution in QPU solutions across scenarios.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Top Crop Distribution}
+\centering
+\includegraphics[width=0.85\textwidth]{01_top_crop_distribution.png}
+\vspace{0.2cm}
+
+\small Frequency of top crops selected across all experiments.
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Performance Summary: Classical vs Quantum}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{\faDesktop\ Classical (Gurobi)}
+\textbf{Best for:}
+\begin{itemize}
+    \item Linear objectives (MILP)
+    \item Well-structured constraints
+    \item Tight LP relaxations
+\end{itemize}
+\vspace{0.1cm}
+\textbf{Performance:}
+\begin{itemize}
+    \item Variant A: \textcolor{accentGreen}{\textbf{$<$1.2s optimal}}
+    \item Variant B: \textcolor{alertRed}{\textbf{11/13 timeout}}
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{\faAtom\ Quantum (D-Wave)}
+\textbf{Best for:}
+\begin{itemize}
+    \item Quadratic objectives (QUBO)
+    \item Frustrated constraints
+    \item Rugged energy landscapes
+\end{itemize}
+\vspace{0.1cm}
+\textbf{Performance:}
+\begin{itemize}
+    \item Variant A: \textcolor{warmOrange}{5.5s (overhead)}
+    \item Variant B: \textcolor{accentGreen}{\textbf{3.80$\times$ better}}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.3cm}
+\begin{keybox}
+\small\textbf{Key Insight:} Neither approach universally dominates. Optimal solver depends on \textbf{problem structure}, not just size.
+\end{keybox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Key Numerical Results at a Glance}
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{Study 1} & \textbf{Study 2} & \textbf{Study 3} & \textbf{Overall} \\
+\midrule
+Max Variables & 27,027 & 27,027 & 16,200 & 27,027 \\
+Gurobi Time & 1.15s & 1.15s & 300s (timeout) & -- \\
+QPU Time (pure) & 70ms & 21.8s & 1.1\% of total & Linear $O(f)$ \\
+Solution Gap & 0\% & 31.8--57.1\% & N/A & -- \\
+QPU/Gurobi Ratio & $\sim$1.0$\times$ & $<$1.0$\times$ & \textbf{3.80$\times$} & -- \\
+Chain Break Rate & -- & $<$2\% & $<$2\% & $<$2\% \\
+Embedding Overhead & -- & 95--99\% & -- & Dominant \\
+\bottomrule
+\end{tabular}
+\vspace{0.4cm}
+
+\begin{columns}
+\begin{column}{0.3\textwidth}
+\centering
+\textcolor{primaryBlue}{\Large\textbf{3.80$\times$}}\\
+\scriptsize Avg QPU Improvement
+\end{column}
+\begin{column}{0.3\textwidth}
+\centering
+\textcolor{accentTeal}{\Large\textbf{$<$2\%}}\\
+\scriptsize Chain Break Rate
+\end{column}
+\begin{column}{0.3\textwidth}
+\centering
+\textcolor{accentGreen}{\Large\textbf{$O(f)$}}\\
+\scriptsize QPU Time Scaling
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Hardware Effects \& Noise}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Hardware Effects Analysis}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Chain Breaking:}
+\begin{itemize}
+    \item Rate: Consistently $<$2\%
+    \item Auto-scaled chain strength effective
+    \item Minimal impact on solution quality
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Embedding Overhead:}
+\begin{itemize}
+    \item 95--99\% of total runtime
+    \item Classical preprocessing bottleneck
+    \item Not inherent to quantum computation
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Noise Mitigation:}
+\begin{itemize}
+    \item Multiple samples (100--500)
+    \item Majority voting for robust solutions
+    \item Auto-scaling chain strength
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Future Hardware Impact:}
+\begin{itemize}
+    \item Higher connectivity $\to$ less embedding
+    \item Longer coherence $\to$ better quality
+    \item Native constraints $\to$ no penalty terms
+\end{itemize}
+\end{column}
+\end{columns}
+\vspace{0.2cm}
+\begin{keybox}
+\small The embedding bottleneck is a \textbf{classical preprocessing issue}, not a fundamental quantum limitation. Next-generation hardware (Advantage2) promises significantly reduced overhead.
+\end{keybox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Constraint Violation Analysis}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Violation Statistics (Study 3):}
+\begin{itemize}
+    \item Average violation rate: 24.2\%
+    \item Most violations: Diversity constraints
+    \item Severity: Generally minor ($<$5\% of bound)
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Violation Sources:}
+\begin{enumerate}
+    \item Penalty weight imbalance
+    \item Decomposition boundary effects
+    \item Insufficient samples at boundaries
+\end{enumerate}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Mitigation Strategies:}
+\begin{itemize}
+    \item Adaptive penalty scaling
+    \item Post-processing repair
+    \item Coordinated decomposition
+    \item Constraint-aware partitioning
+\end{itemize}
+\vspace{0.2cm}
+\begin{warnbox}
+\scriptsize Violations represent a trade-off: higher objective vs constraint satisfaction.
+\end{warnbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Grid Refinement Analysis}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Grid Refinement: Continuous to Binary Conversion}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Convergence Analysis:}
+\begin{table}[h]\small
+\centering
+\begin{tabular}{rrrr}
+\toprule
+\textbf{Grid $n$} & \textbf{Gap (\%)} & \textbf{Binary (s)} & \textbf{Cont. (s)} \\
+\midrule
+5 & 12.63 & 0.08 & 0.12 \\
+10 & 6.42 & 0.15 & 0.31 \\
+25 & 2.58 & 0.42 & 1.24 \\
+50 & 1.29 & 1.21 & 4.12 \\
+100 & 0.00 & 3.87 & 14.32 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\vspace{0.1cm}
+\textbf{Convergence Rate:} $O(n^{-1})$
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Key Findings:}
+\begin{itemize}
+    \item Binary is \textbf{3.7$\times$ faster} than continuous at $n=100$
+    \item Gap decreases monotonically
+    \item $n=50$ sufficient for most applications
+\end{itemize}
+\vspace{0.2cm}
+\begin{keybox}
+\scriptsize Binary formulation preferred for QPU: faster embedding, comparable accuracy.
+\end{keybox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Conclusions}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Six Key Takeaways}
+\small
+\begin{enumerate}
+    \item \textcolor{primaryBlue}{\textbf{Formulation-Dependent Performance}}\\
+    {\scriptsize Classical excels on MILP; quantum excels on frustrated QUBO problems}
+    
+    \item \textcolor{accentTeal}{\textbf{Linear QPU Scaling}}\\
+    {\scriptsize Pure quantum time scales $O(f)$ --- embedding is the bottleneck}
+    
+    \item \textcolor{accentGreen}{\textbf{3.80$\times$ Quantum Improvement}}\\
+    {\scriptsize On rotation problems, QPU achieves significantly higher benefit}
+    
+    \item \textcolor{warmOrange}{\textbf{Computational Cliffs Exist}}\\
+    {\scriptsize Problem hardness is non-monotonic; rotation creates classical barriers}
+    
+    \item \textcolor{secondaryBlue}{\textbf{Diversity Paradox}}\\
+    {\scriptsize Quantum naturally produces more diverse, agriculturally robust solutions}
+    
+    \item \textcolor{alertRed}{\textbf{Hardware Constraints Remain}}\\
+    {\scriptsize 95--99\% of runtime is classical embedding overhead}
+\end{enumerate}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Impact Assessment}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Agricultural Impact:}
+\begin{itemize}
+    \item Optimized crop allocation
+    \item Improved nutritional outcomes
+    \item Reduced environmental footprint
+    \item Enhanced food security
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Technical Impact:}
+\begin{itemize}
+    \item Novel decomposition strategies
+    \item Hybrid quantum-classical workflows
+    \item Benchmark methodology for QA
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{SDG Alignment:}
+\begin{itemize}
+    \item \textbf{SDG 2:} Maximize nutrition, food security
+    \item \textbf{SDG 3:} Diverse diets, health outcomes
+    \item \textbf{SDG 12:} Reduce waste, sustainable production
+    \item \textbf{SDG 13:} Lower emissions, climate resilience
+\end{itemize}
+\vspace{0.2cm}
+\begin{resultbox}
+\scriptsize Quantum-optimized allocation addresses food security, sustainability, and economics simultaneously.
+\end{resultbox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Future Directions}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Hardware Improvements:}
+\begin{itemize}
+    \item Higher qubit connectivity\\
+    {\scriptsize $\Rightarrow$ Reduce embedding overhead}
+    \item Longer coherence times\\
+    {\scriptsize $\Rightarrow$ Better solution quality}
+    \item Native constraint support\\
+    {\scriptsize $\Rightarrow$ Avoid penalty terms}
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Algorithm Development:}
+\begin{itemize}
+    \item Improved decomposition strategies
+    \item Adaptive penalty scaling
+    \item Problem-specific embeddings
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Application Extensions:}
+\begin{itemize}
+    \item Larger farm networks (10,000+)
+    \item Multi-year planning horizons
+    \item Climate adaptation scenarios
+    \item Supply chain integration
+\end{itemize}
+\vspace{0.2cm}
+\begin{keybox}
+\small\textbf{Near-Term Target:}\\
+With Advantage2 hardware, embedding overhead could drop below 50\%, making quantum competitive for simpler problems.
+\end{keybox}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+% CLOSING SLIDE
+% ----------------------------------------------------------------------------
+\begin{frame}[plain]
+\begin{tikzpicture}[remember picture,overlay]
+    \fill[primaryBlue] (current page.north west) rectangle (current page.south east);
+    \node[white,font=\Huge\bfseries] at ([yshift=1cm]current page.center) {Thank You};
+    \node[white,font=\large] at ([yshift=-0.3cm]current page.center) {Questions \& Discussion};
+    \node[white,font=\normalsize] at ([yshift=-1.8cm]current page.center) {Edoardo Spigarolo};
+    \node[white!80,font=\small] at ([yshift=-2.4cm]current page.center) {edoardo.spigarolo@epfl.ch};
+    \node[white!60,font=\footnotesize] at ([yshift=-3.2cm]current page.center) {EPFL $|$ Open Quantum Initiative};
+\end{tikzpicture}
+\end{frame}
+
+% ============================================================================
+% BACKUP SLIDES
+% ============================================================================
+\appendix
+
+\begin{frame}{Backup: D-Wave System Specifications}
+\small
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Total Qubits & 5,760 \\
+Topology & Pegasus P16 \\
+Average Qubit Connectivity & 15 neighbors \\
+Native Clique Size & 15--20 qubits \\
+Annealing Time Range & 0.5--2,000 $\mu$s \\
+Programming Thermalization & 1 ms (default) \\
+Chain Strength & Auto-scaled (0.9--2.0$\times$ max energy) \\
+Maximum Problem Variables & $\sim$5,000 (depending on connectivity) \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Backup: Decomposition Methods Comparison}
+\small
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \textbf{Vars/Partition} & \textbf{Scaling} & \textbf{Quality} \\
+\midrule
+Direct QPU & All & Fails & N/A \\
+PlotBased & 27 & $O(f)$ & Good \\
+Multilevel(5) & 135 & $O(f)$ & Better \\
+\textbf{Multilevel(10)} & \textbf{270} & $\mathbf{O(f)}$ & \textbf{Best} \\
+Louvain & Adaptive & $O(f)$ & Good \\
+Spectral(10) & Variable & $O(f)$ & Good \\
+Coordinated & Variable & $O(f \cdot k)$ & Better \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Backup: Complete Benefit Equation}
+\small
+\begin{equation*}
+B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}
+\end{equation*}
+
+\vspace{0.3cm}
+\begin{table}[h]
+\centering
+\begin{tabular}{clc}
+\toprule
+\textbf{Symbol} & \textbf{Component} & \textbf{Default Weight} \\
+\midrule
+$v_{nv,c}$ & Nutritional Value & $w_{nv} = 0.25$ \\
+$v_{nd,c}$ & Nutrient Density & $w_{nd} = 0.20$ \\
+$v_{ei,c}$ & Environmental Impact & $w_{ei} = 0.20$ (negative) \\
+$v_{af,c}$ & Affordability & $w_{af} = 0.20$ \\
+$v_{su,c}$ & Sustainability & $w_{su} = 0.15$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Backup: Study 3 Full Results Table}
+\scriptsize
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} & \textbf{Gurobi Status} \\
+\midrule
+rotation\_micro\_25 & 90 & 6.17 & 4.86 & 0.79$\times$ & Optimal \\
+rotation\_small\_50 & 180 & 8.69 & 21.79 & 2.51$\times$ & Optimal \\
+rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ & Timeout \\
+rotation\_large\_200 & 720 & 19.23 & 72.18 & 3.75$\times$ & Timeout \\
+rotation\_25farms\_6foods & 450 & 17.84 & 58.92 & 3.30$\times$ & Timeout \\
+rotation\_50farms\_6foods & 900 & 26.92 & 109.67 & 4.07$\times$ & Timeout \\
+rotation\_100farms\_6foods & 1,800 & 53.77 & 229.14 & 4.26$\times$ & Timeout \\
+rotation\_50farms\_27foods & 4,050 & 32.14 & 142.87 & 4.45$\times$ & Timeout \\
+rotation\_100farms\_27foods & 8,100 & 58.41 & 287.32 & 4.92$\times$ & Timeout \\
+rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & 5.35$\times$ & Timeout \\
+\midrule
+\textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Backup: Algorithm Pseudocode --- Multilevel Decomposition}
+\small
+\begin{enumerate}
+    \item \textbf{Input:} BQM $B$, coarsening levels $L$, partition size $k$
+    \item \textbf{Coarsen:}
+    \begin{itemize}
+        \item For $l = 1$ to $L$: Merge adjacent farms into super-farms
+        \item Build coarsened BQM at each level
+    \end{itemize}
+    \item \textbf{Partition:}
+    \begin{itemize}
+        \item Apply METIS/spectral clustering to coarsest graph
+        \item Create $\lceil n/k \rceil$ partitions of size $\leq k$
+    \end{itemize}
+    \item \textbf{Solve:}
+    \begin{itemize}
+        \item For each partition: Submit to QPU, collect samples
+        \item Select best sample per partition
+    \end{itemize}
+    \item \textbf{Uncoarsen \& Refine:}
+    \begin{itemize}
+        \item Map solutions back through coarsening levels
+        \item Apply local refinement at each level
+    \end{itemize}
+    \item \textbf{Output:} Combined solution for original BQM
+\end{enumerate}
+\end{frame}
+
+\end{document}
