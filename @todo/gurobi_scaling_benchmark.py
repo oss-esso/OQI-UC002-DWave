@@ -253,6 +253,11 @@ def _solve_with_gurobipy(
         model.setParam("Threads", 0)  # Use all cores
         model.setParam("Presolve", 0)  # Disable presolve - ineffective for this problem structure
         
+        # Memory management for large problems
+        model.setParam("NodefileStart", 0.5)  # Offload nodes to disk after 0.5 GB
+        model.setParam("NodefileDir", ".")    # Use current directory for node files
+        model.setParam("Threads", min(8, os.cpu_count() or 8))  # Cap threads to reduce memory
+        
         if with_optimality_proof:
             model.setParam("MIPFocus", 2)  # Focus on proving optimality
         else:
