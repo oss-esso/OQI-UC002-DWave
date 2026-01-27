@@ -70,3 +70,35 @@ Violations are NOT helping QPU "cheat" to higher objectives. Instead, violations
 - `phase3_results_plots/benchmark_violation_healing_analysis.png/pdf`
 - `phase3_results_plots/benchmark_violation_healing_table.png`
 - `phase3_results_plots/benchmark_violation_healing_data.csv`
+
+## Gurobi Scaling Benchmark (Jan 26, 2026)
+
+### Context
+Created benchmark comparing Gurobi performance on continuous (LP) vs binary (MIP) formulations to demonstrate why the original problem is trivially solvable while QUBO conversion creates complexity.
+
+### Key Results
+
+**Continuous LP Formulation (Original Problem):**
+- 1,000 vars (36 patches): 0.11s optimal
+- 10,000 vars (369 patches): 0.21s optimal
+- 100,000 vars (3,703 patches): 1.34s optimal
+- 1,000,000 vars (37,036 patches): 26.1s optimal
+
+**Binary MIP Formulation (QUBO-Required):**
+- 1,000 vars: 0.12s optimal
+- 10,000 vars: 2.12s optimal
+- 100,000 vars: 57.96s optimal
+- 1,000,000 vars: >1,698s TIMEOUT
+
+**Key Insight:**
+- Continuous (LP) scales polynomially - 1M variables in 26 seconds
+- Binary (MIP) has exponential worst-case complexity - times out at 1M
+- Speedup ratio: 1.1x -> 10x -> 43x -> 65x+
+- The complexity barrier comes from discretization, not the problem itself
+
+**Benchmark Script:** `@todo/gurobi_scaling_benchmark.py`
+**Output Files:** `@todo/gurobi_scaling_benchmark_*.json`
+
+### Report Updates (content_report.tex)
+1. Added Gurobi Performance section with LP vs MIP comparison table
+2. Added Violation Impact Analysis by Decomposition Strategy section

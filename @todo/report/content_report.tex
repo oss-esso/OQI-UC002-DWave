@@ -193,6 +193,105 @@ To establish rigorous classical baselines, we employed Gurobi 12.0.1, widely reg
 \textbf{Computational Environment:} All classical experiments were conducted on an Intel Core i7-12700H (14 cores, 20 threads) with 16 GB RAM to ensure reproducibility. Classical solve times reported are wall-clock times including all preprocessing. 
 % QPU times are separated into: (1) embedding time (classical), (2) pure QPU access time (quantum), and (3) postprocessing time (classical).
 
+\paragraph{Gurobi Performance on the Original Problem}
+
+The crop allocation problem admits two fundamentally different formulations with distinct computational characteristics:
+
+\begin{itemize}
+    \item \textbf{Farm-level MIP (continuous $A_{fc}$):} Uses continuous allocation fractions $A_{fc} \in [0,1]$ representing the proportion of farm $f$ allocated to crop $c$, with binary indicators $U_c$ for crop selection. This formulation has approximately $54 \times |\mathcal{F}|$ variables (27 continuous $A_{fc}$ + 27 binary $Y_{fc}$ per farm, plus global $U_c$ indicators).
+    
+    \item \textbf{Binary Patch (BP):} Discretizes each farm into fixed-area patches, each assigned to exactly one crop via binary variables $Y_{p,c} \in \{0,1\}$. This formulation has $27 \times |\mathcal{P}|$ binary variables where $|\mathcal{P}|$ is the number of patches.
+\end{itemize}
+
+We benchmark both formulations under two solver configurations:
+\begin{itemize}
+    \item \textbf{Without proof (MIPGap=1\%):} Allows early termination when solution is within 1\% of optimal bound---suitable for practical applications where near-optimal solutions suffice.
+    \item \textbf{With proof (MIPGap=0\%):} Requires provable global optimality with zero gap---demonstrates worst-case solver behavior for certification applications.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Gurobi solving time: Farm-level MIP vs Binary Patch (BP) formulation}
+\label{tab:gurobi_formulation_comparison}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{rrcccc}
+\toprule
+\textbf{Patches} & \textbf{Variables} & \textbf{Formulation} & \textbf{Mode} & \textbf{Solve Time} & \textbf{Status} \\
+\midrule
+3 & 189 & MIP (Farm w/Afc) & without proof & 0.01s & optimal \\
+3 & 189 & MIP (Farm w/Afc) & with proof & 0.00s & optimal \\
+3 & 108 & BP (Binary Patch) & without proof & 0.01s & infeasible \\
+3 & 108 & BP (Binary Patch) & with proof & 0.01s & infeasible \\
+\midrule
+11 & 621 & MIP (Farm w/Afc) & without proof & 0.01s & optimal \\
+11 & 621 & MIP (Farm w/Afc) & with proof & 0.09s & optimal \\
+11 & 324 & BP (Binary Patch) & without proof & 0.01s & optimal \\
+11 & 324 & BP (Binary Patch) & with proof & 0.00s & optimal \\
+\midrule
+36 & 1,971 & MIP (Farm w/Afc) & without proof & 0.02s & optimal \\
+36 & 1,971 & MIP (Farm w/Afc) & with proof & 0.00s & optimal \\
+36 & 999 & BP (Binary Patch) & without proof & 0.01s & optimal \\
+36 & 999 & BP (Binary Patch) & with proof & 0.02s & optimal \\
+\midrule
+116 & 6,291 & MIP (Farm w/Afc) & without proof & 0.01s & optimal \\
+116 & 6,291 & MIP (Farm w/Afc) & with proof & 0.01s & optimal \\
+116 & 3,159 & BP (Binary Patch) & without proof & 0.02s & optimal \\
+116 & 3,159 & BP (Binary Patch) & with proof & 0.02s & optimal \\
+\midrule
+369 & 19,953 & MIP (Farm w/Afc) & without proof & 0.03s & optimal \\
+369 & 19,953 & MIP (Farm w/Afc) & with proof & 0.03s & optimal \\
+369 & 9,990 & BP (Binary Patch) & without proof & 0.04s & optimal \\
+369 & 9,990 & BP (Binary Patch) & with proof & 0.05s & optimal \\
+\midrule
+1,170 & 63,207 & MIP (Farm w/Afc) & without proof & 0.10s & optimal \\
+1,170 & 63,207 & MIP (Farm w/Afc) & with proof & 0.10s & optimal \\
+1,170 & 31,617 & BP (Binary Patch) & without proof & 0.16s & optimal \\
+1,170 & 31,617 & BP (Binary Patch) & with proof & 0.16s & optimal \\
+\midrule
+3,703 & 199,989 & MIP (Farm w/Afc) & without proof & 0.34s & optimal \\
+3,703 & 199,989 & MIP (Farm w/Afc) & with proof & 0.33s & optimal \\
+3,703 & 100,008 & BP (Binary Patch) & without proof & 0.40s & optimal \\
+3,703 & 100,008 & BP (Binary Patch) & with proof & 0.33s & optimal \\
+\midrule
+11,711 & 632,421 & MIP (Farm w/Afc) & without proof & 1.54s & optimal \\
+11,711 & 632,421 & MIP (Farm w/Afc) & with proof & 1.49s & optimal \\
+11,711 & 316,224 & BP (Binary Patch) & without proof & 2.00s & optimal \\
+11,711 & 316,224 & BP (Binary Patch) & with proof & 1.79s & optimal \\
+\midrule
+37,036 & 1,999,971 & MIP (Farm w/Afc) & without proof & 3.53s & optimal \\
+37,036 & 1,999,971 & MIP (Farm w/Afc) & with proof & 3.42s & optimal \\
+37,036 & 999,999 & BP (Binary Patch) & without proof & 13.55s & optimal \\
+37,036 & 999,999 & BP (Binary Patch) & with proof & 7.15s & optimal \\
+\midrule
+74,073 & 3,999,969 & MIP (Farm w/Afc) & without proof & 8.36s & optimal \\
+74,073 & 3,999,969 & MIP (Farm w/Afc) & with proof & 8.65s & optimal \\
+74,073 & 1,999,998 & BP (Binary Patch) & without proof & 376.45s & optimal \\
+74,073 & 1,999,998 & BP (Binary Patch) & with proof & 264.66s & optimal \\
+\midrule
+148,147 & 7,999,965 & MIP (Farm w/Afc) & without proof & 14.17s & optimal \\
+148,147 & 7,999,965 & MIP (Farm w/Afc) & with proof & 14.57s & optimal \\
+148,147 & 3,999,996 & BP (Binary Patch) & without proof & --- & error \\
+148,147 & 3,999,996 & BP (Binary Patch) & with proof & --- & error \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{Key observations:}
+
+\begin{enumerate}
+    \item \textbf{Variable count difference:} The MIP formulation has approximately $2\times$ more variables than BP for the same number of patches (e.g., 632,421 vs 316,224 at 11,711 patches) because it includes both continuous $A_{fc}$ and binary $Y_{fc}$ variables. Despite this, MIP solves faster due to efficient LP relaxation.
+    
+    \item \textbf{Scaling divergence:} At small scales ($<$1,000 patches), both formulations solve in under 0.2 seconds. However, at 74,073 patches, BP takes 376 seconds compared to 8.4 seconds for MIP---a \textbf{45$\times$ slowdown}. At 148,147 patches, BP fails entirely while MIP completes in 14 seconds.
+    
+    \item \textbf{Proof overhead:} The ``with proof'' mode (MIPGap=0\%) shows minimal overhead for MIP but can significantly affect BP at large scales. Interestingly, BP with proof sometimes solves faster than without proof (e.g., 264s vs 376s at 74,073 patches) due to different solver heuristics being triggered.
+    
+    \item \textbf{Infeasibility at small scales:} The BP formulation is infeasible at 3 patches because the discrete patch structure cannot satisfy minimum area constraints that the continuous MIP formulation handles naturally.
+\end{enumerate}
+
+The farm-level MIP formulation benefits from Gurobi's aggressive presolve, which eliminates most binary variables through LP relaxation (the continuous $A_{fc}$ variables dominate the solve). The binary patch formulation faces exponential worst-case complexity due to the combinatorial explosion of discrete choices. This fundamental complexity barrier explains why QUBO-converted problems become computationally prohibitive at scale, motivating our investigation of quantum annealing approaches.
+
 % \subsection{Problem Data and Scenarios}
 
 
@@ -245,58 +344,211 @@ Further explaination is contained in \cref{subs:data}
 
 
 
-\subsubsection{Problem Variant A: Binary Crop Allocation CQM}
+\subsubsection{Problem Variant A: Crop Allocation CQM}
+\label{subsec:formulation_a}
 
-The core optimization problem is formulated as a Constrained Quadratic Model suitable for both Leap Hybrid Solvers \cite{dwave_cqm_parameters}.
+\paragraph{Description and Problem Structure}
 
-\paragraph{Decision Variables}
+The crop allocation formulation addresses the fundamental agricultural planning question: given a collection of land parcels, which crop should be assigned to each parcel to maximize overall benefit while satisfying dietary diversity and area constraints? This allocation problem serves as our baseline formulation, enabling direct comparison between quantum and classical approaches on well-structured optimization instances.
+
+The formulation balances multiple competing objectives through a composite benefit score that integrates nutritional value, environmental sustainability, and economic accessibility for each crop \cite{esteso_sustainable_2023}. Constraints encode both physical limitations (land capacity, minimum planting areas) and policy requirements (minimum dietary diversity across food groups, bounded total area per crop type). Unlike Variant B's multi-period extension, this formulation omits temporal dynamics and spatial interactions, yielding a problem structure that classical MILP solvers handle efficiently through standard branch-and-bound techniques.
+
+We present two mathematically equivalent formulations that differ fundamentally in their variable structure and computational characteristics:
+
+\begin{enumerate}
+    \item \textbf{MIP Formulation (Farm-level with continuous areas):} The natural formulation using continuous allocation variables $A_{f,c} \in [0, L_f]$ representing hectares allocated. This formulation has a tight LP relaxation and is solved efficiently by classical solvers like Gurobi.
+    
+    \item \textbf{BP Formulation (Binary Patch):} A discretized formulation using pure binary variables $Y_{p,c} \in \{0,1\}$ indicating patch-crop assignments. This formulation is directly compatible with QUBO/quantum annealing but has weaker LP bounds.
+\end{enumerate}
+
+The distinction between these formulations is critical: they represent the \emph{same} agricultural planning problem but exhibit dramatically different computational behavior. Classical solvers excel on the MIP formulation due to tight LP relaxations, while quantum annealing requires the BP formulation's pure binary structure.
+
+\paragraph{Formulation 1: MIP (Farm-level with Continuous Areas)}
+
+The MIP formulation represents the natural mathematical model of the crop allocation problem, where each farm $f$ can allocate any fraction of its available land $L_f$ to any crop $c$.
+
+\subparagraph{Decision Variables}
 
 \begin{itemize}
-    \item $Y_{f,c} \in \{0,1\}$: Binary variable indicating whether crop $c$ is planted on farm/patch $f$
-    \item $U_{c} \in \{0,1\}$: Binary variable indicating whether crop $c$ is selected on at least one farm (used for diversity constraints)
+    \item $A_{f,c} \in [0, L_f]$: \textbf{Continuous} variable representing the area (in hectares) of farm $f$ allocated to crop $c$
+    \item $Y_{f,c} \in \{0,1\}$: Binary indicator variable, $Y_{f,c} = 1$ if crop $c$ is planted on farm $f$ (i.e., $A_{f,c} > 0$)
+    \item $U_c \in \{0,1\}$: Binary indicator variable, $U_c = 1$ if crop $c$ is planted on at least one farm
 \end{itemize}
 
-\v{Objective Function}
+\subparagraph{Objective Function}
 
 Maximize total area-weighted benefit normalized by total available land:
 
 \begin{equation}
-\max \quad Z = \frac{1}{A_{total}} \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} L_f \cdot B_c \cdot Y_{f,c}
+\max \quad Z_{\text{MIP}} = \frac{1}{A_{\text{total}}} \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} B_c \cdot A_{f,c}
+\label{eq:mip_objective}
 \end{equation}
 
-where:
+where $A_{\text{total}} = \sum_{f \in \mathcal{F}} L_f$ is the total land area and $B_c$ is the composite benefit score for crop $c$.
+
+\subparagraph{Variable Count and Computational Characteristics}
+
+For $|\mathcal{F}|$ farms and $|\mathcal{C}|$ crops:
 \begin{itemize}
-    \item $A_{total} = \sum_{f \in \mathcal{F}} L_f$ is the total land area
-    \item $B_c$ is the composite benefit score for crop $c$
+    \item Continuous variables: $|\mathcal{F}| \times |\mathcal{C}|$ (the $A_{f,c}$ allocations)
+    \item Binary variables: $|\mathcal{F}| \times |\mathcal{C}| + |\mathcal{C}|$ (the $Y_{f,c}$ and $U_c$ indicators)
+    \item Total variables: $\approx 2 \cdot |\mathcal{F}| \times |\mathcal{C}|$
 \end{itemize}
 
-\paragraph{Constraints}
+The key advantage of this formulation is that the LP relaxation (obtained by relaxing $Y_{f,c}, U_c \in [0,1]$) provides tight bounds on the optimal solution, which is exploited by Gurobi.
+
+\paragraph{Formulation 2: BP (Binary Patch)}
+
+The BP formulation discretizes the land into fixed-size patches, each assigned to exactly one crop.
+
+\subparagraph{Decision Variables}
+
 \begin{itemize}
-
-\item \textbf{ Plot Assignment:} Each farm/patch is assigned to at most one crop:
-\begin{equation}
-\sum_{c \in \mathcal{C}} Y_{f,c} \leq 1 \quad \forall f \in \mathcal{F}
-\end{equation}
-
-\item \textbf{ Crop Selection Indicator:} If any farm plants crop $c$, then $U_c = 1$:
-\begin{equation}
-\sum_{f \in \mathcal{F}} Y_{f,c} \geq U_c \quad \forall c \in \mathcal{C}
-\end{equation}
-
-\item \textbf{ Food Group Diversity:} Ensure minimum and maximum number of unique crops per food group $g$:
-\begin{equation}
-m_g \leq \sum_{c \in G_g} U_c \leq M_g \quad \forall g \in \mathcal{G}
-\end{equation}
-
-
-where $G_g \subseteq \mathcal{C}$ is the set of crops belonging to food group $g$.
-
-\item \textbf{ Minimum/Maximum Crop Area:} Total area planted with crop $c$ must satisfy bounds:
-\begin{equation}
-a^{min}_c \cdot U_c \leq \sum_{f \in \mathcal{F}} L_f \cdot Y_{f,c} \leq a^{max}_c \cdot U_c \quad \forall c \in \mathcal{C}
-\end{equation}
-
+    \item $Y_{p,c} \in \{0,1\}$: Binary variable indicating whether crop $c$ is planted on patch $p$
+    \item $U_c \in \{0,1\}$: Binary variable indicating whether crop $c$ is selected on at least one patch
 \end{itemize}
+
+Note the critical difference: in BP, $Y_{p,c}$ represents a \emph{complete assignment} of patch $p$ to crop $c$, not merely an indicator. Each patch has fixed area $L_p$ (typically equal across patches in a uniform grid).
+
+\subparagraph{Objective Function}
+
+Maximize total area-weighted benefit:
+
+\begin{equation}
+\max \quad Z_{\text{BP}} = \frac{1}{A_{\text{total}}} \sum_{p \in \mathcal{P}} \sum_{c \in \mathcal{C}} L_p \cdot B_c \cdot Y_{p,c}
+\label{eq:bp_objective}
+\end{equation}
+
+where $\mathcal{P}$ is the set of patches and $A_{\text{total}} = \sum_{p \in \mathcal{P}} L_p$.
+
+\subparagraph{Variable Count and Computational Characteristics}
+
+For $|\mathcal{P}|$ patches and $|\mathcal{C}|$ crops:
+\begin{itemize}
+    \item Binary variables: $|\mathcal{P}| \times |\mathcal{C}| + |\mathcal{C}|$ (the $Y_{p,c}$ and $U_c$ variables)
+    \item No continuous variables
+\end{itemize}
+
+
+Tthe LP relaxation of BP is weak: relaxing $Y_{p,c} \in [0,1]$ allows fractional assignments that don't correspond to valid solutions, forcing branch-and-bound to explore many more nodes. Empirically, Gurobi solving BP takes 10--100$\times$ longer than solving the equivalent MIP formulation \cite{wolsey1998integer}.
+
+\paragraph{Constraints for MIP and BP Formulations}
+
+Table~\ref{tab:variant_a_constraints} provides a unified view of all constraints for both MIP and BP formulations, including their mathematical expressions and real-world interpretations.
+
+\begin{table}[H]
+\centering
+\caption{Constraint summary for Variant A: MIP and BP formulations}
+\label{tab:variant_a_constraints}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}p{2.5cm}cp{4.8cm}p{4.5cm}c@{}}
+\toprule
+\textbf{Constraint} & \textbf{Form.} & \textbf{Mathematical Expression} & \textbf{Real-World Meaning} & \textbf{Type} \\
+\midrule
+\multicolumn{5}{l}{\textit{\textbf{Land Allocation Constraints}}} \\
+\midrule
+Land Capacity & MIP & $\sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall f$ & Total crop area on each farm cannot exceed available land & Hard \\
+\addlinespace
+Patch Assignment & BP & $\sum_{c \in \mathcal{C}} Y_{p,c} \leq 1 \quad \forall p$ & Each discrete patch grows at most one crop (one-hot constraint) & Hard \\
+\midrule
+\multicolumn{5}{l}{\textit{\textbf{Area Linking Constraints (MIP only)}}} \\
+\midrule
+Minimum Area & MIP & $A_{f,c} \geq A_{\min,c} \cdot Y_{f,c} \quad \forall f,c$ & If planted, crop must occupy minimum viable area for economic production & Hard \\
+\addlinespace
+Indicator Upper Bound & MIP & $A_{f,c} \leq L_f \cdot Y_{f,c} \quad \forall f,c$ & Links continuous area to binary indicator; if $Y_{f,c}=0$ then $A_{f,c}=0$ & Hard \\
+\midrule
+\multicolumn{5}{l}{\textit{\textbf{Global Usage Constraints}}} \\
+\midrule
+U-Y Lower Link & MIP & $U_c \geq Y_{f,c} \quad \forall f,c$ & If any farm plants crop $c$, global indicator $U_c$ must be active & Hard \\
+\addlinespace
+U-Y Upper Link & MIP & $U_c \leq \sum_{f} Y_{f,c} \quad \forall c$ & $U_c$ can only be 1 if at least one farm plants crop $c$ & Hard \\
+\addlinespace
+U-Y Link & BP & $U_c \geq Y_{p,c} \quad \forall p,c$ & If any patch grows crop $c$, global indicator $U_c$ is activated & Hard \\
+\midrule
+\multicolumn{5}{l}{\textit{\textbf{Dietary Diversity Constraints}}} \\
+\midrule
+Food Group Min & Both & $\sum_{c \in \mathcal{C}_g} U_c \geq N_g^{\min} \quad \forall g$ & Minimum distinct crops from each food group for nutritional adequacy & Hard \\
+\addlinespace
+Food Group Max & Both & $\sum_{c \in \mathcal{C}_g} U_c \leq N_g^{\max} \quad \forall g$ & Maximum crops per food group to prevent over-concentration & Hard \\
+\midrule
+\multicolumn{5}{l}{\textit{\textbf{Total Area Bounds}}} \\
+\midrule
+Min Total Area & MIP & $\sum_{f} A_{f,c} \geq a_c^{\min} \cdot U_c \quad \forall c$ & If selected, crop must have minimum total area across all farms & Hard \\
+\addlinespace
+Max Total Area & MIP & $\sum_{f} A_{f,c} \leq a_c^{\max} \cdot U_c \quad \forall c$ & Caps total area for any crop to prevent monoculture dominance & Hard \\
+\addlinespace
+Min Patch Count & BP & $\sum_{p} Y_{p,c} \geq n_c^{\min} \cdot U_c \quad \forall c$ & If selected, crop must be planted on minimum number of patches & Hard \\
+\addlinespace
+Max Patch Count & BP & $\sum_{p} Y_{p,c} \leq n_c^{\max} \cdot U_c \quad \forall c$ & Limits patches for any crop to maintain production diversity & Hard \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{Constraint Implementation Notes}
+
+\begin{itemize}
+    \item \textbf{MIP constraints} involve both continuous ($A_{f,c}$) and binary ($Y_{f,c}$, $U_c$) variables, leveraging tight LP relaxations for efficient branch-and-bound.
+    \item \textbf{BP constraints} are purely binary, enabling direct QUBO conversion but with weaker LP bounds.
+    \item The \textbf{one-hot constraint} (Patch Assignment) is critical for BP: when converted to QUBO penalty form, it introduces $O(|\mathcal{C}|^2)$ quadratic interactions per patch.
+    \item \textbf{Food group constraints} are identical in both formulations since they only involve the global $U_c$ indicators.
+    \item \textbf{Area bounds} in MIP translate to \textbf{patch count bounds} in BP, with the relationship $a_c^{\min} \approx n_c^{\min} \cdot L_p$ for uniform patch areas $L_p$.
+\end{itemize}
+
+\paragraph{Relationship Between Formulations}
+
+The two formulations are mathematically related through discretization. If we partition each farm $f$ into $k_f$ equal-sized patches, the MIP allocation $A_{f,c}$ corresponds to:
+
+\begin{equation}
+A_{f,c} \approx \frac{L_f}{k_f} \sum_{p \in \mathcal{P}_f} Y_{p,c}
+\end{equation}
+
+where $\mathcal{P}_f$ denotes the patches belonging to farm $f$. As $k_f \to \infty$, the BP formulation converges to the MIP formulation \cref{app:refinement}.
+
+\paragraph{QUBO Conversion of BP Formulation}
+
+For quantum annealing, the BP constraints must be converted to penalty terms in the objective. The one-hot constraint becomes:
+
+\begin{equation}
+H_{\text{penalty}} = \lambda \sum_{p \in \mathcal{P}} \left( \sum_{c \in \mathcal{C}} Y_{p,c} - 1 \right)^2
+\label{eq:qubo_penalty}
+\end{equation}
+
+where $\lambda > 0$ is a penalty weight chosen large enough to enforce constraint satisfaction. Expanding the quadratic:
+
+\begin{equation}
+H_{\text{penalty}} = \lambda \sum_{p} \left[ \sum_c Y_{p,c} + 2\sum_{c < c'} Y_{p,c} Y_{p,c'} - 2\sum_c Y_{p,c} + 1 \right]
+\end{equation}
+
+This introduces $O(|\mathcal{P}| \times |\mathcal{C}|^2)$ quadratic interactions in the QUBO, significantly increasing problem density compared to the linear MIP formulation.
+
+\paragraph{Summary: Formulation Trade-offs}
+
+\begin{table}[H]
+\centering
+\caption{Comparison of MIP and BP formulations for Variant A}
+\label{tab:formulation_comparison}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Property} & \textbf{MIP (Continuous)} & \textbf{BP (Binary Patch)} \\
+\midrule
+Area variables & Continuous $A_{f,c}$ & None (implicit in $Y_{p,c}$) \\
+Assignment variables & Binary $Y_{f,c}$ indicator & Binary $Y_{p,c}$ assignment \\
+LP relaxation & Tight bounds & Weak bounds \\
+Gurobi performance & Excellent ($<$1s for 1000 farms) & Poor (10--300s) \\
+QUBO compatible & No (requires discretization) & Yes (direct conversion) \\
+Quantum annealing & Requires encoding & Native compatibility \\
+Variable scaling & $O(|\mathcal{F}| \times |\mathcal{C}|)$ & $O(|\mathcal{P}| \times |\mathcal{C}|)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The choice between formulations depends on the solution method: classical MILP solvers should use MIP, while quantum/hybrid approaches require BP. Our benchmarks in Studies 1 and 2 use the BP formulation to enable direct quantum-classical comparison on identical problem instances.
+
+\paragraph{Constraints Summary}
+
+The constraints for Variant A enforce physical land limitations and dietary diversity requirements. A comprehensive summary of all constraints across both problem formulations is provided in Table~\ref{tab:all_constraints}.
 
 
 % \subsubsection{Multi-Period Extension for Rotation Analysis}
@@ -319,53 +571,71 @@ a^{min}_c \cdot U_c \leq \sum_{f \in \mathcal{F}} L_f \cdot Y_{f,c} \leq a^{max}
 \subsubsection{Problem Variant B: Hierarchical Multi-Period Rotation}
 \label{subsec:formulation_b}
 
-\paragraph{Description and Calibration of Model Parameters}
+\paragraph{Description and Problem Structure}
 
-The rotation synergy matrix $R \in \mathbb{R}^{6 \times 6}$ and spatial interaction terms in our formulation require careful calibration to balance agronomic realism with computational tractability. We ground our parameter choices in both empirical agricultural research and established optimization modeling practices.
+Variant B extends the single-period allocation problem to a multi-period rotation planning model with 6 aggregated crop families, a 3-period temporal horizon, quadratic rotation synergies, and spatial interactions. This formulation is designed to introduce components not considered in Variant A that may challenge classical solvers, particularly the quadratic temporal and spatial interaction terms that create a densely connected optimization landscape.
 
-\textbf{Rotation Synergy Effects}
+\textbf{Methodological Note}
+It is important to acknowledge that no consensus exists in the literature regarding how rotation effects should be mathematically modeled. Our review revealed substantial heterogeneity in formulation .Given this heterogeneity, our formulation should be viewed as \emph{one plausible instantiation} of rotation planning rather than a definitive model.
 
-Our rotation benefits are calibrated to match empirical findings from large-scale meta-analyses. Recent synthesis of 3,663 paired field-trial observations across six continents shows that crop rotations increase subsequent crop yields by 16-23\% on average compared to monoculture, with legume pre-crops providing the largest benefits \cite{mudare2025crop}. We model these effects through positive entries in $R_{c,c'}$ for beneficial crop sequences (e.g., legume $\to$ cereal), drawn from $\text{Unif}(0.02, 0.25)$ to capture the observed range of rotation advantages.
-
-For monoculture penalties, we set $R_{c,c} = -\beta \cdot 1.5$ where $\beta \in [-0.8, -1.5]$, yielding effective penalties in the range $[-1.2, -2.25]$. With our rotation weight $\gamma = 0.2$, this produces an objective penalty of approximately 24\% for continuous monoculture ($0.2 \times 1.2 = 0.24$), consistent with documented economic disadvantages of monoculture systems that compound yield losses (10-15\%), increased pest pressure (5-10\%), soil degradation (3-5\%), and higher input costs (2-5\%) \cite{preissel2015magnitude, reckling2018grain}.
-
-The agronomic justifications for specific rotation effects include:
 \begin{itemize}
-    \item \textbf{Monoculture penalty} ($c = c'$): Continuous cultivation of the same crop depletes specific soil nutrients, allows pest and pathogen populations to build up, and may involve allelopathic effects from residue accumulation \cite{kirkegaard2014magnitude}.
+    \item \textbf{Yield multipliers vs. additive penalties:} Some models apply rotation effects as multiplicative yield factors (e.g., $Y_{\text{actual}} = Y_{\text{base}} \cdot (1 + r_{c,c'})$), while others use additive objective penalties as we do here \cite{cai2011dynamic, haneveld2005crop}.
     
-    \item \textbf{Disease carryover}: Pathogens persist in soil when crops from the same botanical family are grown in succession (e.g., tomato $\to$ potato), modeled through the frustration ratio $p_{\text{frust}} \in [0.70, 0.88]$ that determines the proportion of negative synergy values in $R$.
+    \item \textbf{Exponential vs. linear response:} Process-based crop models like APSIM use exponential growth functions where rotation effects compound over time \cite{keating2003overview}, whereas optimization models typically linearize these effects for tractability \cite{liang2023designing}.
     
-    \item \textbf{Allelopathy}: Some crops chemically inhibit the growth of subsequent crops through root exudates or decomposing residues, captured by negative $R_{c,c'}$ entries between antagonistic species.
+    \item \textbf{Magnitude quantification:} Meta-analyses report rotation benefits ranging from 16-23\% yield increase \cite{mudare2025crop, zhao2022global}, but individual studies vary widely depending on region, crop pair, and measurement methodology. Preissel et al.\ \cite{preissel2015magnitude} found legume pre-crop benefits of 0.5-1.6 t/ha for subsequent cereals, while Kirkegaard and Ryan \cite{kirkegaard2014magnitude} documented persistent effects spanning 2-3 growing seasons.
     
-    \item \textbf{Beneficial rotations}: Nitrogen-fixing legumes improve soil fertility for subsequent grain crops through biological nitrogen fixation (20-40 kg N/ha), reducing fertilizer requirements by 40-45\% while maintaining yields \cite{cernay2018preceding, zhao2022global}.
+    \item \textbf{Spatial interaction treatment:} Traditional approaches impose hard constraints forbidding same-family crops on adjacent plots \cite{ballot2023first}, while ecological studies question whether spatial concentration actually worsens pest impacts \cite{karp2018crop, root1973organization}. Our soft penalty approach bridges these conflicting findings.
+    
+    \item \textbf{Constraint structure:} Some models enforce rotation through explicit temporal constraints ($Y_{f,c,t} + Y_{f,c,t+1} \leq 1$), others through objective function penalties, and still others through eligibility sets that pre-filter valid crop sequences \cite{haneveld2005crop}.
 \end{itemize}
 
-\textbf{Spatial Adjacency Effects}
 
-The spatial neighbor interaction term represents a methodological contribution that bridges conflicting evidence in the literature. Traditional rotation planning imposes hard constraints forbidding same-family crops on adjacent plots \cite{ballot2023first}
-, based on the resource concentration hypothesis that larger or more connected host plant stands recruit more pests per plant \cite{root1973organization}. However, recent large-scale empirical studies across 14 pest species and 20,000 field-years found that pest severity is often independent of field size, with no consistent evidence that spatial concentration worsens pest impacts \cite{karp2018crop}.
+The objective function combines five components: (1) a \textbf{base benefit} term representing intrinsic crop value weighted by farm area; (2) a \textbf{temporal synergy} term modeling crop rotation effects on the same farm over consecutive periods; (3) a \textbf{spatial synergy} term modeling cross-farm interactions between neighboring plots in the same period; (4) a \textbf{one-hot penalty} enforcing single-crop assignment per farm-period; and (5) a \textbf{diversity bonus} rewarding crop variety across the planning horizon.
 
-Rather than adopting either extreme - strict prohibition or complete neglect of spatial effects - we implement a dampened spatial interaction term with coupling strength $\gamma_s = 0.5\gamma$ and compatibility matrix $S_{c,c'} = 0.3 \cdot R_{c,c'}$. This soft penalty approach:
+\subparagraph{Temporal Rotation Effects}
+The temporal synergy term captures agronomic interactions through a rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$:
+\begin{itemize}
+    \item \textbf{Monoculture penalty} ($c_1 = c_2$): Continuous cultivation depletes specific nutrients and builds up soil pathogens.
+    \item \textbf{Disease carryover}: Pathogens persist in soil when crops from the same botanical family are grown in succession (e.g., tomato $\to$ potato with late blight).
+    \item \textbf{Allelopathy}: Some plants chemically inhibit others through root exudates or decomposing residues.
+    \item \textbf{Beneficial rotations}: Nitrogen-fixing legumes improve soil fertility for subsequent grain crops through biological nitrogen fixation.
+\end{itemize}
 
+\subparagraph{Spatial Adjacency Effects}
+The spatial synergy term models cross-farm ecological interactions on a grid where farms interact with their $k=4$ nearest neighbors:
+\begin{itemize}
+    \item \textbf{Positive effects:} Pollination services, beneficial insect sharing, wind breaks, microclimate modification.
+    \item \textbf{Negative effects:} Pest and disease spread across farm boundaries, resource competition (water, light).
+\end{itemize}
+
+We use a dampened spatial compatibility matrix $S = 0.3 \cdot R$ with coupling strength $\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$, reflecting that spatial effects between farms are typically weaker than within-farm temporal rotations.
+
+\subparagraph{Key Design Principles}
 \begin{enumerate}
-    \item \textbf{Respects agronomic wisdom} encoded in traditional rotation constraints while acknowledging empirical uncertainty about effect magnitudes.
-    
-    \item \textbf{Provides optimization flexibility} to weigh spatial risks against yield and rotation objectives, acting as a regularization term that promotes diversity without over-constraining the solution space.
-    
-    \item \textbf{Scales appropriately} with the problem structure: the combined dampening ($0.5 \times 0.3 = 0.15$) means spatial adjacency effects are approximately 15\% of temporal rotation effects, reflecting that edge effects operate on smaller spatial scales than whole-field succession effects, pest pressure builds gradually within seasons (unlike year-to-year carryover), and modern pest management can partially mitigate spatial concentration.
-    
-    \item \textbf{Enables calibration} through the tunable parameter $\gamma_s$, which can be adjusted for regional pest pressure or used in robust optimization across uncertainty ranges - a capability impossible with binary adjacency constraints.
+    \item \textbf{Unified synergy matrix:} Both temporal and spatial terms use variants of the same $R$ matrix, ensuring consistency in modeling agronomic interactions across scales.
+    \item \textbf{Scale hierarchy:} The relationship $\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$ reflects weaker inter-farm effects.
+    \item \textbf{Dampening factor:} The $0.3$ multiplier accounts for reduced interaction strength across farm boundaries.
+    \item \textbf{Normalization:} Both terms use $A_{\text{total}}$ normalization for scale-invariant optimization.
 \end{enumerate}
 
-The spatial term is scaled by cell area $L_f$ to maintain dimensional consistency with the temporal rotation term. While spatial effects operate primarily through edge interactions, this scaling accounts for interface length between adjacent cells (proportional to $\sqrt{L_f}$ for square cells) and ensures that spatial penalties contribute to the objective function commensurate with area-weighted rotation benefits.
+\paragraph{Calibration of Model Parameters}
 
-\textbf{Temporal Horizon and Multi-Period Structure}
+The rotation synergy matrix $R$ and spatial interaction terms require careful calibration to balance agronomic realism with computational tractability. We ground our parameter choices in empirical agricultural research and established optimization modeling practices.
 
-Our three-period planning horizon ($T = 3$) balances several considerations. Empirical evidence shows that rotation benefits strengthen over time, with long-term experiments (9-50 years) demonstrating cumulative soil health improvements and pest suppression \cite{mudare2025crop}. However, longer planning horizons increase computational complexity exponentially while introducing greater uncertainty in future crop prices and environmental conditions. The three-year window captures the primary rotation cycle for most cropping systems (e.g., corn-soybean-wheat or legume-cereal-legume sequences) while remaining computationally tractable.
+\textbf{Rotation Synergy Effects.}
+Our rotation benefits are calibrated to match empirical findings from large-scale meta-analyses. Recent synthesis of 3,663 paired field-trial observations across six continents shows that crop rotations increase subsequent crop yields by 16-23\% on average compared to monoculture, with legume pre-crops providing the largest benefits \cite{mudare2025crop}. We model these effects through positive entries in $R_{c,c'}$ for beneficial crop sequences, drawn from $\text{Unif}(0.02, 0.25)$.
 
-\textbf{Parameter Summary and Validation}
+For monoculture penalties, we set $R_{c,c} = -\beta \cdot 1.5$ where $\beta \in [-0.8, -1.5]$, yielding effective penalties in the range $[-1.2, -2.25]$. With our rotation weight $\gamma = 0.2$, this produces an objective penalty of approximately 24\% for continuous monoculture, consistent with documented economic disadvantages \cite{preissel2015magnitude, reckling2018grain}.
 
-Table~\ref{tab:parameters} summarizes our model parameters alongside their literature-supported ranges. Our choices fall within established bounds from both agronomic field trials and published optimization models \cite{haneveld2005crop, liang2023designing}. The 24\% effective monoculture penalty, 15\% spatial effect dampening, and 16-25\% rotation benefits collectively create a realistic but computationally challenging optimization landscape that reflects the multi-objective trade-offs facing agricultural decision-makers.
+\textbf{Spatial Adjacency Calibration.}
+Traditional rotation planning imposes hard constraints forbidding same-family crops on adjacent plots \cite{ballot2023first}, based on the resource concentration hypothesis \cite{root1973organization}. However, recent large-scale empirical studies found that pest severity is often independent of field size \cite{karp2018crop}. Our soft penalty approach ($0.5 \times 0.3 = 0.15$ of temporal effects) bridges this conflicting evidence while enabling calibration through tunable parameters.
+
+\textbf{Temporal Horizon.}
+Our three-period planning horizon ($T = 3$) captures the primary rotation cycle for most cropping systems (e.g., corn-soybean-wheat) while remaining computationally tractable \cite{haneveld2005crop}.
+
+\textbf{Parameter Validation.}
+Table~\ref{tab:parameters} summarizes our model parameters alongside their literature-supported ranges.
 
 \begin{table}[h]
 \centering
@@ -385,9 +655,7 @@ Planning horizon $T$ & 3 years & 2-5 years & \cite{haneveld2005crop} \\
 \end{tabular}
 \end{table}
 
-Importantly, our formulation uses a \emph{linear} objective contribution for rotation effects (Equation~25), not an exponential yield multiplier. This follows standard practice in agricultural optimization models where penalties are added to the objective function rather than applied multiplicatively to crop yields \cite{cai2011dynamic}. The distinction is critical: a rotation penalty of $-1.2$ reduces the objective contribution by $0.2 \times 1.2 = 24\%$ in our linear formulation, not by $\exp(-1.2) \approx 70\%$ as would occur in exponential crop growth models used for long-term simulation \cite{keating2003overview}.
-
-This parameter calibration ensures our benchmark instances represent realistic agricultural planning scenarios while exhibiting the structural complexity - quadratic interactions, constraint frustration, and long-range correlations - that make quantum optimization potentially advantageous over classical approaches.
+Importantly, our formulation uses a \emph{linear} objective contribution for rotation effects, not an exponential yield multiplier. This follows standard practice in agricultural optimization models \cite{cai2011dynamic}: a rotation penalty of $-1.2$ reduces the objective contribution by $0.2 \times 1.2 = 24\%$, not by $\exp(-1.2) \approx 70\%$ as would occur in exponential crop growth models \cite{keating2003overview}.
 
 
 \paragraph{Decision Variables}
@@ -406,21 +674,17 @@ The objective is to maximize the total normalized benefit:
 \text{maximize} \quad \left( \text{Benefit} + \text{Temporal} + \text{Spatial} - \text{Penalty} + \text{Diversity} \right)
 \end{equation}
 
-\textbf{Base Benefit (Linear)}
-This term represents the intrinsic value of planting a crop, weighted by the farm's area:
+\subparagraph{Base Benefit (Linear)}
 \begin{equation}
 \text{Benefit} = \sum_{f \in F} \sum_{c \in C} \sum_{t \in T} \frac{B_c \cdot L_f}{A_{\text{total}}} \cdot Y_{f,c,t}
 \end{equation}
-where $B_c$ is the benefit of crop $c$, $L_f$ is the area of farm $f$, and $A_{\text{total}}$ is the total area of all farms.
 
-\textbf{Temporal Synergy with Frustrated Rotations (Quadratic)}
-This term models the effect of crop rotation on the same farm over consecutive periods, incorporating agronomic interactions:
+\subparagraph{Temporal Synergy (Quadratic)}
 \begin{equation}
 \text{Temporal} = \gamma_{\text{rot}} \sum_{f \in F} \sum_{t=2}^{T} \sum_{c_1 \in C} \sum_{c_2 \in C} \frac{L_f}{A_{\text{total}}} \cdot R_{c_1,c_2} \cdot Y_{f,c_1,t-1} \cdot Y_{f,c_2,t}
 \end{equation}
 
-\textbf{Rotation Matrix Definition.}
-The rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$ encodes agronomic interactions:
+The rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$ is defined as:
 \begin{equation}
 R_{c_1,c_2} = \begin{cases}
 -\beta \cdot 1.5 & \text{if } c_1 = c_2 \text{ (monoculture penalty)} \\
@@ -429,83 +693,91 @@ R_{c_1,c_2} = \begin{cases}
 \end{cases}
 \end{equation}
 
-\textbf{Parameters}
-\begin{itemize}
-    \item $\beta \in [-0.8, -1.5]$: Negative synergy strength
-    \item $p_{\text{frust}} \in [0.70, 0.88]$: Frustration ratio (70\%-88\% negative edges)
-    \item $\gamma_{\text{rot}}$: Temporal coupling strength
-\end{itemize}
-
-\textbf{Agronomic Justification.}
-\begin{itemize}
-    \item \textbf{Monoculture penalty} ($c_1 = c_2$): Same crop depletes specific nutrients and builds up soil pathogens
-    \item \textbf{Disease carryover}: Pathogens persist in soil (e.g., tomato $\to$ potato with late blight)
-    \item \textbf{Allelopathy}: Some plants inhibit others chemically (e.g., certain brassicas)
-    \item \textbf{Beneficial rotations}: Nitrogen-fixing legumes improve soil for subsequent grains
-\end{itemize}
-
-\paragraph{Spatial Synergy with Neighbor Interactions (Quadratic)}
-This term models the effect of planting crops on neighboring farms in the same period. Farms are arranged on a grid and interact with their $k=4$ nearest neighbors:
+\subparagraph{Spatial Synergy (Quadratic)}
 \begin{equation}
 \text{Spatial} = \gamma_{\text{spat}} \sum_{(f_1, f_2) \in \mathcal{E}} \sum_{t \in T} \sum_{c_1 \in C} \sum_{c_2 \in C} \frac{S_{c_1,c_2}}{A_{\text{total}}} \cdot Y_{f_1,c_1,t} \cdot Y_{f_2,c_2,t}
 \end{equation}
+where $\mathcal{E}$ is the edge set of the $k$-nearest neighbor graph and $S_{c_1,c_2} = 0.3 \cdot R_{c_1,c_2}$.
 
-\textbf{Spatial Components}
-\begin{itemize}
-    \item $\mathcal{E}$: Edge set of $k$-nearest neighbor graph
-    \item $S_{c_1,c_2} = 0.3 \cdot R_{c_1,c_2}$: Spatial compatibility matrix (dampened rotation matrix)
-    \item $\gamma_{\text{spat}} = 0.5 \gamma_{\text{rot}}$: Spatial coupling strength (typically weaker than temporal)
-\end{itemize}
+\subparagraph{One-Hot Penalty (Quadratic)}
+\begin{equation}
+\text{Penalty} = \lambda_{oh} \sum_{f \in F} \sum_{t \in T} \left( \left(\sum_{c \in C} Y_{f,c,t}\right) - 1 \right)^2
+\end{equation}
 
-\textbf{Ecological Interpretation}
-This models cross-farm interactions:
-\begin{itemize}
-    \item \textbf{Positive effects:} Pollination services, beneficial insect sharing, wind breaks, microclimate modification
-    \item \textbf{Negative effects:} Pest and disease spread across farm boundaries, resource competition (water, light)
-\end{itemize}
+\subparagraph{Diversity Bonus (Linear)}
+\begin{equation}
+\text{Diversity} = \lambda_{div} \sum_{f \in F} \sum_{c \in C} \mathbb{I}\left(\sum_{t \in T} Y_{f,c,t} > 0\right)
+\end{equation}
+where $\mathbb{I}(\cdot)$ is the indicator function (linearized in Gurobi).
 
-\paragraph{Key Design Principles}
+\paragraph{Model Parameters}
 
-\begin{enumerate}
-    \item \textbf{Unified synergy matrix:} Both temporal and spatial terms use variants of the same $R$ matrix, ensuring consistency in modeling agronomic interactions across scales.
-    
-    \item \textbf{Scale hierarchy:} The relationship $\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$ reflects that spatial effects between farms are typically weaker than within-farm temporal rotations.
-    
-    \item \textbf{Dampening factor:} The $0.3$ multiplier in $S = 0.3R$ accounts for reduced interaction strength across farm boundaries compared to sequential plantings on the same soil parcel.
-    
-    \item \textbf{Normalization:} Both temporal and spatial terms use $A_{\text{total}}$ normalization to ensure scale-invariant optimization, with spatial effects further modulated by the dampening coefficient.
-\end{enumerate}
+Table~\ref{tab:variant_b_params} summarizes the key parameters used in the Variant B formulation.
 
-This formulation captures the multi-scale nature of agricultural systems: within-farm temporal dynamics (crop rotation effects) and between-farm spatial spillovers (ecological interactions), all grounded in the same underlying agronomic compatibility relationships encoded in $R$.
-
-\textbf{One-Hot Penalty (Quadratic)}
-This term penalizes deviations from planting exactly one crop per farm-period, enforcing a "soft" one-hot constraint.
-\[
-    \text{Penalty} = \lambda_{oh} \sum_{f \in F} \sum_{t \in T} \left( \left(\sum_{c \in C} Y_{f,c,t}\right) - 1 \right)^2
-\]
-where $\lambda_{oh}$ is the penalty coefficient.
-
-\textbf{Diversity Bonus (Linear)}
-This term rewards planting a crop on a farm at least once during the planning horizon.
-\[
-    \text{Diversity} = \lambda_{div} \sum_{f \in F} \sum_{c \in C} \mathbb{I}\left(\sum_{t \in T} Y_{f,c,t} > 0\right)
-\]
-where $\lambda_{div}$ is the diversity bonus coefficient and $\mathbb{I}(\cdot)$ is the indicator function. This is typically linearized in Gurobi.
+\begin{table}[H]
+\centering
+\caption{Variant B model parameters}
+\label{tab:variant_b_params}
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Description} \\
+\midrule
+$\beta \in [-0.8, -1.5]$ & Negative synergy strength for disease/competition effects \\
+$p_{\text{frust}} \in [0.70, 0.88]$ & Frustration ratio (proportion of negative edges in $R$) \\
+$\gamma_{\text{rot}}$ & Temporal rotation coupling strength (default: 0.2) \\
+$\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$ & Spatial coupling strength (weaker than temporal) \\
+$\lambda_{oh}$ & One-hot penalty coefficient \\
+$\lambda_{div}$ & Diversity bonus coefficient \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Constraints}
-\begin{enumerate}
-    \item \textbf{Maximum Crops (Soft Constraint):} To allow for some flexibility, the model constrains the number of crops per farm-period to be at most 2.
-    \[ \forall f \in F, \forall t \in T: \quad \sum_{c \in C} Y_{f,c,t} \le 2 \]
-    \item \textbf{Minimum Crops (Soft Constraint):} Ensures at least one crop is planted.
-    \[ \forall f \in F, \forall t \in T: \quad \sum_{c \in C} Y_{f,c,t} \ge 1 \]
-    \item \textbf{Rotation Constraint:} Prevents planting the same crop on the same farm in consecutive periods.
-    \[ \forall f \in F, \forall c \in C, \forall t \in \{1, \dots, T-1\}: \quad Y_{f,c,t} + Y_{f,c,t+1} \le 1 \]
-\end{enumerate}
+
+The constraints for Variant B enforce crop rotation rules and farm-period assignment limits. Table~\ref{tab:variant_b_constraints} summarizes the constraint structure, distinguishing between explicit constraints and terms incorporated directly into the objective function.
 
 
+\begin{table}[H]
+\centering
+\caption{Constraint summary for Variant B: Multi-Period Rotation}
+\label{tab:variant_b_constraints}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}p{3.2cm}p{5cm}p{5cm}c@{}}
+\toprule
+\textbf{Constraint/Term} & \textbf{Mathematical Expression} & \textbf{Real-World Meaning} & \textbf{Type} \\
+\midrule
+\multicolumn{4}{l}{\textit{\textbf{Land Allocation Constraints}}} \\
+\midrule
+Max Crops Per Slot & $\sum_{c \in C} Y_{f,c,t} \leq 2 \quad \forall f,t$ & Allows limited intercropping (up to 2 crops per farm-period) for flexibility in rotation planning & Soft \\
+\addlinespace
+Min Crops Per Slot & $\sum_{c \in C} Y_{f,c,t} \geq 1 \quad \forall f,t$ & Ensures productive land use; no farm-period can be left completely fallow & Soft \\
+\addlinespace
+One-Hot Penalty & Objective & Encourages exactly one primary crop per farm-period; quadratic penalty term added to objective & Objective \\
+\midrule
+\multicolumn{4}{l}{\textit{\textbf{Temporal Rotation Constraints}}} \\
+\midrule
 
+Temporal Synergy & Objective & Rewards beneficial crop rotations (e.g., legume$\to$cereal) and penalizes monoculture through the rotation matrix $R$ & Objective \\
+\midrule
+\multicolumn{4}{l}{\textit{\textbf{Spatial Interaction Constraints}}} \\
+\midrule
+Spatial Synergy & Objective & Models cross-farm ecological interactions between neighboring plots; dampened version of temporal synergy ($S = 0.3R$) & Objective \\
+\midrule
+\multicolumn{4}{l}{\textit{\textbf{Diversity Constraints}}} \\
+\midrule
+Diversity Bonus & Objective & Rewards planting variety of crops across the planning horizon on each farm & Objective \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
 
+\paragraph{Constraint Implementation Notes}
 
+\begin{itemize}
+    \item \textbf{Soft constraints} (Min/Max Crops Per Slot) allow minor violations with penalty, providing flexibility for the optimizer to find good solutions in the frustrated landscape.
+    \item \textbf{Objective terms} are incorporated directly into the optimization objective rather than as separate constraints. For QUBO conversion, these naturally contribute to the quadratic form without requiring penalty transformation.
+\end{itemize}
 
 
 \subsection{Conversion to Quantum-Annealer-Compatible Formats}
@@ -769,7 +1041,7 @@ The LeapHybridCQMSolver demonstrated remarkable consistency when compared agains
 \centering
 \caption{D-Wave Hybrid CQM performance comparison on Farm Scenario}
 \label{tab:hybrid_cqm_performance}
-\begin{adjustbox}{max width=1.1\textwidth}
+\begin{adjustbox}{max width=1\textwidth}
 \small
 \begin{tabular}{rcccccc}
 \toprule
@@ -788,7 +1060,7 @@ The LeapHybridCQMSolver demonstrated remarkable consistency when compared agains
 \centering
 \caption{D-Wave Hybrid CQM performance on Patch Scenario (larger scales)}
 \label{tab:hybrid_cqm_patch}
-\begin{adjustbox}{max width=1.1\textwidth}
+\begin{adjustbox}{max width=1\textwidth}
 \small
 \begin{tabular}{rcccccc}
 \toprule
@@ -1023,6 +1295,58 @@ Coordinated & 0.2926 & 31.8 & 23 & 25 & 3,058.0 \\
     \item \textbf{Crop diversity trade-off:} Gurobi allocates 99.6\% of land to spinach, while quantum methods produce balanced allocations
 \end{enumerate}
 
+\subsubsection{Violation Impact Analysis by Decomposition Strategy}
+
+While most decomposition methods maintain strict feasibility, some strategies produce minor constraint violations when boundary effects or rounding occur during partition coordination. Table~\ref{tab:violation_by_strategy} summarizes the violation characteristics of each method across all benchmark scales.
+
+\begin{table}[H]
+\centering
+\caption{Constraint violation analysis by decomposition strategy}
+\label{tab:violation_by_strategy}
+\small
+\begin{adjustbox}{max width = \textwidth}
+    
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{Entries w/ Violations} & \textbf{Total Violations} & \textbf{Mean Viol. Rate} & \textbf{Violation Type} \\
+\midrule
+CQM-First PlotBased & 0/7 (0\%) & 0 & 0\% & None \\
+Louvain & 0/4 (0\%) & 0 & 0\% & None \\
+HybridGrid(5,9) & 1/6 (17\%) & 1 & Low & Food group \\
+Multilevel(10) & 3/7 (43\%) & 3 & Medium & Food group \\
+Multilevel(5) & 2/4 (50\%) & 3 & Medium & Food group \\
+HybridGrid(10,9) & 1/2 (50\%) & 1 & Low & Food group \\
+PlotBased & 2/4 (50\%) & 2 & Medium & Food group \\
+Spectral(10) & 2/3 (67\%) & 2 & High & Food group \\
+Coordinated & 5/7 (71\%) & 37 & High & One-hot \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{Violation Types Observed:}
+\begin{itemize}
+    \item \textbf{Food Group Violations:} Missing required food groups (e.g., ``Starchy staples'') due to partition boundaries preventing global constraint satisfaction. Typically 1 violation per affected entry.
+    \item \textbf{One-Hot Violations:} Farm assigned multiple crops or no crops due to coordination failures between partitions. Primarily observed in Coordinated method (23 violations at 1,000 farms).
+\end{itemize}
+
+\paragraph{Violation Healing Analysis}
+To quantify the impact of violations on solution quality, we apply a ``healing'' methodology that estimates the benefit lost due to constraint violations:
+
+\begin{equation}
+\text{Healed Objective} = \text{QPU Objective} - (\text{Violations} \times \text{Avg. Benefit per Slot})
+\end{equation}
+
+This analysis reveals that violations explain only approximately 7\% of the optimality gap, with the remaining 93\% attributable to decomposition approximation effects, boundary losses, and stochastic sampling variance.
+
+\paragraph{Key Findings:}
+\begin{enumerate}
+    \item \textbf{Zero-violation methods exist:} CQM-First PlotBased and Louvain maintain 100\% feasibility across all scales
+    \item \textbf{Violations scale with problem size:} Coordinated method shows violations increasing from 1 (10 farms) to 23 (1,000 farms)
+    \item \textbf{Quality-feasibility trade-off:} Methods with higher violation rates (Coordinated: 31.8\% gap) often achieve better objectives than zero-violation methods (PlotBased: 57.1\% gap)
+    \item \textbf{Violations are minor contributors:} The majority of the optimality gap is structural, not caused by constraint violations
+\end{enumerate}
+
 \subsubsection{Synthesis of Pure QPU Findings}
 
 The pure QPU decomposition experiments establish:
@@ -1084,6 +1408,7 @@ Figure~\ref{fig:comprehensive_scaling} presents the unified scaling behavior acr
 \caption{QPU vs Gurobi benefit comparison (higher = better)}
 \label{tab:qpu_advantage}
 \small
+\begin{adjustbox}{max width = \textwidth}
 \begin{tabular}{lrrrrrr}
 \toprule
 \textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{\textit{improvement}} & \textbf{Ratio} & \textbf{Violations} \\
@@ -1105,6 +1430,7 @@ rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & $+$407.08 & 5.35$\times$
 \textbf{Average} & N/A & \textbf{28.36} & \textbf{125.81} & \textbf{$+$97.46} & \textbf{3.80$\times$} & \textbf{40.5} \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 \paragraph{Interpretation}
@@ -1254,6 +1580,7 @@ Avg QPU benefit & 125.81 & With violations \\
 \caption{Solve time comparison}
 \label{tab:timing_comparison}
 \small
+\begin{adjustbox}{max width = \textwidth}
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Formulation} & \textbf{Gurobi (s)} & \textbf{QPU Wall (s)} & \textbf{QPU Pure (s)} & \textbf{QPU \%} & \textbf{Speedup} \\
@@ -1264,6 +1591,7 @@ Avg QPU benefit & 125.81 & With violations \\
 \textbf{Combined} & \textbf{1,227.5} & \textbf{995.7} & \textbf{10.88} & \textbf{1.1\%} & \textbf{1.2$\times$} \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 \textbf{Key observations:}
@@ -1283,7 +1611,7 @@ We evaluated multiple QPU approaches:
 \centering
 \caption{Gurobi struggles with crop rotation MIQP}
 \label{tab:gurobi_struggles}
-\begin{adjustbox}{max width=1.1\textwidth}
+\begin{adjustbox}{max width=1\textwidth}
 \small
 \begin{tabular}{lcccc}
 \toprule
@@ -2481,7 +2809,7 @@ Gurobi (Classical) & - & - & 0.0 & 0 \\
 \end{itemize}
 
 
-\subsection{Grid Refinement Analysis}\label{sub:refinement}
+\subsection{Grid Refinement Analysis}\label{app:refinement}
 
 \subsubsection{Motivation and Research Question}
 
