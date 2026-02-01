@@ -1,0 +1,612 @@
+% ============================================================================
+% QUANTUM FOOD OPTIMIZATION - 5-MINUTE PRESENTATION
+% Condensed Version for OQI Showcase
+% Author: Edoardo Spigarolo
+% ============================================================================
+
+\documentclass[aspectratio=169,10pt]{beamer}
+
+% ============================================================================
+% THEME AND COLORS
+% ============================================================================
+\usetheme{default}
+\usecolortheme{default}
+
+% Custom colors - Professional blue-green quantum theme
+\definecolor{primaryBlue}{RGB}{0, 84, 147}
+\definecolor{secondaryBlue}{RGB}{0, 119, 182}
+\definecolor{accentTeal}{RGB}{0, 150, 136}
+\definecolor{accentGreen}{RGB}{76, 175, 80}
+\definecolor{warmOrange}{RGB}{255, 152, 0}
+\definecolor{alertRed}{RGB}{244, 67, 54}
+\definecolor{lightBg}{RGB}{245, 248, 250}
+\definecolor{darkText}{RGB}{33, 37, 41}
+\definecolor{mutedGray}{RGB}{108, 117, 125}
+
+% Set main colors
+\setbeamercolor{palette primary}{bg=primaryBlue,fg=white}
+\setbeamercolor{palette secondary}{bg=secondaryBlue,fg=white}
+\setbeamercolor{palette tertiary}{bg=accentTeal,fg=white}
+\setbeamercolor{structure}{fg=primaryBlue}
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{frametitle}{fg=primaryBlue,bg=white}
+\setbeamercolor{normal text}{fg=darkText}
+\setbeamercolor{block title}{bg=primaryBlue,fg=white}
+\setbeamercolor{block body}{bg=lightBg,fg=darkText}
+\setbeamercolor{block title example}{bg=accentGreen,fg=white}
+\setbeamercolor{block body example}{bg=lightBg,fg=darkText}
+\setbeamercolor{block title alerted}{bg=alertRed,fg=white}
+\setbeamercolor{block body alerted}{bg=lightBg,fg=darkText}
+\setbeamercolor{itemize item}{fg=primaryBlue}
+\setbeamercolor{itemize subitem}{fg=secondaryBlue}
+\setbeamercolor{enumerate item}{fg=primaryBlue}
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc,decorations.pathmorphing,backgrounds,fit,automata,shadows,patterns,arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{fontawesome5}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{hyperref}
+\usepackage{colortbl}
+\usepackage{svg}
+
+% Graphics path - use actual location of plots
+\graphicspath{{../plots/}}
+
+% ============================================================================
+% CUSTOM BEAMER TEMPLATE
+% ============================================================================
+
+% Remove navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% Reduce margins for denser slides
+\setbeamersize{text margin left=0.6cm,text margin right=0.6cm}
+
+% Custom headline with OQI branding
+\setbeamertemplate{headline}{%
+    \begin{tikzpicture}[remember picture,overlay]
+        \fill[white] (current page.north west) rectangle ([yshift=-0.8cm]current page.north east);
+        \draw[primaryBlue,line width=0.5pt] ([yshift=-0.8cm]current page.north west) -- ([yshift=-0.8cm]current page.north east);
+        % OQI logo on left
+\node[anchor=north west] at ([xshift=0.3cm,yshift=-0.0cm]current page.north west) {%
+    \includegraphics[height=0.65cm]{images/oqi_logo.png}%
+};
+
+% Logo slot 1 (next to OQI logo)
+\node[anchor=north west] at ([xshift=2.1cm,yshift=-0.2cm]current page.north west) {%
+    \includegraphics[height=0.3cm]{images/Logo_EPFL_2019.svg.png}%
+};
+% Logo slot 2
+\node[anchor=north west] at ([xshift=3.4cm,yshift=0.15cm]current page.north west) {%
+    \includegraphics[height=1cm]{images/Logo-GAIN.png}%
+};
+% Logo slot 3
+\node[anchor=north west] at ([xshift=4.7cm,yshift=-0.1cm]current page.north west) {%
+    \includegraphics[height=0.48cm]{images/NITheCS logo.png}%
+};
+% Logo slot 4 (SVG logo)
+\node[anchor=north west] at ([xshift=5.9cm,yshift=-0.05cm]current page.north west) {%
+    \includegraphics[height=0.5cm]{images/qb_logo_rgb_black_nosub.png}%
+};
+% OQI text on right
+\node[anchor=north east] at ([xshift=-0.3cm,yshift=-0.1cm]current page.north east) {%
+    \includegraphics[height=0.5cm]{images/oqi_text.png}%
+};
+    \end{tikzpicture}
+    \vspace{0.8cm}
+}
+
+% Custom footline with OQI footer image
+\setbeamertemplate{footline}{%
+    \begin{tikzpicture}[remember picture,overlay]
+        % Footer image spanning full width
+        \node[anchor=south,inner sep=0pt] at (current page.south) {%
+            \includegraphics[width=1.1\paperwidth,height=0.5cm]{images/footer.jpg}%
+        };
+        % Page number overlay
+        \node[anchor=south east,text=white,font=\tiny\bfseries] at ([xshift=-0.3cm,yshift=0.1cm]current page.south east) {\insertframenumber/\inserttotalframenumber};
+    \end{tikzpicture}
+    \vspace{0.6cm}
+}
+
+% Custom frame title
+\setbeamertemplate{frametitle}{%
+    \vspace{0.15cm}
+    \begin{beamercolorbox}[wd=\paperwidth,ht=1cm,dp=0.2cm]{frametitle}
+        \hspace{0.2cm}\usebeamerfont{frametitle}\insertframetitle
+        \ifx\insertframesubtitle\empty\else
+            \par\hspace{0.4cm}{\small\color{mutedGray}\insertframesubtitle}
+        \fi
+    \end{beamercolorbox}
+}
+
+% Custom itemize bullets
+\setbeamertemplate{itemize item}{\footnotesize\raisebox{0.1em}{\tikz\fill[primaryBlue] (0,0) circle (0.12em);}}
+\setbeamertemplate{itemize subitem}{\footnotesize\raisebox{0.1em}{\tikz\fill[secondaryBlue] (0,0) circle (0.08em);}}
+\setbeamertemplate{itemize subsubitem}{\footnotesize\raisebox{0.1em}{\tikz\draw[accentTeal,thick] (0,0) circle (0.08em);}}
+
+
+%===========================================================================
+% CUSTOM BOXES
+% ============================================================================
+\newtcolorbox{keybox}[1][]{
+    enhanced,colback=accentTeal!8,colframe=accentTeal,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+\newtcolorbox{resultbox}[1][]{
+    enhanced,colback=accentGreen!8,colframe=accentGreen,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+\newtcolorbox{warnbox}[1][]{
+    enhanced,colback=warmOrange!8,colframe=warmOrange,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+
+
+% ============================================================================
+% CUSTOM COMMANDS AND ENVIRONMENTS
+% ============================================================================
+
+% Highlight box
+\newtcolorbox{highlightbox}[1][]{
+    enhanced,
+    colback=lightBg,
+    colframe=primaryBlue,
+    boxrule=1.5pt,
+    arc=4pt,
+    left=6pt,right=6pt,top=5pt,bottom=5pt,
+    shadow={1mm}{-1mm}{0mm}{black!20},
+    #1
+}
+
+% Key insight box
+\newtcolorbox{keyinsight}[1][Key Insight]{
+    enhanced,
+    colback=accentTeal!10,
+    colframe=accentTeal,
+    boxrule=1.5pt,
+    arc=5pt,
+    fonttitle=\bfseries\small\color{white},
+    title=#1,
+    coltitle=white,
+    attach boxed title to top left={xshift=8pt,yshift=-\tcboxedtitleheight/2},
+    boxed title style={colback=accentTeal,arc=3pt,boxrule=0pt}
+}
+
+% Warning box
+\newtcolorbox{warningbox}[1][Warning]{
+    enhanced,
+    colback=warmOrange!10,
+    colframe=warmOrange,
+    boxrule=1.5pt,
+    arc=5pt,
+    fonttitle=\bfseries\small\color{white},
+    title=#1,
+    coltitle=white,
+    attach boxed title to top left={xshift=8pt,yshift=-\tcboxedtitleheight/2},
+    boxed title style={colback=warmOrange,arc=3pt,boxrule=0pt}
+}
+
+% Metric display
+\newcommand{\metricbox}[3]{%
+    \begin{tikzpicture}
+        \node[rounded corners=5pt, fill=#3!15, draw=#3, line width=1.5pt, 
+              minimum width=2.5cm, minimum height=1.3cm, align=center,
+              drop shadow={shadow xshift=0.5mm, shadow yshift=-0.5mm, opacity=0.3}] {
+            {\Large\bfseries\color{#3}#1}\\[1pt]
+            {\scriptsize\color{darkText}#2}
+        };
+    \end{tikzpicture}
+}
+
+% ============================================================================
+% TITLE PAGE SETUP
+% ============================================================================
+\title[Food Optimization]{\textbf{Food Production Optimization}}
+\subtitle{Quantum Annealing for Sustainable Agriculture}
+\author{Edoardo Spigarolo and Dean Brand}
+\institute{EPFL | Open Quantum Initiative}
+\date{January 2026}
+
+% ============================================================================
+% DOCUMENT START
+% ============================================================================
+\begin{document}
+
+% ============================================================================
+% SLIDE 1: TITLE SLIDE
+% ============================================================================
+{
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+\begin{tikzpicture}[remember picture,overlay]
+    % Background gradient
+    \fill[primaryBlue] (current page.north west) rectangle (current page.south east);
+    \shade[top color=primaryBlue,bottom color=secondaryBlue!80!primaryBlue] 
+        ([yshift=-3cm]current page.north west) rectangle (current page.south east);
+    
+    % Decorative quantum circles
+    \foreach \i in {1,...,12} {
+        \pgfmathsetmacro{\x}{rand*16}
+        \pgfmathsetmacro{\y}{rand*9}
+        \pgfmathsetmacro{\r}{0.1+rand*0.3}
+        \fill[white,opacity=0.08] (\x,\y) circle (\r);
+    }
+    
+    % Decorative lines
+    \draw[white,opacity=0.1,line width=0.5pt] ([xshift=2cm,yshift=-2cm]current page.north west) -- ([xshift=-2cm,yshift=2cm]current page.south east);
+    \draw[white,opacity=0.1,line width=0.5pt] ([xshift=4cm,yshift=-2cm]current page.north west) -- ([xshift=-4cm,yshift=2cm]current page.south east);
+    
+    % Main title
+    \node[white,font=\fontsize{32}{36}\selectfont\bfseries,align=center] 
+        at ([yshift=1.8cm]current page.center) {Food Production Optimization};
+    
+    % Subtitle
+    \node[white!90,font=\large,align=center] 
+        at ([yshift=0.5cm]current page.center) {Quantum Computing for Sustainable Agriculture};
+    
+    % Author
+    \node[white,font=\normalsize] at ([yshift=-1.5cm]current page.center) {Edoardo Spigarolo and Dean Brand};
+    
+    % Institution
+    \node[white!70,font=\small] at ([yshift=-2.1cm]current page.center) 
+        {Open Quantum Institute \quad$\bullet$\quad January 2026};
+    
+    % Bottom decoration
+    \fill[white,opacity=0.05] (current page.south west) rectangle ([yshift=0.8cm]current page.south east);
+    
+    % SDG icons at bottom
+    \node[white!60,font=\tiny] at ([yshift=0.4cm]current page.south) 
+        {\faLeaf\quad SDG 2: Zero Hunger \quad$\bullet$\quad SDG 12: Responsible Consumption \quad$\bullet$\quad SDG 13: Climate Action \quad\faGlobe};
+\end{tikzpicture}
+\end{frame}
+}
+
+% ============================================================================
+% SLIDE 2: THE SOCIETAL CHALLENGE
+% ============================================================================
+\begin{frame}{The Challenge: Sustainable Food Production}
+    \framesubtitle{A Multi-Objective Optimization Problem with Global Impact}
+    
+    \begin{columns}[T]
+        \begin{column}{0.50\textwidth}
+            % Visual problem representation
+            \centering
+            \begin{tikzpicture}[scale=0.85,transform shape]
+                % Central node
+                \node[circle,fill=primaryBlue,text=white,minimum size=1.8cm,font=\small\bfseries,
+                      drop shadow={opacity=0.3}] (center) at (0,0) {Optimize};
+                
+                % Surrounding objectives
+                \foreach \angle/\color/\icon/\text in {
+                    90/accentGreen/\faCarrot/Nutrition,
+                    162/secondaryBlue/\faLeaf/Environment,
+                    234/warmOrange/\faDollarSign/Affordability,
+                    306/accentTeal/\faRecycle/Sustainability,
+                    18/alertRed/\faBalanceScale/Diversity
+                } {
+                    \node[circle,fill=\color!20,draw=\color,minimum size=1.2cm,
+                          font=\tiny,align=center,line width=1pt] 
+                        at (\angle:2.2cm) {\icon\\\text};
+                    \draw[->,\color,thick] (center) -- (\angle:1.5cm);
+                }
+            \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \begin{keybox}
+                \centering\scriptsize
+                \textbf{27 crops} $\times$ \textbf{1,000+ farms} $\times$ \textbf{3 years}\\
+                = Combinatorial explosion
+            \end{keybox}
+        \end{column}
+        
+        \begin{column}{0.48\textwidth}
+            \textbf{\small Why This Matters:}
+            \begin{itemize}
+                \item Food systems cause \textbf{26\%} of global GHG emissions
+                \item \textbf{820 million} people face hunger
+                \item Crop rotation can increase yields by \textbf{16--25\%}
+            \end{itemize}
+            
+            \vspace{0.4cm}
+            \centering
+            \begin{tikzpicture}[
+                sdg/.style={rounded corners=2pt,minimum width=3.2cm,minimum height=0.55cm,
+                           font=\fontsize{6}{7}\selectfont,align=center,text=white,drop shadow={opacity=0.2}}
+            ]
+                \node[sdg,fill=warmOrange] at (0,0) {\faSeedling\ SDG 2: Zero Hunger};
+                \node[sdg,fill=accentTeal] at (0,-0.7) {\faRecycle\ SDG 12: Responsible\\Consumption};
+                \node[sdg,fill=secondaryBlue] at (0,-1.4) {\faCloudSun\ SDG 13: Climate Action};
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% SLIDE 3: THE COMPUTATIONAL BOTTLENECK
+% ============================================================================
+\begin{frame}{The Computational Bottleneck}
+    \framesubtitle{Why Classical Computers Struggle with Crop Rotation}
+    
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{Problem Structure:}
+            \begin{itemize}
+                \item \textbf{Quadratic objective} from rotation synergies
+                \item \textbf{Frustrated constraints}: 70--88\% of crop pairs have \textit{negative} interactions
+                \item Creates rugged energy landscape with many local minima
+            \end{itemize}
+            
+            \vspace{0.3cm}
+            \textbf{Classical Solver Barriers:}
+            \begin{enumerate}\small
+                \item Quadratic terms break LP relaxation
+                \item Poor bounds $\Rightarrow$ no effective pruning
+                \item Branch-and-bound explores exponentially
+            \end{enumerate}
+            
+            \vspace{0.3cm}
+            \begin{warnbox}
+                \small\textbf{Result:} Gurobi times out on \textbf{85\%} of rotation scenarios (300s limit)
+            \end{warnbox}
+        \end{column}
+        
+        \begin{column}{0.43\textwidth}
+            \textbf{Quantum Advantage Mechanism:}
+            
+            \vspace{0.2cm}
+            \begin{tikzpicture}[scale=0.9]
+                % Energy landscape visualization
+                \draw[thick,primaryBlue] plot[smooth,tension=0.7] coordinates {
+                    (0,2) (0.5,1.5) (1,2.2) (1.5,1) (2,1.8) (2.5,0.5) (3,1.2) (3.5,1.5) (4,2)
+                };
+                \fill[accentGreen] (2.5,0.5) circle (0.1);
+                \node[font=\tiny,below] at (2.5,0.3) {Global min};
+                
+                % Tunneling arrow
+                \draw[->,accentTeal,very thick,dashed] (1.5,1) to[bend right=40] node[midway,below,font=\tiny] {Quantum tunneling} (2.5,0.5);
+                
+                % Classical stuck
+                \fill[alertRed] (1.5,1) circle (0.1);
+                \node[font=\tiny,above] at (1.5,1.2) {Classical stuck};
+                
+                \node[font=\scriptsize,anchor=north west] at (0,2.5) {Energy};
+            \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \begin{resultbox}
+                \scriptsize\textbf{Quantum tunneling} escapes local minima where classical search gets trapped
+            \end{resultbox}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% SLIDE 4: OQI PIPELINE & APPROACH
+% ============================================================================
+\begin{frame}{OQI Pipeline: Quantum Hardware \& Approach}
+    \framesubtitle{D-Wave Advantage System via Hybrid Workflow}
+    
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Hardware Specifications:}
+            \begin{table}[h]\small
+                \centering
+                \begin{tabular}{ll}
+                    \toprule
+                    \textbf{Parameter} & \textbf{Value} \\
+                    \midrule
+                    Total Qubits & 5,760 \\
+                    Topology & Pegasus P16 \\
+                    Connectivity & 15 neighbors \\
+                    Annealing Time & 0.5--2,000 $\mu$s \\
+                    \bottomrule
+                \end{tabular}
+            \end{table}
+            
+            \vspace{0.2cm}
+            \textbf{Our Workflow:}
+            \begin{enumerate}\small
+                \item Formulate as Constrained Quadratic Model
+                \item Decompose into QPU-sized subproblems
+                \item Solve via quantum annealing
+                \item Combine and refine solutions
+            \end{enumerate}
+        \end{column}
+        
+        \begin{column}{0.50\textwidth}
+            \textbf{Three Complementary Studies:}
+            
+            \vspace{0.2cm}
+            \begin{tikzpicture}[
+                study/.style={rounded corners=5pt,minimum width=4.8cm,minimum height=0.9cm,
+                             font=\scriptsize,align=left,text=white,inner sep=5pt}
+            ]
+                \node[study,fill=primaryBlue] at (0,0) {
+                    \textbf{Study 1:} Hybrid Solver Benchmarking\\
+                    \tiny Linear formulation, 10--1,000 farms
+                };
+                \node[study,fill=accentTeal] at (0,-1.1) {
+                    \textbf{Study 2:} Pure QPU Decomposition\\
+                    \tiny 8 methods, scaling analysis
+                };
+                \node[study,fill=accentGreen] at (0,-2.2) {
+                    \textbf{Study 3:} Quantum Improvement\\
+                    \tiny Rotation formulation, 13 scenarios
+                };
+            \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \begin{keybox}
+                \scriptsize\textbf{Baseline:} Gurobi 12.0.1, 300s timeout
+            \end{keybox}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% SLIDE 5: KEY RESULTS
+% ============================================================================
+\begin{frame}{Key Results: Quantum Improvement on Hard Problems}
+    \framesubtitle{3.80$\times$ Better Solutions on Rotation Problems}
+    
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{QPU vs Gurobi Performance:}
+            \begin{table}[h]\scriptsize
+                \centering
+                \begin{tabular}{lrrrr}
+                    \toprule
+                    \textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} \\
+                    \midrule
+                    Small (50 farms) & 180 & 8.69 & 21.79 & 2.51$\times$ \\
+                    Medium (100 farms) & 360 & 12.78 & 39.24 & 3.07$\times$ \\
+                    Large (100f, 6c) & 1,800 & 53.77 & 229.14 & 4.26$\times$ \\
+                    XL (200f, 27c) & 16,200 & 93.52 & 500.59 & 5.35$\times$ \\
+                    \midrule
+                    \rowcolor{accentGreen!20} \textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} \\
+                    \bottomrule
+                \end{tabular}
+            \end{table}
+            
+            \vspace{0.2cm}
+            \begin{resultbox}
+                \small\textbf{12 of 13} scenarios: QPU wins\\
+                Gurobi timeout rate: \textbf{85\%}
+            \end{resultbox}
+        \end{column}
+        
+        \begin{column}{0.43\textwidth}
+            \textbf{Key Metrics:}
+            
+            \vspace{0.3cm}
+            \centering
+            \begin{tikzpicture}
+                \node[rounded corners=8pt,fill=accentGreen!15,draw=accentGreen,line width=1.5pt,
+                      minimum width=3.5cm,minimum height=1.2cm,align=center] at (0,0) {
+                    {\Large\bfseries\color{accentGreen}3.80$\times$}\\
+                    {\scriptsize Avg. Benefit Improvement}
+                };
+                
+                \node[rounded corners=8pt,fill=accentTeal!15,draw=accentTeal,line width=1.5pt,
+                      minimum width=3.5cm,minimum height=1.2cm,align=center] at (0,-1.7) {
+                    {\Large\bfseries\color{accentTeal}$<$2\%}\\
+                    {\scriptsize Chain Break Rate}
+                };
+                
+                \node[rounded corners=8pt,fill=primaryBlue!15,draw=primaryBlue,line width=1.5pt,
+                      minimum width=3.5cm,minimum height=1.2cm,align=center] at (0,-3.4) {
+                    {\Large\bfseries\color{primaryBlue}$O(n)$}\\
+                    {\scriptsize QPU Time Scaling}
+                };
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% SLIDE 6: CONCLUSION & INDUSTRY RELEVANCE
+% ============================================================================
+\begin{frame}{Conclusion \& Industry Relevance}
+    \framesubtitle{When Quantum Computing Makes a Difference}
+    
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Key Findings:}
+            \begin{enumerate}\small
+                \item \textcolor{primaryBlue}{\textbf{Formulation matters}}: Quantum excels on frustrated QUBO problems
+                \item \textcolor{accentTeal}{\textbf{Linear scaling}}: Pure QPU time scales $O(n)$
+                \item \textcolor{accentGreen}{\textbf{3.80$\times$ improvement}}: On rotation problems where classical fails
+                \item \textcolor{warmOrange}{\textbf{Diverse solutions}}: Quantum naturally produces agriculturally robust allocations
+            \end{enumerate}
+            
+            \vspace{0.3cm}
+            \begin{keyinsight}[Take-Home Message]
+                \scriptsize Quantum annealing provides \textbf{practical advantage} for multi-objective agricultural optimization with frustrated constraints.
+            \end{keyinsight}
+        \end{column}
+        
+        \begin{column}{0.50\textwidth}
+            \textbf{Industry Applications:}
+            
+            \begin{tikzpicture}[
+                app/.style={rounded corners=2pt,fill=accentGreen!15,draw=accentGreen,
+                           font=\scriptsize,inner sep=4pt,minimum width=5.3cm,align=left}
+            ]
+                \node[app] at (0,0) {\faIndustry\ \textbf{AgriTech:} Large-scale crop planning};
+                \node[app] at (0,-0.65) {\faTruck\ \textbf{Supply Chain:} Multi-period logistics};
+                \node[app] at (0,-1.3) {\faChartLine\ \textbf{Finance:} Portfolio with constraints};
+                \node[app] at (0,-1.95) {\faCity\ \textbf{Urban Planning:} Resource allocation};
+            \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \textbf{SDG Impact:}
+            \begin{itemize}\scriptsize
+                \item \textbf{SDG 2}: Maximize nutrition, food security
+                \item \textbf{SDG 12}: Reduce waste, sustainable production
+                \item \textbf{SDG 13}: Lower emissions, climate resilience
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% CLOSING SLIDE
+% ============================================================================
+{
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+\begin{tikzpicture}[remember picture,overlay]
+    % Background
+    \fill[primaryBlue] (current page.north west) rectangle (current page.south east);
+    \shade[top color=primaryBlue,bottom color=secondaryBlue!80!primaryBlue] 
+        ([yshift=-2cm]current page.north west) rectangle (current page.south east);
+    
+    % Decorative elements
+    \foreach \i in {1,...,15} {
+        \pgfmathsetmacro{\x}{rand*16}
+        \pgfmathsetmacro{\y}{rand*9}
+        \pgfmathsetmacro{\r}{0.05+rand*0.2}
+        \fill[white,opacity=0.06] (\x,\y) circle (\r);
+    }
+    
+    % Main content
+    \node[white,font=\fontsize{40}{44}\selectfont\bfseries] at ([yshift=1.5cm]current page.center) {Thank You};
+    
+    \node[white!90,font=\Large] at ([yshift=0.3cm]current page.center) {Questions \& Discussion};
+    
+    % Contact info
+    \node[rounded corners=5pt,fill=white!10,text=white,font=\normalsize,inner sep=10pt] 
+        at ([yshift=-1.5cm]current page.center) {
+        Edoardo Spigarolo \quad$\bullet$\quad edoardo.spigarolo@epfl.ch
+    };
+    
+    % Institution
+    \node[white!60,font=\small] at ([yshift=-2.8cm]current page.center) 
+        {Open Quantum Institute};
+    
+    % Bottom icons
+    \node[white!50,font=\small] at ([yshift=0.5cm]current page.south) 
+        {\faGithub\quad \faEnvelope\quad \faGlobe};
+\end{tikzpicture}
+\end{frame}
+}
+
+\end{document}

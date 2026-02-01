@@ -883,65 +883,107 @@ D-Wave Leap provides the most mature quantum annealing infrastructure \cite{dwav
 Please describe the steps to deliver a successful proof of concept, from code writing to optimizing the code to tests on simulators and QPUs, including specifying what is conducted by whom in the team.
 }
 
+The proof of concept follows a three-phase development roadmap, progressing from initial implementation through scaling validation to optimization refinement. Each phase builds upon the previous, with explicit milestones and deliverables.
 
+\subsubsection{Phase 1: Foundation and Classical Baseline}
+
+\paragraph{Step 1.1: Data Pipeline Development}
+Establish the data processing infrastructure to transform raw nutritional and environmental datasets into optimization-ready parameters:
+\begin{itemize}
+    \item Process GAIN nutritional databases to extract normalized scores for nutritional value, nutrient density, sustainability, environmental impact, and affordability
+    \item Implement farm size sampling from the distribution in Table~\ref{tab:farm_size_distribution}
+    \item Validate data consistency across all input sources
+\end{itemize}
+
+\paragraph{Step 1.2: Classical Solver Implementation}
+Implement the MILP formulation using Gurobi as the classical baseline:
+\begin{itemize}
+    \item Primary solver: Gurobi via PuLP/Pyomo
+    \item Establish baseline solution quality and runtime metrics across problem sizes
+\end{itemize}
+
+\paragraph{Step 1.3: Hybrid Solver Integration}
+Convert the MILP to quantum-compatible formulations for D-Wave's hybrid solvers:
+\begin{itemize}
+    \item Constrained Quadratic Model (CQM): Native constraint handling via LeapHybridCQMSampler
+    \item Binary Quadratic Model (BQM): QUBO transformation with penalty-based constraint encoding via LeapHybridBQMSampler
+    \item Lagrange multiplier calibration study to identify optimal penalty strengths (see Section~\ref{sec:appx})
+\end{itemize}
+
+\subsubsection{Phase 2: Scaling Validation}
+
+\paragraph{Step 2.1: Problem Size Progression}
+Systematically increase problem complexity while maintaining solution quality:
+\begin{itemize}
+    \item Test instances: 5, 10, and 15 farms with 27 crops
+    \item Monitor variable counts and constraint satisfaction as problems grow
+\end{itemize}
+
+\paragraph{Step 2.2: Simulator Testing}
+Validate formulations using local simulation before committing hybrid solver resources:
+\begin{itemize}
+    \item Test CQM and BQM formulations using D-Wave's SimulatedAnnealingSampler
+    \item Verify constraint satisfaction and solution feasibility across problem scales
+\end{itemize}
+
+\paragraph{Step 2.3: Comparative Benchmarking}
+Execute rigorous statistical comparison between Gurobi and hybrid solvers:
+\begin{itemize}
+    \item Metrics: objective value, gap vs.\ Gurobi optimal (\%), wall-clock time, constraint violations
+    \item Multiple runs per configuration to establish confidence intervals
+\end{itemize}
+
+\subsubsection{Phase 3: Analysis and Reporting}
+
+\paragraph{Step 3.1: Large-Scale Validation}
+Extend to operationally relevant problem sizes:
+\begin{itemize}
+    \item Target instances: 25, 50, and 100 farms
+    \item Document solution quality and runtime across the full problem range
+\end{itemize}
+
+\paragraph{Step 3.2: Solution Quality Assessment}
+Validate that hybrid solver solutions meet practical requirements:
+\begin{itemize}
+    \item Verify constraint satisfaction: land availability, minimum planting areas, food group diversity
+    \item Compare objective quality against Gurobi baseline
+    \item Characterize runtime behavior across problem scales
+\end{itemize}
 
 \subsubsection{Key Data Inputs and Requirements}
 
-
+The proof of concept requires the following data categories:
 
 \begin{enumerate}
-
-
-\item{Population and Nutritional Needs}
+\item \textbf{Population and Nutritional Needs}
 \begin{itemize}
-    \item \textbf{Demographics:} Age, gender, height, weight, pregnant and lactating women (PLW)
-    \item \textbf{Population projections:} Projected population growth and demographic breakdown
-    \item \textbf{Nutritional requirements:} Calories, protein, dietary fats, essential micronutrients for each population group:
-    \begin{itemize}
-        \item Infants
-        \item Boys and girls
-        \item Adolescent boys and girls
-        \item Men and women of reproducing age
-        \item Pregnant and lactating women
-        \item Elderly
-    \end{itemize}
+    \item Demographics: Age, gender distribution, pregnant and lactating women (PLW)
+    \item Nutritional requirements: Calories, protein, dietary fats, essential micronutrients per population group
 \end{itemize}
 
-\item{Food System Requirements}
+\item \textbf{Food System Parameters}
 \begin{itemize}
-    \item \textbf{Culturally acceptable foods:} Foods produced and consumed within the local food system context (Diet Quality Questionnaire Database)
-    \item \textbf{Food basket design:} Identification of food combinations that fulfill all nutritional needs
-    \item \textbf{GAIN nLCA score:} To optimize for nutrition and environment (GHGs, water, land use)
-    \item \textbf{Cost analysis:} Cheapest sources of good nutrition per nutritional unit using Nutritional Value Score
+    \item Culturally acceptable foods from the Diet Quality Questionnaire Database
+    \item GAIN nLCA scores for nutrition-environment optimization
+    \item Market prices for affordability scoring via Nutritional Value Score
 \end{itemize}
 
-
-\item{Production Feasibility Analysis}
+\item \textbf{Production Constraints}
 \begin{itemize}
-    \item \textbf{Crop production requirements:}
-
-
-\begin{itemize}
-    \item Total quantity of each crop required
-    \item Yield per hectare of selected/local/optimal varieties
-    \item Total land available for crop production
-    \item Preferred production methods and compatibility with local climate, soil, and water availability
-    \item Compatibility of different crops within the same cultivated area
+    \item Crop yields per hectare for selected varieties
+    \item Total arable land availability and farm size distribution
+    \item Agronomic compatibility constraints between crops
 \end{itemize}
-
-\item \textbf{Animal-source food production:}
-\begin{itemize}
-    \item Total quantity required for meat, dairy, eggs, poultry, seafood
-    \item Total production potential and yield from fisheries
-    \item Compatibility of production methods with local systems
-    \item Integration potential with crop systems
-\end{itemize}
-\end{itemize}
-
 \end{enumerate}
 
+\subsubsection{Deliverables and Success Criteria}
 
-%\subsubsection{Code Development}
+Upon completion of all phases, the proof of concept delivers:
+\begin{itemize}
+    \item Open-source solver framework supporting both classical (Gurobi) and hybrid (D-Wave) backends
+    \item Benchmark dataset spanning 5--100 farm instances with documented solution quality
+    \item Analysis report characterizing the performance of hybrid solvers relative to Gurobi across problem scales
+\end{itemize}
 \newpage
 \section{Impact design}
 

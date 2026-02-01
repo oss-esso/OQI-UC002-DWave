@@ -924,7 +924,7 @@ Farms are assigned spatial coordinates on a 2D grid, and the neighbor graph is c
 
 
 
-
+\newpage
 
 \section{Results}
 \label{sec:results}
@@ -934,7 +934,6 @@ Present the results of the runs and put them in context. That includes: explain 
 Use graphs and tables where possible to aid in the description of your results. Present averages of your findings over multiple instances, using error bars and normalized accuracy rates where possible.
 }
 
-\textbf{needs double checking, needs section on embedding in more detail}
 
 This section presents comprehensive benchmark results organized into three complementary studies: (1) Hybrid Solver Performance on Variant A across multiple test scenarios, (2) Pure QPU Decomposition Methods on Variant A with transparent timing breakdown, and (3) Quantum Rotation on Variant B across 13 rotation scenarios. Together, these results establish when and why quantum annealing provides computational advantages for agricultural optimization.
 
@@ -992,13 +991,7 @@ problems.
 
 \paragraph{Result 2: Gurobi QUBO Performance Degradation is Expected}
 
-As anticipated in (add ref for the section that talks about the bottlenecks), Gurobi performs poorly on the QUBO formulation. Converting constraints to quadratic penalties fundamentally alters the problem structure in ways that eliminate classical solver advantages:
-
-\begin{itemize}
-    \item \textbf{Small Scale (10-50 patches):} Gurobi QUBO takes $\sim$100 
-    
-    \item \textbf{Large Scale (100+ patches):} Gurobi QUBO hits timeout or returns infeasible solutions
-\end{itemize}
+As anticipated in (add ref for the section that talks about the bottlenecks), Gurobi performs poorly on the QUBO formulation. Converting constraints to quadratic penalties fundamentally alters the problem structure in ways that eliminate classical solver advantages.
 
 \begin{table}[H]
 \centering

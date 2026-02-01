@@ -61,6 +61,8 @@
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable}
 \usepackage{hyperref}
+\usepackage{colortbl}
+\usepackage{svg}
 
 % Graphics path - use actual location of plots
 \graphicspath{{../plots/}}
@@ -75,31 +77,58 @@
 % Reduce margins for denser slides
 \setbeamersize{text margin left=0.6cm,text margin right=0.6cm}
 
-% Custom headline with gradient
+% Custom headline with OQI branding
 \setbeamertemplate{headline}{%
     \begin{tikzpicture}[remember picture,overlay]
-        \fill[primaryBlue] (current page.north west) rectangle ([yshift=-0.5cm]current page.north east);
-        \fill[secondaryBlue,opacity=0.4] ([yshift=-0.25cm]current page.north west) rectangle ([yshift=-0.5cm]current page.north east);
+        \fill[white] (current page.north west) rectangle ([yshift=-0.8cm]current page.north east);
+        \draw[primaryBlue,line width=0.5pt] ([yshift=-0.8cm]current page.north west) -- ([yshift=-0.8cm]current page.north east);
+        % OQI logo on left
+\node[anchor=north west] at ([xshift=0.3cm,yshift=-0.0cm]current page.north west) {%
+    \includegraphics[height=0.65cm]{images/oqi_logo.png}%
+};
+
+% Logo slot 1 (next to OQI logo)
+\node[anchor=north west] at ([xshift=2.1cm,yshift=-0.2cm]current page.north west) {%
+    \includegraphics[height=0.3cm]{images/Logo_EPFL_2019.svg.png}%
+};
+% Logo slot 2
+\node[anchor=north west] at ([xshift=3.4cm,yshift=0.15cm]current page.north west) {%
+    \includegraphics[height=1cm]{images/Logo-GAIN.png}%
+};
+% Logo slot 3
+\node[anchor=north west] at ([xshift=4.7cm,yshift=-0.1cm]current page.north west) {%
+    \includegraphics[height=0.48cm]{images/NITheCS logo.png}%
+};
+% Logo slot 4 (SVG logo)
+\node[anchor=north west] at ([xshift=5.9cm,yshift=-0.05cm]current page.north west) {%
+    \includegraphics[height=0.5cm]{images/qb_logo_rgb_black_nosub.png}%
+};
+% OQI text on right
+\node[anchor=north east] at ([xshift=-0.3cm,yshift=-0.1cm]current page.north east) {%
+    \includegraphics[height=0.5cm]{images/oqi_text.png}%
+};
     \end{tikzpicture}
-    \vspace{0.5cm}
+    \vspace{0.8cm}
 }
 
-% Custom footline with page numbers and info
+% Custom footline with OQI footer image
 \setbeamertemplate{footline}{%
     \begin{tikzpicture}[remember picture,overlay]
-        \fill[lightBg] (current page.south west) rectangle ([yshift=0.4cm]current page.south east);
-        \draw[primaryBlue,line width=0.5pt] ([yshift=0.4cm]current page.south west) -- ([yshift=0.4cm]current page.south east);
-        \node[anchor=west,text=mutedGray,font=\tiny] at ([xshift=0.5cm,yshift=0.2cm]current page.south west) {Food Production Optimization | Quantum Computing};
-        \node[anchor=east,text=mutedGray,font=\tiny] at ([xshift=-0.5cm,yshift=0.2cm]current page.south east) {E. Spigarolo | \insertframenumber/\inserttotalframenumber};
+        % Footer image spanning full width
+        \node[anchor=south,inner sep=0pt] at (current page.south) {%
+            \includegraphics[width=1.1\paperwidth,height=0.5cm]{images/footer.jpg}%
+        };
+        % Page number overlay
+        \node[anchor=south east,text=white,font=\tiny\bfseries] at ([xshift=-0.3cm,yshift=0.1cm]current page.south east) {\insertframenumber/\inserttotalframenumber};
     \end{tikzpicture}
-    \vspace{0.4cm}
+    \vspace{0.6cm}
 }
 
 % Custom frame title
 \setbeamertemplate{frametitle}{%
     \vspace{0.15cm}
     \begin{beamercolorbox}[wd=\paperwidth,ht=1cm,dp=0.2cm]{frametitle}
-        \hspace{0.4cm}\usebeamerfont{frametitle}\insertframetitle
+        \hspace{0.2cm}\usebeamerfont{frametitle}\insertframetitle
         \ifx\insertframesubtitle\empty\else
             \par\hspace{0.4cm}{\small\color{mutedGray}\insertframesubtitle}
         \fi
@@ -110,6 +139,24 @@
 \setbeamertemplate{itemize item}{\footnotesize\raisebox{0.1em}{\tikz\fill[primaryBlue] (0,0) circle (0.12em);}}
 \setbeamertemplate{itemize subitem}{\footnotesize\raisebox{0.1em}{\tikz\fill[secondaryBlue] (0,0) circle (0.08em);}}
 \setbeamertemplate{itemize subsubitem}{\footnotesize\raisebox{0.1em}{\tikz\draw[accentTeal,thick] (0,0) circle (0.08em);}}
+
+
+%===========================================================================
+% CUSTOM BOXES
+% ============================================================================
+\newtcolorbox{keybox}[1][]{
+    enhanced,colback=accentTeal!8,colframe=accentTeal,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+\newtcolorbox{resultbox}[1][]{
+    enhanced,colback=accentGreen!8,colframe=accentGreen,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+\newtcolorbox{warnbox}[1][]{
+    enhanced,colback=warmOrange!8,colframe=warmOrange,
+    boxrule=1pt,arc=3pt,left=5pt,right=5pt,top=4pt,bottom=4pt,#1
+}
+
 
 % ============================================================================
 % CUSTOM COMMANDS AND ENVIRONMENTS
@@ -142,18 +189,7 @@
 }
 
 % Result box
-\newtcolorbox{resultbox}[1][Result]{
-    enhanced,
-    colback=accentGreen!10,
-    colframe=accentGreen,
-    boxrule=1.5pt,
-    arc=5pt,
-    fonttitle=\bfseries\small\color{white},
-    title=#1,
-    coltitle=white,
-    attach boxed title to top left={xshift=8pt,yshift=-\tcboxedtitleheight/2},
-    boxed title style={colback=accentGreen,arc=3pt,boxrule=0pt}
-}
+
 
 % Warning box
 \newtcolorbox{warningbox}[1][Warning]{
@@ -226,19 +262,19 @@
     
     % Subtitle
     \node[white!90,font=\large,align=center] 
-        at ([yshift=0.5cm]current page.center) {Quantum Annealing for Sustainable Agriculture};
+        at ([yshift=0.5cm]current page.center) {Quantum Computing for Sustainable Agriculture};
     
     % Phase indicator
-    \node[rounded corners=8pt,fill=accentTeal,text=white,font=\small\bfseries,
-          inner sep=6pt,drop shadow={opacity=0.3}] 
-        at ([yshift=-0.6cm]current page.center) {Phase 3 \& 4 Report};
+    % \node[rounded corners=8pt,fill=accentTeal,text=white,font=\small\bfseries,
+    %       inner sep=6pt,drop shadow={opacity=0.3}] 
+    %     at ([yshift=-0.6cm]current page.center) {Phase 3 \& 4 Report};
     
     % Author
-    \node[white,font=\normalsize] at ([yshift=-2cm]current page.center) {Edoardo Spigarolo};
+    \node[white,font=\normalsize] at ([yshift=-2cm]current page.center) {Edoardo Spigarolo and Dean Brand};
     
     % Institution
     \node[white!70,font=\small] at ([yshift=-2.6cm]current page.center) 
-        {EPFL \quad$\bullet$\quad Open Quantum Initiative \quad$\bullet$\quad January 2026};
+        {$\bullet$\quad Open Quantum Institute \quad$\bullet$\quad January 2026};
     
     % Bottom decoration
     \fill[white,opacity=0.05] (current page.south west) rectangle ([yshift=0.8cm]current page.south east);
@@ -312,14 +348,14 @@
     
     \vspace{0.4cm}
     \centering
-    \begin{tikzpicture}
-        \node[rounded corners=3pt,fill=primaryBlue!5,draw=primaryBlue!30,
-              font=\scriptsize,text=mutedGray,inner sep=4pt] {
-            \faClockFour\ \textbf{40 minutes} \quad$\bullet$\quad 
-            \faSlideshare\ \textbf{42 slides} \quad$\bullet$\quad 
-            \faChartLine\ \textbf{3 studies}
-        };
-    \end{tikzpicture}
+    % \begin{tikzpicture}
+    %     \node[rounded corners=3pt,fill=primaryBlue!5,draw=primaryBlue!30,
+    %           font=\scriptsize,text=mutedGray,inner sep=4pt] {
+    %         \faClockFour\ \textbf{40 minutes} \quad$\bullet$\quad 
+    %         \faSlideshare\ \textbf{42 slides} \quad$\bullet$\quad 
+    %         \faChartLine\ \textbf{3 studies}
+    %     };
+    % \end{tikzpicture}
 \end{frame}
 
 % ============================================================================
@@ -328,11 +364,11 @@
 \section{Problem \& Motivation}
 
 \begin{frame}{The Challenge: Sustainable Food Production}
-    \framesubtitle{Optimizing crop allocation across multiple objectives}
     
     \begin{columns}[T]
         \begin{column}{0.55\textwidth}
             % Visual problem representation
+            \centering
             \begin{tikzpicture}[scale=0.85,transform shape]
                 % Central node
                 \node[circle,fill=primaryBlue,text=white,minimum size=1.8cm,font=\small\bfseries,
@@ -353,107 +389,92 @@
                 }
             \end{tikzpicture}
             
-            \vspace{0.3cm}
-            \small\textbf{Problem Complexity:}
-            \begin{itemize}\scriptsize
+        \end{column}
+        
+        \begin{column}{0.43\textwidth}
+            \vspace{1.2cm}
+            \textbf{\small Problem Complexity:}
+            \begin{itemize}
                 \item 27 crops across 5 food groups
                 \item Multiple farms with varying sizes
                 \item Min/max diversity constraints
                 \item Rotation synergies (Variant B)
             \end{itemize}
         \end{column}
-        \begin{column}{0.43\textwidth}
-            \textbf{Relevant SDGs:}
-            \vspace{0.2cm}
-            
-            \begin{tikzpicture}[
-                sdg/.style={rounded corners=3pt,minimum width=4.5cm,minimum height=0.55cm,
-                           font=\scriptsize,align=left,text=white,drop shadow={opacity=0.2}}
-            ]
-                \node[sdg,fill=warmOrange] at (0,0) {\faSeedling\ SDG 2: Zero Hunger};
-                \node[sdg,fill=accentGreen] at (0,-0.75) {\faHeartbeat\ SDG 3: Good Health};
-                \node[sdg,fill=accentTeal] at (0,-1.5) {\faRecycle\ SDG 12: Responsible Consumption};
-                \node[sdg,fill=secondaryBlue] at (0,-2.25) {\faCloudSun\ SDG 13: Climate Action};
-            \end{tikzpicture}
-            
-            \vspace{0.3cm}
-            \begin{keyinsight}[Why Quantum?]
-                \scriptsize Classical solvers struggle with frustrated constraints. Quantum annealing naturally explores rugged energy landscapes.
-            \end{keyinsight}
-        \end{column}
     \end{columns}
+    
+    \vspace{0.6cm}
+    
+    \centering
+    \begin{tikzpicture}[
+        sdg/.style={rounded corners=2pt,minimum width=2.2cm,minimum height=0.45cm,
+                   font=\fontsize{5}{6}\selectfont,align=center,text=white,drop shadow={opacity=0.2}}
+    ]
+        \node[sdg,fill=warmOrange] at (0,0) {\faSeedling\ SDG 2:\\ Zero Hunger};
+        \node[sdg,fill=accentGreen] at (2.5,0) {\faHeartbeat\ SDG 3:\\ Good Health};
+        \node[sdg,fill=accentTeal] at (5,0) {\faRecycle\ SDG 12:\\ Responsible\\Consumption};
+        \node[sdg,fill=secondaryBlue] at (7.5,0) {\faCloudSun\ SDG 13:\\ Climate\\Action};
+    \end{tikzpicture}
+    
 \end{frame}
 
 \begin{frame}{Data: Real-World Agricultural Dataset}
-    \framesubtitle{27 crops from Bangladesh \& Indonesia (GAIN)}
     
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
             \small\textbf{Crop Database:}
-            \vspace{0.1cm}
+            \vspace{0.2cm}
             
             \begin{tikzpicture}[
-                group/.style={rounded corners=2pt,minimum width=5cm,minimum height=0.45cm,
-                             font=\tiny,align=left,text=white}
+                group/.style={rounded corners=2pt,minimum width=4.8cm,minimum height=0.5cm,
+                             font=\scriptsize,align=left,text=white}
             ]
                 \node[group,fill=alertRed!80] at (0,0) {Animal Protein (5): Beef, Chicken, Egg...};
-                \node[group,fill=warmOrange!80] at (0,-0.6) {Fruits (9): Apple, Banana, Mango...};
-                \node[group,fill=accentGreen!80] at (0,-1.2) {Legumes (4): Chickpeas, Tofu...};
-                \node[group,fill=primaryBlue!80] at (0,-1.8) {Staples (2): Corn, Potato};
-                \node[group,fill=accentTeal!80] at (0,-2.4) {Vegetables (7): Spinach, Tomatoes...};
+                \node[group,fill=warmOrange!80] at (0,-0.65) {Fruits (9): Apple, Banana, Mango...};
+                \node[group,fill=accentGreen!80] at (0,-1.3) {Legumes (4): Chickpeas, Tofu...};
+                \node[group,fill=primaryBlue!80] at (0,-1.95) {Staples (2): Corn, Potato};
+                \node[group,fill=accentTeal!80] at (0,-2.6) {Vegetables (7): Spinach, Tomatoes...};
             \end{tikzpicture}
             
-            \vspace{0.3cm}
-            \begin{highlightbox}
-                \centering\small\textbf{Total: 27 crops}\\
-                \scriptsize across 5 food groups
-            \end{highlightbox}
+            % \vspace{0.4cm}
+            % \begin{highlightbox}
+            %     \centering\small\textbf{Total: 27 crops}\\
+            %     \scriptsize across 5 food groups
+            % \end{highlightbox}
         \end{column}
+        
         \begin{column}{0.48\textwidth}
-            \small\textbf{Benefit Score Calculation:}
+            \textbf{Benefit Score Calculation:}
             \begin{equation*}
                 B_c = \sum_i w_i \cdot v_{i,c}
             \end{equation*}
             
-            \begin{tikzpicture}[scale=0.9,transform shape]
-                % Nutritional Value - 25%
-                \fill[accentGreen!30] (0,0) rectangle (3.5,0.35);
-                \draw[accentGreen,thick] (0,0) rectangle (3.5,0.35);
-                \node[font=\tiny,anchor=west] at (0.1,0.175) {Nutritional Value};
-                \node[font=\tiny\bfseries,anchor=east,accentGreen] at (3.4,0.175) {25\%};
-                % Nutrient Density - 20%
-                \fill[secondaryBlue!30] (0,-0.5) rectangle (2.8,-0.15);
-                \draw[secondaryBlue,thick] (0,-0.5) rectangle (3.5,-0.15);
-                \node[font=\tiny,anchor=west] at (0.1,-0.325) {Nutrient Density};
-                \node[font=\tiny\bfseries,anchor=east,secondaryBlue] at (3.4,-0.325) {20\%};
-                % Environmental Impact - 20%
-                \fill[alertRed!30] (0,-1.0) rectangle (2.8,-0.65);
-                \draw[alertRed,thick] (0,-1.0) rectangle (3.5,-0.65);
-                \node[font=\tiny,anchor=west] at (0.1,-0.825) {Environmental Impact};
-                \node[font=\tiny\bfseries,anchor=east,alertRed] at (3.4,-0.825) {$-$20\%};
-                % Affordability - 20%
-                \fill[warmOrange!30] (0,-1.5) rectangle (2.8,-1.15);
-                \draw[warmOrange,thick] (0,-1.5) rectangle (3.5,-1.15);
-                \node[font=\tiny,anchor=west] at (0.1,-1.325) {Affordability};
-                \node[font=\tiny\bfseries,anchor=east,warmOrange] at (3.4,-1.325) {20\%};
-                % Sustainability - 15%
-                \fill[accentTeal!30] (0,-2.0) rectangle (2.1,-1.65);
-                \draw[accentTeal,thick] (0,-2.0) rectangle (3.5,-1.65);
-                \node[font=\tiny,anchor=west] at (0.1,-1.825) {Sustainability};
-                \node[font=\tiny\bfseries,anchor=east,accentTeal] at (3.4,-1.825) {15\%};
-            \end{tikzpicture}
-            
             \vspace{0.2cm}
-            \begin{warningbox}[Note]
-                \scriptsize Environmental impact is \textbf{negatively weighted} to penalize high-impact crops.
-            \end{warningbox}
+            \begin{tabular}{lc}
+                \toprule
+                \textbf{Component} & \textbf{Weight} \\
+                \midrule
+                Nutritional Value & 25\% \\
+                Nutrient Density & 20\% \\
+                Env. Impact & $-$20\% \\
+                Affordability & 20\% \\
+                Sustainability & 15\% \\
+                \bottomrule
+            \end{tabular}
+            
+            % \vspace{0.3cm}
+            % \begin{highlightbox}
+            %     \centering
+            %     \small Environmental impact is \textbf{negatively weighted} to minimize harm
+            % \end{highlightbox}
         \end{column}
     \end{columns}
 \end{frame}
 
+
 \begin{frame}{Benefit Score Distribution}
     \centering
-    \includegraphics[width=0.85\textwidth]{02_benefit_heatmap.png}
+    \includegraphics[width=0.5\textwidth]{images/Plots/02_benefit_heatmap.png}
     
     \vspace{0.2cm}
     \small Heatmap of benefit scores (5 components) across 27 crops.
@@ -475,21 +496,23 @@
                 \item $U_c \in \{0,1\}$: crop $c$ used anywhere
             \end{itemize}
             
-            \vspace{0.2cm}
+            \vspace{0.6cm}
             \textbf{Objective:} Maximize benefit
             \begin{equation*}
                 \max Z = \frac{1}{A_{\text{total}}} \sum_{f,c} L_f \cdot B_c \cdot Y_{f,c}
             \end{equation*}
             
-            \vspace{0.2cm}
-            \begin{highlightbox}
-                \centering\small
-                \textbf{Problem Size at 1,000 farms:}\\
-                \Large\textcolor{primaryBlue}{27,027} \small variables
-            \end{highlightbox}
+            % \vspace{0.2cm}
+            % \begin{highlightbox}
+            %     \centering\small
+            %     \textbf{Problem Size at 1,000 farms:}\\
+            %     \Large\textcolor{primaryBlue}{27,027} \small variables
+            % \end{highlightbox}
         \end{column}
         \begin{column}{0.48\textwidth}
             \textbf{Constraints:}
+            
+            \vspace{0.3cm}
             
             \begin{tikzpicture}[
                 constraint/.style={rounded corners=2pt,minimum width=5.2cm,
@@ -523,36 +546,36 @@
     \begin{columns}[T]
         \begin{column}{0.55\textwidth}
             \small\textbf{Enhanced Formulation:}
-            \begin{itemize}\scriptsize
+            \begin{itemize}
                 \item 6 aggregated crop families (not 27)
                 \item 3-period temporal horizon ($T=3$)
                 \item Quadratic rotation synergies
                 \item Frustrated spatial interactions
             \end{itemize}
             
-            \vspace{0.2cm}
+            \vspace{0.8cm}
             \textbf{Rotation Objective:}
             \begin{equation*}
                 Z_{\text{rot}} = \sum_{f,t} \sum_{c,c'} S_{c,c'} \cdot x_{f,c,t} \cdot x_{f,c',t+1}
             \end{equation*}
             
-            \textbf{Combined:}
-            \begin{equation*}
-                \max Z = (1-\gamma) Z_{\text{base}} + \gamma Z_{\text{rot}}
-            \end{equation*}
+            % \textbf{Combined:}
+            % \begin{equation*}
+            %     \max Z = (1-\gamma) Z_{\text{base}} + \gamma Z_{\text{rot}}
+            % \end{equation*}
             
-            \vspace{0.1cm}
-            \begin{tikzpicture}
-                \node[rounded corners=3pt,fill=accentTeal!20,draw=accentTeal,
-                      font=\scriptsize,inner sep=4pt] {
-                    $\gamma = 0.2$ (rotation weight)
-                };
-            \end{tikzpicture}
+            % \vspace{0.1cm}
+            % \begin{tikzpicture}
+            %     \node[rounded corners=3pt,fill=accentTeal!20,draw=accentTeal,
+            %           font=\scriptsize,inner sep=4pt] {
+            %         $\gamma = 0.2$ (rotation weight)
+            %     };
+            % \end{tikzpicture}
         \end{column}
         \begin{column}{0.43\textwidth}
             % Frustration visualization
-            \begin{tikzpicture}[scale=0.7,transform shape]
-                \node[font=\small\bfseries,primaryBlue] at (1.2,2.8) {Synergy Matrix};
+            \begin{tikzpicture}[scale=1.0,transform shape]
+                \node[font=\bfseries,primaryBlue] at (1.2,2.8) {Synergy Matrix};
                 
                 % Mini heatmap representation - simplified
                 % Row 0
@@ -598,8 +621,8 @@
                 \fill[alertRed!65] (1.6,2.0) rectangle (1.95,2.35);
                 \fill[alertRed!80] (2.0,2.0) rectangle (2.35,2.35);
                 
-                \node[font=\tiny,anchor=west] at (2.6,1.2) {\textcolor{accentGreen}{$\blacksquare$} Benefit};
-                \node[font=\tiny,anchor=west] at (2.6,0.8) {\textcolor{alertRed}{$\blacksquare$} Penalty};
+                \node[font=\small,anchor=west] at (2.6,1.2) {\textcolor{accentGreen}{$\blacksquare$} Benefit};
+                \node[font=\small,anchor=west] at (2.6,0.7) {\textcolor{alertRed}{$\blacksquare$} Penalty};
             \end{tikzpicture}
             
             \vspace{0.2cm}
@@ -639,24 +662,25 @@
             \end{keyinsight}
         \end{column}
         \begin{column}{0.43\textwidth}
+            \vspace{0.1cm}
             \small\textbf{Synergy Matrix $S_{c,c'}$:}
-            \begin{itemize}\scriptsize
+            \begin{itemize}
                 \item Diagonal: Monoculture penalty ($-0.24$)
                 \item Legume$\to$Non-legume: Benefit ($+0.16$ to $+0.25$)
                 \item Most pairs: Negative or zero
             \end{itemize}
             
-            \vspace{0.3cm}
-            \begin{tikzpicture}
-                \node[rounded corners=5pt,fill=accentTeal!15,draw=accentTeal,
-                      inner sep=6pt,font=\scriptsize,align=center] {
-                    \textbf{Key Insight:}\\[2pt]
-                    High frustration creates\\
-                    optimization landscape where\\
-                    \textbf{quantum tunneling}\\
-                    outperforms classical search
-                };
-            \end{tikzpicture}
+            % \vspace{0.3cm}
+            % \begin{tikzpicture}
+            %     \node[rounded corners=5pt,fill=accentTeal!15,draw=accentTeal,
+            %           inner sep=6pt,font=\scriptsize,align=center] {
+            %         \textbf{Key Insight:}\\[2pt]
+            %         High frustration creates\\
+            %         optimization landscape where\\
+            %         \textbf{quantum tunneling}\\
+            %         outperforms classical search
+            %     };
+            % \end{tikzpicture}
         \end{column}
     \end{columns}
 \end{frame}
@@ -666,66 +690,85 @@
 % ============================================================================
 \section{Quantum Hardware \& Methods}
 
-\begin{frame}{D-Wave Advantage: Quantum Annealing Platform}
-    \framesubtitle{5,760 qubits with Pegasus topology}
-    
-    \begin{columns}[T]
-        \begin{column}{0.45\textwidth}
-            % Hardware specs as visual cards
-            \begin{tikzpicture}[
-                spec/.style={rounded corners=3pt,fill=primaryBlue!10,draw=primaryBlue!50,
-                            minimum width=5cm,minimum height=0.5cm,font=\scriptsize,
-                            inner sep=3pt}
-            ]
-                \node[spec] at (0,0) {\textbf{Total Qubits:} \textcolor{primaryBlue}{\textbf{5,760}}};
-                \node[spec] at (0,-0.7) {\textbf{Topology:} Pegasus P16};
-                \node[spec] at (0,-1.4) {\textbf{Connectivity:} 15 neighbors avg};
-                \node[spec] at (0,-2.1) {\textbf{Native Clique:} 15--20 qubits};
-                \node[spec] at (0,-2.8) {\textbf{Annealing:} 0.5--2,000 $\mu$s};
-                \node[spec] at (0,-3.5) {\textbf{Max Variables:} $\sim$5,000};
-            \end{tikzpicture}
-        \end{column}
-        \begin{column}{0.52\textwidth}
-            % Pegasus topology visualization
-            \begin{tikzpicture}[scale=0.6,transform shape]
-                \node[font=\small\bfseries,primaryBlue] at (2,4) {Pegasus Topology};
-                
-                % Simplified topology representation
-                \foreach \x in {0,...,4} {
-                    \foreach \y in {0,...,3} {
-                        \node[circle,fill=primaryBlue,minimum size=3pt] (n\x\y) at (\x,\y) {};
-                    }
-                }
-                % Some connections
-                \foreach \x in {0,...,3} {
-                    \foreach \y in {0,...,3} {
-                        \pgfmathtruncatemacro{\nx}{\x+1}
-                        \draw[primaryBlue!40,thin] (n\x\y) -- (n\nx\y);
-                    }
-                }
-                \foreach \x in {0,...,4} {
-                    \foreach \y in {0,...,2} {
-                        \pgfmathtruncatemacro{\ny}{\y+1}
-                        \draw[primaryBlue!40,thin] (n\x\y) -- (n\x\ny);
-                    }
-                }
-                % Cross connections
-                \draw[accentTeal,thick] (n11) -- (n22);
-                \draw[accentTeal,thick] (n21) -- (n32);
-                \draw[accentTeal,thick] (n12) -- (n23);
-            \end{tikzpicture}
-            
-            \vspace{0.2cm}
-            \begin{resultbox}[QPU Advantage]
-                \scriptsize Native cliques enable 27-crop farm subproblems with \textbf{minimal chain breaking} ($<$2\%)
-            \end{resultbox}
-        \end{column}
-    \end{columns}
-    
-    \vspace{0.2cm}
-    \begin{keyinsight}[Classical Baseline]
-        \small Gurobi 12.0.1 with 300-second timeout, MIP gap tolerance 0.01\%
-    \end{keyinsight}
+\begin{frame}{D-Wave Advantage System Specifications}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{table}[h]\small
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Total Qubits & 5,760 \\
+Topology & Pegasus P16 \\
+Avg. Connectivity & 15 neighbors \\
+Native Clique & 15--20 qubits \\
+Annealing Time & 0.5--2,000 $\mu$s \\
+Thermalization & 1 ms (default) \\
+Chain Strength & Auto-scaled \\
+Max Variables & $\sim$5,000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Pegasus Topology Advantages:}
+\begin{itemize}
+    \item Native cliques of 15--20 fully connected qubits
+    \item 27-crop farm subproblems embed with minimal chains
+    \item Average chain length $\leq 1.2$
+\end{itemize}
+\vspace{0.2cm}
+\textbf{QPU Configuration:}
+\begin{itemize}
+    \item 100--500 samples/subproblem
+    \item Auto-scaled chain strength
+    \item Chain break rate: \textcolor{accentGreen}{\textbf{$<$2\%}}
+\end{itemize}
+\end{column}
+\end{columns}
+\vspace{0.2cm}
+\begin{keybox}
+\small\textbf{Classical Baseline:} Gurobi 12.0.1 with 300-second timeout, MIP gap tolerance 0.01\%.
+\end{keybox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{CQM to BQM Conversion}
+\small
+\textbf{Challenge:} QPU accepts only QUBO/Ising models, not CQM directly.
+
+\vspace{0.2cm}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Penalty Method:}
+\begin{equation*}
+H_{\text{BQM}} = -Z_{\text{obj}} + \sum_k \lambda_k \cdot (\text{violation}_k)^2
+\end{equation*}
+
+\textbf{Constraint Penalties:}
+\begin{itemize}
+    \item Plot assignment: $\lambda_1 = 10.0$
+    \item Diversity bounds: $\lambda_2 = 5.0$
+    \item Area constraints: $\lambda_3 = 2.0$
+    \item Linking constraints: $\lambda_4 = 8.0$
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Grid Refinement (Continuous$\to$Binary):}
+\begin{equation*}
+x_{\text{cont}} \approx \sum_{i=1}^{n} \frac{i}{n} \cdot b_i, \quad b_i \in \{0,1\}
+\end{equation*}
+
+\textbf{Convergence:}
+\begin{itemize}
+    \item Gap: 12.63\% at $n=5$ $\to$ 0.00\% at $n=100$
+    \item Rate: $O(n^{-1})$
+    \item Binary is 3.7$\times$ faster than continuous
+\end{itemize}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Decomposition Strategies for Large Problems}
@@ -787,7 +830,7 @@
     \vspace{0.3cm}
     \begin{highlightbox}
         \centering\small
-        \textbf{Why Decomposition?} Full problem = 27,027 variables. QPU capacity $\approx$ 5,000. Must partition intelligently.
+        \textbf{Why Decomposition?} The MinorMiner embedding algorithm fails above 160 variables at $40\%$ graph density.
     \end{highlightbox}
 \end{frame}
 
@@ -836,89 +879,80 @@
         };
         
         % Arrows
-        \draw[->,very thick,primaryBlue!60] (s1.east) -- node[above,font=\tiny,text=mutedGray] {inform} (s2.west);
-        \draw[->,very thick,accentTeal!60] (s2.east) -- node[above,font=\tiny,text=mutedGray] {enable} (s3.west);
+        \draw[->,very thick,primaryBlue!60] (s1.east) -- node[above,font=\tiny,text=mutedGray] {} (s2.west);
+        \draw[->,very thick,accentTeal!60] (s2.east) -- node[above,font=\tiny,text=mutedGray] {} (s3.west);
     \end{tikzpicture}
     
-    \vspace{0.5cm}
-    \begin{tikzpicture}
-        \node[rounded corners=5pt,fill=lightBg,draw=mutedGray,
-              font=\scriptsize,inner sep=6pt] {
-            \faCheckCircle\ Establish baseline $\rightarrow$ 
-            \faCheckCircle\ Analyze scaling $\rightarrow$ 
-            \faCheckCircle\ Demonstrate improvement
-        };
-    \end{tikzpicture}
+    % \vspace{0.5cm}
+    % \begin{tikzpicture}
+    %     \node[rounded corners=5pt,fill=lightBg,draw=mutedGray,
+    %           font=\scriptsize,inner sep=6pt] {
+    %         \faCheckCircle\ Establish baseline $\rightarrow$ 
+    %         \faCheckCircle\ Analyze scaling $\rightarrow$ 
+    %         \faCheckCircle\ Demonstrate improvement
+    %     };
+    % \end{tikzpicture}
 \end{frame}
 
 \begin{frame}{Study 1: Hybrid Solver Results}
     \framesubtitle{D-Wave CQM vs Gurobi on Variant A}
     
     \centering
-    \includegraphics[width=0.85\textwidth]{hybrid_formulation_comparison.png}
+    \includegraphics[width=0.75\textwidth]{images/Plots/study1_hybrid_performance.pdf}
     
     \vspace{0.2cm}
     \small D-Wave Hybrid CQM Solver vs Gurobi across different formulations.
 \end{frame}
 
-\begin{frame}{Study 1: Key Findings}
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Timing Comparison:}
-            
-            \vspace{0.2cm}
-            \begin{tikzpicture}[
-                bar/.style={rounded corners=2pt,minimum height=0.5cm,font=\scriptsize,
-                           text=white,inner sep=3pt,anchor=west}
-            ]
-                \node[bar,fill=accentGreen,minimum width=1cm] at (0,0) {Gurobi: \textbf{1.15s}};
-                \node[font=\tiny,anchor=west] at (1.5,0) {27,027 vars};
-                
-                \node[bar,fill=primaryBlue,minimum width=4cm] at (0,-0.7) {D-Wave Hybrid: \textbf{5.3--5.5s}};
-                \node[font=\tiny,anchor=west] at (4.5,-0.7) {constant};
-                
-                \node[bar,fill=accentTeal,minimum width=0.3cm] at (0,-1.4) {\tiny 70ms};
-                \node[font=\tiny,anchor=west] at (0.8,-1.4) {Pure QPU (1.3\% of hybrid)};
-            \end{tikzpicture}
-            
-            \vspace{0.3cm}
-            \small\textbf{QUBO Conversion Test:}
-            \begin{itemize}\scriptsize
-                \item Gurobi on QUBO: \textcolor{alertRed}{Timeout >100s}
-                \item D-Wave BQM: Completes but lower quality
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            % Metric boxes
-            \centering
-            \metricbox{1.15s}{Gurobi (optimal)}{accentGreen}
-            
-            \vspace{0.2cm}
-            \metricbox{5.5s}{Hybrid (constant)}{primaryBlue}
-            
-            \vspace{0.3cm}
-            \begin{warningbox}[Conclusion]
-                \scriptsize For well-structured \textbf{linear} problems (Variant A), classical solvers with decades of optimization outperform quantum approaches.
-            \end{warningbox}
-        \end{column}
-    \end{columns}
+\begin{frame}{Study 1: Key Results}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Timing Comparison:}
+\begin{itemize}
+    \item \textbf{Gurobi:} Solves 27,027 vars in \textcolor{accentGreen}{\textbf{1.15 seconds}}
+    \item \textbf{D-Wave Hybrid:} Constant \textbf{5.3--5.5 seconds}
+    \item \textbf{Pure QPU time:} Only 70ms (\textbf{1.3\%} of hybrid)
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Solution Quality:}
+\begin{itemize}
+    \item Both achieve optimal or near-optimal solutions
+    \item Gurobi: 0.00\% MIP gap
+    \item Hybrid: Matches Gurobi objective
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{QUBO Conversion Test:}
+\begin{itemize}
+    \item Gurobi on QUBO: \textcolor{alertRed}{Timeout at 100+ seconds}
+    \item Objective: 0.000 (infeasible)
+    \item D-Wave BQM: Completes but lower quality
+\end{itemize}
+\vspace{0.2cm}
+\begin{warnbox}
+\small\textbf{Conclusion:}\\
+For well-structured \textbf{linear} problems (Variant A), classical solvers with decades of optimization outperform quantum approaches.
+\end{warnbox}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Study 2: Pure QPU Benchmark}
     \centering
-    \includegraphics[width=0.85\textwidth]{qpu_benchmark_comprehensive.png}
+    \includegraphics[width=0.5\textwidth]{images/Plots/qpu_benchmark_comprehensive.png}
     
     \vspace{0.2cm}
     \small Comprehensive QPU benchmark: timing and quality across decomposition methods.
 \end{frame}
 
-\begin{frame}{Study 2: Timing Analysis}
-    \centering
-    \includegraphics[width=0.85\textwidth]{plot_time_comparison.png}
+% \begin{frame}{Study 2: Timing Analysis}
+%     \centering
+%     \includegraphics[width=0.55\textwidth]{images/Plots/plot_time_comparison.png}
     
-    \vspace{0.2cm}
-    \small Timing comparison across methods at large scale.
-\end{frame}
+%     \vspace{0.2cm}
+%     \small Timing comparison across methods at large scale.
+% \end{frame}
 
 \begin{frame}{Study 2: Time Breakdown Analysis}
     \begin{columns}[T]
@@ -945,25 +979,16 @@
             \end{keyinsight}
         \end{column}
         \begin{column}{0.43\textwidth}
-            % Visual breakdown
-            \begin{tikzpicture}[scale=0.8,transform shape]
-                \node[font=\small\bfseries,primaryBlue] at (1.5,3) {Time Breakdown};
-                
-                % Pie chart approximation
-                \fill[alertRed!70] (1.5,1) -- (1.5,2.5) arc (90:85:1.5) -- cycle;
-                \fill[accentTeal!70] (1.5,1) -- (1.5,2.5) arc (90:450:1.5) -- cycle;
-                
-                \node[font=\tiny,text=white] at (1.5,1.8) {Embedding};
-                \node[font=\tiny,text=white] at (1.5,1.3) {95--99\%};
-                
-                \node[font=\tiny] at (2.8,2.3) {QPU};
-                \node[font=\tiny] at (2.8,2) {$<$5\%};
-            \end{tikzpicture}
-            
-            \vspace{0.2cm}
-            \small\textbf{Implication:}\\
-            \scriptsize Better qubit connectivity (future hardware) would dramatically reduce embedding overhead.
-        \end{column}
+\textbf{Bottleneck Analysis:}
+\begin{itemize}
+    \item Embedding: 95--99\% of total time
+    \item Pure QPU: $<$30s at 1,000 farms
+    \item Chain break rate: $<$2\%
+\end{itemize}
+\vspace{0.3cm}
+\textbf{Implication:}\\
+With better qubit connectivity (future hardware), embedding overhead would decrease dramatically.
+\end{column}
     \end{columns}
 \end{frame}
 
@@ -1003,7 +1028,7 @@
 
 \begin{frame}{Study 3: Comprehensive Scaling (Variant B)}
     \centering
-    \includegraphics[width=0.85\textwidth]{comprehensive_hardness_scaling_PER_FARM.png}
+    \includegraphics[width=0.85\textwidth]{images/Plots/quantum_advantage_comprehensive_scaling.pdf}
     
     \vspace{0.2cm}
     \small Scaling analysis of problem hardness per farm (Variant B).
@@ -1011,113 +1036,93 @@
 
 \begin{frame}{Study 3: Quantum Improvement Analysis}
     \centering
-    \includegraphics[width=0.85\textwidth]{plot_gap_speedup_vs_vars.png}
+    \includegraphics[width=0.55\textwidth]{images/Plots/quantum_advantage_split_analysis.pdf}
     
     \vspace{0.2cm}
     \small Solution gap and speedup vs number of variables.
 \end{frame}
 
-\begin{frame}{Study 3: Solution Quality Comparison}
-    \centering
-    \includegraphics[width=0.85\textwidth]{plot_solution_quality_vs_vars.png}
+% \begin{frame}{Study 3: Solution Quality Comparison}
+%     \centering
+%     \includegraphics[width=0.55\textwidth]{images/Plots/plot_solution_quality_vs_vars.png}
     
-    \vspace{0.2cm}
-    \small Solution quality comparison vs problem size.
-\end{frame}
+%     \vspace{0.2cm}
+%     \small Solution quality comparison vs problem size.
+% \end{frame}
 
 \begin{frame}{Study 3: Detailed Results}
-    \begin{columns}[T]
-        \begin{column}{0.55\textwidth}
-            \small\textbf{QPU vs Gurobi Benefit Comparison:}
-            
-            \vspace{0.1cm}
-            \begin{table}[h]\tiny
-                \centering
-                \begin{tabular}{lrrrr}
-                    \toprule
-                    \textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} \\
-                    \midrule
-                    rotation\_micro\_25 & 90 & 6.17 & 4.86 & 0.79$\times$ \\
-                    \rowcolor{accentGreen!15} rotation\_small\_50 & 180 & 8.69 & 21.79 & \textbf{2.51$\times$} \\
-                    rotation\_medium\_100 & 360 & 12.78 & 39.24 & \textbf{3.07$\times$} \\
-                    \rowcolor{accentGreen!15} 50farms\_6foods & 900 & 26.92 & 109.67 & \textbf{4.07$\times$} \\
-                    100farms\_6foods & 1,800 & 53.77 & 229.14 & \textbf{4.26$\times$} \\
-                    \rowcolor{accentGreen!15} 200farms\_27foods & 16,200 & 93.52 & 500.59 & \textbf{5.35$\times$} \\
-                    \midrule
-                    \textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} \\
-                    \bottomrule
-                \end{tabular}
-            \end{table}
-        \end{column}
-        \begin{column}{0.43\textwidth}
-            % Key stats as metric boxes
-            \centering
-            \metricbox{3.80$\times$}{Avg Improvement}{accentGreen}
-            
-            \vspace{0.2cm}
-            \metricbox{12/13}{Scenarios QPU Wins}{primaryBlue}
-            
-            \vspace{0.2cm}
-            \metricbox{85\%}{Gurobi Timeout Rate}{alertRed}
-            
-            \vspace{0.2cm}
-            \begin{resultbox}[Key Result]
-                \scriptsize QPU achieves \textbf{3.80$\times$ higher benefit} on frustrated rotation problems
-            \end{resultbox}
-        \end{column}
-    \end{columns}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{QPU vs Gurobi Benefit Comparison:}
+\begin{table}[h]\scriptsize
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} \\
+\midrule
+rotation\_micro\_25 & 90 & 6.17 & 4.86 & 0.79$\times$ \\
+rotation\_small\_50 & 180 & 8.69 & 21.79 & 2.51$\times$ \\
+rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
+50farms\_6foods & 900 & 26.92 & 109.67 & 4.07$\times$ \\
+100farms\_6foods & 1,800 & 53.77 & 229.14 & 4.26$\times$ \\
+200farms\_27foods & 16,200 & 93.52 & 500.59 & 5.35$\times$ \\
+\midrule
+\textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{column}
+\begin{column}{0.43\textwidth}
+\textbf{Key Statistics:}
+\begin{itemize}
+    \item \textbf{12/13} scenarios: QPU wins
+    \item Gurobi timeout: \textbf{11/13} (85\%)
+    \item Gurobi avg MIP gap: \textbf{16,308\%}
+    \item Improvement ratio: \textbf{2.51$\times$ to 5.35$\times$}
+\end{itemize}
+\vspace{0.2cm}
+\begin{resultbox}
+\small\textbf{Average Benefit Ratio:}\\
+\centering\Large\textbf{3.80$\times$}
+\end{resultbox}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Why Does Gurobi Struggle with Rotation?}
-    \framesubtitle{The computational cliff phenomenon}
-    
-    \begin{columns}[T]
-        \begin{column}{0.55\textwidth}
-            \small\textbf{Classical Solver Barriers:}
-            
-            \begin{tikzpicture}[
-                barrier/.style={rounded corners=2pt,fill=alertRed!20,draw=alertRed,
-                               minimum width=6cm,minimum height=0.6cm,font=\scriptsize,
-                               inner sep=3pt,align=left}
-            ]
-                \node[barrier] at (0,0) {1. \textbf{Quadratic terms} break LP relaxation};
-                \node[barrier] at (0,-0.8) {2. \textbf{Frustrated constraints} $\rightarrow$ many local minima};
-                \node[barrier] at (0,-1.6) {3. \textbf{Poor bounds} $\rightarrow$ no effective pruning};
-                \node[barrier] at (0,-2.4) {4. \textbf{Branch-and-bound} explores exponentially};
-            \end{tikzpicture}
-            
-            \vspace{0.3cm}
-            \small\textbf{The Computational Cliff:}
-            \begin{itemize}\scriptsize
-                \item Variant A (linear): \textcolor{accentGreen}{\textbf{0.3 seconds}}
-                \item Variant B (quadratic): \textcolor{alertRed}{\textbf{300+ seconds timeout}}
-                \item Same scale, different formulation!
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.43\textwidth}
-            \begin{warningbox}[Non-Monotonic Hardness]
-                \scriptsize Problem difficulty is \textbf{formulation-dependent}, not just size-dependent.
-            \end{warningbox}
-            
-            \vspace{0.3cm}
-            \small\textbf{Quantum Advantage Mechanism:}
-            \begin{itemize}\scriptsize
-                \item Quantum tunneling escapes local minima
-                \item Naturally explores rugged landscapes
-                \item Parallel exploration via superposition
-            \end{itemize}
-            
-            \vspace{0.2cm}
-            \begin{tikzpicture}
-                % Simple energy landscape
-                \draw[thick,primaryBlue] plot[smooth,tension=0.7] coordinates {
-                    (0,0.5) (0.5,1.2) (1,0.3) (1.5,1.5) (2,0.2) (2.5,1.3) (3,0.1)
-                };
-                \draw[->,accentTeal,thick,dashed] (0.5,1.2) to[bend right=60] (1,0.3);
-                \node[font=\tiny,accentTeal] at (0.75,0.5) {tunnel};
-            \end{tikzpicture}
-        \end{column}
-    \end{columns}
+\small
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Classical Solver Barriers:}
+\begin{enumerate}
+    \item \textbf{Quadratic terms} break LP relaxation quality
+    \item \textbf{Frustrated constraints} create many local minima
+    \item \textbf{Poor bounds} $\Rightarrow$ no effective pruning
+    \item Branch-and-bound explores exponentially
+\end{enumerate}
+\vspace{0.2cm}
+\textbf{The Computational Cliff:}
+\begin{itemize}
+    \item Variant A (linear): 0.3 seconds
+    \item Variant B (quadratic): 300+ seconds timeout
+    \item Same scale, different formulation
+\end{itemize}
+\end{column}
+\begin{column}{0.43\textwidth}
+\begin{warnbox}
+\small\textbf{Non-Monotonic Hardness:}\\
+Problem difficulty is \textbf{formulation-dependent}, not just size-dependent.
+\end{warnbox}
+\vspace{0.3cm}
+\textbf{Quantum Advantage Mechanism:}
+\begin{itemize}
+    \item Quantum tunneling escapes local minima
+    \item Naturally explores rugged landscapes
+    \item Parallel exploration via superposition
+\end{itemize}
+\end{column}
+\end{columns}
 \end{frame}
 
 % ============================================================================
@@ -1127,7 +1132,7 @@
 
 \begin{frame}{Violation Impact Assessment}
     \centering
-    \includegraphics[width=0.85\textwidth]{combined_analysis_plots.png}
+    \includegraphics[width=0.85\textwidth]{images/Plots/violation_impact_assessment.pdf}
     
     \vspace{0.2cm}
     \small Combined analysis of solution quality and constraint satisfaction.
@@ -1135,117 +1140,99 @@
 
 \begin{frame}{Solution Composition Analysis}
     \centering
-    \includegraphics[width=0.9\textwidth]{qpu_solution_composition_pies.png}
+    \includegraphics[width=0.55\textwidth]{images/Plots/solution_composition_pies.pdf}
     
     \vspace{0.2cm}
     \small Crop family distribution in QPU solutions across scenarios.
 \end{frame}
 
-\begin{frame}{Top Crop Distribution}
-    \centering
-    \includegraphics[width=0.85\textwidth]{01_top_crop_distribution.png}
+% \begin{frame}{Top Crop Distribution}
+%     \centering
+%     \includegraphics[width=0.55\textwidth]{images/Plots/01_top_crop_distribution.png}
     
-    \vspace{0.2cm}
-    \small Frequency of top crops selected across all experiments.
-\end{frame}
+%     \vspace{0.2cm}
+%     \small Frequency of top crops selected across all experiments.
+% \end{frame}
 
 \begin{frame}{Performance Summary: Classical vs Quantum}
-    \framesubtitle{When does each approach excel?}
-    
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \begin{tikzpicture}
-                \node[rounded corners=8pt,fill=primaryBlue!10,draw=primaryBlue,
-                      minimum width=5.5cm,minimum height=4cm,inner sep=8pt] (classical) {};
-                \node[font=\small\bfseries,primaryBlue,anchor=north] at ([yshift=-0.3cm]classical.north) 
-                    {\faDesktop\ Classical (Gurobi)};
-            \end{tikzpicture}
-            
-            \vspace{-3.5cm}\hspace{0.5cm}
-            \begin{minipage}{5cm}\scriptsize
-                \textbf{Best for:}
-                \begin{itemize}
-                    \item Linear objectives (MILP)
-                    \item Well-structured constraints
-                    \item Tight LP relaxations
-                \end{itemize}
-                \textbf{Performance:}
-                \begin{itemize}
-                    \item Variant A: \textcolor{accentGreen}{\textbf{$<$1.2s optimal}}
-                    \item Variant B: \textcolor{alertRed}{\textbf{11/13 timeout}}
-                \end{itemize}
-            \end{minipage}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            \begin{tikzpicture}
-                \node[rounded corners=8pt,fill=accentTeal!10,draw=accentTeal,
-                      minimum width=5.5cm,minimum height=4cm,inner sep=8pt] (quantum) {};
-                \node[font=\small\bfseries,accentTeal,anchor=north] at ([yshift=-0.3cm]quantum.north) 
-                    {\faAtom\ Quantum (D-Wave)};
-            \end{tikzpicture}
-            
-            \vspace{-3.5cm}\hspace{0.5cm}
-            \begin{minipage}{5cm}\scriptsize
-                \textbf{Best for:}
-                \begin{itemize}
-                    \item Quadratic objectives (QUBO)
-                    \item Frustrated constraints
-                    \item Rugged energy landscapes
-                \end{itemize}
-                \textbf{Performance:}
-                \begin{itemize}
-                    \item Variant A: \textcolor{warmOrange}{5.5s (overhead)}
-                    \item Variant B: \textcolor{accentGreen}{\textbf{3.80$\times$ better}}
-                \end{itemize}
-            \end{minipage}
-        \end{column}
-    \end{columns}
-    
-    \vspace{0.5cm}
-    \begin{keyinsight}
-        \small Neither approach universally dominates. Optimal solver depends on \textbf{problem structure}, not just size.
-    \end{keyinsight}
+\vspace{-0.5cm}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{\faDesktop\ Classical (Gurobi)}
+\textbf{Best for:}
+\begin{itemize}
+    \item Linear objectives (MILP)
+    \item Well-structured constraints
+    \item Tight LP relaxations
+\end{itemize}
+
+\textbf{Performance:}
+\begin{itemize}
+    \item Variant A: \textcolor{accentGreen}{\textbf{$<$1.2s optimal}}
+    \item Variant B: \textcolor{alertRed}{\textbf{11/13 timeout}}
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{\faAtom\ Quantum (D-Wave)}
+\textbf{Best for:}
+\begin{itemize}
+    \item Quadratic objectives (QUBO)
+    \item Frustrated constraints
+    \item Rugged energy landscapes
+\end{itemize}
+
+\textbf{Performance:}
+\begin{itemize}
+    \item Variant A: \textcolor{warmOrange}{5.5s (overhead)}
+    \item Variant B: \textcolor{accentGreen}{\textbf{3.80$\times$ better}}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.1cm}
+\begin{keybox}
+\small\textbf{Key Insight:} Neither approach universally dominates. Optimal solver depends on \textbf{problem structure}, not just size.
+\end{keybox}
 \end{frame}
 
+% ----------------------------------------------------------------------------
 \begin{frame}{Key Numerical Results at a Glance}
-    \centering
-    
-    % Large metric displays
-    \begin{tikzpicture}
-        \node[rounded corners=10pt,fill=accentGreen!15,draw=accentGreen,line width=2pt,
-              minimum width=3.5cm,minimum height=2cm,align=center] (m1) at (0,0) {
-            \fontsize{28}{32}\selectfont\bfseries\color{accentGreen}3.80$\times$\\
-            \small\color{darkText}Avg QPU Improvement
-        };
-        
-        \node[rounded corners=10pt,fill=accentTeal!15,draw=accentTeal,line width=2pt,
-              minimum width=3.5cm,minimum height=2cm,align=center] (m2) at (5,0) {
-            \fontsize{28}{32}\selectfont\bfseries\color{accentTeal}$<$2\%\\
-            \small\color{darkText}Chain Break Rate
-        };
-        
-        \node[rounded corners=10pt,fill=primaryBlue!15,draw=primaryBlue,line width=2pt,
-              minimum width=3.5cm,minimum height=2cm,align=center] (m3) at (10,0) {
-            \fontsize{28}{32}\selectfont\bfseries\color{primaryBlue}$O(f)$\\
-            \small\color{darkText}QPU Time Scaling
-        };
-    \end{tikzpicture}
-    
-    \vspace{0.5cm}
-    \begin{table}[h]\scriptsize
-        \centering
-        \begin{tabular}{lcccc}
-            \toprule
-            \textbf{Metric} & \textbf{Study 1} & \textbf{Study 2} & \textbf{Study 3} & \textbf{Overall} \\
-            \midrule
-            Max Variables & 27,027 & 27,027 & 16,200 & 27,027 \\
-            Gurobi Time & 1.15s & 1.15s & 300s (timeout) & -- \\
-            Pure QPU Time & 70ms & 21.8s & 1.1\% of total & Linear \\
-            QPU/Gurobi Ratio & $\sim$1.0$\times$ & $<$1.0$\times$ & \textbf{3.80$\times$} & -- \\
-            Embedding Overhead & -- & 95--99\% & -- & Dominant \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{Study 1} & \textbf{Study 2} & \textbf{Study 3} & \textbf{Overall} \\
+\midrule
+Max Variables & 27,027 & 27,027 & 16,200 & 27,027 \\
+Gurobi Time & 1.15s & 1.15s & 300s (timeout) & -- \\
+QPU Time (pure) & 70ms & 21.8s & 1.1\% of total & Linear $O(f)$ \\
+Solution Gap & 0\% & 31.8--57.1\% & N/A & -- \\
+QPU/Gurobi Ratio & $\sim$1.0$\times$ & $<$1.0$\times$ & \textbf{3.80$\times$} & -- \\
+Chain Break Rate & -- & $<$2\% & $<$2\% & $<$2\% \\
+Embedding Overhead & -- & 95--99\% & -- & Dominant \\
+\bottomrule
+\end{tabular}
+\vspace{0.4cm}
+
+\begin{columns}
+\begin{column}{0.3\textwidth}
+\centering
+\textcolor{primaryBlue}{\Large\textbf{3.80$\times$}}\\
+\scriptsize Avg QPU Improvement
+\end{column}
+\begin{column}{0.3\textwidth}
+\centering
+\textcolor{accentTeal}{\Large\textbf{$<$2\%}}\\
+\scriptsize Chain Break Rate
+\end{column}
+\begin{column}{0.3\textwidth}
+\centering
+\textcolor{accentGreen}{\Large\textbf{$O(f)$}}\\
+\scriptsize QPU Time Scaling
+\end{column}
+\end{columns}
 \end{frame}
 
 % ============================================================================
@@ -1253,46 +1240,35 @@
 % ============================================================================
 \section{Hardware Effects \& Noise}
 
+
+
 \begin{frame}{Hardware Effects Analysis}
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Chain Breaking:}
-            
-            \begin{tikzpicture}
-                % Chain break visualization
-                \foreach \x in {0,...,4} {
-                    \node[circle,fill=primaryBlue,minimum size=8pt] (q\x) at (\x*0.7,0) {};
-                }
-                \draw[thick,primaryBlue] (q0) -- (q1) -- (q2);
-                \draw[thick,alertRed,dashed] (q2) -- (q3);
-                \draw[thick,primaryBlue] (q3) -- (q4);
-                \node[font=\tiny,alertRed] at (1.75,-0.4) {break};
-            \end{tikzpicture}
-            
-            \begin{itemize}\scriptsize
-                \item Rate: Consistently \textcolor{accentGreen}{\textbf{$<$2\%}}
-                \item Auto-scaled chain strength effective
-                \item Minimal impact on quality
-            \end{itemize}
-            
-            \vspace{0.2cm}
-            \small\textbf{Embedding Overhead:}
-            \begin{itemize}\scriptsize
-                \item 95--99\% of total runtime
-                \item Classical preprocessing bottleneck
-                \item Not inherent to quantum computation
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Noise Mitigation:}
-            \begin{itemize}\scriptsize
-                \item Multiple samples (100--500)
-                \item Majority voting for robust solutions
-                \item Auto-scaling chain strength
-            \end{itemize}
-            
-            \vspace{0.2cm}
-            \small\textbf{Future Hardware Impact:}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Chain Breaking:}
+\begin{itemize}
+    \item Rate: Consistently $<$2\%
+    \item Auto-scaled chain strength effective
+    \item Minimal impact on solution quality
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Embedding Overhead:}
+\begin{itemize}
+    \item 95--99\% of total runtime
+    \item Classical preprocessing bottleneck
+    \item Not inherent to quantum computation
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Noise Mitigation:}
+\begin{itemize}
+    \item Multiple samples (100--500)
+    \item Majority voting for robust solutions
+    \item Auto-scaling chain strength
+\end{itemize}
+\vspace{0.2cm}
+\small\textbf{Future Hardware Impact:}
             
             \begin{tikzpicture}[
                 future/.style={rounded corners=2pt,fill=accentTeal!20,draw=accentTeal,
@@ -1302,13 +1278,12 @@
                 \node[future] at (0,-0.6) {Longer coherence $\rightarrow$ Better quality};
                 \node[future] at (0,-1.2) {Native constraints $\rightarrow$ No penalties};
             \end{tikzpicture}
-            
-            \vspace{0.2cm}
-            \begin{keyinsight}[Note]
-                \scriptsize Embedding bottleneck is \textbf{classical}, not quantum. Advantage2 promises significant improvement.
-            \end{keyinsight}
-        \end{column}
-    \end{columns}
+\end{column}
+\end{columns}
+\vspace{0.2cm}
+\begin{keybox}
+\small The embedding bottleneck is a \textbf{classical preprocessing issue}, not a fundamental quantum limitation. Next-generation hardware (Advantage2) promises significantly reduced overhead.
+\end{keybox}
 \end{frame}
 
 \begin{frame}{Grid Refinement Analysis}
@@ -1338,148 +1313,144 @@
             \end{highlightbox}
         \end{column}
         \begin{column}{0.43\textwidth}
-            \small\textbf{Key Findings:}
-            \begin{itemize}\scriptsize
-                \item Binary is \textbf{3.7$\times$ faster} at $n=100$
-                \item Gap decreases monotonically
-                \item $n=50$ sufficient for most applications
-            \end{itemize}
-            
-            \vspace{0.3cm}
-            \begin{resultbox}[Recommendation]
-                \scriptsize Binary formulation preferred for QPU: faster embedding, comparable accuracy.
-            \end{resultbox}
-        \end{column}
+\textbf{Key Findings:}
+\begin{itemize}
+    \item Binary is \textbf{3.7$\times$ faster} than continuous at $n=100$
+    \item Gap decreases monotonically
+    \item $n=50$ sufficient for most applications
+\end{itemize}
+\vspace{0.2cm}
+\begin{keybox}
+\scriptsize Binary formulation preferred for QPU: faster embedding, comparable accuracy.
+\end{keybox}
+\end{column}
     \end{columns}
 \end{frame}
 
-% ============================================================================
-% CONCLUSIONS
+
 % ============================================================================
 \section{Conclusions}
 
+% ----------------------------------------------------------------------------
 \begin{frame}{Six Key Takeaways}
-    \begin{tikzpicture}[
-        takeaway/.style={rounded corners=3pt,minimum width=14cm,minimum height=0.7cm,
-                        font=\small,align=left,inner sep=5pt,text=white}
-    ]
-        \node[takeaway,fill=primaryBlue] at (0,0) {
-            \textbf{1.} \textbf{Formulation-Dependent Performance:} Classical excels on MILP; quantum on frustrated QUBO
-        };
-        \node[takeaway,fill=accentTeal] at (0,-0.9) {
-            \textbf{2.} \textbf{Linear QPU Scaling:} Pure quantum time scales $O(f)$ --- embedding is the bottleneck
-        };
-        \node[takeaway,fill=accentGreen] at (0,-1.8) {
-            \textbf{3.} \textbf{3.80$\times$ Quantum Improvement:} On rotation problems, QPU achieves significantly higher benefit
-        };
-        \node[takeaway,fill=warmOrange] at (0,-2.7) {
-            \textbf{4.} \textbf{Computational Cliffs Exist:} Problem hardness is non-monotonic; rotation creates classical barriers
-        };
-        \node[takeaway,fill=secondaryBlue] at (0,-3.6) {
-            \textbf{5.} \textbf{Diversity Paradox:} Quantum naturally produces more diverse, agriculturally robust solutions
-        };
-        \node[takeaway,fill=alertRed!80] at (0,-4.5) {
-            \textbf{6.} \textbf{Hardware Constraints Remain:} 95--99\% of runtime is classical embedding overhead
-        };
-    \end{tikzpicture}
+\small
+\begin{enumerate}
+    \item \textcolor{primaryBlue}{\textbf{Formulation-Dependent Performance}}\\
+    {\scriptsize Classical excels on MILP; quantum excels on frustrated QUBO problems}
+    
+    \item \textcolor{accentTeal}{\textbf{Linear QPU Scaling}}\\
+    {\scriptsize Pure quantum time scales $O(f)$ --- embedding is the bottleneck}
+    
+    \item \textcolor{accentGreen}{\textbf{3.80$\times$ Quantum Improvement}}\\
+    {\scriptsize On rotation problems, QPU achieves significantly higher benefit}
+    
+    \item \textcolor{warmOrange}{\textbf{Computational Cliffs Exist}}\\
+    {\scriptsize Problem hardness is non-monotonic; rotation creates classical barriers}
+    
+    \item \textcolor{secondaryBlue}{\textbf{Diversity Paradox}}\\
+    {\scriptsize Quantum naturally produces more diverse, agriculturally robust solutions}
+    
+    \item \textcolor{alertRed}{\textbf{Hardware Constraints Remain}}\\
+    {\scriptsize 95--99\% of runtime is classical embedding overhead}
+\end{enumerate}
 \end{frame}
 
-\begin{frame}{Impact Assessment}
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Agricultural Impact:}
+% \begin{frame}{Impact Assessment}
+%     \begin{columns}[T]
+%         \begin{column}{0.48\textwidth}
+%             \small\textbf{Agricultural Impact:}
             
-            \begin{tikzpicture}[
-                impact/.style={rounded corners=2pt,fill=accentGreen!20,draw=accentGreen,
-                              font=\scriptsize,inner sep=4pt,minimum width=5.5cm,
-                              minimum height=0.5cm}
-            ]
-                \node[impact] at (0,0) {\faCarrot\ Optimized crop allocation};
-                \node[impact] at (0,-0.65) {\faHeartbeat\ Improved nutritional outcomes};
-                \node[impact] at (0,-1.3) {\faLeaf\ Reduced environmental footprint};
-                \node[impact] at (0,-1.95) {\faShieldAlt\ Enhanced food security};
-            \end{tikzpicture}
+%             \begin{tikzpicture}[
+%                 impact/.style={rounded corners=2pt,fill=accentGreen!20,draw=accentGreen,
+%                               font=\scriptsize,inner sep=4pt,minimum width=5.5cm,
+%                               minimum height=0.5cm}
+%             ]
+%                 \node[impact] at (0,0) {\faCarrot\ Optimized crop allocation};
+%                 \node[impact] at (0,-0.65) {\faHeartbeat\ Improved nutritional outcomes};
+%                 \node[impact] at (0,-1.3) {\faLeaf\ Reduced environmental footprint};
+%                 \node[impact] at (0,-1.95) {\faShieldAlt\ Enhanced food security};
+%             \end{tikzpicture}
             
-            \vspace{0.3cm}
-            \small\textbf{Technical Impact:}
-            \begin{itemize}\scriptsize
-                \item Novel decomposition strategies
-                \item Hybrid quantum-classical workflows
-                \item Benchmark methodology for QA
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            \small\textbf{SDG Alignment:}
+%             \vspace{0.3cm}
+%             \small\textbf{Technical Impact:}
+%             \begin{itemize}\scriptsize
+%                 \item Novel decomposition strategies
+%                 \item Hybrid quantum-classical workflows
+%                 \item Benchmark methodology for QA
+%             \end{itemize}
+%         \end{column}
+%         \begin{column}{0.48\textwidth}
+%             \small\textbf{SDG Alignment:}
             
-            \begin{tikzpicture}[
-                sdg/.style={rounded corners=3pt,minimum width=5.5cm,minimum height=0.6cm,
-                           font=\scriptsize,align=left,text=white,inner sep=4pt}
-            ]
-                \node[sdg,fill=warmOrange] at (0,0) {\textbf{SDG 2:} Maximize nutrition, food security};
-                \node[sdg,fill=accentGreen] at (0,-0.75) {\textbf{SDG 3:} Diverse diets, health outcomes};
-                \node[sdg,fill=accentTeal] at (0,-1.5) {\textbf{SDG 12:} Reduce waste, sustainable production};
-                \node[sdg,fill=secondaryBlue] at (0,-2.25) {\textbf{SDG 13:} Lower emissions, climate resilience};
-            \end{tikzpicture}
+%             \begin{tikzpicture}[
+%                 sdg/.style={rounded corners=3pt,minimum width=5.5cm,minimum height=0.6cm,
+%                            font=\scriptsize,align=left,text=white,inner sep=4pt}
+%             ]
+%                 \node[sdg,fill=warmOrange] at (0,0) {\textbf{SDG 2:} Maximize nutrition, food security};
+%                 \node[sdg,fill=accentGreen] at (0,-0.75) {\textbf{SDG 3:} Diverse diets, health outcomes};
+%                 \node[sdg,fill=accentTeal] at (0,-1.5) {\textbf{SDG 12:} Reduce waste, sustainable production};
+%                 \node[sdg,fill=secondaryBlue] at (0,-2.25) {\textbf{SDG 13:} Lower emissions, climate resilience};
+%             \end{tikzpicture}
             
-            \vspace{0.2cm}
-            \begin{resultbox}[Summary]
-                \scriptsize Quantum-optimized allocation addresses food security, sustainability, and economics simultaneously.
-            \end{resultbox}
-        \end{column}
-    \end{columns}
-\end{frame}
+%             \vspace{0.2cm}
+%             \begin{resultbox}[Summary]
+%                 \scriptsize Quantum-optimized allocation addresses food security, sustainability, and economics simultaneously.
+%             \end{resultbox}
+%         \end{column}
+%     \end{columns}
+% \end{frame}
 
-\begin{frame}{Future Directions}
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Hardware Improvements:}
+% \begin{frame}{Future Directions}
+%     \begin{columns}[T]
+%         \begin{column}{0.48\textwidth}
+%             \small\textbf{Hardware Improvements:}
             
-            \begin{tikzpicture}[
-                dir/.style={rounded corners=2pt,fill=primaryBlue!15,draw=primaryBlue,
-                           font=\scriptsize,inner sep=4pt,minimum width=5.5cm,align=left}
-            ]
-                \node[dir] at (0,0) {
-                    \faPlug\ Higher connectivity\\
-                    \tiny $\Rightarrow$ Reduce embedding overhead
-                };
-                \node[dir] at (0,-0.9) {
-                    \faClock\ Longer coherence times\\
-                    \tiny $\Rightarrow$ Better solution quality
-                };
-                \node[dir] at (0,-1.8) {
-                    \faCogs\ Native constraint support\\
-                    \tiny $\Rightarrow$ Avoid penalty terms
-                };
-            \end{tikzpicture}
+%             \begin{tikzpicture}[
+%                 dir/.style={rounded corners=2pt,fill=primaryBlue!15,draw=primaryBlue,
+%                            font=\scriptsize,inner sep=4pt,minimum width=5.5cm,align=left}
+%             ]
+%                 \node[dir] at (0,0) {
+%                     \faPlug\ Higher connectivity\\
+%                     \tiny $\Rightarrow$ Reduce embedding overhead
+%                 };
+%                 \node[dir] at (0,-0.9) {
+%                     \faClock\ Longer coherence times\\
+%                     \tiny $\Rightarrow$ Better solution quality
+%                 };
+%                 \node[dir] at (0,-1.8) {
+%                     \faCogs\ Native constraint support\\
+%                     \tiny $\Rightarrow$ Avoid penalty terms
+%                 };
+%             \end{tikzpicture}
             
-            \vspace{0.2cm}
-            \small\textbf{Algorithm Development:}
-            \begin{itemize}\scriptsize
-                \item Improved decomposition strategies
-                \item Adaptive penalty scaling
-                \item Problem-specific embeddings
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Application Extensions:}
+%             \vspace{0.2cm}
+%             \small\textbf{Algorithm Development:}
+%             \begin{itemize}\scriptsize
+%                 \item Improved decomposition strategies
+%                 \item Adaptive penalty scaling
+%                 \item Problem-specific embeddings
+%             \end{itemize}
+%         \end{column}
+%         \begin{column}{0.48\textwidth}
+%             \small\textbf{Application Extensions:}
             
-            \begin{tikzpicture}[
-                ext/.style={rounded corners=2pt,fill=accentTeal!15,draw=accentTeal,
-                           font=\scriptsize,inner sep=4pt,minimum width=5.5cm}
-            ]
-                \node[ext] at (0,0) {\faExpand\ Larger farm networks (10,000+)};
-                \node[ext] at (0,-0.6) {\faCalendarAlt\ Multi-year planning horizons};
-                \node[ext] at (0,-1.2) {\faCloudSun\ Climate adaptation scenarios};
-                \node[ext] at (0,-1.8) {\faTruck\ Supply chain integration};
-            \end{tikzpicture}
+%             \begin{tikzpicture}[
+%                 ext/.style={rounded corners=2pt,fill=accentTeal!15,draw=accentTeal,
+%                            font=\scriptsize,inner sep=4pt,minimum width=5.5cm}
+%             ]
+%                 \node[ext] at (0,0) {\faExpand\ Larger farm networks (10,000+)};
+%                 \node[ext] at (0,-0.6) {\faCalendarAlt\ Multi-year planning horizons};
+%                 \node[ext] at (0,-1.2) {\faCloudSun\ Climate adaptation scenarios};
+%                 \node[ext] at (0,-1.8) {\faTruck\ Supply chain integration};
+%             \end{tikzpicture}
             
-            \vspace{0.3cm}
-            \begin{keyinsight}[Near-Term Target]
-                \scriptsize With \textbf{Advantage2} hardware, embedding overhead could drop below 50\%, making quantum competitive for simpler problems.
-            \end{keyinsight}
-        \end{column}
-    \end{columns}
-\end{frame}
+%             \vspace{0.3cm}
+%             \begin{keyinsight}[Near-Term Target]
+%                 \scriptsize With \textbf{Advantage2} hardware, embedding overhead could drop below 50\%, making quantum competitive for simpler problems.
+%             \end{keyinsight}
+%         \end{column}
+%     \end{columns}
+% \end{frame}
 
 % ============================================================================
 % CLOSING SLIDE
@@ -1515,7 +1486,7 @@
     
     % Institution
     \node[white!60,font=\small] at ([yshift=-2.8cm]current page.center) 
-        {EPFL \quad$\bullet$\quad Open Quantum Initiative};
+        {$\bullet$\quad Open Quantum Institute};
     
     % Bottom icons
     \node[white!50,font=\small] at ([yshift=0.5cm]current page.south) 
@@ -1527,120 +1498,120 @@
 % ============================================================================
 % BACKUP SLIDES
 % ============================================================================
-\appendix
+% \appendix
 
-\begin{frame}{Backup: D-Wave System Specifications}
-    \begin{table}[h]
-        \centering
-        \begin{tabular}{ll}
-            \toprule
-            \textbf{Parameter} & \textbf{Value} \\
-            \midrule
-            Total Qubits & 5,760 \\
-            Topology & Pegasus P16 \\
-            Average Qubit Connectivity & 15 neighbors \\
-            Native Clique Size & 15--20 qubits \\
-            Annealing Time Range & 0.5--2,000 $\mu$s \\
-            Programming Thermalization & 1 ms (default) \\
-            Chain Strength & Auto-scaled (0.9--2.0$\times$ max energy) \\
-            Maximum Problem Variables & $\sim$5,000 (depending on connectivity) \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-\end{frame}
+% \begin{frame}{Backup: D-Wave System Specifications}
+%     \begin{table}[h]
+%         \centering
+%         \begin{tabular}{ll}
+%             \toprule
+%             \textbf{Parameter} & \textbf{Value} \\
+%             \midrule
+%             Total Qubits & 5,760 \\
+%             Topology & Pegasus P16 \\
+%             Average Qubit Connectivity & 15 neighbors \\
+%             Native Clique Size & 15--20 qubits \\
+%             Annealing Time Range & 0.5--2,000 $\mu$s \\
+%             Programming Thermalization & 1 ms (default) \\
+%             Chain Strength & Auto-scaled (0.9--2.0$\times$ max energy) \\
+%             Maximum Problem Variables & $\sim$5,000 (depending on connectivity) \\
+%             \bottomrule
+%         \end{tabular}
+%     \end{table}
+% \end{frame}
 
-\begin{frame}{Backup: Decomposition Methods Comparison}
-    \begin{table}[h]
-        \centering
-        \begin{tabular}{lccc}
-            \toprule
-            \textbf{Method} & \textbf{Vars/Partition} & \textbf{Scaling} & \textbf{Quality} \\
-            \midrule
-            Direct QPU & All & Fails & N/A \\
-            PlotBased & 27 & $O(f)$ & Good \\
-            Multilevel(5) & 135 & $O(f)$ & Better \\
-            \rowcolor{accentGreen!20} \textbf{Multilevel(10)} & \textbf{270} & $\mathbf{O(f)}$ & \textbf{Best} \\
-            Louvain & Adaptive & $O(f)$ & Good \\
-            Spectral(10) & Variable & $O(f)$ & Good \\
-            Coordinated & Variable & $O(f \cdot k)$ & Better \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-\end{frame}
+% \begin{frame}{Backup: Decomposition Methods Comparison}
+%     \begin{table}[h]
+%         \centering
+%         \begin{tabular}{lccc}
+%             \toprule
+%             \textbf{Method} & \textbf{Vars/Partition} & \textbf{Scaling} & \textbf{Quality} \\
+%             \midrule
+%             Direct QPU & All & Fails & N/A \\
+%             PlotBased & 27 & $O(f)$ & Good \\
+%             Multilevel(5) & 135 & $O(f)$ & Better \\
+%             \rowcolor{accentGreen!20} \textbf{Multilevel(10)} & \textbf{270} & $\mathbf{O(f)}$ & \textbf{Best} \\
+%             Louvain & Adaptive & $O(f)$ & Good \\
+%             Spectral(10) & Variable & $O(f)$ & Good \\
+%             Coordinated & Variable & $O(f \cdot k)$ & Better \\
+%             \bottomrule
+%         \end{tabular}
+%     \end{table}
+% \end{frame}
 
-\begin{frame}{Backup: Complete Benefit Equation}
-    \begin{equation*}
-        B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}
-    \end{equation*}
+% \begin{frame}{Backup: Complete Benefit Equation}
+%     \begin{equation*}
+%         B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}
+%     \end{equation*}
     
-    \vspace{0.3cm}
-    \begin{table}[h]
-        \centering
-        \begin{tabular}{clc}
-            \toprule
-            \textbf{Symbol} & \textbf{Component} & \textbf{Default Weight} \\
-            \midrule
-            $v_{nv,c}$ & Nutritional Value & $w_{nv} = 0.25$ \\
-            $v_{nd,c}$ & Nutrient Density & $w_{nd} = 0.20$ \\
-            $v_{ei,c}$ & Environmental Impact & $w_{ei} = 0.20$ (negative) \\
-            $v_{af,c}$ & Affordability & $w_{af} = 0.20$ \\
-            $v_{su,c}$ & Sustainability & $w_{su} = 0.15$ \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-\end{frame}
+%     \vspace{0.3cm}
+%     \begin{table}[h]
+%         \centering
+%         \begin{tabular}{clc}
+%             \toprule
+%             \textbf{Symbol} & \textbf{Component} & \textbf{Default Weight} \\
+%             \midrule
+%             $v_{nv,c}$ & Nutritional Value & $w_{nv} = 0.25$ \\
+%             $v_{nd,c}$ & Nutrient Density & $w_{nd} = 0.20$ \\
+%             $v_{ei,c}$ & Environmental Impact & $w_{ei} = 0.20$ (negative) \\
+%             $v_{af,c}$ & Affordability & $w_{af} = 0.20$ \\
+%             $v_{su,c}$ & Sustainability & $w_{su} = 0.15$ \\
+%             \bottomrule
+%         \end{tabular}
+%     \end{table}
+% \end{frame}
 
-\begin{frame}{Backup: Study 3 Full Results Table}
-    \scriptsize
-    \begin{table}[h]
-        \centering
-        \begin{tabular}{lrrrrr}
-            \toprule
-            \textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} & \textbf{Status} \\
-            \midrule
-            rotation\_micro\_25 & 90 & 6.17 & 4.86 & 0.79$\times$ & Optimal \\
-            rotation\_small\_50 & 180 & 8.69 & 21.79 & 2.51$\times$ & Optimal \\
-            rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ & Timeout \\
-            rotation\_large\_200 & 720 & 19.23 & 72.18 & 3.75$\times$ & Timeout \\
-            rotation\_25farms\_6foods & 450 & 17.84 & 58.92 & 3.30$\times$ & Timeout \\
-            rotation\_50farms\_6foods & 900 & 26.92 & 109.67 & 4.07$\times$ & Timeout \\
-            rotation\_100farms\_6foods & 1,800 & 53.77 & 229.14 & 4.26$\times$ & Timeout \\
-            rotation\_50farms\_27foods & 4,050 & 32.14 & 142.87 & 4.45$\times$ & Timeout \\
-            rotation\_100farms\_27foods & 8,100 & 58.41 & 287.32 & 4.92$\times$ & Timeout \\
-            rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & 5.35$\times$ & Timeout \\
-            \midrule
-            \textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} & \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-\end{frame}
+% \begin{frame}{Backup: Study 3 Full Results Table}
+%     \scriptsize
+%     \begin{table}[h]
+%         \centering
+%         \begin{tabular}{lrrrrr}
+%             \toprule
+%             \textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{Ratio} & \textbf{Status} \\
+%             \midrule
+%             rotation\_micro\_25 & 90 & 6.17 & 4.86 & 0.79$\times$ & Optimal \\
+%             rotation\_small\_50 & 180 & 8.69 & 21.79 & 2.51$\times$ & Optimal \\
+%             rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ & Timeout \\
+%             rotation\_large\_200 & 720 & 19.23 & 72.18 & 3.75$\times$ & Timeout \\
+%             rotation\_25farms\_6foods & 450 & 17.84 & 58.92 & 3.30$\times$ & Timeout \\
+%             rotation\_50farms\_6foods & 900 & 26.92 & 109.67 & 4.07$\times$ & Timeout \\
+%             rotation\_100farms\_6foods & 1,800 & 53.77 & 229.14 & 4.26$\times$ & Timeout \\
+%             rotation\_50farms\_27foods & 4,050 & 32.14 & 142.87 & 4.45$\times$ & Timeout \\
+%             rotation\_100farms\_27foods & 8,100 & 58.41 & 287.32 & 4.92$\times$ & Timeout \\
+%             rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & 5.35$\times$ & Timeout \\
+%             \midrule
+%             \textbf{Average} & & \textbf{28.36} & \textbf{125.81} & \textbf{3.80$\times$} & \\
+%             \bottomrule
+%         \end{tabular}
+%     \end{table}
+% \end{frame}
 
-\begin{frame}{Backup: Algorithm Pseudocode --- Multilevel Decomposition}
-    \small
-    \begin{enumerate}
-        \item \textbf{Input:} BQM $B$, coarsening levels $L$, partition size $k$
-        \item \textbf{Coarsen:}
-        \begin{itemize}\scriptsize
-            \item For $l = 1$ to $L$: Merge adjacent farms into super-farms
-            \item Build coarsened BQM at each level
-        \end{itemize}
-        \item \textbf{Partition:}
-        \begin{itemize}\scriptsize
-            \item Apply METIS/spectral clustering to coarsest graph
-            \item Create $\lceil n/k \rceil$ partitions of size $\leq k$
-        \end{itemize}
-        \item \textbf{Solve:}
-        \begin{itemize}\scriptsize
-            \item For each partition: Submit to QPU, collect samples
-            \item Select best sample per partition
-        \end{itemize}
-        \item \textbf{Uncoarsen \& Refine:}
-        \begin{itemize}\scriptsize
-            \item Map solutions back through coarsening levels
-            \item Apply local refinement at each level
-        \end{itemize}
-        \item \textbf{Output:} Combined solution for original BQM
-    \end{enumerate}
-\end{frame}
+% \begin{frame}{Backup: Algorithm Pseudocode --- Multilevel Decomposition}
+%     \small
+%     \begin{enumerate}
+%         \item \textbf{Input:} BQM $B$, coarsening levels $L$, partition size $k$
+%         \item \textbf{Coarsen:}
+%         \begin{itemize}\scriptsize
+%             \item For $l = 1$ to $L$: Merge adjacent farms into super-farms
+%             \item Build coarsened BQM at each level
+%         \end{itemize}
+%         \item \textbf{Partition:}
+%         \begin{itemize}\scriptsize
+%             \item Apply METIS/spectral clustering to coarsest graph
+%             \item Create $\lceil n/k \rceil$ partitions of size $\leq k$
+%         \end{itemize}
+%         \item \textbf{Solve:}
+%         \begin{itemize}\scriptsize
+%             \item For each partition: Submit to QPU, collect samples
+%             \item Select best sample per partition
+%         \end{itemize}
+%         \item \textbf{Uncoarsen \& Refine:}
+%         \begin{itemize}\scriptsize
+%             \item Map solutions back through coarsening levels
+%             \item Apply local refinement at each level
+%         \end{itemize}
+%         \item \textbf{Output:} Combined solution for original BQM
+%     \end{enumerate}
+% \end{frame}
 
 \end{document}
