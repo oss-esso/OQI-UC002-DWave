@@ -153,41 +153,6 @@ def save_single_plot(fig: plt.Figure, filename: str, output_dir: Path | None = N
     return output_path
 
 
-def add_farms_secondary_axis(ax: plt.Axes, df: pd.DataFrame) -> None:
-    """
-    Add a secondary x-axis showing number of farms.
-    
-    The relationship between variables and farms depends on formulation:
-    - 6-Food: n_vars = n_farms * 6 * 3 = n_farms * 18
-    - 27-Food (Agg.): n_vars = n_farms * 27 * 3 = n_farms * 81
-    
-    This function adds tick marks at farm counts present in the data.
-    """
-    # Get unique (n_vars, n_farms) pairs from the data
-    var_farm_pairs = df[["n_vars", "n_farms"]].drop_duplicates().sort_values("n_vars")
-    
-    if len(var_farm_pairs) == 0:
-        return
-    
-    # Create secondary axis
-    ax2 = ax.twiny()
-    
-    # Set the same limits as primary axis
-    ax2.set_xlim(ax.get_xlim())
-    
-    # Set tick positions at the variable counts that correspond to farms
-    tick_positions = var_farm_pairs["n_vars"].values
-    tick_labels = [str(int(f)) for f in var_farm_pairs["n_farms"].values]
-    
-    ax2.set_xticks(tick_positions)
-    ax2.set_xticklabels(tick_labels)
-    ax2.set_xlabel("Number of Farms", fontsize=18, fontweight="bold")
-    
-    # Match the scale of the primary axis
-    if ax.get_xscale() == "log":
-        ax2.set_xscale("log")
-
-
 # =============================================================================
 # DATA PREPARATION FUNCTIONS
 # =============================================================================
@@ -262,19 +227,18 @@ def prepare_scaling_data_300s() -> pd.DataFrame:
 
 
 # =============================================================================
-# SECTION 1: COMPREHENSIVE SCALING (3 plots)
+# SECTION 1: COMPREHENSIVE SCALING (6 plots - vars and farms versions)
 # =============================================================================
 
 
-def plot_scaling_objectives(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Plot 1: Objectives comparison - Gurobi vs Quantum."""
+def plot_scaling_objectives_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Objectives comparison by number of variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
-            # Gurobi (solid lines)
             ax.plot(
                 form_df["n_vars"],
                 form_df["gurobi_objective"],
@@ -285,7 +249,6 @@ def plot_scaling_objectives(df: pd.DataFrame, output_dir: Path | None = None) ->
                 markersize=12,
                 alpha=0.8,
             )
-            # Quantum (dashed lines)
             ax.plot(
                 form_df["n_vars"],
                 form_df["qpu_objective"],
@@ -297,14 +260,51 @@ def plot_scaling_objectives(df: pd.DataFrame, output_dir: Path | None = None) ->
                 alpha=0.6,
                 linestyle="--",
             )
-    
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Objective Value (|abs|)")
-    ax.set_title("Solution Quality: Classical vs Quantum")
-    ax.legend(loc="best", ncol=2)
+    ax.set_title("Solution Quality: Classical vs Quantum (by Variables)")
+    ax.legend(loc="upper left", fontsize=14)
     ax.grid(True, alpha=0.3)
     
-    return save_single_plot(fig, "scaling_objectives", output_dir)
+    return save_single_plot(fig, "scaling_objectives_by_vars", output_dir)
+
+
+def plot_scaling_objectives_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Objectives comparison by number of farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            color = FORMULATION_COLORS.get(formulation, "gray")
+            ax.plot(
+                form_df["n_farms"],
+                form_df["gurobi_objective"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (Gurobi)",
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+            ax.plot(
+                form_df["n_farms"],
+                form_df["qpu_objective"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (QPU)",
+                linewidth=3,
+                markersize=10,
+                alpha=0.6,
+                linestyle="--",
+            )
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Objective Value (|abs|)")
+    ax.set_title("Solution Quality: Classical vs Quantum (by Farms)")
+    ax.legend(loc="upper left", fontsize=14)
+    ax.grid(True, alpha=0.3)
+    
+    return save_single_plot(fig, "scaling_objectives_by_farms", output_dir)
 
 
 def plot_scaling_time_comparison(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
@@ -360,15 +360,14 @@ def plot_scaling_time_comparison(df: pd.DataFrame, output_dir: Path | None = Non
     return save_single_plot(fig, "scaling_time_comparison", output_dir)
 
 
-def plot_scaling_qpu_breakdown(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Plot 3: Pure QPU Time vs Total Time."""
+def plot_scaling_qpu_breakdown_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """QPU Time breakdown by number of variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
-            # Total QPU time
             ax.plot(
                 form_df["n_vars"],
                 form_df["qpu_total_time"],
@@ -379,7 +378,6 @@ def plot_scaling_qpu_breakdown(df: pd.DataFrame, output_dir: Path | None = None)
                 markersize=12,
                 alpha=0.8,
             )
-            # Pure QPU access time
             ax.plot(
                 form_df["n_vars"],
                 form_df["qpu_access_time"],
@@ -391,24 +389,62 @@ def plot_scaling_qpu_breakdown(df: pd.DataFrame, output_dir: Path | None = None)
                 alpha=0.6,
                 linestyle="--",
             )
-    
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Time (seconds)")
-    ax.set_title("QPU Time Breakdown: Total vs Pure Quantum")
-    ax.legend(loc="best", ncol=2)
+    ax.set_title("QPU Time Breakdown (by Variables)")
+    ax.legend(loc="upper left", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_yscale("log")
     
-    return save_single_plot(fig, "scaling_qpu_breakdown", output_dir)
+    return save_single_plot(fig, "scaling_qpu_breakdown_by_vars", output_dir)
+
+
+def plot_scaling_qpu_breakdown_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """QPU Time breakdown by number of farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            color = FORMULATION_COLORS.get(formulation, "gray")
+            ax.plot(
+                form_df["n_farms"],
+                form_df["qpu_total_time"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (Total)",
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+            ax.plot(
+                form_df["n_farms"],
+                form_df["qpu_access_time"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (Pure QPU)",
+                linewidth=3,
+                markersize=10,
+                alpha=0.6,
+                linestyle="--",
+            )
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Time (seconds)")
+    ax.set_title("QPU Time Breakdown (by Farms)")
+    ax.legend(loc="upper left", fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.set_yscale("log")
+    
+    return save_single_plot(fig, "scaling_qpu_breakdown_by_farms", output_dir)
 
 
 # =============================================================================
-# SECTION 2: SPLIT FORMULATION ANALYSIS (6 plots)
+# SECTION 2: SPLIT FORMULATION ANALYSIS (12 plots - vars and farms versions)
 # =============================================================================
 
 
-def plot_split_objectives(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Split Plot 1: Objective Values by formulation (log-log)."""
+def plot_split_objectives_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Objective Values by formulation (by variables)."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -436,23 +472,59 @@ def plot_split_objectives(df: pd.DataFrame, output_dir: Path | None = None) -> P
                 alpha=0.6,
                 linestyle="--",
             )
-    
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Objective Value")
-    ax.set_title("Solution Quality: Classical vs Quantum")
-    ax.legend(loc="upper left", ncol=2)
+    ax.set_title("Solution Quality (by Variables)")
+    ax.legend(loc="upper left", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_xscale("log")
     ax.set_yscale("log")
     
-    # Add secondary axis showing farm count
-    add_farms_secondary_axis(ax, df)
+    return save_single_plot(fig, "split_objectives_by_vars", output_dir)
+
+
+def plot_split_objectives_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Objective Values by formulation (by farms)."""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    return save_single_plot(fig, "split_objectives", output_dir)
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            color = FORMULATION_COLORS.get(formulation, "gray")
+            ax.plot(
+                form_df["n_farms"],
+                form_df["gurobi_objective"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (Gurobi)",
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+            ax.plot(
+                form_df["n_farms"],
+                form_df["qpu_objective"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (QPU)",
+                linewidth=3,
+                markersize=10,
+                alpha=0.6,
+                linestyle="--",
+            )
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Objective Value")
+    ax.set_title("Solution Quality (by Farms)")
+    ax.legend(loc="upper left", fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    
+    return save_single_plot(fig, "split_objectives_by_farms", output_dir)
 
 
-def plot_split_optimality_gap(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Split Plot 2: Optimality Gap split by formulation."""
+def plot_split_optimality_gap_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Optimality Gap by variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -468,24 +540,49 @@ def plot_split_optimality_gap(df: pd.DataFrame, output_dir: Path | None = None) 
                 markersize=12,
                 alpha=0.8,
             )
-    
     ax.axhline(y=100, color="orange", linestyle="--", alpha=0.5, label="100% gap", linewidth=2)
     ax.axhline(y=500, color="red", linestyle="--", alpha=0.5, label="500% gap", linewidth=2)
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("QPU Gap from Gurobi (%)")
-    ax.set_title("Optimality Gap Analysis")
-    ax.legend(loc="best")
+    ax.set_title("Optimality Gap (by Variables)")
+    ax.legend(loc="best", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_xscale("log")
     
-    # Add secondary axis showing farm count
-    add_farms_secondary_axis(ax, df)
+    return save_single_plot(fig, "split_optimality_gap_by_vars", output_dir)
+
+
+def plot_split_optimality_gap_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Optimality Gap by farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    return save_single_plot(fig, "split_optimality_gap", output_dir)
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            ax.plot(
+                form_df["n_farms"],
+                form_df["gap"],
+                marker=MARKERS.get(formulation, "o"),
+                color=FORMULATION_COLORS.get(formulation, "gray"),
+                label=formulation,
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+    ax.axhline(y=100, color="orange", linestyle="--", alpha=0.5, label="100% gap", linewidth=2)
+    ax.axhline(y=500, color="red", linestyle="--", alpha=0.5, label="500% gap", linewidth=2)
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("QPU Gap from Gurobi (%)")
+    ax.set_title("Optimality Gap (by Farms)")
+    ax.legend(loc="best", fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale("log")
+    
+    return save_single_plot(fig, "split_optimality_gap_by_farms", output_dir)
 
 
-def plot_split_solve_time(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Split Plot 3: Solve Time Gurobi vs QPU (log-log)."""
+def plot_split_solve_time_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Solve Time by variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -513,24 +610,61 @@ def plot_split_solve_time(df: pd.DataFrame, output_dir: Path | None = None) -> P
                 alpha=0.6,
                 linestyle="--",
             )
-    
     ax.axhline(y=100, color="red", linestyle=":", alpha=0.5, label="Gurobi timeout (100s)", linewidth=2)
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Solve Time (seconds)")
-    ax.set_title("Time Scaling: Gurobi vs QPU")
-    ax.legend(loc="upper left", ncol=2)
+    ax.set_title("Time Scaling (by Variables)")
+    ax.legend(loc="upper left", fontsize=12)
     ax.grid(True, alpha=0.3)
     ax.set_xscale("log")
     ax.set_yscale("log")
     
-    # Add secondary axis showing farm count
-    add_farms_secondary_axis(ax, df)
+    return save_single_plot(fig, "split_solve_time_by_vars", output_dir)
+
+
+def plot_split_solve_time_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Solve Time by farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    return save_single_plot(fig, "split_solve_time", output_dir)
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            color = FORMULATION_COLORS.get(formulation, "gray")
+            ax.plot(
+                form_df["n_farms"],
+                form_df["gurobi_time"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (Gurobi)",
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+            ax.plot(
+                form_df["n_farms"],
+                form_df["qpu_total_time"],
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                label=f"{formulation} (QPU)",
+                linewidth=3,
+                markersize=10,
+                alpha=0.6,
+                linestyle="--",
+            )
+    ax.axhline(y=100, color="red", linestyle=":", alpha=0.5, label="Gurobi timeout (100s)", linewidth=2)
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Solve Time (seconds)")
+    ax.set_title("Time Scaling (by Farms)")
+    ax.legend(loc="upper left", fontsize=12)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    
+    return save_single_plot(fig, "split_solve_time_by_farms", output_dir)
 
 
-def plot_split_speedup(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Split Plot 4: Speedup Analysis (log-log)."""
+def plot_split_speedup_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Speedup by variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -546,24 +680,49 @@ def plot_split_speedup(df: pd.DataFrame, output_dir: Path | None = None) -> Path
                 markersize=12,
                 alpha=0.8,
             )
-    
     ax.axhline(y=1, color="gray", linestyle="--", alpha=0.5, label="Break-even", linewidth=2)
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Speedup (Gurobi/QPU)")
-    ax.set_title("Speedup Analysis")
-    ax.legend(loc="best")
+    ax.set_title("Speedup Analysis (by Variables)")
+    ax.legend(loc="best", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_xscale("log")
     ax.set_yscale("log")
     
-    # Add secondary axis showing farm count
-    add_farms_secondary_axis(ax, df)
+    return save_single_plot(fig, "split_speedup_by_vars", output_dir)
+
+
+def plot_split_speedup_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Speedup by farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    return save_single_plot(fig, "split_speedup", output_dir)
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            ax.plot(
+                form_df["n_farms"],
+                form_df["speedup"],
+                marker=MARKERS.get(formulation, "o"),
+                color=FORMULATION_COLORS.get(formulation, "gray"),
+                label=formulation,
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+    ax.axhline(y=1, color="gray", linestyle="--", alpha=0.5, label="Break-even", linewidth=2)
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Speedup (Gurobi/QPU)")
+    ax.set_title("Speedup Analysis (by Farms)")
+    ax.legend(loc="best", fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    
+    return save_single_plot(fig, "split_speedup_by_farms", output_dir)
 
 
-def plot_split_pure_qpu_time(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Split Plot 5: Pure QPU Time with linear fit."""
+def plot_split_pure_qpu_time_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Pure QPU Time by variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -581,35 +740,57 @@ def plot_split_pure_qpu_time(df: pd.DataFrame, output_dir: Path | None = None) -
                 edgecolors="black",
                 linewidths=0.5,
             )
-            
-            # Linear fit
             if len(form_df) >= 2:
                 coef = np.polyfit(form_df["n_vars"].values, form_df["qpu_access_time"].values, 1)
                 x_fit = np.linspace(form_df["n_vars"].min(), form_df["n_vars"].max(), 100)
                 y_fit = coef[0] * x_fit + coef[1]
-                ax.plot(
-                    x_fit,
-                    y_fit,
-                    "--",
-                    color=color,
-                    alpha=0.7,
-                    label=f"{formulation} fit: {coef[0]*1000:.4f}ms/var",
-                )
-    
+                ax.plot(x_fit, y_fit, "--", color=color, alpha=0.7,
+                        label=f"{formulation} fit: {coef[0]*1000:.4f}ms/var")
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Pure QPU Time (seconds)")
-    ax.set_title("Pure QPU Time: Linear Scaling")
-    ax.legend(loc="upper left")
+    ax.set_title("Pure QPU Time (by Variables)")
+    ax.legend(loc="upper left", fontsize=12)
     ax.grid(True, alpha=0.3)
     
-    # Add secondary axis showing farm count
-    add_farms_secondary_axis(ax, df)
+    return save_single_plot(fig, "split_pure_qpu_time_by_vars", output_dir)
+
+
+def plot_split_pure_qpu_time_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Pure QPU Time by farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    return save_single_plot(fig, "split_pure_qpu_time", output_dir)
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            color = FORMULATION_COLORS.get(formulation, "gray")
+            ax.scatter(
+                form_df["n_farms"],
+                form_df["qpu_access_time"],
+                s=150,
+                marker=MARKERS.get(formulation, "o"),
+                color=color,
+                alpha=0.8,
+                label=f"{formulation}",
+                edgecolors="black",
+                linewidths=0.5,
+            )
+            if len(form_df) >= 2:
+                coef = np.polyfit(form_df["n_farms"].values, form_df["qpu_access_time"].values, 1)
+                x_fit = np.linspace(form_df["n_farms"].min(), form_df["n_farms"].max(), 100)
+                y_fit = coef[0] * x_fit + coef[1]
+                ax.plot(x_fit, y_fit, "--", color=color, alpha=0.7,
+                        label=f"{formulation} fit: {coef[0]*1000:.1f}ms/farm")
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Pure QPU Time (seconds)")
+    ax.set_title("Pure QPU Time (by Farms)")
+    ax.legend(loc="upper left", fontsize=12)
+    ax.grid(True, alpha=0.3)
+    
+    return save_single_plot(fig, "split_pure_qpu_time_by_farms", output_dir)
 
 
-def plot_split_gurobi_mip_gap(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """Split Plot 6: Gurobi MIP Gap (problem hardness)."""
+def plot_split_gurobi_mip_gap_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Gurobi MIP Gap by variables."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -625,19 +806,43 @@ def plot_split_gurobi_mip_gap(df: pd.DataFrame, output_dir: Path | None = None) 
                 markersize=12,
                 alpha=0.8,
             )
-    
     ax.axhline(y=100, color="orange", linestyle="--", alpha=0.5, label="100% MIP gap")
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Gurobi MIP Gap (%)")
-    ax.set_title("Classical Solver Difficulty (300s timeout)")
-    ax.legend(loc="best")
+    ax.set_title("Classical Solver Difficulty (by Variables)")
+    ax.legend(loc="best", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_xscale("log")
     
-    # Add secondary axis showing farm count
-    add_farms_secondary_axis(ax, df)
+    return save_single_plot(fig, "split_gurobi_mip_gap_by_vars", output_dir)
+
+
+def plot_split_gurobi_mip_gap_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
+    """Gurobi MIP Gap by farms."""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    return save_single_plot(fig, "split_gurobi_mip_gap", output_dir)
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
+        form_df = df[df["formulation"] == formulation].sort_values("n_farms")
+        if len(form_df) > 0:
+            ax.semilogy(
+                form_df["n_farms"],
+                form_df["gurobi_mip_gap"],
+                marker=MARKERS.get(formulation, "o"),
+                color=FORMULATION_COLORS.get(formulation, "gray"),
+                label=formulation,
+                linewidth=3,
+                markersize=12,
+                alpha=0.8,
+            )
+    ax.axhline(y=100, color="orange", linestyle="--", alpha=0.5, label="100% MIP gap")
+    ax.set_xlabel("Number of Farms")
+    ax.set_ylabel("Gurobi MIP Gap (%)")
+    ax.set_title("Classical Solver Difficulty (by Farms)")
+    ax.legend(loc="best", fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale("log")
+    
+    return save_single_plot(fig, "split_gurobi_mip_gap_by_farms", output_dir)
 
 
 # =============================================================================
@@ -2026,18 +2231,26 @@ def generate_all_single_plots() -> dict[str, bool]:
     
     # Define all plot functions
     plot_functions = [
-        # Section 1: Comprehensive Scaling (3 plots)
-        ("scaling_objectives", lambda: plot_scaling_objectives(df_60s, output_dir)),
+        # Section 1: Comprehensive Scaling (4 plots - vars and farms)
+        ("scaling_objectives_by_vars", lambda: plot_scaling_objectives_by_vars(df_60s, output_dir)),
+        ("scaling_objectives_by_farms", lambda: plot_scaling_objectives_by_farms(df_60s, output_dir)),
         ("scaling_time_comparison", lambda: plot_scaling_time_comparison(df_60s, output_dir)),
-        ("scaling_qpu_breakdown", lambda: plot_scaling_qpu_breakdown(df_60s, output_dir)),
+        ("scaling_qpu_breakdown_by_vars", lambda: plot_scaling_qpu_breakdown_by_vars(df_60s, output_dir)),
+        ("scaling_qpu_breakdown_by_farms", lambda: plot_scaling_qpu_breakdown_by_farms(df_60s, output_dir)),
         
-        # Section 2: Split Formulation (6 plots)
-        ("split_objectives", lambda: plot_split_objectives(df_300s, output_dir)),
-        ("split_optimality_gap", lambda: plot_split_optimality_gap(df_300s, output_dir)),
-        ("split_solve_time", lambda: plot_split_solve_time(df_300s, output_dir)),
-        ("split_speedup", lambda: plot_split_speedup(df_300s, output_dir)),
-        ("split_pure_qpu_time", lambda: plot_split_pure_qpu_time(df_300s, output_dir)),
-        ("split_gurobi_mip_gap", lambda: plot_split_gurobi_mip_gap(df_300s, output_dir)),
+        # Section 2: Split Formulation (12 plots - vars and farms)
+        ("split_objectives_by_vars", lambda: plot_split_objectives_by_vars(df_300s, output_dir)),
+        ("split_objectives_by_farms", lambda: plot_split_objectives_by_farms(df_300s, output_dir)),
+        ("split_optimality_gap_by_vars", lambda: plot_split_optimality_gap_by_vars(df_300s, output_dir)),
+        ("split_optimality_gap_by_farms", lambda: plot_split_optimality_gap_by_farms(df_300s, output_dir)),
+        ("split_solve_time_by_vars", lambda: plot_split_solve_time_by_vars(df_300s, output_dir)),
+        ("split_solve_time_by_farms", lambda: plot_split_solve_time_by_farms(df_300s, output_dir)),
+        ("split_speedup_by_vars", lambda: plot_split_speedup_by_vars(df_300s, output_dir)),
+        ("split_speedup_by_farms", lambda: plot_split_speedup_by_farms(df_300s, output_dir)),
+        ("split_pure_qpu_time_by_vars", lambda: plot_split_pure_qpu_time_by_vars(df_300s, output_dir)),
+        ("split_pure_qpu_time_by_farms", lambda: plot_split_pure_qpu_time_by_farms(df_300s, output_dir)),
+        ("split_gurobi_mip_gap_by_vars", lambda: plot_split_gurobi_mip_gap_by_vars(df_300s, output_dir)),
+        ("split_gurobi_mip_gap_by_farms", lambda: plot_split_gurobi_mip_gap_by_farms(df_300s, output_dir)),
         
         # Section 3: Gap Analysis (6 plots)
         ("gap_absolute_comparison", lambda: plot_gap_absolute_comparison(df_300s, output_dir)),

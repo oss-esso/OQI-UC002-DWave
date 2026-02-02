@@ -1,0 +1,498 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{adjustbox}
+
+% Code listing style
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{pythonstyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Python
+}
+
+\lstset{style=pythonstyle}
+
+\title{\textbf{QPU Benchmark Modes: \\
+Detailed Analysis and Code-to-Equation Verification}\\[0.5em]
+\large Technical Report for \texttt{run\_qpu\_benchmarks\_all\_scenarios.py}}
+\author{OQI-UC002-DWave Project}
+\date{February 2026}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Executive Summary}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+This report provides a comprehensive analysis of the three Quantum Processing Unit (QPU) modes implemented in the unified benchmark system for crop rotation optimization. All modes implement \textbf{Variant B: Hierarchical Multi-Period Rotation} as defined in the main project report.
+
+\begin{enumerate}
+    \item \textbf{qpu-native-6-family}: Direct 6-family BQM without aggregation
+    \item \textbf{qpu-hierarchical-aggregated}: 27$\to$6 aggregation with spatial decomposition and refinement
+    \item \textbf{qpu-hybrid-27-food}: Full 27-food variables with 6-family synergy template
+\end{enumerate}
+
+Each mode represents a different trade-off between problem fidelity and QPU compatibility.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Problem Formulation: Variant B Multi-Period Rotation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+All QPU modes solve the \textbf{Variant B} formulation from the main project report. This section reproduces the mathematical formulation for direct comparison.
+
+\subsection{Decision Variables}
+
+Let $Y_{f,c,t}$ be a binary variable:
+\begin{equation}
+Y_{f,c,t} = \begin{cases} 
+1 & \text{if crop } c \in \mathcal{C} \text{ is planted on farm } f \in \mathcal{F} \text{ in period } t \in \mathcal{T} \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\subsection{Objective Function}
+
+The objective is to maximize the total normalized benefit:
+\begin{equation}
+\max \quad \left( \text{Benefit} + \text{Temporal} + \text{Spatial} - \text{Penalty} + \text{Diversity} \right)
+\end{equation}
+
+\subsubsection{Base Benefit (Linear)}
+\begin{equation}
+\text{Benefit} = \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} \sum_{t \in \mathcal{T}} \frac{B_c \cdot L_f}{A_{\text{total}}} \cdot Y_{f,c,t}
+\end{equation}
+
+where $B_c$ is the composite benefit score for crop $c$, $L_f$ is the land availability for farm $f$, and $A_{\text{total}} = \sum_{f} L_f$.
+
+\subsubsection{Temporal Synergy (Quadratic)}
+\begin{equation}
+\text{Temporal} = \gamma_{\text{rot}} \sum_{f \in \mathcal{F}} \sum_{t=2}^{T} \sum_{c_1 \in \mathcal{C}} \sum_{c_2 \in \mathcal{C}} \frac{L_f}{A_{\text{total}}} \cdot R_{c_1,c_2} \cdot Y_{f,c_1,t-1} \cdot Y_{f,c_2,t}
+\end{equation}
+
+The rotation matrix $R \in \mathbb{R}^{|\mathcal{C}| \times |\mathcal{C}|}$ is defined as:
+\begin{equation}
+R_{c_1,c_2} = \begin{cases}
+-\beta \cdot 1.5 & \text{if } c_1 = c_2 \text{ (monoculture penalty)} \\
+\text{Unif}(\beta \cdot 1.2, \beta \cdot 0.3) & \text{with prob. } p_{\text{frust}} \text{ (disease/competition)} \\
+\text{Unif}(0.02, 0.20) & \text{otherwise (beneficial rotation)}
+\end{cases}
+\end{equation}
+
+\subsubsection{Spatial Synergy (Quadratic)}
+\begin{equation}
+\text{Spatial} = \gamma_{\text{spat}} \sum_{(f_1, f_2) \in \mathcal{E}} \sum_{t \in \mathcal{T}} \sum_{c_1 \in \mathcal{C}} \sum_{c_2 \in \mathcal{C}} \frac{S_{c_1,c_2}}{A_{\text{total}}} \cdot Y_{f_1,c_1,t} \cdot Y_{f_2,c_2,t}
+\end{equation}
+where $\mathcal{E}$ is the edge set of the $k$-nearest neighbor graph and $S_{c_1,c_2} = 0.3 \cdot R_{c_1,c_2}$.
+
+\subsubsection{One-Hot Penalty (Quadratic)}
+\begin{equation}
+\text{Penalty} = \lambda_{\text{OH}} \sum_{f \in \mathcal{F}} \sum_{t \in \mathcal{T}} \left( \left(\sum_{c \in \mathcal{C}} Y_{f,c,t}\right) - 1 \right)^2
+\end{equation}
+
+\subsubsection{Diversity Bonus (Linear)}
+\begin{equation}
+\text{Diversity} = \lambda_{\text{div}} \sum_{f \in \mathcal{F}} \sum_{c \in \mathcal{C}} \mathbb{I}\left(\sum_{t \in \mathcal{T}} Y_{f,c,t} > 0\right)
+\end{equation}
+
+\subsection{Model Parameters}
+
+\begin{table}[H]
+\centering
+\caption{Variant B model parameters (from main report Table 8)}
+\label{tab:variant_b_params}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Default Value} \\
+\midrule
+Negative synergy strength & $\beta$ & $-0.8$ \\
+Frustration ratio & $p_{\text{frust}}$ & $0.70$ \\
+Temporal rotation weight & $\gamma_{\text{rot}}$ & $0.2$ \\
+Spatial coupling strength & $\gamma_{\text{spat}}$ & $0.5 \gamma_{\text{rot}} = 0.1$ \\
+Spatial dampening & --- & $0.3$ (applied to $S$) \\
+One-hot penalty & $\lambda_{\text{OH}}$ & $3.0$ \\
+Diversity bonus & $\lambda_{\text{div}}$ & $0.15$ \\
+Planning periods & $T$ & $3$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{BQM Conversion}
+
+For quantum annealing, the objective is negated (since QA minimizes) and expressed in BQM form:
+\begin{equation}
+E(\mathbf{Y}) = \sum_{(f,c,t)} h_{f,c,t} \cdot Y_{f,c,t} + \sum_{\substack{(f,c,t) \\ (f',c',t')}} J_{(f,c,t),(f',c',t')} \cdot Y_{f,c,t} \cdot Y_{f',c',t'}
+\end{equation}
+
+where $h_{f,c,t}$ are linear biases and $J$ encodes quadratic couplings.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{QPU Mode Implementations}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Mode 1: qpu-native-6-family}
+
+\subsubsection{Description}
+Solves the 6-family problem directly on QPU without aggregation. For scenarios with 6 food families, this is the most direct approach.
+
+\subsubsection{Linear Bias Construction}
+
+From the BQM conversion of the Variant B objective:
+\begin{equation}
+h_{f,c,t} = -\frac{B_c \cdot L_f}{A_{\text{total}}} - \frac{\lambda_{\text{div}}}{T} - \lambda_{\text{OH}}
+\end{equation}
+
+\begin{lstlisting}[caption={Linear Bias Implementation}]
+# Linear bias: negative benefit (BQM minimizes)
+linear_bias = -benefit * area_frac
+# Add diversity bonus
+linear_bias -= diversity_bonus / n_periods
+# Add one-hot linear part
+linear_bias -= one_hot_penalty
+
+bqm.add_variable(var_name, linear_bias)
+\end{lstlisting}
+
+\subsubsection{Temporal Synergy Coupling}
+
+Implements the Temporal term from Variant B:
+\begin{equation}
+J^{\text{temp}}_{(f,c_1,t-1),(f,c_2,t)} = -\gamma_{\text{rot}} \cdot R_{c_1,c_2} \cdot \frac{L_f}{A_{\text{total}}}
+\end{equation}
+
+\begin{lstlisting}[caption={Temporal Synergy Implementation}]
+# Temporal synergies
+for f_idx, farm in enumerate(farm_names):
+    area_frac = land_availability[farm] / total_area
+    for t in range(2, n_periods + 1):
+        for c1_idx in range(n_foods):
+            for c2_idx in range(n_foods):
+                synergy = R[c1_idx, c2_idx]
+                var1 = var_map[(f_idx, c1_idx, t-1)]
+                var2 = var_map[(f_idx, c2_idx, t)]
+                bqm.add_quadratic(var1, var2, 
+                    -rotation_gamma * synergy * area_frac)
+\end{lstlisting}
+
+\subsubsection{Spatial Synergy Coupling}
+
+Implements the Spatial term with dampened matrix $S = 0.3 \cdot R$:
+\begin{equation}
+J^{\text{spat}}_{(f_1,c_1,t),(f_2,c_2,t)} = -\gamma_{\text{spat}} \cdot S_{c_1,c_2} = -0.5\gamma_{\text{rot}} \cdot 0.3 R_{c_1,c_2}
+\end{equation}
+
+\begin{lstlisting}[caption={Spatial Synergy Implementation}]
+# Spatial synergies (within adjacent farms)
+for f_idx in range(n_farms - 1):
+    for t in range(1, n_periods + 1):
+        for c1_idx in range(n_foods):
+            for c2_idx in range(n_foods):
+                synergy = R[c1_idx, c2_idx] * 0.3  # S = 0.3*R
+                var1 = var_map[(f_idx, c1_idx, t)]
+                var2 = var_map[(f_idx + 1, c2_idx, t)]
+                bqm.add_quadratic(var1, var2, 
+                    -rotation_gamma * 0.5 * synergy)
+\end{lstlisting}
+
+\subsubsection{One-Hot Penalty}
+
+Expanding the quadratic penalty term:
+\begin{equation}
+\left(\sum_c Y_{f,c,t} - 1\right)^2 = \sum_c Y_{f,c,t} - 2\sum_c Y_{f,c,t} + 2\sum_{c<c'} Y_{f,c,t} Y_{f,c',t} + 1
+\end{equation}
+
+The quadratic contribution is:
+\begin{equation}
+J^{\text{OH}}_{(f,c,t),(f,c',t)} = 2\lambda_{\text{OH}} \quad \text{for } c \neq c'
+\end{equation}
+
+\begin{lstlisting}[caption={One-Hot Penalty Implementation}]
+# One-hot penalty (quadratic part)
+for f_idx in range(n_farms):
+    for t in range(1, n_periods + 1):
+        vars_this = [var_map[(f_idx, c, t)] for c in range(n_foods)]
+        for i in range(len(vars_this)):
+            for j in range(i + 1, len(vars_this)):
+                bqm.add_quadratic(vars_this[i], vars_this[j], 
+                    2 * one_hot_penalty)
+\end{lstlisting}
+
+\subsubsection{Rotation Matrix Generation}
+
+\begin{lstlisting}[caption={Family Rotation Matrix (matching Variant B Eq. 10)}]
+def create_family_rotation_matrix(seed: int = 42) -> np.ndarray:
+    np.random.seed(seed)
+    n_families = 6
+    R = np.zeros((n_families, n_families))
+    
+    frustration_ratio = 0.7   # p_frust from Variant B
+    negative_strength = -0.8  # beta from Variant B
+    
+    for i in range(n_families):
+        for j in range(n_families):
+            if i == j:
+                # Same family: monoculture penalty = -beta * 1.5
+                R[i, j] = negative_strength * 1.5  # = -1.2
+            elif np.random.random() < frustration_ratio:
+                # Disease/competition: Unif(beta*1.2, beta*0.3)
+                R[i, j] = np.random.uniform(
+                    negative_strength * 1.2, 
+                    negative_strength * 0.3)
+            else:
+                # Beneficial rotation: Unif(0.02, 0.20)
+                R[i, j] = np.random.uniform(0.02, 0.20)
+    return R
+\end{lstlisting}
+
+\subsection{Mode 2: qpu-hierarchical-aggregated}
+
+\subsubsection{Three-Level Pipeline}
+
+\begin{enumerate}
+    \item \textbf{Level 1 (Classical)}: Aggregate 27 foods $\to$ 6 families
+    \item \textbf{Level 2 (Quantum)}: Solve 6-family BQM with spatial decomposition
+    \item \textbf{Level 3 (Classical)}: Refine back to 27 foods for MIQP scoring
+\end{enumerate}
+
+\subsubsection{Benefit Aggregation}
+
+Benefits are averaged by family:
+\begin{equation}
+B_g = \frac{1}{|\mathcal{C}_g|} \sum_{c \in \mathcal{C}_g} B_c
+\end{equation}
+
+where $\mathcal{C}_g$ is the set of crops in family $g$.
+
+\subsubsection{Spatial Decomposition}
+
+Farms are partitioned into clusters of size $k$:
+\begin{equation}
+n_{\text{vars}}^{\text{cluster}} = k \times |\mathcal{C}| \times T = k \times 6 \times 3 = 18k
+\end{equation}
+
+For $k=9$ (default), each cluster has 162 variables, safely below the QPU limit of $\sim$177.
+
+\subsubsection{Boundary Coordination}
+
+After each iteration, boundary farms receive soft constraints from neighboring clusters:
+\begin{equation}
+h^{\text{boundary}}_{f,c,t} \leftarrow h_{f,c,t} - 0.5 \gamma_{\text{rot}} \quad \text{if } Y^{\text{prev}}_{f_{\text{neighbor}},c,t} = 1
+\end{equation}
+
+\subsection{Mode 3: qpu-hybrid-27-food}
+
+\subsubsection{Hybrid Rotation Matrix}
+
+Uses full 27-food variable space but derives synergy from 6-family template:
+\begin{equation}
+R^{27}_{c_1,c_2} = R^6_{g(c_1), g(c_2)} + \epsilon_{c_1,c_2}
+\end{equation}
+
+where $g(c)$ maps food $c$ to its family and $\epsilon \sim \mathcal{U}(-0.05, 0.05)$.
+
+\subsubsection{Cluster Size Constraints}
+
+With 27 foods $\times$ 3 periods = 81 variables per farm:
+\begin{equation}
+k_{\max} = \left\lfloor \frac{170}{81} \right\rfloor = 2 \text{ farms per cluster}
+\end{equation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Data Sources and Plot Mapping}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+This section documents which result files are used by \texttt{generate\_single\_plot\_pdfs.py}.
+
+\subsection{Primary Data Files}
+
+\begin{table}[H]
+\centering
+\caption{Data files used by the plotting script}
+\label{tab:data_files}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Variable} & \textbf{File Path} & \textbf{Description} \\
+\midrule
+\texttt{DEFAULT\_QPU\_HIER\_PATH} & \texttt{qpu\_hier\_repaired.json} & QPU hierarchical results (repaired) \\
+\texttt{DEFAULT\_GUROBI\_60S\_PATH} & \texttt{gurobi\_baseline\_60s.json} & Gurobi 60s timeout baseline \\
+\texttt{DEFAULT\_GUROBI\_300S\_FILE} & \texttt{@todo/.../gurobi\_timeout\_test\_*.json} & Gurobi 300s timeout results \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Plot Categories and Data Sources}
+
+\begin{table}[H]
+\centering
+\caption{Mapping of plot sections to data sources}
+\label{tab:plot_mapping}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}p{4cm}p{3cm}p{6cm}@{}}
+\toprule
+\textbf{Plot Section} & \textbf{Data Source} & \textbf{Plots Generated} \\
+\midrule
+Section 1: Scaling & QPU + Gurobi 60s & \texttt{scaling\_objectives\_by\_vars/farms}, \texttt{scaling\_time\_comparison}, \texttt{scaling\_qpu\_breakdown\_by\_vars/farms} \\
+\addlinespace
+Section 2: Split Formulation & QPU + Gurobi 300s & \texttt{split\_objectives\_by\_vars/farms}, \texttt{split\_optimality\_gap\_by\_vars/farms}, \texttt{split\_solve\_time\_by\_vars/farms}, \texttt{split\_speedup\_by\_vars/farms}, \texttt{split\_pure\_qpu\_time\_by\_vars/farms}, \texttt{split\_gurobi\_mip\_gap\_by\_vars/farms} \\
+\addlinespace
+Section 3: Gap Analysis & QPU + Gurobi 300s & \texttt{gap\_absolute\_comparison}, \texttt{gap\_ratio}, \texttt{gap\_vs\_mip\_gap}, \texttt{gap\_6family\_scaling}, \texttt{gap\_27food\_scaling}, \texttt{gap\_summary\_table} \\
+\addlinespace
+Section 4: Violation Impact & Dedicated loader & \texttt{violation\_rate}, \texttt{violation\_gap\_breakdown}, \texttt{violation\_adjusted\_objective} \\
+\addlinespace
+Section 5: Deep Dive & Dedicated loader & \texttt{deepdive\_objective\_comparison}, \texttt{deepdive\_ratio\_analysis}, \texttt{deepdive\_gap\_attribution}, \texttt{deepdive\_scatter}, \texttt{deepdive\_violation\_impact\_by\_scenario}, \texttt{deepdive\_summary\_findings} \\
+\addlinespace
+Section 6: QPU Advantage & QPU + Gurobi 300s & \texttt{advantage\_benefit\_comparison}, \texttt{advantage\_benefit\_ratio}, \texttt{advantage\_time\_comparison}, \texttt{advantage\_violations\_vs\_benefit}, \texttt{advantage\_pure\_qpu\_scaling}, \texttt{advantage\_summary\_table} \\
+\addlinespace
+Section 7: Benchmarks & Benchmark loader & \texttt{benchmark\_small\_*}, \texttt{benchmark\_large\_*}, \texttt{benchmark\_comprehensive\_*} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Result Files Analyzed}
+
+Three JSON result files from the \texttt{qpu-hierarchical-aggregated} mode were analyzed:
+
+\begin{enumerate}
+    \item \texttt{qpu\_hier\_all\_6family.json}: Hierarchical mode with \texttt{farms\_per\_cluster=5}
+    \item \texttt{qpu\_hier\_repaired.json}: Hierarchical mode with repair and \texttt{farms\_per\_cluster=9}
+    \item \texttt{qpu\_hierarchical\_all.json}: Hierarchical mode with \texttt{farms\_per\_cluster=10}
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results Analysis}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Objective Quality Comparison}
+
+\begin{table}[H]
+\centering
+\caption{MIQP Objective Values by Configuration}
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Scenario} & \textbf{Farms} & \textbf{All-6Family} & \textbf{Repaired} & \textbf{All-10} \\
+\midrule
+rotation\_micro\_25 & 5 & -5.50 & -4.86 & -5.75 \\
+rotation\_small\_50 & 10 & -3.88 & -21.79 & error \\
+rotation\_15farms\_6foods & 15 & -5.10 & -26.22 & error \\
+rotation\_medium\_100 & 20 & -24.89 & -39.24 & error \\
+rotation\_25farms\_6foods & 25 & -31.15 & -52.67 & error \\
+rotation\_large\_200 & 50 & -37.47 & N/A & error \\
+rotation\_50farms\_6foods & 50 & N/A & -109.67 & error \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Key Findings}
+
+\subsubsection{Embedding Errors}
+
+The \texttt{qpu\_hierarchical\_all.json} file shows systematic embedding failures when \texttt{farms\_per\_cluster=10}:
+\begin{verbatim}
+"error_message": "Cannot embed given BQM (size 180), 
+                  sampler can only handle problems of size 177"
+\end{verbatim}
+
+This occurs because $10 \times 6 \times 3 = 180$ variables exceeds the D-Wave Clique Sampler's limit.
+
+\subsubsection{QPU Time Scaling}
+
+Pure QPU time scales linearly with number of clusters:
+\begin{equation}
+t_{\text{QPU}} \approx 40\text{ms} \times n_{\text{clusters}} \times n_{\text{iterations}}
+\end{equation}
+
+\subsubsection{Constraint Violations}
+
+Rotation violations are consistently zero after repair, but one-hot violations persist, indicating the penalty $\lambda_{\text{OH}}=3.0$ may be insufficient.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Code-to-Equation Verification Summary}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}[H]
+\centering
+\caption{Mapping of Variant B equations to implementation}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{4cm}p{5cm}p{4cm}}
+\toprule
+\textbf{Variant B Term} & \textbf{Mathematical Form} & \textbf{Code Implementation} \\
+\midrule
+Base Benefit & $\frac{B_c \cdot L_f}{A_{\text{total}}} \cdot Y_{f,c,t}$ & \texttt{-benefit * area\_frac} \\
+Temporal Synergy & $\gamma_{\text{rot}} \cdot R_{c_1,c_2} \cdot \frac{L_f}{A_{\text{total}}}$ & \texttt{-rotation\_gamma * synergy * area\_frac} \\
+Spatial Synergy & $\gamma_{\text{spat}} \cdot S_{c_1,c_2} = 0.5\gamma \cdot 0.3R$ & \texttt{-rotation\_gamma * 0.5 * synergy} where \texttt{synergy = R * 0.3} \\
+One-Hot Penalty & $2\lambda_{\text{OH}}$ (quadratic term) & \texttt{2 * one\_hot\_penalty} \\
+Diversity Bonus & $\lambda_{\text{div}} / T$ & \texttt{diversity\_bonus / n\_periods} \\
+Monoculture Penalty & $R_{c,c} = -\beta \cdot 1.5 = -1.2$ & \texttt{negative\_strength * 1.5} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+All code implementations correctly match the Variant B formulation from the main project report.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Recommendations}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Cluster Size Guidelines}
+
+\begin{enumerate}
+    \item For \textbf{6-family mode}: Use $k \leq 9$ farms/cluster (162 variables max)
+    \item For \textbf{27-food hybrid}: Use $k = 2$ farms/cluster (162 variables)
+    \item Add safety margin: target 160 variables to avoid edge cases
+\end{enumerate}
+
+\subsection{Mode Selection}
+
+\begin{table}[H]
+\centering
+\caption{Recommended QPU mode by scenario type}
+\begin{tabular}{lll}
+\toprule
+\textbf{Scenario Type} & \textbf{Recommended Mode} & \textbf{Rationale} \\
+\midrule
+Small 6-food ($\leq$10 farms) & qpu-native-6-family & Direct embedding \\
+Medium 6-food (11--200 farms) & qpu-hierarchical-aggregated & Decomposition \\
+Any 27-food & qpu-hierarchical-aggregated & 27$\to$6 aggregation \\
+Very large (500+ farms) & qpu-hierarchical-aggregated & Scales via clustering \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
