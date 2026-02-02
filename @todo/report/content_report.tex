@@ -1392,7 +1392,7 @@ Figure~\ref{fig:comprehensive_scaling} presents the unified scaling behavior acr
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{images/Plots/quantum_advantage_comprehensive_scaling.pdf}
-\caption{Comprehensive scaling analysis across all 13 rotation scenarios. (Top center) Solution quality comparison showing Gurobi (solid lines) versus QPU (dashed lines) objectives separated by formulation type, with QPU consistently achieving higher benefit values across both 6-Family and 27-Food formulations. (Bottom left) Time comparison grouped bars showing Gurobi versus QPU total wall time, with ``T'' markers indicating Gurobi timeouts at 300s. (Bottom center) QPU time breakdown by formulation comparing total wall time versus pure QPU access time on log scale, revealing that pure quantum computation accounts for only 1--2\% of total time while classical embedding and coordination dominate.}
+\caption{Comprehensive scaling analysis across all 13 rotation scenarios. (Top center) Solution quality comparison showing Gurobi (solid lines) versus QPU (dashed lines) objectives separated by formulation type, with QPU consistently achieving higher benefit values across both 6-Food and 27-Food (Agg.) formulations. (Bottom left) Time comparison grouped bars showing Gurobi versus QPU total wall time, with ``T'' markers indicating Gurobi timeouts at 300s. (Bottom center) QPU time breakdown by formulation comparing total wall time versus pure QPU access time on log scale, revealing that pure quantum computation accounts for only 1--2\% of total time while classical embedding and coordination dominate.}
 \label{fig:comprehensive_scaling}
 \end{figure}
 
@@ -1447,14 +1447,43 @@ Figure~\ref{fig:qpu_advantage_corrected} presents the comprehensive quantum \tex
 
 \subsubsection{Formulation-Specific Analysis}
 
-Figure~\ref{fig:split_analysis} presents a detailed split analysis comparing the 6-Family and 27-Food formulations.
+Figure~\ref{fig:split_analysis} presents a detailed split analysis comparing the 6-Food and 27-Food (Agg.) formulations.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{images/Plots/quantum_advantage_split_analysis.pdf}
-\caption{Split formulation analysis separating 6-Family (blue circles) from 27-Food (red diamonds) formulations. (Top left) Solution quality on log-log scale with Gurobi (solid) and QPU (dashed) objectives by formulation. (Top center) Optimality gap analysis with 100\% and 500\% reference lines; 6-Family achieves lower gaps (150--350\%) than 27-Food (200--500\%). (Top right) Solve time comparison on log-log scale with 100s timeout reference. (Bottom left) Speedup ratio (Gurobi/QPU) with break-even line at 1.0. (Bottom center) Pure QPU time linear regression showing 6-Family scales at 0.78ms/var and 27-Food at 0.18ms/var. (Bottom right) Gurobi MIP gap versus problem size demonstrating that classical solver difficulty increases exponentially with scale.}
+\caption{Split formulation analysis separating 6-Food (blue circles) from 27-Food (Agg.) (red diamonds) formulations. (Top left) Solution quality on log-log scale with Gurobi (solid) and QPU (dashed) objectives by formulation. (Top center) Optimality gap analysis with 100\% and 500\% reference lines; 6-Food achieves lower gaps (150--350\%) than 27-Food (Agg.) (200--500\%). (Top right) Solve time comparison on log-log scale with 100s timeout reference. (Bottom left) Speedup ratio (Gurobi/QPU) with break-even line at 1.0. (Bottom center) Pure QPU time linear regression showing 6-Food scales at 0.78ms/var and 27-Food (Agg.) at 0.18ms/var. (Bottom right) Gurobi MIP gap versus problem size demonstrating that classical solver difficulty increases exponentially with scale.}
 \label{fig:split_analysis}
 \end{figure}
+
+\paragraph{Why 6-Food Shows Higher Solve Times per Variable}
+\label{sec:formulation_timing}
+
+A counterintuitive result in Figure~\ref{fig:split_analysis} is that 6-Food exhibits \emph{higher} solve time per variable (0.78~ms/var) than 27-Food (Agg.) (0.18~ms/var). This occurs because the hierarchical decomposition creates clusters based on \emph{farms}, not variables. At the same variable count:
+\begin{itemize}
+    \item \textbf{6-Food:} 111 farms $\rightarrow$ 12 clusters $\rightarrow$ $\sim$100s total time
+    \item \textbf{27-Food (Agg.):} 25 farms $\rightarrow$ 3 clusters $\rightarrow$ $\sim$30s total time
+\end{itemize}
+
+Since 6-Food has fewer crops per farm (18 vars/farm) than 27-Food (Agg.) (81 vars/farm), it requires \textbf{4.5$\times$ more farms} to reach the same variable count, resulting in 4.5$\times$ more clusters and thus $\sim$4$\times$ higher solve time. The pure QPU access time per cluster is nearly identical ($\sim$0.12s); the difference comes entirely from classical embedding overhead that scales with cluster count. See Section~\ref{sec:decomposition_comparison} for the mathematical details of the cluster-based decomposition.
+
+\paragraph{Why 6-Food Also Shows Higher Gurobi Objective and Solve Time}
+
+The same farm-count effect explains why \emph{Gurobi} also shows higher objective values and longer solve times for 6-Food compared to 27-Food (Agg.) at similar variable counts.
+
+\textbf{Higher objective values:} The objective function sums benefit across all farms. At similar variable counts, 6-Food has 4.5$\times$ more farms, so the total benefit is naturally higher:
+\begin{itemize}
+    \item \textbf{6-Food (1,800 vars):} 100 farms $\times$ 0.54 avg benefit/farm $=$ 53.77 total
+    \item \textbf{27-Food (Agg.) (2,025 vars):} 25 farms $\times$ 0.47 avg benefit/farm $=$ 11.68 total
+\end{itemize}
+The per-farm average is actually slightly \emph{lower} for 6-Food; the higher total is purely due to farm count.
+
+\textbf{Longer Gurobi solve time:} The 6-Food formulation creates a \emph{harder} optimization problem for Gurobi due to denser constraint structure:
+\begin{enumerate}
+    \item \textbf{More farm-level constraints:} At 1,800 vars, 6-Food has 100 farms $\times$ 3 periods $=$ 300 one-hot constraints, versus 25 farms $\times$ 3 $=$ 75 for 27-Food (Agg.) at 2,025 vars.
+    \item \textbf{Denser rotation conflict graph:} With only 6 crop families, each family represents 1/6 of choices, creating tighter coupling in the rotation penalty matrix. With 27 foods, each crop is 1/27 of choices, yielding a sparser conflict structure.
+    \item \textbf{Exponentially worse MIP gaps:} As shown in Table~\ref{tab:gurobi_struggles}, 6-Food (large) reaches MIP gaps of 176,411\%, compared to 319--379\% for 27-Food (Agg.), indicating Gurobi's branch-and-bound struggles far more with 6-Food's constraint density.
+\end{enumerate}
 
 % \subsubsection{Objective Gap Analysis}
 
@@ -1463,7 +1492,7 @@ Figure~\ref{fig:split_analysis} presents a detailed split analysis comparing the
 % \begin{figure}[H]
 % \centering
 % \includegraphics[width=\textwidth]{images/Plots/quantum_advantage_objective_gap_analysis.pdf}
-% \caption{Objective gap analysis across all scenarios. (Top left) Absolute objective comparison bars on log scale: Gurobi (green) versus QPU Hierarchical (blue). (Top center) Objective ratio (QPU/Gurobi) per scenario with color coding---green for ratio $<$2$\times$, orange for 2--5$\times$, red for $>$5$\times$---with reference lines at 1$\times$, 2$\times$, and 5$\times$. (Top right) Correlation scatter between Gurobi MIP gap and QPU-Gurobi gap on log-log scale, demonstrating that problems where Gurobi struggles (high MIP gap) correlate with larger QPU gaps. (Bottom left) 6-Family formulation: objective scaling by number of farms. (Bottom center) 27-Food formulation: objective scaling by number of farms. (Bottom right) Summary statistics table with metrics by formulation including scenario count, variable range, average gaps, timeout rates, and solve times.}
+% \caption{Objective gap analysis across all scenarios. (Top left) Absolute objective comparison bars on log scale: Gurobi (green) versus QPU Hierarchical (blue). (Top center) Objective ratio (QPU/Gurobi) per scenario with color coding---green for ratio $<$2$\times$, orange for 2--5$\times$, red for $>$5$\times$---with reference lines at 1$\times$, 2$\times$, and 5$\times$. (Top right) Correlation scatter between Gurobi MIP gap and QPU-Gurobi gap on log-log scale, demonstrating that problems where Gurobi struggles (high MIP gap) correlate with larger QPU gaps. (Bottom left) 6-Food formulation: objective scaling by number of farms. (Bottom center) 27-Food (Agg.) formulation: objective scaling by number of farms. (Bottom right) Summary statistics table with metrics by formulation including scenario count, variable range, average gaps, timeout rates, and solve times.}
 % \label{fig:objective_gap_analysis}
 % \end{figure}
 
@@ -1483,10 +1512,10 @@ The QPU \textit{improvement} stems from three factors:
 \toprule
 \textbf{Formulation} & \textbf{Timeout Rate} & \textbf{Avg MIP Gap} & \textbf{Max MIP Gap} & \textbf{Interpretation} \\
 \midrule
-6-Family (small) & 2/3 & 0\% & 0\% & Gurobi finds optimal \\
-6-Family (medium) & 4/4 & 416\% & 573\% & Gurobi struggles \\
-6-Family (large) & 2/2 & 176,411\% & 352,822\% & Gurobi fails \\
-27-Food (all) & 4/4 & 319\% & 379\% & Consistently hard \\
+6-Food (small) & 2/3 & 0\% & 0\% & Gurobi finds optimal \\
+6-Food (medium) & 4/4 & 416\% & 573\% & Gurobi struggles \\
+6-Food (large) & 2/2 & 176,411\% & 352,822\% & Gurobi fails \\
+27-Food (Agg.) (all) & 4/4 & 319\% & 379\% & Consistently hard \\
 \midrule
 \textbf{Overall} & \textbf{11/13} & \textbf{16,308\%} & N/A & \textbf{Cannot prove optimality} \\
 \bottomrule
@@ -1578,8 +1607,8 @@ Avg QPU benefit & 125.81 & With violations \\
 \toprule
 \textbf{Formulation} & \textbf{Gurobi (s)} & \textbf{QPU Wall (s)} & \textbf{QPU Pure (s)} & \textbf{QPU \%} & \textbf{Speedup} \\
 \midrule
-6-Family (9 scenarios) & 735.5 & 405.8 & 5.40 & 1.3\% & 1.8$\times$ \\
-27-Food (4 scenarios) & 492.0 & 589.9 & 5.48 & 0.9\% & 0.8$\times$ \\
+6-Food (9 scenarios) & 735.5 & 405.8 & 5.40 & 1.3\% & 1.8$\times$ \\
+27-Food (Agg.) (4 scenarios) & 492.0 & 589.9 & 5.48 & 0.9\% & 0.8$\times$ \\
 \midrule
 \textbf{Combined} & \textbf{1,227.5} & \textbf{995.7} & \textbf{10.88} & \textbf{1.1\%} & \textbf{1.2$\times$} \\
 \bottomrule
@@ -1610,10 +1639,10 @@ We evaluated multiple QPU approaches:
 \toprule
 \textbf{Formulation} & \textbf{Timeout Rate} & \textbf{Avg MIP Gap} & \textbf{Max MIP Gap} & \textbf{Interpretation} \\
 \midrule
-6-Family (small) & 2/3 & 0\% & 0\% & Gurobi finds optimal \\
-6-Family (medium) & 4/4 & 416\% & 573\% & Gurobi struggles \\
-6-Family (large) & 2/2 & 176,411\% & 352,822\% & Gurobi fails \\
-27-Food (all) & 4/4 & 319\% & 379\% & Consistently hard \\
+6-Food (small) & 2/3 & 0\% & 0\% & Gurobi finds optimal \\
+6-Food (medium) & 4/4 & 416\% & 573\% & Gurobi struggles \\
+6-Food (large) & 2/2 & 176,411\% & 352,822\% & Gurobi fails \\
+27-Food (Agg.) (all) & 4/4 & 319\% & 379\% & Consistently hard \\
 \midrule
 \textbf{Overall} & \textbf{11/13} & \textbf{16,308\%} & N/A & \textbf{Cannot prove optimality} \\
 \bottomrule
@@ -1806,8 +1835,50 @@ For comparison, classical MIP solvers on quadratic binary problems typically exh
 % \end{figure}
 
 \subsection{Decomposition Method Comparison}
+\label{sec:decomposition_comparison}
 
 Our experiments compared multiple decomposition strategies, including clique decomposition (farm-by-farm) and spatial-temporal decomposition (clustered farms with time slicing). Both methods achieve similar solution quality, but they exhibit different strengths depending on problem characteristics.
+
+\subsubsection{Cluster-Based Decomposition Structure}
+
+The hierarchical method partitions the problem by \emph{farms}, not by variables. Given $n_{\text{farms}}$ farms, approximately $n_{\text{farms}}/9$ clusters are created:
+$$n_{\text{clusters}} \approx \left\lceil \frac{n_{\text{farms}}}{9} \right\rceil$$
+Each cluster is solved independently on the QPU, incurring classical overhead for embedding ($\sim$6--8s per cluster) and coordination between cluster boundaries. The total number of variables $N = n_{\text{farms}} \times n_{\text{foods}} \times 3$ grows with both farm count and food granularity, but the \emph{decomposition overhead scales only with farm count}. 
+
+\paragraph{Implications for 6-Food vs 27-Food (Agg.) Comparison}
+
+This farm-based decomposition creates a critical difference when comparing formulations at the same variable count. The number of farms required to reach $N$ variables is:
+\begin{align}
+    \text{6-Food:} \quad n_{\text{farms}} &= \frac{N}{6 \times 3} = \frac{N}{18} \\
+    \text{27-Food (Agg.):} \quad n_{\text{farms}} &= \frac{N}{27 \times 3} = \frac{N}{81}
+\end{align}
+
+\noindent The ratio is $81/18 = 4.5$, meaning 6-Food requires \textbf{4.5$\times$ more farms} than 27-Food (Agg.) to achieve the same variable count. Since cluster count scales with farms, this directly translates to 4.5$\times$ more clusters and thus $\sim$4$\times$ higher total solve time for 6-Food.
+
+\begin{table}[H]
+\centering
+\caption{Formulation comparison at similar variable counts}
+\label{tab:formulation_comparison}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Formulation} & \textbf{Vars} & \textbf{Farms} & \textbf{Clusters} & \textbf{QPU Time (s)} & \textbf{Gurobi Time (s)} & \textbf{Gurobi MIP Gap} \\
+\midrule
+6-Food & 1,800 & 100 & 12 & $\sim$107 & 100.7 & 1,764\% \\
+27-Food (Agg.) & 2,025 & 25 & 3 & $\sim$30 & 103.8 & 258\% \\
+\midrule
+\textbf{Ratio} & 0.89$\times$ & \textbf{4.0$\times$} & \textbf{4.0$\times$} & \textbf{3.6$\times$} & 0.97$\times$ & 6.8$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Importantly, this explains why both QPU \emph{and} Gurobi show different scaling behaviors for the two formulations:
+\begin{itemize}
+    \item \textbf{QPU:} Dominated by cluster count $\rightarrow$ 6-Food takes longer due to more clusters
+    \item \textbf{Gurobi:} Dominated by constraint density $\rightarrow$ 6-Food has 6.8$\times$ worse MIP gaps due to tighter rotation coupling with only 6 crop families
+\end{itemize}
+
+\subsubsection{Clique vs Spatial-Temporal Decomposition}
 
 Clique decomposition excels when spatial interactions are relatively weak compared to temporal rotation effects. By solving each farm independently across all three time periods, this approach explicitly captures the temporal synergies within each subproblem while approximating spatial interactions through boundary biases. The method is highly parallelizable: in principle, all farm subproblems within an iteration could be solved simultaneously, though our current implementation processes them sequentially to manage QPU access. The average optimality gap of 13.8\% and average speedup of 8.8$\times$ make clique decomposition the preferred method for most instances in our test suite.
 

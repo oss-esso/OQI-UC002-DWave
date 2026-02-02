@@ -122,9 +122,9 @@ SOLVER_COLORS: dict[str, str] = {
 
 # Formulation-specific colors
 FORMULATION_COLORS: dict[str, str] = {
-    "6-Family": "#0173B2",  # Vivid blue (6-family formulation)
-    "6family": "#0173B2",  # Alias
-    "27-Food": "#CC3311",  # Strong red (27-food formulation)
+    "6-Food": "#0173B2",  # Vivid blue (6-food formulation)
+    "6food": "#0173B2",  # Alias
+    "27-Food (Agg.)": "#CC3311",  # Strong red (27-food aggregated formulation)
     "27food": "#CC3311",  # Alias
 }
 
@@ -163,8 +163,8 @@ COLORS: dict[str, str] = {
 
 # Markers for different formulations
 MARKERS: dict[str, str] = {
-    "6-Family": "o",
-    "27-Food": "D",
+    "6-Food": "o",
+    "27-Food (Agg.)": "D",
     "QPU": "s",
     "Gurobi": "^",
 }
@@ -300,7 +300,7 @@ class QPURun:
     total_violations: int
     one_hot_violations: int
     status: str
-    formulation: str  # '6-Family' or '27-Food'
+    formulation: str  # '6-Food' or '27-Food (Agg.)'
     backend: str
 
 
@@ -320,7 +320,7 @@ class GurobiRun:
     mip_gap: float
     status: str
     hit_timeout: bool
-    formulation: str  # '6-Family' or '27-Food'
+    formulation: str  # '6-Food' or '27-Food (Agg.)'
 
 
 # =============================================================================
@@ -339,7 +339,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "phase3_results_plots"
 
 def _determine_formulation(n_foods: int) -> str:
     """Determine formulation type based on number of foods."""
-    return "6-Family" if n_foods == 6 else "27-Food"
+    return "6-Food" if n_foods == 6 else "27-Food (Agg.)"
 
 
 def load_qpu_hierarchical(
@@ -783,7 +783,7 @@ def filter_by_formulation(
 
     Args:
         df: DataFrame with formulation column.
-        formulation: '6-Family' or '27-Food'.
+        formulation: '6-Food' or '27-Food (Agg.)'.
         column: Column name containing formulation info.
 
     Returns:
@@ -910,7 +910,7 @@ def prepare_scaling_data_60s() -> pd.DataFrame:
 
         # Determine formulation type
         n_foods = q["n_foods"]
-        formulation = "6-Family" if n_foods == 6 else "27-Food"
+        formulation = "6-Food" if n_foods == 6 else "27-Food (Agg.)"
 
         # Get timing values (handle dict or scalar)
         qpu_time = q.get("total_wall_time", 0)
@@ -986,7 +986,7 @@ def plot_comprehensive_scaling(
     # Plot 1: Objectives - Gurobi vs Quantum
     # =========================================================================
     ax = axes[0]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
@@ -1076,7 +1076,7 @@ def plot_comprehensive_scaling(
     # Plot 3: Pure QPU Time vs Total Time
     # =========================================================================
     ax = axes[2]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
@@ -1157,7 +1157,7 @@ def prepare_scaling_data_300s() -> pd.DataFrame:
         q = qpu_by[scenario]
         g = gur_by[scenario]
 
-        formulation = "6-Family" if q["n_foods"] == 6 else "27-Food"
+        formulation = "6-Food" if q["n_foods"] == 6 else "27-Food (Agg.)"
 
         # Get timing and objective values
         qpu_obj = abs(q.get("objective_miqp", 0))
@@ -1203,7 +1203,7 @@ def plot_split_analysis(
     output_dir: Path | str = "phase3_results_plots",
 ) -> Path:
     """
-    Create 2x3 plot with split formulation analysis (6-Family vs 27-Food).
+    Create 2x3 plot with split formulation analysis (6-Food vs 27-Food (Agg.)).
 
     Subplots:
         (0,0) Objective Values - Split by Formulation (log-log)
@@ -1229,7 +1229,7 @@ def plot_split_analysis(
     # Plot 1: Objective Values - Split by Formulation
     # =========================================================================
     ax = axes[0, 0]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
@@ -1269,7 +1269,7 @@ def plot_split_analysis(
     # Plot 2: Optimality Gap - Split Analysis
     # =========================================================================
     ax = axes[0, 1]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             ax.plot(
@@ -1296,7 +1296,7 @@ def plot_split_analysis(
     # Plot 3: Solve Time Comparison
     # =========================================================================
     ax = axes[0, 2]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
@@ -1337,7 +1337,7 @@ def plot_split_analysis(
     # Plot 4: Speedup Analysis
     # =========================================================================
     ax = axes[1, 0]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             ax.plot(
@@ -1365,7 +1365,7 @@ def plot_split_analysis(
     # =========================================================================
     ax = axes[1, 1]
 
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             color = FORMULATION_COLORS.get(formulation, "gray")
@@ -1405,7 +1405,7 @@ def plot_split_analysis(
     # Plot 6: Gurobi MIP Gap (shows problem hardness)
     # =========================================================================
     ax = axes[1, 2]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation].sort_values("n_vars")
         if len(form_df) > 0:
             ax.semilogy(
@@ -1449,7 +1449,7 @@ def plot_objective_gap_analysis(
         (0,0) Absolute Objective Comparison (bars)
         (0,1) Objective Ratio (QPU/Gurobi) bars
         (0,2) Gap vs Gurobi MIP Gap correlation scatter
-        (1,0) 6-Family detailed analysis (line plot)
+        (1,0) 6-Food detailed analysis (line plot)
         (1,1) 27-Food detailed analysis (line plot)
         (1,2) Summary Statistics Table
 
@@ -1533,7 +1533,7 @@ def plot_objective_gap_analysis(
     # Plot 3: Gap vs Gurobi MIP Gap correlation
     # =========================================================================
     ax = axes[0, 2]
-    for formulation in ["6-Family", "27-Food"]:
+    for formulation in ["6-Food", "27-Food (Agg.)"]:
         form_df = df[df["formulation"] == formulation]
         ax.scatter(
             form_df["gurobi_mip_gap"],
@@ -1556,10 +1556,10 @@ def plot_objective_gap_analysis(
     ax.set_yscale("log")
 
     # =========================================================================
-    # Plot 4: 6-Family detailed analysis
+    # Plot 4: 6-Food detailed analysis
     # =========================================================================
     ax = axes[1, 0]
-    form_df = df[df["formulation"] == "6-Family"].sort_values("n_vars")
+    form_df = df[df["formulation"] == "6-Food"].sort_values("n_vars")
 
     if len(form_df) > 0:
         ax.plot(
@@ -1583,15 +1583,15 @@ def plot_objective_gap_analysis(
 
     ax.set_xlabel("Number of Farms", fontsize=13, fontweight="bold")
     ax.set_ylabel("Objective Value", fontsize=13, fontweight="bold")
-    ax.set_title("6-Family: Objective Scaling", fontsize=14, fontweight="bold")
+    ax.set_title("6-Food: Objective Scaling", fontsize=14, fontweight="bold")
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
 
     # =========================================================================
-    # Plot 5: 27-Food detailed analysis
+    # Plot 5: 27-Food (Agg.) detailed analysis
     # =========================================================================
     ax = axes[1, 1]
-    form_df = df[df["formulation"] == "27-Food"].sort_values("n_vars")
+    form_df = df[df["formulation"] == "27-Food (Agg.)"].sort_values("n_vars")
 
     if len(form_df) > 0:
         ax.plot(
@@ -1626,12 +1626,12 @@ def plot_objective_gap_analysis(
     ax.axis("off")
 
     # Calculate stats by formulation
-    stats_6fam = df[df["formulation"] == "6-Family"]
-    stats_27food = df[df["formulation"] == "27-Food"]
+    stats_6fam = df[df["formulation"] == "6-Food"]
+    stats_27food = df[df["formulation"] == "27-Food (Agg.)"]
 
     # Build table data safely
     table_data = [
-        ["Metric", "6-Family", "27-Food"],
+        ["Metric", "6-Food", "27-Food (Agg.)"],
         ["Scenarios", f"{len(stats_6fam)}", f"{len(stats_27food)}"],
     ]
 
@@ -2320,7 +2320,7 @@ def plot_qpu_advantage_corrected(
         gur_timeout = gur_row["hit_timeout"]
         gur_mip_gap = gur_row.get("mip_gap", 0)
 
-        formulation = "27-Food" if n_foods == 27 else "6-Family"
+        formulation = "27-Food (Agg.)" if n_foods == 27 else "6-Food"
         benefit_advantage = qpu_benefit - gur_obj
         benefit_ratio = qpu_benefit / gur_obj if gur_obj > 0 else 0
         total_slots = n_farms * n_periods
@@ -2347,8 +2347,8 @@ def plot_qpu_advantage_corrected(
         })
 
     df = pd.DataFrame(results).sort_values("n_vars").reset_index(drop=True)
-    df_6fam = df[df["formulation"] == "6-Family"]
-    df_27food = df[df["formulation"] == "27-Food"]
+    df_6fam = df[df["formulation"] == "6-Food"]
+    df_27food = df[df["formulation"] == "27-Food (Agg.)"]
 
     # Colors
     C_QPU = "#1f77b4"
@@ -2388,9 +2388,9 @@ def plot_qpu_advantage_corrected(
     # --- Panel (0,1): Benefit Ratio by Formulation ---
     ax = axes[0, 1]
     ax.scatter(df_6fam["n_vars"], df_6fam["benefit_ratio"], s=120, c=C_6FAM,
-               marker="o", label="6-Family", edgecolors="black", linewidths=0.5, alpha=0.8)
+               marker="o", label="6-Food", edgecolors="black", linewidths=0.5, alpha=0.8)
     ax.scatter(df_27food["n_vars"], df_27food["benefit_ratio"], s=120, c=C_27FOOD,
-               marker="s", label="27-Food", edgecolors="black", linewidths=0.5, alpha=0.8)
+               marker="s", label="27-Food (Agg.)", edgecolors="black", linewidths=0.5, alpha=0.8)
     ax.axhline(y=1.0, color=C_NEUTRAL, linestyle="--", linewidth=2, label="Parity (1.0)")
     ax.fill_between([0, 20000], 1, 10, alpha=0.1, color=C_QPU, label="QPU advantage region")
     ax.set_xlabel("Number of Variables", fontweight="bold")
@@ -2404,13 +2404,13 @@ def plot_qpu_advantage_corrected(
     # --- Panel (0,2): Time Comparison ---
     ax = axes[0, 2]
     ax.scatter(df_6fam["n_vars"], df_6fam["gurobi_time"], s=100, c=C_GUROBI,
-               marker="o", label="Gurobi (6-Family)", alpha=0.8)
+               marker="o", label="Gurobi (6-Food)", alpha=0.8)
     ax.scatter(df_27food["n_vars"], df_27food["gurobi_time"], s=100, c="#1a6b1a",
-               marker="s", label="Gurobi (27-Food)", alpha=0.8)
+               marker="s", label="Gurobi (27-Food Agg.)", alpha=0.8)
     ax.scatter(df_6fam["n_vars"], df_6fam["qpu_wall_time"], s=100, c=C_QPU,
-               marker="o", label="QPU (6-Family)", alpha=0.8)
+               marker="o", label="QPU (6-Food)", alpha=0.8)
     ax.scatter(df_27food["n_vars"], df_27food["qpu_wall_time"], s=100, c=C_QPU_DARK,
-               marker="s", label="QPU (27-Food)", alpha=0.8)
+               marker="s", label="QPU (27-Food Agg.)", alpha=0.8)
     ax.axhline(y=300, color=C_HIGHLIGHT, linestyle="--", linewidth=2, label="Gurobi timeout (300s)")
     ax.set_xlabel("Number of Variables", fontweight="bold")
     ax.set_ylabel("Solve Time (seconds)", fontweight="bold")
@@ -2446,9 +2446,9 @@ def plot_qpu_advantage_corrected(
     # --- Panel (1,1): Pure QPU Time Scaling ---
     ax = axes[1, 1]
     ax.scatter(df_6fam["n_vars"], df_6fam["qpu_pure_time"] * 1000, s=120, c=C_6FAM,
-               marker="o", label="6-Family", edgecolors="black", linewidths=0.5)
+               marker="o", label="6-Food", edgecolors="black", linewidths=0.5)
     ax.scatter(df_27food["n_vars"], df_27food["qpu_pure_time"] * 1000, s=120, c=C_27FOOD,
-               marker="s", label="27-Food", edgecolors="black", linewidths=0.5)
+               marker="s", label="27-Food (Agg.)", edgecolors="black", linewidths=0.5)
     all_vars = df["n_vars"].values
     all_times = df["qpu_pure_time"].values * 1000
     coef = np.polyfit(all_vars, all_times, 1)
@@ -2465,7 +2465,7 @@ def plot_qpu_advantage_corrected(
     ax = axes[1, 2]
     ax.axis("off")
     summary_data = [
-        ["Metric", "6-Family", "27-Food", "Overall"],
+        ["Metric", "6-Food", "27-Food (Agg.)", "Overall"],
         ["Scenarios", str(len(df_6fam)), str(len(df_27food)), str(len(df))],
         ["Avg Gurobi Benefit", f"{df_6fam['gurobi_obj'].mean():.1f}",
          f"{df_27food['gurobi_obj'].mean():.1f}", f"{df['gurobi_obj'].mean():.1f}"],
