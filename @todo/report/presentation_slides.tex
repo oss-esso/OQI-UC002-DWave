@@ -282,6 +282,111 @@
 }
 
 % ============================================================================
+% TEAM & PARTNERS
+% ============================================================================
+\begin{frame}{The Team \& Partners}
+    
+    \vspace{-0.1cm}
+    \begin{columns}[T]
+        
+        \begin{column}{0.58\textwidth}
+            \small\textbf{Project Team:}
+            \begin{itemize}
+                \item Edoardo Spigarolo, Vincenzo Savona (EPFL)
+                \item Dean Brand, Francesco Petruccione (NITheCS)
+                \item Oliver Camp, Sowrya Kilaru (GAIN)
+            \end{itemize}
+            
+            
+            \small\textbf{Mission:}
+            \begin{itemize}\scriptsize
+                \item Apply quantum computing to real-world food system optimization
+                \item Bridge the gap between quantum technology and sustainable development goals
+                \item Demonstrate practical quantum advantage for agricultural planning
+            \end{itemize}
+            
+            
+        \end{column}
+
+    \begin{column}{0.4\textwidth}
+    \vspace{-1cm}
+            \begin{tikzpicture}[
+                org/.style={rounded corners=6pt,minimum width=5.5cm,minimum height=1.8cm,
+                           font=\scriptsize,align=center,text=white,
+                           drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}}
+            ]
+                % OQI
+                \node[org,fill=primaryBlue] (oqi) at (0,0) {
+                    \Large\faAtom\\[4pt]
+                    \normalsize\textbf{Open Quantum Institute}\\[2pt]
+                    \scriptsize EPFL \& NITheCS\\[2pt]
+                    \tiny Quantum Computing\\
+                    \tiny for societal challenges
+                };
+                
+                % GAIN
+                \node[org,fill=accentGreen] (gain) at (0,-2.5) {
+                    \Large\faGlobeAfrica\\[4pt]
+                    \normalsize\textbf{GAIN}\\[2pt]
+                    \scriptsize Global Alliance for Improved Nutrition\\[2pt]
+                    \tiny Improving nutrition outcomes through\\
+                    \tiny sustainable food systems
+                };
+
+                % QB
+                \node[org,fill=accentTeal] (gain) at (0,-4.7) {
+                    \Large\faGlobeAfrica\\[4pt]
+                    \normalsize\textbf{Quantum Basel}\\[2pt]
+                    \tiny Providers for the access\\
+                    \tiny to D-Wave Quantum Annealer
+                };
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% USE CASE OVERVIEW
+% ============================================================================
+\begin{frame}{The Use Case: Sustainable Food Production}
+    \vspace{-0.6cm}
+    
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \small\textbf{The Global Challenge:}
+            \begin{itemize}\scriptsize
+                \item \textbf{9.2\%} of world population faces hunger (FAO, 2022)
+                \item Food systems cause \textbf{34\%} of global GHG emissions
+                \item \textbf{88\%} of countries face multiple malnutrition burdens
+                \item Need \textbf{60\%} more food per hectare by 2050
+            \end{itemize}
+            
+            
+            
+            
+        \end{column}
+        \begin{column}{0.43\textwidth}
+            \begin{tikzpicture}[
+                challenge/.style={rounded corners=3pt,fill=alertRed!15,draw=alertRed,
+                                 font=\tiny,inner sep=4pt,minimum width=4.5cm,align=left}
+            ]
+                \node[challenge] (c1) at (0,0) {\faExclamationTriangle\ Food security for growing populations};
+                \node[challenge] (c2) at (0,-0.7) {\faLeaf\ Reduce agriculture's environmental footprint};
+                \node[challenge] (c3) at (0,-1.4) {\faBalanceScale\ Balance producer viability \& affordability};
+                \node[challenge] (c4) at (0,-2.1) {\faSeedling\ Promote crop diversity \& resilience};
+            \end{tikzpicture}
+            
+        \end{column}
+    \end{columns}
+\vspace{0.4cm}
+    \small\textbf{The Optimization Question:}
+            \begin{keybox}
+            \centering
+                 \textit{Given limited farms and arable land, how can we allocate resources to \textbf{maximize nutrition}, ensure \textbf{affordability}, and \textbf{minimize environmental harm}?}
+            \end{keybox}
+\end{frame}
+
+% ============================================================================
 % OUTLINE
 % ============================================================================
 \begin{frame}{Outline}
@@ -307,9 +412,9 @@
                 % Part II
                 \node[section,below=1.8cm of p1] (p2) {\color{accentTeal}\faFlask\ Part II: Experimental Studies};
                 \node[item,below=0.1cm of p2.south west,anchor=north west,xshift=0.3cm] {
-                    5. Study 1: Hybrid Solver\\
-                    6. Study 2: Pure QPU\\
-                    7. Study 3: Quantum Improvement
+                    5. Study 1.A: Hybrid Solver\\
+                    6. Study 2.A: Pure QPU\\
+                    7. Study 2.B: Quantum Improvement
                 };
             \end{tikzpicture}
         \end{column}
@@ -483,8 +588,9 @@
 
 
 \begin{frame}{Benefit Score Distribution}
+\vspace{-0.65cm}
     \centering
-    \includegraphics[width=0.5\textwidth]{images/Plots/02_benefit_heatmap.png}
+    \includegraphics[width=0.72\textwidth]{images/Plots/crop_benefit_heatmap.pdf}
     
     \vspace{0.2cm}
     \small Heatmap of benefit scores (5 components) across 27 crops.
@@ -707,43 +813,104 @@
         };
     \end{tikzpicture}
     
+ \end{frame}
+
+
+\begin{frame}{Study 1.A: Research Question \& Setup}
+    \framesubtitle{Can D-Wave hybrid solvers compete with classical MILP on linear problems?}
+    
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{keybox}
+                \centering\small
+                \textbf{Research Question:}\\[4pt]
+                \textit{How do D-Wave hybrid solvers perform on \textbf{well-structured linear} problems compared to state-of-the-art classical solvers?}
+            \end{keybox}
+            
+            \vspace{0.3cm}
+            \small\textbf{Problem Characteristics:}
+            \begin{itemize}\scriptsize
+                \item \textbf{Formulation:} Variant A (Binary Allocation)
+                \item \textbf{Objective:} Linear (no quadratic terms)
+                \item \textbf{Constraints:} Well-structured MILP
+                \item \textbf{Scale:} 10 to 1,000 farms
+                \item \textbf{Variables:} 297 to 27,027
+            \end{itemize}
+        \end{column}
+        
+        \begin{column}{0.48\textwidth}
+            \small\textbf{Solver Configuration:}
+            
+            \vspace{0.2cm}
+            \begin{tikzpicture}[
+                config/.style={rounded corners=2pt,minimum width=5.2cm,
+                              minimum height=0.9cm,font=\scriptsize,align=left,
+                              text=white,inner sep=4pt}
+            ]
+                \node[config,fill=primaryBlue] at (0,0) {
+                    \textbf{Gurobi 12.0.1}\\[2pt]
+                    Timeout: 300s, MIP gap: 0.01\%
+                };
+                \node[config,fill=accentTeal] at (0,-1.2) {
+                    \textbf{D-Wave Hybrid (CQM)}\\[2pt]
+                    Time limit: 300s, Auto-tuned
+                };
+                \node[config,fill=secondaryBlue] at (0,-2.4) {
+                    \textbf{D-Wave Hybrid (BQM)}\\[2pt]
+                    QUBO conversion, 300s limit
+                };
+            \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \small\textbf{Metrics:}
+            \begin{itemize}\scriptsize
+                \item Solve time \& QPU time percentage
+                \item Objective value comparison
+                \item Solution feasibility
+            \end{itemize}
+        \end{column}
+    \end{columns}
 \end{frame}
 
-
-\begin{frame}{Study 1: Hybrid Solver Results}
-    \framesubtitle{D-Wave CQM vs Gurobi on Variant A}
+\begin{frame}{Study 1.A: Hybrid Solver Results}
+    \framesubtitle{D-Wave vs Gurobi on Variant A}
     
-    \centering
-    \includegraphics[width=0.75\textwidth]{images/Plots/study1_hybrid_performance.pdf}
-    
-    \vspace{0.2cm}
-    \small D-Wave Hybrid CQM Solver vs Gurobi across different formulations.
-\end{frame}
+\centering
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/study1_hybrid_solve_time.pdf}
+        
+        \column{0.5\textwidth}
 
-\begin{frame}{Study 1: Key Results}
-\small
-\begin{columns}[T]
-\begin{column}{0.48\textwidth}
-\textbf{Timing Comparison:}
+        \textbf{Timing Comparison:}
 \begin{itemize}
     \item \textbf{Gurobi:} Solves 27,027 vars in \textcolor{accentGreen}{\textbf{1.15 seconds}}
     \item \textbf{D-Wave Hybrid:} Constant \textbf{5.3--5.5 seconds}
-    \item \textbf{Pure QPU time:} Only 70ms (\textbf{1.3\%} of hybrid)
+    \item \textbf{QPU time:} Only 70ms (\textbf{1.3\%} of hybrid)
 \end{itemize}
+
+        
+    \end{columns}
+    
+    \vspace{0.2cm}
+\end{frame}
+
+\begin{frame}{Study 1.A: Key Results}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\centering
+        \includegraphics[width=\textwidth]{images/Plots/study1_hybrid_objective.pdf}
 \vspace{0.2cm}
-\textbf{Solution Quality:}
-\begin{itemize}
-    \item Both achieve optimal or near-optimal solutions
-    \item Gurobi: 0.00\% MIP gap
-    \item Hybrid: Matches Gurobi objective
-\end{itemize}
+
 \end{column}
 \begin{column}{0.48\textwidth}
-\textbf{QUBO Conversion Test:}
+\textbf{Solution Quality:}
 \begin{itemize}
-    \item Gurobi on QUBO: \textcolor{alertRed}{Timeout at 100+ seconds}
-    \item Objective: 0.000 (infeasible)
-    \item D-Wave BQM: Completes but lower quality
+    \item Similar performance up to 100 farms, then violations dominate
+    \item Gurobi CQM: 0.00\% MIP gap on CQM, decreasing objective due to timeout on QUBO
+
 \end{itemize}
 \vspace{0.2cm}
 \begin{warnbox}
@@ -752,11 +919,76 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 \end{warnbox}
 \end{column}
 \end{columns}
+
+
+
 \end{frame}
 
-\begin{frame}{Study 2: Pure QPU Benchmark}
+\begin{frame}{Study 2.A: Research Question \& Setup}
+    \framesubtitle{How do decomposition strategies affect pure QPU performance?}
+    
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{keybox}
+                \centering\small
+                \textbf{Research Question:}\\[4pt]
+                \textit{How can we investigate the performance of the Quantum Annealer without having to use the black box hybrid solvers?}
+            \end{keybox}
+            
+            \vspace{0.3cm}
+            \small\textbf{Problem Characteristics:}
+            \begin{itemize}\scriptsize
+                \item \textbf{Formulation:} Variant A (Binary Allocation)
+                \item \textbf{Challenge:} QPU embeds $<$500 variables
+                \item \textbf{Scale:} 10 to 1,000 farms
+                \item \textbf{Variables:} 270 to 27,027
+                \item \textbf{Need:} Partition into QPU-sized subproblems
+            \end{itemize}
+        \end{column}
+        
+        \begin{column}{0.48\textwidth}
+            % \begin{tikzpicture}[
+            %     method/.style={rounded corners=2pt,minimum width=5.2cm,
+            %                   minimum height=0.55cm,font=\scriptsize,align=left,
+            %                   text=white,inner sep=3pt}
+            % ]
+            %     \node[method,fill=primaryBlue] at (0,0) {\textbf{PlotBased} --- Farm-level (27 vars)};
+            %     \node[method,fill=secondaryBlue] at (0,-0.7) {\textbf{Multilevel(5/10)} --- Hierarchical};
+            %     \node[method,fill=accentTeal] at (0,-1.4) {\textbf{Louvain} --- Community detection};
+            %     \node[method,fill=accentGreen] at (0,-2.1) {\textbf{Coordinated} --- Master-sub iterate};
+            % \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \small\textbf{QPU Configuration:}
+            \begin{itemize}\scriptsize
+                \item D-Wave Advantage (5,760 qubits)
+                \item 100--500 samples per subproblem
+                \item Auto-scaled chain strength
+                \item Annealing time: 20 $\mu$s default
+            \end{itemize}
+
+            \vspace{0.3cm}
+            \small\textbf{Metrics:}
+            \begin{itemize}\scriptsize
+                \item Solve time \& QPU time percentage
+                \item Objective value comparison
+                \item Solution feasibility
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Study 2.A: Pure QPU Benchmark}
     \centering
-    \includegraphics[width=0.5\textwidth]{images/Plots/qpu_benchmark_comprehensive.png}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/benchmark_comprehensive_time.pdf}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/benchmark_large_quality.pdf}
+    \end{columns}
     
     \vspace{0.2cm}
     \small Comprehensive QPU benchmark: timing and quality across decomposition methods.
@@ -771,14 +1003,14 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 % \end{frame}
 
 
-\begin{frame}{Study 2: Time Breakdown Analysis \& Solution Quality at 1,000 Farms}
+\begin{frame}{Study 2.A: Time Breakdown Analysis \& Solution Quality at 1,000 Farms}
 \vspace{-0.8cm}
     \begin{columns}[T]
 
         % Left column: Time breakdown (top) + Solution quality table (bottom)
         \begin{column}{0.55\textwidth}
 
-            \small\textbf{Pure QPU Time Scaling (Multilevel(10)):}
+            \small\textbf{QPU Time Scaling (Multilevel(10)):}
 
             \vspace{0.2cm}
             \begin{table}[h]\scriptsize
@@ -808,7 +1040,7 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
                     \toprule
                     \textbf{Method} & \textbf{Objective} & \textbf{Gap} & \textbf{Crops} \\
                     \midrule
-                    \rowcolor{accentGreen!20} Gurobi (optimal) & 0.4292 & 0.0\% & 3 \\
+                    \rowcolor{accentGreen!20} Gurobi (optimal) & 0.4292 & 0.0\% & 5 \\
                     Coordinated & 0.2926 & 31.8\% & 25 \\
                     \rowcolor{primaryBlue!10} Multilevel(10) & 0.2579 & 39.9\% & 27 \\
                     Louvain & 0.2341 & 45.5\% & 22 \\
@@ -856,21 +1088,181 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 \end{frame}
 
 
-\begin{frame}{Study 3: Comprehensive Scaling (Variant B)}
-    \centering
-    \includegraphics[width=0.85\textwidth]{images/Plots/quantum_advantage_comprehensive_scaling.pdf}
+
+
+
+\begin{frame}{Study 2.B: Research Question \& Setup}
+    \framesubtitle{Can quantum annealing outperform classical solvers on frustrated problems?}
     
-    \vspace{0.2cm}
-    \small Scaling analysis of problem hardness per farm (Variant B).
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{keybox}
+                \centering\small
+                \textbf{Research Question:}\\[4pt]
+                \textit{Does quantum annealing provide a \textbf{practical improvement} on \textbf{frustrated} crop rotation problems where classical solvers struggle?}
+            \end{keybox}
+            
+            \vspace{0.3cm}
+            \small\textbf{Problem Characteristics:}
+            \begin{itemize}\scriptsize
+                \item \textbf{Formulation:} Variant B (Multi-Period Rotation)
+                \item \textbf{Objective:} \textcolor{alertRed}{Quadratic} (rotation synergies)
+                \item \textbf{Constraints:} \textcolor{alertRed}{70--88\% frustrated pairs}
+                \item \textbf{Crops:} 6 aggregated families $\times$ 3 periods
+                \item \textbf{Scale:} 5 to 200 farms (90--16,200 vars)
+            \end{itemize}
+        \end{column}
+        
+        \begin{column}{0.48\textwidth}
+            \small\textbf{Solver Configuration:}
+            
+            \vspace{0.2cm}
+            \begin{tikzpicture}[
+                config/.style={rounded corners=2pt,minimum width=5.2cm,
+                              minimum height=0.9cm,font=\scriptsize,align=left,
+                              text=white,inner sep=4pt}
+            ]
+                \node[config,fill=primaryBlue] at (0,0) {
+                    \textbf{Gurobi 12.0.1}\\[2pt]
+                    Timeout: 300s, MIP gap: 0.01\%
+                };
+                \node[config,fill=accentTeal] at (0,-1.2) {
+                    \textbf{D-Wave QPU (Hierarchical)}\\[2pt]
+                    Temporal decomposition, 500 samples
+                };
+            \end{tikzpicture}
+            
+            \vspace{0.3cm}
+            \small\textbf{Why This Matters:}
+            \begin{itemize}\scriptsize
+                \item Quadratic terms break LP relaxation
+                \item Frustrated constraints $\Rightarrow$ rugged landscape
+                \item Branch-and-bound explores exponentially
+            \end{itemize}
+        \end{column}
+    \end{columns}
 \end{frame}
 
-\begin{frame}{Study 3: Quantum Improvement Analysis}
+\begin{frame}{Hierarchical Decomposition Framework}
+    \framesubtitle{Four-phase approach to enable large-scale QPU optimization}
+    
     \centering
-    \includegraphics[width=0.55\textwidth]{images/Plots/quantum_advantage_split_analysis.pdf}
+    \begin{tikzpicture}[
+        phase/.style={rounded corners=8pt,minimum width=3.2cm,minimum height=2.2cm,
+                     font=\scriptsize,align=center,text=white,
+                     drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}},
+        arrow/.style={->,very thick,line width=2pt},
+        desc/.style={font=\tiny,align=center,text width=3cm}
+    ]
+        % Phase 1: Decompose
+        \node[phase,fill=primaryBlue] (p1) at (0,0) {
+            \Large\faCut\\[4pt]
+            \normalsize\textbf{Decompose}\\[2pt]
+            \small Partition\\
+            Problem\\[2pt]
+        };
+        
+        % Phase 2: Aggregate
+        \node[phase,fill=secondaryBlue] (p2) at (4,0) {
+            \Large\faLayerGroup\\[4pt]
+            \normalsize\textbf{Aggregate}\\[2pt]
+            \small Combine\\
+            Subproblems\\[2pt]
+        };
+        
+        % Phase 3: Solve
+        \node[phase,fill=accentTeal] (p3) at (8,0) {
+            \Large\faMicrochip\\[4pt]
+            \normalsize\textbf{Solve}\\[2pt]
+            \small QPU\\
+            Optimization\\[2pt]
+        };
+        
+        % Phase 4: Refine
+        \node[phase,fill=accentGreen] (p4) at (12,0) {
+            \Large\faSyncAlt\\[4pt]
+            \normalsize\textbf{Refine}\\[2pt]
+            \small Iterative\\
+            Improvement\\[2pt]
+        };
+        
+        % Arrows between phases
+        \draw[arrow,primaryBlue!60] (p1.east) -- (p2.west);
+        \draw[arrow,secondaryBlue!60] (p2.east) -- (p3.west);
+        \draw[arrow,accentTeal!60] (p3.east) -- (p4.west);
+        
+        % Feedback loop from Refine back to Aggregate
+        % \draw[arrow,accentGreen!60,dashed] (p4.south) -- ++(0,-1.4) -| (p2.south);
+        
+        % Description boxes below each phase
+        \node[desc] at (0,-1.8) {
+            Split large problem\\
+            temporally into\\
+            subproblems
+        };
+        \node[desc] at (4,-1.8) {
+            Split partitions\\
+            to Clique compatible\\
+            size ($<$25 vars)
+        };
+        \node[desc] at (8,-1.8) {
+            Quantum annealing\\
+            on each\\
+            subproblem
+        };
+        \node[desc] at (12,-1.8) {
+            Coordinate solutions\\
+            \& iterate until\\
+            convergence
+        };
+
+        % Key insight box at bottom
+        \node[rounded corners=6pt,fill=white,draw=mutedGray,align=center,font=\scriptsize,inner sep=6pt] at (6,-3.2) {
+            \textbf{Key:} Enables scaling from 500 vars (QPU limit) to 27,000+ vars via hierarchical partitioning
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Study 2.B: Crop Rotation Solution Quality}
+    \centering
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_farms.pdf}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_vars.pdf}
+    \end{columns}
     
     \vspace{0.2cm}
-    \small Solution gap and speedup vs number of variables.
+    \small Comprehensive QPU benchmark: timing and quality across decomposition methods.
 \end{frame}
+
+
+\begin{frame}{Study 2.B: Crop Rotation Solve Time}
+    \centering
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_farms.pdf}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_vars.pdf}
+    \end{columns}
+    
+    \vspace{0.2cm}
+    \small Comprehensive QPU benchmark: timing and quality across decomposition methods.
+\end{frame}
+
+% \begin{frame}{Study 3: Quantum Improvement Analysis}
+%     \centering
+%     \includegraphics[width=0.55\textwidth]{images/Plots/quantum_advantage_split_analysis.pdf}
+    
+%     \vspace{0.2cm}
+%     \small Solution gap and speedup vs number of variables.
+% \end{frame}
 
 % \begin{frame}{Study 3: Solution Quality Comparison}
 %     \centering
@@ -906,10 +1298,9 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 \begin{column}{0.43\textwidth}
 \textbf{Key Statistics:}
 \begin{itemize}
-    \item \textbf{12/13} scenarios: QPU wins
     \item Gurobi timeout: \textbf{11/13} (85\%)
     \item Gurobi avg MIP gap: \textbf{16,308\%}
-    \item Improvement ratio: \textbf{2.51$\times$ to 5.35$\times$}
+    \item Solution quality ratio: \textbf{2.51$\times$ to 5.35$\times$}
 \end{itemize}
 \vspace{0.2cm}
 \begin{resultbox}
@@ -927,13 +1318,13 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 % ============================================================================
 \section{Results \& Discussion}
 
-\begin{frame}{Violation Impact Assessment}
-    \centering
-    \includegraphics[width=0.85\textwidth]{images/Plots/violation_impact_assessment.pdf}
+% \begin{frame}{Violation Impact Assessment}
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{images/Plots/violation_impact_assessment.pdf}
     
-    \vspace{0.2cm}
-    \small Combined analysis of solution quality and constraint satisfaction.
-\end{frame}
+%     \vspace{0.2cm}
+%     \small Combined analysis of solution quality and constraint satisfaction.
+% \end{frame}
 
 
 
@@ -976,7 +1367,7 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 
 \textbf{Performance:}
 \begin{itemize}
-    \item Variant A: \textcolor{warmOrange}{5.5s (overhead)}
+    \item Variant A: \textcolor{warmOrange}{5.5s (3200s overhead)}
     \item Variant B: \textcolor{accentGreen}{\textbf{3.80$\times$ better}}
 \end{itemize}
 \end{block}
@@ -984,44 +1375,59 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 \end{columns}
 \vspace{0.1cm}
 \begin{keybox}
+\centering
 \small\textbf{Key Insight:} Neither approach universally dominates. Optimal solver depends on \textbf{problem structure}, not just size.
 \end{keybox}
 \end{frame}
 
 % ----------------------------------------------------------------------------
-\begin{frame}{Key Numerical Results at a Glance}
-\centering
+\begin{frame}{Key Results}
+    
+    \centering
 \small
-\begin{tabular}{lcccc}
+\vspace{-0.8cm}
+\begin{tabular}{lccc}
 \toprule
-\textbf{Metric} & \textbf{Study 1.A} & \textbf{Study 2.A} & \textbf{Study 2.B} & \textbf{Overall} \\
+\textbf{Metric} & \textbf{Study 1.A: Hybrid} & \textbf{Study 2.A: Pure QPU} & \textbf{Study 2.B: Rotation} \\
+& \textit{(Binary Alloc.)} & \textit{(Decomposition)} & \textit{(Multi-Period)} \\
 \midrule
-Max Variables & 27,027 & 27,027 & 16,200 & 27,027 \\
-Gurobi Time & 1.15s & 1.15s & 300s (timeout) & -- \\
-QPU Time (pure) & 70ms & 21.8s & 1.1\% of total & Linear $O(f)$ \\
-Solution Gap & 0\% & 31.8--57.1\% & N/A & -- \\
-QPU/Gurobi Ratio & $\sim$1.0$\times$ & $<$1.0$\times$ & \textbf{3.80$\times$} & -- \\
-Chain Break Rate & -- & $<$2\% & $<$2\% & $<$2\% \\
-Embedding Overhead & -- & 95--99\% & -- & Dominant \\
+Max Variables & 27,027 & 27,027 & 16,200 \\
+Gurobi Time & 0.1-10s & 0.1-10s & 300s (timeout) \\
+\textit{Quantum} Time & 10-300s & 5-3,495s & 10-200s\footnote{Classical processing is underperforming due to being unoptimized compared to Gurobi} \\
+QPU Time & 35ms & 02-20s & 0.1-10s \\
+Solution Quality Ratio & <0.5$\times$ & <0.5$\times$ & 3.80$\times$ \\
+Winner & \textcolor{accentGreen}{\textbf{Gurobi}} & \textcolor{accentGreen}{\textbf{Gurobi}} & \textcolor{primaryBlue}{\textbf{QPU}} \\
 \bottomrule
 \end{tabular}
-\vspace{0.4cm}
+\vspace{0.3cm}
 
 \begin{columns}
-\begin{column}{0.3\textwidth}
+\begin{column}{0.32\textwidth}
 \centering
-\textcolor{primaryBlue}{\Large\textbf{3.80$\times$}}\\
-\scriptsize Avg QPU Improvement
+\begin{keybox}
+\centering
+\textcolor{accentGreen}{\Large\textbf{Gurobi}}\\
+\scriptsize Linear MIP solved\\
+\scriptsize optimally in $<$2s
+\end{keybox}
 \end{column}
-\begin{column}{0.3\textwidth}
+\begin{column}{0.32\textwidth}
 \centering
-\textcolor{accentTeal}{\Large\textbf{$<$2\%}}\\
-\scriptsize Chain Break Rate
+\begin{warnbox}
+\centering
+\textcolor{warmOrange}{\Large\textbf{95--99\%}}\\
+\scriptsize Embedding overhead\\
+\scriptsize dominates QPU time
+\end{warnbox}
 \end{column}
-\begin{column}{0.3\textwidth}
+\begin{column}{0.32\textwidth}
 \centering
-\textcolor{accentGreen}{\Large\textbf{$O(f)$}}\\
-\scriptsize QPU Time Scaling
+\begin{resultbox}
+\centering
+\textcolor{accentTeal}{\Large\textbf{3.5$\times$}}\\
+\scriptsize QPU benefit on\\
+\scriptsize Crop Rotation Variant
+\end{resultbox}
 \end{column}
 \end{columns}
 \end{frame}
@@ -1032,31 +1438,31 @@ Embedding Overhead & -- & 95--99\% & -- & Dominant \\
 
 
 % ============================================================================
-\section{Conclusions}
+% \section{Conclusions}
 
-% ----------------------------------------------------------------------------
-\begin{frame}{Six Key Takeaways}
-\small
-\begin{enumerate}
-    \item \textcolor{primaryBlue}{\textbf{Formulation-Dependent Performance}}\\
-    {\scriptsize Classical excels on MILP; quantum excels on frustrated QUBO problems}
+% % ----------------------------------------------------------------------------
+% \begin{frame}{Six Key Takeaways}
+% \small
+% \begin{enumerate}
+%     \item \textcolor{primaryBlue}{\textbf{Formulation-Dependent Performance}}\\
+%     {\scriptsize Classical excels on MILP; quantum excels on frustrated QUBO problems}
     
-    \item \textcolor{accentTeal}{\textbf{Linear QPU Scaling}}\\
-    {\scriptsize Pure quantum time scales $O(f)$ --- embedding is the bottleneck}
+%     \item \textcolor{accentTeal}{\textbf{Linear QPU Scaling}}\\
+%     {\scriptsize Pure quantum time scales $O(f)$ --- embedding is the bottleneck}
     
-    \item \textcolor{accentGreen}{\textbf{3.80$\times$ Quantum Improvement}}\\
-    {\scriptsize On crop rotation problems, QPU achieves significantly higher benefit}
+%     \item \textcolor{accentGreen}{\textbf{3.80$\times$ Quantum Improvement}}\\
+%     {\scriptsize On crop rotation problems, QPU achieves significantly higher benefit}
     
-    \item \textcolor{warmOrange}{\textbf{Computational Cliffs Exist}}\\
-    {\scriptsize Problem hardness is non-monotonic; crop rotation creates classical barriers}
+%     \item \textcolor{warmOrange}{\textbf{Computational Cliffs Exist}}\\
+%     {\scriptsize Problem hardness is non-monotonic; crop rotation creates classical barriers}
     
-    \item \textcolor{secondaryBlue}{\textbf{Diversity Paradox}}\\
-    {\scriptsize Quantum naturally produces more diverse, agriculturally robust solutions}
+%     \item \textcolor{secondaryBlue}{\textbf{Diversity Paradox}}\\
+%     {\scriptsize Quantum naturally produces more diverse, agriculturally robust solutions}
     
-    \item \textcolor{alertRed}{\textbf{Hardware Constraints Remain}}\\
-    {\scriptsize 95--99\% of runtime is classical embedding overhead}
-\end{enumerate}
-\end{frame}
+%     \item \textcolor{alertRed}{\textbf{Hardware Constraints Remain}}\\
+%     {\scriptsize 95--99\% of runtime is classical embedding overhead}
+% \end{enumerate}
+% \end{frame}
 
 % \begin{frame}{Impact Assessment}
 %     \begin{columns}[T]

@@ -241,24 +241,24 @@ def plot_scaling_objectives_by_vars(df: pd.DataFrame, output_dir: Path | None = 
             color = FORMULATION_COLORS.get(formulation, "gray")
             ax.plot(
                 form_df["n_vars"],
-                form_df["gurobi_objective"],
+                form_df["qpu_objective"],
                 marker=MARKERS.get(formulation, "o"),
                 color=color,
-                label=f"{formulation} (Gurobi)",
+                label=f"{formulation} (QPU)",
                 linewidth=3,
                 markersize=12,
                 alpha=0.8,
             )
             ax.plot(
                 form_df["n_vars"],
-                form_df["qpu_objective"],
+                form_df["gurobi_objective"],
                 marker=MARKERS.get(formulation, "o"),
-                color=color,
-                label=f"{formulation} (QPU)",
+                color=SOLVER_COLORS["gurobi"],
+                label=f"{formulation} (Gurobi)",
                 linewidth=3,
                 markersize=10,
-                alpha=0.6,
-                linestyle="--",
+                alpha=0.8,
+                linestyle=":",
             )
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Objective Value (|abs|)")
@@ -279,24 +279,24 @@ def plot_scaling_objectives_by_farms(df: pd.DataFrame, output_dir: Path | None =
             color = FORMULATION_COLORS.get(formulation, "gray")
             ax.plot(
                 form_df["n_farms"],
-                form_df["gurobi_objective"],
+                form_df["qpu_objective"],
                 marker=MARKERS.get(formulation, "o"),
                 color=color,
-                label=f"{formulation} (Gurobi)",
+                label=f"{formulation} (QPU)",
                 linewidth=3,
                 markersize=12,
                 alpha=0.8,
             )
             ax.plot(
                 form_df["n_farms"],
-                form_df["qpu_objective"],
+                form_df["gurobi_objective"],
                 marker=MARKERS.get(formulation, "o"),
-                color=color,
-                label=f"{formulation} (QPU)",
+                color=SOLVER_COLORS["gurobi"],
+                label=f"{formulation} (Gurobi)",
                 linewidth=3,
                 markersize=10,
-                alpha=0.6,
-                linestyle="--",
+                alpha=0.8,
+                linestyle=":",
             )
     ax.set_xlabel("Number of Farms")
     ax.set_ylabel("Objective Value (|abs|)")
@@ -361,7 +361,7 @@ def plot_scaling_time_comparison(df: pd.DataFrame, output_dir: Path | None = Non
 
 
 def plot_scaling_qpu_breakdown_by_vars(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """QPU Time breakdown by number of variables."""
+    """QPU Time breakdown by number of variables, including Gurobi solve time."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -373,7 +373,7 @@ def plot_scaling_qpu_breakdown_by_vars(df: pd.DataFrame, output_dir: Path | None
                 form_df["qpu_total_time"],
                 marker=MARKERS.get(formulation, "o"),
                 color=color,
-                label=f"{formulation} (Total)",
+                label=f"{formulation} (QPU Total)",
                 linewidth=3,
                 markersize=12,
                 alpha=0.8,
@@ -389,18 +389,32 @@ def plot_scaling_qpu_breakdown_by_vars(df: pd.DataFrame, output_dir: Path | None
                 alpha=0.6,
                 linestyle="--",
             )
+            ax.plot(
+                form_df["n_vars"],
+                form_df["gurobi_time"],
+                marker=MARKERS.get(formulation, "o"),
+                color=SOLVER_COLORS["gurobi"],
+                label=f"{formulation} (Gurobi)",
+                linewidth=3,
+                markersize=10,
+                alpha=0.8,
+                linestyle=":",
+            )
     ax.set_xlabel("Number of Variables")
     ax.set_ylabel("Time (seconds)")
-    ax.set_title("QPU Time Breakdown (by Variables)")
+    ax.set_title("Solve Time Breakdown (by Variables)")
     ax.legend(loc="upper left", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_yscale("log")
+    # Extend y-axis to make room for legend
+    ylim = ax.get_ylim()
+    ax.set_ylim(ylim[0], ylim[1] * 10)
     
     return save_single_plot(fig, "scaling_qpu_breakdown_by_vars", output_dir)
 
 
 def plot_scaling_qpu_breakdown_by_farms(df: pd.DataFrame, output_dir: Path | None = None) -> Path:
-    """QPU Time breakdown by number of farms."""
+    """QPU Time breakdown by number of farms, including Gurobi solve time."""
     fig, ax = plt.subplots(figsize=(10, 7))
     
     for formulation in ["6-Food", "27-Food (Agg.)"]:
@@ -412,7 +426,7 @@ def plot_scaling_qpu_breakdown_by_farms(df: pd.DataFrame, output_dir: Path | Non
                 form_df["qpu_total_time"],
                 marker=MARKERS.get(formulation, "o"),
                 color=color,
-                label=f"{formulation} (Total)",
+                label=f"{formulation} (QPU Total)",
                 linewidth=3,
                 markersize=12,
                 alpha=0.8,
@@ -428,12 +442,26 @@ def plot_scaling_qpu_breakdown_by_farms(df: pd.DataFrame, output_dir: Path | Non
                 alpha=0.6,
                 linestyle="--",
             )
+            ax.plot(
+                form_df["n_farms"],
+                form_df["gurobi_time"],
+                marker=MARKERS.get(formulation, "o"),
+                color=SOLVER_COLORS["gurobi"],
+                label=f"{formulation} (Gurobi)",
+                linewidth=3,
+                markersize=10,
+                alpha=0.8,
+                linestyle=":",
+            )
     ax.set_xlabel("Number of Farms")
     ax.set_ylabel("Time (seconds)")
-    ax.set_title("QPU Time Breakdown (by Farms)")
+    ax.set_title("Solve Time Breakdown (by Farms)")
     ax.legend(loc="upper left", fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.set_yscale("log")
+    # Extend y-axis to make room for legend
+    ylim = ax.get_ylim()
+    ax.set_ylim(ylim[0], ylim[1] * 5)
     
     return save_single_plot(fig, "scaling_qpu_breakdown_by_farms", output_dir)
 
@@ -2192,6 +2220,394 @@ def plot_benchmark_comprehensive_violations(output_dir: Path | None = None) -> P
 
 
 # =============================================================================
+# SECTION 8: STUDY 1 HYBRID SOLVER PERFORMANCE (3 plots)
+# =============================================================================
+
+
+def load_study1_hybrid_data() -> dict | None:
+    """
+    Load Study 1: Comprehensive benchmark data (CQM/BQM vs Gurobi).
+    
+    Returns a dictionary with aggregated data by problem scale (n_patches).
+    """
+    import json
+    
+    benchmark_dir = PROJECT_ROOT / "Benchmarks" / "COMPREHENSIVE"
+    candidates = list(benchmark_dir.glob("comprehensive_benchmark_configs_dwave_*.json"))
+    
+    if not candidates:
+        print("  [WARN] No comprehensive benchmark files found for Study 1")
+        return None
+    
+    # Use the largest file (most comprehensive data)
+    best_file = max(candidates, key=lambda p: p.stat().st_size)
+    
+    try:
+        with open(best_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"  [WARN] Error loading Study 1 data: {e}")
+        return None
+    
+    # Extract patch results and aggregate by scale
+    patch_results = data.get('patch_results', [])
+    if not patch_results:
+        return None
+    
+    data_by_size: dict[int, dict] = {}
+    
+    for r in patch_results:
+        n_units = r.get('n_units', 0)
+        if n_units not in data_by_size:
+            data_by_size[n_units] = {
+                'gurobi_time': [], 'gurobi_obj': [],
+                'dwave_cqm_time': [], 'dwave_cqm_obj': [], 'dwave_cqm_qpu': [], 'dwave_cqm_total': [],
+                'gurobi_qubo_time': [], 'gurobi_qubo_obj': [],
+                'dwave_bqm_time': [], 'dwave_bqm_obj': [], 'dwave_bqm_qpu': [], 'dwave_bqm_total': [],
+            }
+        
+        solvers = r.get('solvers', {})
+        
+        # Gurobi (CQM formulation)
+        if 'gurobi' in solvers and solvers['gurobi'].get('success'):
+            data_by_size[n_units]['gurobi_time'].append(solvers['gurobi'].get('solve_time', 0))
+            data_by_size[n_units]['gurobi_obj'].append(solvers['gurobi'].get('objective_value', 0))
+        
+        # D-Wave CQM
+        if 'dwave_cqm' in solvers:
+            total_time = solvers['dwave_cqm'].get('hybrid_time', 0)
+            qpu_time = solvers['dwave_cqm'].get('qpu_time', 0)
+            obj = solvers['dwave_cqm'].get('objective_value', 0)
+            if total_time > 0:
+                data_by_size[n_units]['dwave_cqm_time'].append(total_time)
+                data_by_size[n_units]['dwave_cqm_obj'].append(obj)
+                data_by_size[n_units]['dwave_cqm_qpu'].append(qpu_time)
+                data_by_size[n_units]['dwave_cqm_total'].append(total_time)
+        
+        # Gurobi (QUBO formulation)
+        if 'gurobi_qubo' in solvers and solvers['gurobi_qubo'].get('success'):
+            data_by_size[n_units]['gurobi_qubo_time'].append(solvers['gurobi_qubo'].get('solve_time', 0))
+            data_by_size[n_units]['gurobi_qubo_obj'].append(solvers['gurobi_qubo'].get('objective_value', 0))
+        
+        # D-Wave BQM
+        if 'dwave_bqm' in solvers:
+            total_time = solvers['dwave_bqm'].get('hybrid_time', 0)
+            qpu_time = solvers['dwave_bqm'].get('qpu_time', 0)
+            obj = solvers['dwave_bqm'].get('objective_value', 0)
+            if total_time > 0:
+                data_by_size[n_units]['dwave_bqm_time'].append(total_time)
+                data_by_size[n_units]['dwave_bqm_obj'].append(obj)
+                data_by_size[n_units]['dwave_bqm_qpu'].append(qpu_time)
+                data_by_size[n_units]['dwave_bqm_total'].append(total_time)
+    
+    n_patches = sorted(data_by_size.keys())
+    if not n_patches:
+        return None
+    
+    result = {
+        'n_patches': n_patches,
+        'gurobi_cqm_time': [np.mean(data_by_size[n]['gurobi_time']) if data_by_size[n]['gurobi_time'] else np.nan for n in n_patches],
+        'gurobi_cqm_obj': [np.mean(data_by_size[n]['gurobi_obj']) if data_by_size[n]['gurobi_obj'] else np.nan for n in n_patches],
+        'dwave_cqm_time': [np.mean(data_by_size[n]['dwave_cqm_time']) if data_by_size[n]['dwave_cqm_time'] else np.nan for n in n_patches],
+        'dwave_cqm_obj': [np.mean(data_by_size[n]['dwave_cqm_obj']) if data_by_size[n]['dwave_cqm_obj'] else np.nan for n in n_patches],
+        'gurobi_qubo_time': [np.mean(data_by_size[n]['gurobi_qubo_time']) if data_by_size[n]['gurobi_qubo_time'] else np.nan for n in n_patches],
+        'gurobi_qubo_obj': [np.mean(data_by_size[n]['gurobi_qubo_obj']) if data_by_size[n]['gurobi_qubo_obj'] else np.nan for n in n_patches],
+        'dwave_bqm_time': [np.mean(data_by_size[n]['dwave_bqm_time']) if data_by_size[n]['dwave_bqm_time'] else np.nan for n in n_patches],
+        'dwave_bqm_obj': [np.mean(data_by_size[n]['dwave_bqm_obj']) if data_by_size[n]['dwave_bqm_obj'] else np.nan for n in n_patches],
+        'dwave_cqm_qpu_pct': [
+            100 * np.mean(data_by_size[n]['dwave_cqm_qpu']) / np.mean(data_by_size[n]['dwave_cqm_total'])
+            if data_by_size[n]['dwave_cqm_total'] and np.mean(data_by_size[n]['dwave_cqm_total']) > 0 else np.nan
+            for n in n_patches
+        ],
+        'dwave_bqm_qpu_pct': [
+            100 * np.mean(data_by_size[n]['dwave_bqm_qpu']) / np.mean(data_by_size[n]['dwave_bqm_total'])
+            if data_by_size[n]['dwave_bqm_total'] and np.mean(data_by_size[n]['dwave_bqm_total']) > 0 else np.nan
+            for n in n_patches
+        ],
+    }
+    
+    # Fix zero values at 100 and 500 patches for Gurobi QUBO (can't display on log scale)
+    if 100 in n_patches:
+        idx_100 = n_patches.index(100)
+        result['gurobi_qubo_obj'][idx_100] = 0.1
+    if 500 in n_patches:
+        idx_500 = n_patches.index(500)
+        result['gurobi_qubo_obj'][idx_500] = 0.001
+    
+    return result
+
+
+def plot_study1_hybrid_solve_time(hybrid_data: dict | None, output_dir: Path | None = None) -> Path:
+    """Study 1 Plot 1: Solve time comparison (Gurobi vs CQM vs BQM) in log-log scale."""
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    if hybrid_data is None:
+        ax.text(0.5, 0.5, 'Data not available', ha='center', va='center', transform=ax.transAxes, fontsize=18)
+        ax.set_title("Study 1: Solve Time Comparison")
+        return save_single_plot(fig, "study1_hybrid_solve_time", output_dir)
+    
+    n_patches = hybrid_data['n_patches']
+    
+    # Gurobi CQM formulation
+    ax.loglog(n_patches, hybrid_data['gurobi_cqm_time'], 
+              'o-', color=SOLVER_COLORS['gurobi'], linewidth=3, markersize=12,
+              label='Gurobi (CQM)', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # D-Wave CQM
+    ax.loglog(n_patches, hybrid_data['dwave_cqm_time'],
+              's-', color=SOLVER_COLORS.get('cqm', '#3498db'), linewidth=3, markersize=12,
+              label='D-Wave CQM', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # Gurobi QUBO formulation
+    ax.loglog(n_patches, hybrid_data['gurobi_qubo_time'],
+              '^-', color='#27ae60', linewidth=3, markersize=12,
+              label='Gurobi (QUBO)', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # D-Wave BQM
+    ax.loglog(n_patches, hybrid_data['dwave_bqm_time'],
+              'v-', color=SOLVER_COLORS.get('bqm', '#e74c3c'), linewidth=3, markersize=12,
+              label='D-Wave BQM', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # Timeout reference
+    ax.axhline(y=300, color='gray', linestyle='--', linewidth=2, alpha=0.6, label='Timeout (300s)')
+    
+    ax.set_xlabel('Number of Farms')
+    ax.set_ylabel('Solve Time (seconds)')
+    ax.set_title('Study 1: Hybrid Solver Performance Scaling')
+    ax.legend(loc='upper left', fontsize=14)
+    ax.grid(True, which='both', alpha=0.3)
+    
+    return save_single_plot(fig, "study1_hybrid_solve_time", output_dir)
+
+
+def plot_study1_hybrid_qpu_pct(hybrid_data: dict | None, output_dir: Path | None = None) -> Path:
+    """Study 1 Plot 2: QPU % of total time for hybrid solvers."""
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    if hybrid_data is None:
+        ax.text(0.5, 0.5, 'Data not available', ha='center', va='center', transform=ax.transAxes, fontsize=18)
+        ax.set_title("Study 1: QPU Utilization")
+        return save_single_plot(fig, "study1_hybrid_qpu_pct", output_dir)
+    
+    n_patches = hybrid_data['n_patches']
+    x = np.arange(len(n_patches))
+    width = 0.35
+    
+    # D-Wave CQM QPU %
+    ax.bar(x - width/2, hybrid_data['dwave_cqm_qpu_pct'], width,
+           color=SOLVER_COLORS.get('cqm', '#3498db'), label='D-Wave CQM', alpha=0.8,
+           edgecolor='white', linewidth=1)
+    
+    # D-Wave BQM QPU %
+    ax.bar(x + width/2, hybrid_data['dwave_bqm_qpu_pct'], width,
+           color=SOLVER_COLORS.get('bqm', '#e74c3c'), label='D-Wave BQM', alpha=0.8,
+           edgecolor='white', linewidth=1)
+    
+    ax.set_xlabel('Number of Farms')
+    ax.set_ylabel('QPU Time (% of Total)')
+    ax.set_title('Study 1: QPU Utilization in Hybrid Solvers')
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(n) for n in n_patches])
+    ax.legend(loc='upper right', fontsize=14)
+    ax.grid(True, axis='y', alpha=0.3)
+    
+    return save_single_plot(fig, "study1_hybrid_qpu_pct", output_dir)
+
+
+def plot_study1_hybrid_objective(hybrid_data: dict | None, output_dir: Path | None = None) -> Path:
+    """Study 1 Plot 3: Objective value comparison across solvers."""
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    if hybrid_data is None:
+        ax.text(0.5, 0.5, 'Data not available', ha='center', va='center', transform=ax.transAxes, fontsize=18)
+        ax.set_title("Study 1: Solution Quality")
+        return save_single_plot(fig, "study1_hybrid_objective", output_dir)
+    
+    n_patches = hybrid_data['n_patches']
+    
+    # Gurobi CQM formulation (baseline)
+    ax.plot(n_patches, hybrid_data['gurobi_cqm_obj'], 
+            'o-', color=SOLVER_COLORS['gurobi'], linewidth=3, markersize=12,
+            label='Gurobi (CQM)', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # D-Wave CQM
+    ax.plot(n_patches, hybrid_data['dwave_cqm_obj'],
+            's--', color=SOLVER_COLORS.get('cqm', '#3498db'), linewidth=3, markersize=12,
+            label='D-Wave CQM', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # Gurobi QUBO formulation
+    ax.plot(n_patches, hybrid_data['gurobi_qubo_obj'],
+            '^-', color='#27ae60', linewidth=3, markersize=12,
+            label='Gurobi (QUBO)', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    # D-Wave BQM
+    ax.plot(n_patches, hybrid_data['dwave_bqm_obj'],
+            'v--', color=SOLVER_COLORS.get('bqm', '#e74c3c'), linewidth=3, markersize=12,
+            label='D-Wave BQM', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
+    
+    ax.set_xlabel('Number of Farms')
+    ax.set_ylabel('Objective Value')
+    ax.set_title('Study 1: Solution Quality Comparison')
+    ax.legend(loc='best', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    ax.set_ylim(bottom=0.3 * smallest_nonzero(hybrid_data['gurobi_cqm_obj'] + hybrid_data['dwave_cqm_obj'] +
+                                        hybrid_data['gurobi_qubo_obj'] + hybrid_data['dwave_bqm_obj']))
+    
+    return save_single_plot(fig, "study1_hybrid_objective", output_dir)
+
+def smallest_nonzero(values: list[float]) -> float:
+    """Helper function to find the smallest non-zero value in a list."""
+    non_zero_values = [v for v in values if v > 0]
+    return min(non_zero_values) if non_zero_values else 1.0
+
+
+# =============================================================================
+# SECTION 9: CROP BENEFIT WEIGHT ANALYSIS (Benefit Heatmap)
+# =============================================================================
+
+
+def load_food_data_for_heatmap(excel_path: Path | None = None) -> pd.DataFrame:
+    """Load food data from Excel file for benefit heatmap."""
+    if excel_path is None:
+        excel_path = PROJECT_ROOT / "Inputs" / "Combined_Food_Data.xlsx"
+    return pd.read_excel(excel_path)
+
+
+def generate_weight_combinations_for_heatmap(step: float = 0.1, n_weights: int = 5) -> list[tuple]:
+    """
+    Generate all weight combinations that sum to 1.
+    
+    Args:
+        step: Step size for weight values (e.g., 0.1 for 0, 0.1, 0.2, ... 1.0)
+        n_weights: Number of weights (default 5)
+    
+    Returns:
+        List of tuples, each containing a valid weight combination
+    """
+    values = np.arange(0, 1 + step / 2, step)
+    values = np.round(values, 2)
+    
+    valid_combinations = []
+    for combo in itertools.product(values, repeat=n_weights):
+        if abs(sum(combo) - 1.0) < 1e-9:
+            valid_combinations.append(combo)
+    
+    return valid_combinations
+
+
+def calculate_benefit_for_heatmap(food_data: dict, weights: dict) -> float:
+    """
+    Calculate composite benefit score for a food.
+    
+    Args:
+        food_data: Dictionary with food attributes
+        weights: Dictionary with weight values
+    
+    Returns:
+        Benefit score
+    """
+    return (
+        weights["nutritional_value"] * food_data["nutritional_value"]
+        + weights["nutrient_density"] * food_data["nutrient_density"]
+        - weights["environmental_impact"] * food_data["environmental_impact"]
+        + weights["affordability"] * food_data["affordability"]
+        + weights["sustainability"] * food_data["sustainability"]
+    )
+
+
+def analyze_crop_benefits_for_heatmap(df: pd.DataFrame, step: float = 0.1) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Analyze crop benefits for all weight combinations.
+    
+    Returns:
+        Tuple of (results DataFrame, list of food names)
+    """
+    weight_names = [
+        "nutritional_value",
+        "nutrient_density",
+        "environmental_impact",
+        "affordability",
+        "sustainability",
+    ]
+    
+    combinations = generate_weight_combinations_for_heatmap(step=step)
+    
+    # Build food data dictionary
+    foods = {}
+    for _, row in df.iterrows():
+        foods[row["Food_Name"]] = {
+            "nutritional_value": row["nutritional_value"],
+            "nutrient_density": row["nutrient_density"],
+            "environmental_impact": row["environmental_impact"],
+            "affordability": row["affordability"],
+            "sustainability": row["sustainability"],
+        }
+    
+    foods_list = list(foods.keys())
+    results = []
+    
+    for combo in combinations:
+        weights = dict(zip(weight_names, combo))
+        benefits = {}
+        for food_name, food_data in foods.items():
+            benefits[food_name] = calculate_benefit_for_heatmap(food_data, weights)
+        
+        results.append({"weights": combo, "benefits": benefits})
+    
+    return pd.DataFrame(results), foods_list
+
+
+def plot_benefit_heatmap(output_dir: Path | None = None) -> Path:
+    """
+    Generate heatmap showing crop benefits across weight combinations.
+    
+    Uses RdBu_r diverging colormap with large fonts for publication.
+    """
+    # Load data
+    food_df = load_food_data_for_heatmap()
+    results_df, foods_list = analyze_crop_benefits_for_heatmap(food_df, step=0.1)
+    
+    # Sample combinations evenly (100 samples for readability)
+    n_samples = 100
+    sample_indices = np.linspace(0, len(results_df) - 1, n_samples, dtype=int)
+    sampled = results_df.iloc[sample_indices]
+    
+    # Build matrix: rows = foods, cols = weight combos
+    benefit_matrix = np.zeros((len(foods_list), n_samples))
+    
+    for j, (_, row) in enumerate(sampled.iterrows()):
+        for i, food in enumerate(foods_list):
+            benefit_matrix[i, j] = row["benefits"][food]
+    
+    # Create figure - disable constrained_layout for colorbar compatibility
+    fig, ax = plt.subplots(figsize=(16, 10), constrained_layout=False)
+    
+    # Use RdBu_r diverging colormap (same as original)
+    im = ax.imshow(benefit_matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+    
+    # Configure y-axis (crop names)
+    ax.set_yticks(range(len(foods_list)))
+    ax.set_yticklabels(foods_list, fontsize=14)
+    
+    # Configure x-axis
+    ax.set_xlabel("Weight Combination Index (sampled)")
+    ax.set_ylabel("Crop")
+    ax.set_title("Crop Benefits Across Weight Combinations")
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+    cbar.set_label("Benefit Score")
+    cbar.ax.tick_params(labelsize=16)
+    
+    # Use tight_layout for proper spacing
+    fig.tight_layout()
+    
+    return save_single_plot(fig, "crop_benefit_heatmap", output_dir)
+
+
+# =============================================================================
 # MAIN GENERATION FUNCTION
 # =============================================================================
 
@@ -2226,6 +2642,16 @@ def generate_all_single_plots() -> dict[str, bool]:
     except Exception as e:
         print(f"  [FAIL] Failed to load 300s data: {e}")
         df_300s = None
+    
+    try:
+        hybrid_data = load_study1_hybrid_data()
+        if hybrid_data:
+            print(f"  [OK] Study 1 hybrid data: {len(hybrid_data['n_patches'])} scales")
+        else:
+            print("  [WARN] Study 1 hybrid data not available")
+    except Exception as e:
+        print(f"  [FAIL] Failed to load Study 1 hybrid data: {e}")
+        hybrid_data = None
     
     print()
     
@@ -2298,6 +2724,14 @@ def generate_all_single_plots() -> dict[str, bool]:
         ("benchmark_comprehensive_quality", lambda: plot_benchmark_comprehensive_quality(output_dir)),
         ("benchmark_comprehensive_gap", lambda: plot_benchmark_comprehensive_gap(output_dir)),
         ("benchmark_comprehensive_violations", lambda: plot_benchmark_comprehensive_violations(output_dir)),
+        
+        # Section 8: Study 1 Hybrid Performance (3 plots)
+        ("study1_hybrid_solve_time", lambda: plot_study1_hybrid_solve_time(hybrid_data, output_dir)),
+        ("study1_hybrid_qpu_pct", lambda: plot_study1_hybrid_qpu_pct(hybrid_data, output_dir)),
+        ("study1_hybrid_objective", lambda: plot_study1_hybrid_objective(hybrid_data, output_dir)),
+        
+        # Section 9: Crop Benefit Weight Analysis (1 plot)
+        ("crop_benefit_heatmap", lambda: plot_benefit_heatmap(output_dir)),
     ]
     
     # Generate each plot

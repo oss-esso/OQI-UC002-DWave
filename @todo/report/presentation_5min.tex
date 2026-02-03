@@ -276,12 +276,71 @@
 \end{frame}
 }
 
+\begin{frame}{The Team \& Partners}
+    
+    \vspace{-0.1cm}
+    \begin{columns}[T]
+        
+        \begin{column}{0.58\textwidth}
+            \small\textbf{Project Team:}
+            \begin{itemize}
+                \item Edoardo Spigarolo, Vincenzo Savona (EPFL)
+                \item Dean Brand, Francesco Petruccione (NITheCS)
+                \item Oliver Camp, Sowrya Kilaru (GAIN)
+            \end{itemize}
+            
+            
+            \small\textbf{Mission:}
+            \begin{itemize}
+                \item Apply quantum computing to real-world food system optimization
+                \item Bridge the gap between quantum technology and sustainable development goals
+                \item Demonstrate practical quantum advantage for agricultural planning
+            \end{itemize}
+            
+            
+        \end{column}
 
+    \begin{column}{0.4\textwidth}
+    \vspace{-1cm}
+            \begin{tikzpicture}[
+                org/.style={rounded corners=6pt,minimum width=5.5cm,minimum height=1.8cm,
+                           font=\scriptsize,align=center,text=white,
+                           drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}}
+            ]
+                % OQI
+                \node[org,fill=primaryBlue] (oqi) at (0,0) {
+                    \Large\faAtom\\[4pt]
+                    \normalsize\textbf{Open Quantum Institute}\\[2pt]
+                    \scriptsize EPFL \& NITheCS\\[2pt]
+                    \tiny Quantum Computing\\
+                    \tiny for societal challenges
+                };
+                
+                % GAIN
+                \node[org,fill=accentGreen] (gain) at (0,-2.5) {
+                    \Large\faGlobeAfrica\\[4pt]
+                    \normalsize\textbf{GAIN}\\[2pt]
+                    \scriptsize Global Alliance for Improved Nutrition\\[2pt]
+                    \tiny Improving nutrition outcomes through\\
+                    \tiny sustainable food systems
+                };
+
+                % QB
+                \node[org,fill=accentTeal] (gain) at (0,-4.7) {
+                    \Large\faGlobeAfrica\\[4pt]
+                    \normalsize\textbf{Quantum Basel}\\[2pt]
+                    \tiny Providers for the access\\
+                    \tiny to D-Wave Quantum Annealer
+                };
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
 
 % ============================================================================
 % SLIDE 1: UC02 - SUSTAINABLE FOOD PRODUCTION
 % ============================================================================
-\begin{frame}{UC02: Sustainable Food Production}
+\begin{frame}{UC002: Sustainable Food Production}
 
     
     \begin{columns}[T]
@@ -372,39 +431,88 @@
 
 
 % ============================================================================
-% SLIDE 3: THE COMPUTATIONAL BOTTLENECK
+% SLIDE 3: CLASSICAL COMPUTATIONAL BOTTLENECKS
 % ============================================================================
-\begin{frame}{The Computational Bottleneck}
-    \framesubtitle{Why Classical Computers Struggle with Crop Rotation}
+\begin{frame}{Classical Computational Bottlenecks}
+    \framesubtitle{Why State-of-the-Art Solvers Struggle}
     
     \begin{columns}[T]
         \begin{column}{0.55\textwidth}
-            \textbf{Problem Structure:}
-            \begin{itemize}
-                \item \textbf{Quadratic objective} from rotation synergies
-                \item \textbf{Frustrated constraints}: 70--88\% of crop pairs have \textit{negative} interactions
-                \item Creates rugged energy landscape with many local minima
+            \textbf{Classical MILP Solvers:}
+            \begin{itemize}\footnotesize
+                \item Branch-and-bound with LP relaxations
+                \item Cutting-plane techniques (branch-and-cut)
+                \item Primal heuristics for feasibility
             \end{itemize}
             
-            % \vspace{0.3cm}
-            \textbf{Classical Solver Barriers:}
-            \begin{enumerate}\footnotesize
-                \item Quadratic terms break LP relaxation
-                \item Poor bounds $\Rightarrow$ no effective pruning
-                \item Branch-and-bound explores exponentially
+            \vspace{0.2cm}
+            \textbf{Fundamental Bottlenecks:}
+            \begin{enumerate}\scriptsize
+                \item \textbf{LP relaxation weakness:} Large integrality gaps $\Rightarrow$ extensive tree exploration
+                \item \textbf{Cutting-plane overhead:} Auxiliary LPs become expensive with diminishing returns
+                \item \textbf{Tree explosion:} Exponential subproblem growth exhausts memory
+                \item \textbf{Local minima traps:} Heuristics stuck in suboptimal regions
             \end{enumerate}
-            
-            % \vspace{0.3cm}
-            \begin{warnbox}
-                \footnotesize\textbf{Result:} Gurobi times out on \textbf{85\%} of rotation scenarios
-            \end{warnbox}
         \end{column}
         
         \begin{column}{0.43\textwidth}
-            \textbf{Quantum Advantage Mechanism:}
+            \vspace{0.3cm}
+            \textbf{Crop Rotation Challenge:}
+            \begin{itemize}\scriptsize
+                \item \textbf{Quadratic objective} breaks LP structure
+                \item \textbf{70--88\% frustrated pairs} create rugged landscape
+                \item Poor bounds $\Rightarrow$ no effective pruning
+            \end{itemize}
+            
+            \vspace{0.3cm}
+            \begin{warnbox}
+                \footnotesize\textbf{Result:} Gurobi times out on \textbf{85\%} of rotation scenarios (300s limit)
+            \end{warnbox}
             
             \vspace{0.2cm}
-            \begin{tikzpicture}[scale=0.9]
+            \begin{tikzpicture}
+                \node[rounded corners=3pt,fill=alertRed!15,draw=alertRed,
+                      font=\scriptsize,inner sep=4pt,text width=4.2cm,align=center] {
+                    Converting MILP$\to$QUBO often \textbf{destroys} the structure classical solvers exploit
+                };
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% SLIDE 3B: QUANTUM COMPUTING OPPORTUNITY
+% ============================================================================
+\begin{frame}{The Quantum Computing Opportunity}
+    \framesubtitle{Structure-Aware Hybrid Approaches}
+    
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{Why Quantum for Hard Subproblems?}
+            \begin{itemize}\footnotesize
+                \item QUBO formulation native to quantum annealers
+                \item \textbf{Quantum tunneling} escapes local minima
+                \item Parallel exploration via superposition
+                \item Favorable for sparse, frustrated interactions
+            \end{itemize}
+            
+            \vspace{0.3cm}
+            \textbf{Hybrid Strategy:}
+            \begin{enumerate}\scriptsize
+                \item Classical decomposition preserves structure
+                \item Quantum component tackles \textbf{hard subproblems}
+                \item Classical post-processing refines solutions
+            \end{enumerate}
+            
+            \vspace{0.2cm}
+            \begin{keyinsight}[Key Insight]
+                \scriptsize Look for structural components that are \textbf{classically challenging} but naturally expressed as QUBO
+            \end{keyinsight}
+        \end{column}
+        
+        \begin{column}{0.43\textwidth}
+            \vspace{0.2cm}
+            \begin{tikzpicture}[scale=0.85]
                 % Energy landscape visualization
                 \draw[thick,primaryBlue] plot[smooth,tension=0.7] coordinates {
                     (0,2) (0.5,1.5) (1,2.2) (1.5,1) (2,1.8) (2.5,0.5) (3,1.2) (3.5,1.5) (4,2)
@@ -424,121 +532,197 @@
             
             \vspace{0.3cm}
             \begin{resultbox}
-                \scriptsize\textbf{Quantum tunneling} escapes local minima where classical search gets trapped
+                \scriptsize\textbf{Crop rotation:} Frustrated constraints + quadratic synergies = ideal quantum candidate
             \end{resultbox}
+            
+            \vspace{0.2cm}
+            \begin{tikzpicture}
+                \node[rounded corners=3pt,fill=warmOrange!15,draw=warmOrange,
+                      font=\scriptsize,inner sep=4pt,text width=4.2cm,align=center] {
+                    \textbf{Caveat:} Embedding overhead can dominate---manage appropriately
+                };
+            \end{tikzpicture}
         \end{column}
     \end{columns}
-   
 \end{frame}
 
 % ============================================================================
 % SLIDE 4: OQI PIPELINE & APPROACH
 % ============================================================================
-\begin{frame}{OQI Pipeline: Quantum Hardware \& Approach}
-    \framesubtitle{D-Wave Advantage System via Hybrid Workflow}
+\begin{frame}{Three Complementary Studies}
     
-    \begin{columns}[T]
-    \vspace{-0.5cm}
-        \begin{column}{0.48\textwidth}
-            \textbf{Hardware Specifications:}
-            \begin{table}[h]\footnotesize
-                \centering
-                \begin{tabular}{ll}
-                    \toprule
-                    \textbf{Parameter} & \textbf{Value} \\
-                    \midrule
-                    Total Qubits & 5,760 \\
-                    Topology & Pegasus P16 \\
-                    Connectivity & 15 neighbors \\
-                    Annealing Time & 0.5--2,000 $\mu$s \\
-                    \bottomrule
-                \end{tabular}
-            \end{table}
-            
-            \vspace{0.2cm}
-            \textbf{Our Workflow:}
-            \begin{enumerate}\footnotesize
-                \item Formulate as Constrained Quadratic Model
-                \item Decompose into QPU-sized subproblems
-                \item Solve via quantum annealing
-                \item Combine and refine solutions
-            \end{enumerate}
-        \end{column}
+    \centering
+    \begin{tikzpicture}[
+        study/.style={rounded corners=8pt,minimum width=4.2cm,minimum height=2.5cm,
+                     font=\scriptsize,align=center,text=white,
+                     drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}},
+        legend/.style={rounded corners=6pt,fill=white,draw=mutedGray,align=center,font=\scriptsize,inner sep=6pt}
+    ]
+        % Study 1
+        \node[study,fill=primaryBlue] (s1) at (0,1.2) {
+            \Large\faServer\\[4pt]
+            \normalsize\textbf{Study 1.A}\\[2pt]
+            \small Hybrid Solver\\
+            Benchmarking\\[4pt]
+            \scriptsize Variant 1.A\\
+        };
         
-        \begin{column}{0.50\textwidth}
-            \textbf{Three Complementary Studies:}
-            
-            \vspace{0.2cm}
-            \begin{tikzpicture}[
-                study/.style={rounded corners=5pt,minimum width=6.8cm,minimum height=0.9cm,
-                             font=\small,align=left,text=white,inner sep=5pt}
-            ]
-                \node[study,fill=primaryBlue] at (0,0) {
-                    \textbf{Study 1:} Hybrid Solver Benchmarking
-                };
-                \node[study,fill=accentTeal] at (0,-1.1) {
-                    \textbf{Study 2:} Pure QPU Decomposition
-                };
-                \node[study,fill=accentGreen] at (0,-2.2) {
-                    \textbf{Study 3:} Crop Rotation on QPU
-                };
-            \end{tikzpicture}
-            
-
-        \end{column}
-    \end{columns}
+        % Study 2
+        \node[study,fill=accentTeal] (s2) at (5,1.2) {
+            \Large\faMicrochip\\[4pt]
+            \normalsize\textbf{Study 2.A}\\[2pt]
+            \small Pure QPU\\
+            Decomposition\\[4pt]
+            \scriptsize Variant 2.A\\
+        };
+        
+        % Study 3
+        \node[study,fill=accentGreen] (s3) at (10,1.2) {
+            \Large\faRocket\\[4pt]
+            \normalsize\textbf{Study 2.B}\\[2pt]
+            \small Quantum\\
+            Improvement\\[4pt]
+            \scriptsize Variant 2.B\\
+        };
+        
+        % Arrows
+        \draw[->,very thick,primaryBlue!60] (s1.east) -- (s2.west);
+        \draw[->,very thick,accentTeal!60] (s2.east) -- (s3.west);
+    \end{tikzpicture}
+    
+    \vspace{0.5cm}  % Increased from 0.5cm
+    
+    \begin{tikzpicture}[
+        study/.style={rounded corners=8pt,minimum width=4.2cm,minimum height=2.5cm,
+                     font=\scriptsize,align=center,text=white,
+                     drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}},
+        legend/.style={rounded corners=6pt,fill=white,draw=mutedGray,align=center,font=\scriptsize,inner sep=6pt}
+    ]
+        % Study 1
+        \node[rounded corners=8pt,fill=lightBg,draw=mutedGray,line width=1.2pt,
+              text width=4.0cm,minimum height=2.1cm,align=center,inner sep=6pt] (s1) at (0,-2.30) {
+            \centering\footnotesize
+            \textbf{Research Question:}\\[4pt]
+            \textit{How do D-Wave hybrid solvers perform on \textbf{well-structured linear} problems compared to state-of-the-art classical solvers?}
+        };
+        
+        % Study 2
+        \node[rounded corners=8pt,fill=lightBg,draw=mutedGray,line width=1.2pt,
+              text width=4.0cm,minimum height=2.1cm,align=center,inner sep=6pt] (s2) at (5,-2.30) {
+            \centering\footnotesize
+            \textbf{Research Question:}\\[4pt]
+                \textit{How can we investigate the performance of the Quantum Annealer without having to use the black box hybrid solvers?}
+        };
+        
+        % Study 3
+        \node[rounded corners=8pt,fill=lightBg,draw=mutedGray,line width=1.2pt,
+              text width=4.0cm,minimum height=2.1cm,align=center,inner sep=6pt] (s3) at (10,-2.30) {
+            \centering\footnotesize
+            \textbf{Research Question:}\\[4pt]
+                \textit{Does quantum annealing provide a \textbf{practical improvement} on \textbf{frustrated} crop rotation problems where classical solvers struggle?}
+        };
+        
+    \end{tikzpicture}
+    
 \end{frame}
 
 % ============================================================================
-% SLIDE 5: KEY RESULTS
+% SLIDE 5: KEY RESULTS - THREE STUDIES COMPARISON
 % ============================================================================
-\begin{frame}{Key Results}
-    \framesubtitle{Performance Depends on Problem Formulation}
+\begin{frame}{Key Results: Classical vs Quantum Performance}
+    \framesubtitle{Three Studies, Three Different Conclusions}
     
-    \centering
-\small
-\begin{tabular}{lccc}
-\toprule
-\textbf{Metric} & \textbf{Study 1: Hybrid} & \textbf{Study 2: Pure QPU} & \textbf{Study 3: Rotation} \\
-& \textit{(Binary Alloc.)} & \textit{(Decomposition)} & \textit{(Multi-Period)} \\
-\midrule
-Max Variables & 27,027 & 27,027 & 16,200 \\
-Gurobi Time & \textbf{1.15s} & 0.32s & 300s (timeout) \\
-D-Wave Total Time & 11.04s & 3,495s & 996s \\
-Pure QPU Time & 35ms & 21.8s & 10.9s (1.1\%) \\
-Solution Quality & \textcolor{accentGreen}{0\% gap} & 31.8--57.1\% gap & \textbf{3.80$\times$ better} \\
-Winner & \textcolor{accentGreen}{\textbf{Gurobi}} & \textcolor{accentGreen}{\textbf{Gurobi}} & \textcolor{primaryBlue}{\textbf{QPU}} \\
-Chain Break Rate & -- & $<$2\% & $<$2\% \\
-\bottomrule
-\end{tabular}
-\vspace{0.3cm}
+\vspace{-0.3cm}
+\begin{columns}[T]
 
-\begin{columns}
+% Study 1.A Column
 \begin{column}{0.32\textwidth}
+\begin{block}{\centering\small\faServer\ Study 1.A: Hybrid Solvers}
+\vspace{0.1cm}
+\textbf{\scriptsize Problem:} Variant A (Linear)\\
+\textbf{\scriptsize Scale:} 10--1,000 farms
+
+\vspace{0.15cm}
+\textbf{\scriptsize Gurobi:}
+\begin{itemize}\tiny
+    \item[\textcolor{accentGreen}{\faCheck}] Optimal in \textbf{$<$1.2s}
+    \item[\textcolor{accentGreen}{\faCheck}] 0\% MIP gap
+\end{itemize}
+
+\textbf{\scriptsize D-Wave Hybrid:}
+\begin{itemize}\tiny
+    \item[\textcolor{warmOrange}{\faTimes}] 5.3--5.5s constant
+    \item[\textcolor{warmOrange}{\faTimes}] QPU only 1.3\% of time
+\end{itemize}
+
+\vspace{0.1cm}
 \centering
-\begin{keybox}
-\textcolor{accentGreen}{\Large\textbf{Gurobi wins}}\\
-\scriptsize Linear MIP solved\\
-\scriptsize optimally in $<$2s
-\end{keybox}
+\textcolor{accentGreen}{\large\faTrophy}\\
+\tiny\textbf{Winner: Gurobi}
+\end{block}
 \end{column}
+
+% Study 2.A Column
 \begin{column}{0.32\textwidth}
+\begin{block}{\centering\small\faMicrochip\ Study 2.A: Pure QPU}
+\vspace{0.1cm}
+\textbf{\scriptsize Problem:} Variant A (Linear)\\
+\textbf{\scriptsize Scale:} 10--1,000 farms
+
+\vspace{0.15cm}
+\textbf{\scriptsize QPU Performance:}
+\begin{itemize}\tiny
+    \item[\textcolor{accentGreen}{\faCheck}] Linear $O(f)$ scaling
+    \item[\textcolor{accentGreen}{\faCheck}] $<$2\% chain breaks
+\end{itemize}
+
+\textbf{\scriptsize Bottleneck:}
+\begin{itemize}\tiny
+    \item[\textcolor{alertRed}{\faTimes}] 95--99\% embedding overhead
+    \item[\textcolor{warmOrange}{\faTimes}] 31--57\% solution gap
+\end{itemize}
+
+\vspace{0.1cm}
 \centering
-\begin{warnbox}
-\textcolor{warmOrange}{\Large\textbf{95--99\%}}\\
-\scriptsize Embedding overhead\\
-\scriptsize dominates QPU time
-\end{warnbox}
+\textcolor{accentGreen}{\large\faTrophy}\\
+\tiny\textbf{Winner: Gurobi}
+\end{block}
 \end{column}
+
+% Study 2.B Column
 \begin{column}{0.32\textwidth}
+\begin{block}{\centering\small\faRocket\ Study 2.B: Rotation}
+\vspace{0.1cm}
+\textbf{\scriptsize Problem:} Variant B (Quadratic)\\
+\textbf{\scriptsize Scale:} 5--200 farms
+
+\vspace{0.15cm}
+\textbf{\scriptsize Gurobi:}
+\begin{itemize}\tiny
+    \item[\textcolor{alertRed}{\faTimes}] 85\% timeout (300s)
+    \item[\textcolor{alertRed}{\faTimes}] 16,308\% avg MIP gap
+\end{itemize}
+
+\textbf{\scriptsize QPU Hierarchical:}
+\begin{itemize}\tiny
+    \item[\textcolor{accentGreen}{\faCheck}] Completes all instances
+    \item[\textcolor{accentGreen}{\faCheck}] \textbf{3.80$\times$} better benefit
+\end{itemize}
+
+\vspace{0.1cm}
 \centering
-\begin{resultbox}
-\textcolor{accentTeal}{\Large\textbf{3.80$\times$}}\\
-\scriptsize QPU benefit on\\
-\scriptsize frustrated QUBO
-\end{resultbox}
+\textcolor{primaryBlue}{\large\faTrophy}\\
+\tiny\textbf{Winner: QPU}
+\end{block}
 \end{column}
+
 \end{columns}
+
+\vspace{0.3cm}
+\begin{keybox}
+\centering
+\small\textbf{Key Insight:} Neither approach universally dominates. Optimal solver depends on \textbf{problem structure} (linear vs quadratic, frustrated constraints), not just size.
+\end{keybox}
 \end{frame}
 
 % ============================================================================
@@ -558,9 +742,7 @@ Chain Break Rate & -- & $<$2\% & $<$2\% \\
             \end{enumerate}
             
             \vspace{0.3cm}
-            \begin{keyinsight}[Take-Home Message]
-                \scriptsize Quantum annealing provides \textbf{practical advantage} for multi-objective agricultural optimization with frustrated constraints.
-            \end{keyinsight}
+            
         \end{column}
         
         \begin{column}{0.50\textwidth}
@@ -576,15 +758,12 @@ Chain Break Rate & -- & $<$2\% & $<$2\% \\
                 \node[app] at (0,-1.95) {\faCity\ \textbf{Urban Planning:} Resource allocation};
             \end{tikzpicture}
             
-            \vspace{0.3cm}
-            \textbf{SDG Impact:}
-            \begin{itemize}\scriptsize
-                \item \textbf{SDG 2}: Maximize nutrition, food security
-                \item \textbf{SDG 12}: Reduce waste, sustainable production
-                \item \textbf{SDG 13}: Lower emissions, climate resilience
-            \end{itemize}
         \end{column}
     \end{columns}
+\begin{keyinsight}[Take-Home Message]
+\centering
+                \scriptsize Quantum annealing is a valid choice for multi-objective agricultural optimization with frustrated constraints.
+            \end{keyinsight}
 \end{frame}
 
 % ============================================================================
