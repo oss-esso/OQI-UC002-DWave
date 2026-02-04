@@ -2229,9 +2229,13 @@ def load_study1_hybrid_data() -> dict | None:
     Load Study 1: Comprehensive benchmark data (CQM/BQM vs Gurobi).
     
     Returns a dictionary with aggregated data by problem scale (n_patches).
+    
+    NOTE: Gurobi data is loaded from QPU benchmark ground_truth to ensure consistency
+    with other plots (benchmark_comprehensive_time uses the same source).
     """
     import json
     
+    # Load D-Wave CQM/BQM data from COMPREHENSIVE benchmark
     benchmark_dir = PROJECT_ROOT / "Benchmarks" / "COMPREHENSIVE"
     candidates = list(benchmark_dir.glob("comprehensive_benchmark_configs_dwave_*.json"))
     
@@ -2248,6 +2252,28 @@ def load_study1_hybrid_data() -> dict | None:
     except Exception as e:
         print(f"  [WARN] Error loading Study 1 data: {e}")
         return None
+    
+    # Load Gurobi ground_truth from QPU benchmark files (for consistency with other plots)
+    qpu_results_dir = PROJECT_ROOT / "@todo" / "qpu_benchmark_results"
+    small_scale_file = qpu_results_dir / "qpu_benchmark_20251201_160444.json"
+    large_scale_file = qpu_results_dir / "qpu_benchmark_20251201_200012.json"
+    
+    gurobi_ground_truth: dict[int, dict] = {}
+    for qpu_file in [small_scale_file, large_scale_file]:
+        if qpu_file.exists():
+            try:
+                with open(qpu_file, 'r', encoding='utf-8') as f:
+                    qpu_data = json.load(f)
+                for result in qpu_data.get('results', []):
+                    n_farms = result.get('n_farms', 0)
+                    gt = result.get('ground_truth', {})
+                    if gt and n_farms > 0:
+                        gurobi_ground_truth[n_farms] = {
+                            'time': gt.get('solve_time', 0),
+                            'obj': gt.get('objective', 0),
+                        }
+            except Exception as e:
+                print(f"  [WARN] Error loading QPU benchmark for Gurobi ground truth: {e}")
     
     # Extract patch results and aggregate by scale
     patch_results = data.get('patch_results', [])
@@ -2268,10 +2294,12 @@ def load_study1_hybrid_data() -> dict | None:
         
         solvers = r.get('solvers', {})
         
-        # Gurobi (CQM formulation)
-        if 'gurobi' in solvers and solvers['gurobi'].get('success'):
-            data_by_size[n_units]['gurobi_time'].append(solvers['gurobi'].get('solve_time', 0))
-            data_by_size[n_units]['gurobi_obj'].append(solvers['gurobi'].get('objective_value', 0))
+        # Gurobi from QPU benchmark ground_truth (for consistency)
+        if n_units in gurobi_ground_truth:
+            gt = gurobi_ground_truth[n_units]
+            if gt['time'] > 0:
+                data_by_size[n_units]['gurobi_time'].append(gt['time'])
+                data_by_size[n_units]['gurobi_obj'].append(gt['obj'])
         
         # D-Wave CQM
         if 'dwave_cqm' in solvers:
@@ -2284,7 +2312,7 @@ def load_study1_hybrid_data() -> dict | None:
                 data_by_size[n_units]['dwave_cqm_qpu'].append(qpu_time)
                 data_by_size[n_units]['dwave_cqm_total'].append(total_time)
         
-        # Gurobi (QUBO formulation)
+        # Gurobi (QUBO formulation) - keep from comprehensive benchmark
         if 'gurobi_qubo' in solvers and solvers['gurobi_qubo'].get('success'):
             data_by_size[n_units]['gurobi_qubo_time'].append(solvers['gurobi_qubo'].get('solve_time', 0))
             data_by_size[n_units]['gurobi_qubo_obj'].append(solvers['gurobi_qubo'].get('objective_value', 0))
@@ -2300,7 +2328,8 @@ def load_study1_hybrid_data() -> dict | None:
                 data_by_size[n_units]['dwave_bqm_qpu'].append(qpu_time)
                 data_by_size[n_units]['dwave_bqm_total'].append(total_time)
     
-    n_patches = sorted(data_by_size.keys())
+    # Only include scales that have Gurobi ground truth data for continuous lines
+    n_patches = sorted([n for n in data_by_size.keys() if n in gurobi_ground_truth])
     if not n_patches:
         return None
     
@@ -2369,7 +2398,7 @@ def plot_study1_hybrid_solve_time(hybrid_data: dict | None, output_dir: Path | N
               label='D-Wave BQM', markeredgecolor='white', markeredgewidth=1, alpha=0.9)
     
     # Timeout reference
-    ax.axhline(y=300, color='gray', linestyle='--', linewidth=2, alpha=0.6, label='Timeout (300s)')
+    ax.axhline(y=100, color='gray', linestyle='--', linewidth=2, alpha=0.6, label='Timeout (100s)')
     
     ax.set_xlabel('Number of Farms')
     ax.set_ylabel('Solve Time (seconds)')
