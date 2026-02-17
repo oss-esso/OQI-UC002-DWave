@@ -120,10 +120,10 @@ where $G_i$ are the goals above and $w_i$ are the weights we associate to them.
 
 To solve this multi-objective formulation, we transform it into a Mixed-Integer Linear Program (MILP) \cite{Dantzig1951}, a well-studied class of optimization problems solved efficiently by state-of-the-art solvers like Gurobi \cite{gurobi2023}, as demonstrated in \cite{esteso_sustainable_2023}.
 
-Each goal $G_i$ is formulated as a linear combination of decision variables, weighted according to stakeholder preferences or policy priorities. The constraints encode physical limitations (available land area), agronomic requirements (minimum planting areas, crop compatibility), nutritional targets (food group diversity, dietary adequacy), and environmental bounds (emissions thresholds, resource limits). The parameters that define these constraints—including nutritional scores, environmental impacts, land availability, and dietary requirements—are derived from established databases and nutritional guidelines, ensuring the model reflects real-world agricultural and nutritional considerations.
+Each goal $G_i$ is formulated as a linear combination of decision variables, weighted according to stakeholder preferences or policy priorities. The constraints encode physical limitations (available land area), agronomic requirements (minimum planting areas, crop compatibility), nutritional targets (food group diversity, dietary adequacy), and environmental bounds (emissions thresholds, resource limits). The parameters that define these constraints -- including nutritional scores, environmental impacts, land availability, and dietary requirements -- are derived from established databases and nutritional guidelines, ensuring the model reflects real-world agricultural and nutritional considerations.
 
 \paragraph{Decision Variables}
-Let $A_{f,c}$ denote the area—in hectares—assigned to food $c$ on farm $f$, whether it is a crop or an animal.
+Let $A_{f,c}$ denote the area in hectares assigned to food $c$ on farm $f$, whether it is a crop or an animal.
 Introduce auxiliary binary variables $Y_{f,c}$, where:
 \begin{equation}
 Y_{f,c} = \begin{cases}
@@ -139,7 +139,7 @@ U_c = \begin{cases}
 \end{cases}
 \end{equation}
 The variables $U_c$ are essential for correctly enforcing food group diversity constraints, which require counting the number of \textit{distinct} foods selected rather than the total number of plot-crop assignments.
-With this formulation the problem is now expressed as a MILP: the area $A_{f,c} \in [0, A_{max}]$\footnote{The minimum area here is set to 0 as it is the lowest bound when not planted, but the interval could also be expressed as the disjoint $\{0\}\cup[A_{c, min}, A_{max}]$ if the minimum area is relevant—for example when considering to build shelter for animals} is now expressed through the combination of a (semi)continuous variable $A_{f,c} \in [-\infty, A_{max}]$ and a binary variable $Y_{f,c}$. 
+With this formulation the problem is now expressed as a MILP: the area $A_{f,c} \in [0, A_{max}]$\footnote{The minimum area here is set to 0 as it is the lowest bound when not planted, but the interval could also be expressed as the disjoint $\{0\}\cup[A_{c, min}, A_{max}]$ if the minimum area is relevant, for example when considering to build shelter for animals.} can then be replaced by the combination of a (semi-)continuous variable $A_{f,c} \in [-\infty, A_{max}]$ and the binary variable $Y_{f,c}$ as the product $Y_{f,c} \cdot A_{f,c} \in [0, A_{max}]$. 
 
 \paragraph{Parameters}
 To provide a model that is as close as possible to real-world scenarios, the following parameters will be used to characterize our data:
@@ -162,8 +162,7 @@ To provide a model that is as close as possible to real-world scenarios, the fol
 \input{diagram_hardness}
 
 
-Classical MILP solvers have achieved remarkable sophistication through the systematic integration of several foundational algorithmic components, such as branch-and-bound methodology, cutting-plane techniques (branch-and-cut), column generation (branch-and-price), primal heuristic strategies \cite{reference missing}. The branch-and-bound algorithm forms the cornerstone of modern MILP solvers, employing a recursive partitioning strategy that systematically explores the integer feasible region through variable fixation and continuous LP relaxations at each node of the enumeration tree \cite{achterberg2007constraint, wolsey1998integer}. The algorithm's efficiency derives from its pruning mechanism, whereby nodes with relaxation bounds that cannot improve upon the current incumbent solution are eliminated, thereby substantially reducing the computational search space.
-
+Classical MILP solvers have achieved remarkable sophistication through the systematic integration of several foundational algorithmic components, such as branch-and-bound methodology, cutting-plane techniques (branch-and-cut), column generation (branch-and-price), primal heuristic strategies \cite{nemhauser1988integer, nemhauser1999integer}. The branch-and-bound algorithm forms the cornerstone of modern MILP solvers, employing a recursive partitioning strategy that systematically explores the integer feasible region through variable fixation and continuous LP relaxations at each node of the enumeration tree \cite{achterberg2007constraint, wolsey1998integer}. The algorithm's efficiency derives from its pruning mechanism, whereby nodes with relaxation bounds that cannot improve upon the current incumbent solution are eliminated, thereby substantially reducing the computational search space.
 
 
 Leading commercial implementations, include IBM CPLEX and Gurobi Optimizer \cite{cplex2023, gurobi2023}.
@@ -175,7 +174,7 @@ Despite their remarkable sophistication, classical MILP solvers face several fun
 
 \item LP relaxation tightness represents a primary concern, as weak relaxations with large integrality gaps force the branch-and-bound algorithm to explore extensive enumeration trees before effective pruning can occur~\cite{nemhauser1999integer}.
 
-\item While cutting-plane methods can strengthen these relaxations, the computational overhead of cut generation - including the solution of auxiliary linear programs and execution of combinatorial separation algorithms - can itself become prohibitively expensive, particularly when yielding diminishing marginal improvements~\cite{mitchell2002cutting}.
+\item While cutting-plane methods can strengthen these relaxations, the computational overhead of cut generation -- including the solution of auxiliary linear programs and execution of combinatorial separation algorithms -- can itself become prohibitively expensive, particularly when yielding diminishing marginal improvements~\cite{mitchell2002cutting}.
 
 \item Branch-and-bound tree explosion constitutes another critical limitation, where suboptimal variable selection and node selection heuristics may cause exponential growth in the number of subproblems, consuming substantial computational memory and potentially exhausting available system resources before optimal solutions are identified~\cite{linderoth2005anatomy}.
 
@@ -191,19 +190,19 @@ Despite their remarkable sophistication, classical MILP solvers face several fun
 
 \subsection{Description of the potential quantum computing solution}\label{PoC}
 
-The optimization model of interest (e.g.\ \cite{esteso_sustainable_2023}) is typically posed as a mixed-integer linear program (MILP): linear cost terms subject to hard inequality constraints. Industrial MILP solvers such as Gurobi exploit the linear structure and the combinatorial structure of integer variables to produce effective exact and heuristic methods. However, many physically- and quantum-inspired methods operate natively on unconstrained, often nonlinear cost landscapes - most notably the Quadratic Unconstrained Binary Optimization (QUBO) formulation, which is equivalent to a classical interacting-spin model.
+The optimization model of interest (e.g.\ \cite{esteso_sustainable_2023}) is posed as a mixed-integer linear program (MILP): a mathematical program that minimizes a linear objective function subject to linear equality and inequality constraints, where some decision variables are restricted to integer or binary values. Industrial MILP solvers such as Gurobi exploit the linear structure and the combinatorial structure of integer variables to produce effective exact and heuristic methods. However, many physically- and quantum-inspired methods operate natively on unconstrained, often nonlinear cost landscapes -- most notably the Quadratic Unconstrained Binary Optimization (QUBO) formulation, which is equivalent to a classically interacting spin model.
 
 Converting a MILP into QUBO usually proceeds in two steps: (1) represent real-valued variables by binary arrays up to some chosen precision, and (2) turn constraints into soft quadratic penalty terms \cite{wang_quantum-inspired_2022}. That conversion is convenient for annealers and Ising-type machines, but it typically destroys the original problem structure that MILP solvers exploit.
 
-This loss of structure matters because both MILP and QUBO formulations are NP-hard in general \cite{FBarahona_1982}; no polynomial-time algorithm can guarantee optimality (or a bounded approximation ratio) in the worst case; generic algorithms perform evenly across a class of problems, and only by exploiting structure can one expect systematic gains \cite{NFL,ronnow2014defining}. In practice, then, a straightforward conversion of a carefully structured MILP into a penalized QUBO often yields instances on which classical solvers perform poorly - not because the solvers are weak in general, but because the conversion removed exploitable structure and altered the problem’s landscape.
+This loss of structure matters because both MILP and QUBO formulations are NP-hard in general \cite{FBarahona_1982} and it is believed that no polynomial-time algorithm can guarantee optimality (or a bounded approximation ratio) in the worst case. Also, generic algorithms perform evenly across a class of problems (e.g.\ NP-hard problems), and only by exploiting structure, e.g.\ the one MILP solvers use, one can expect systematic gains \cite{NFL,ronnow2014defining}. In practice, then, a straightforward conversion of a carefully structured MILP into a penalized QUBO often yields instances on which classical solvers perform poorly -- not because the solvers are weak in general, but because the conversion removed exploitable structure and altered the problem’s landscape.
 
-That observation motivates the search for cases where quantum or quantum-inspired devices do have an advantage. Several studies show that when a problem or a portion of it maps to a QUBO with features favourable to annealing (for example sparse interactions, locally hard substructures, or instances that admit advantageous minor embeddings) quantum algorithms can outperform a given classical algorithm on the QUBO formulation \cite{ajagekar_quantum_2019,ajagekar_quantum_2020,abbas_quantum_2023}.
+That observation motivates the search for cases where quantum or quantum-inspired devices may have an advantage. Several studies show that when a problem or a portion of it maps to a QUBO with features favourable to annealing (for example sparse interactions, locally hard substructures, or instances that admit advantageous minor embeddings) quantum algorithms can outperform a given classical algorithm on the QUBO formulation \cite{ajagekar_quantum_2019,ajagekar_quantum_2020,abbas_quantum_2023}.
 
-Still, the literature is cautious: demonstrations to date document potential or limited quantum advantage rather than a general, hardware-agnostic breakthrough \cite{hoefler2023disentanglinghypepracticalityrealistically,ronnow2014defining}. The distinction is important and operational: we define potential quantum advantage as a speedup relative to a specific classical algorithm or set of classical algorithms, and limited quantum advantage as a speedup relative to classical algorithms that implement the same algorithmic approach on classical hardware.
+Still, the literature is cautious: demonstrations to date document ``potential'' or ``limited quantum advantage'' rather than a general, hardware-agnostic breakthrough \cite{hoefler2023disentanglinghypepracticalityrealistically,ronnow2014defining}. The distinction is important and operational: potential quantum advantage is defined as a speedup relative to a specific classical algorithm or set of classical algorithms, and limited quantum advantage as a speedup relative to classical algorithms that implement the same algorithmic approach on classical hardware.
 
-Practical benchmarking also exposes important caveats. Embedding overheads - the cost of mapping problem graphs to the sparse connectivity of current QPUs - are significant and can dominate runtimes, constraining effective problem size and eroding any raw speedup from the QPU itself \cite{ReinholdssonOdelius2023,naghmouchi_mixed_2024}. On the other hand, hybrid quantum–classical strategies - where a classical decomposition exposes structure and a quantum component tackles the hard subproblems - appear especially promising; they leverage classical pre/post-processing to preserve exploitable structure while using quantum resources where they are most likely to help \cite{franco_efficient_2023,VallejoBenitezCano2021}.
+Practical benchmarking also exposes important caveats. Embedding overheads -- the cost of mapping problem graphs to the sparse connectivity of current QPUs -- are significant and can dominate runtimes, constraining effective problem size and eroding any raw speedup from the QPU itself \cite{ReinholdssonOdelius2023,naghmouchi_mixed_2024}. On the other hand, hybrid quantum-classical strategies -- where a classical decomposition exposes structure and a quantum component tackles the hard subproblems -- appear especially promising; they leverage classical pre/post-processing to preserve exploitable structure while using quantum resources where they are most likely to help \cite{franco_efficient_2023,VallejoBenitezCano2021}.
 
-Taken together, these points argue for a cautious, structure-aware approach. Rather than expecting a blanket advantage, one should look for the structural components of an application that are classically challenging and naturally expressed as QUBO subproblems; those are the places where potential or limited quantum advantage may realistically appear \cite{ajagekar_quantum_2020,ronnow2014defining}. For domain problems such as food production - where bottlenecks are combinatorial, high-dimensional, and time-sensitive - hybrid quantum-classical pipelines can therefore represent a research-driven opportunity: they may accelerate decision-making and reduce decomposition costs in ways that pure classical solvers cannot, provided embedding and modeling overheads are managed appropriately
+Taken together, these points argue for a cautious, structure-aware approach. Rather than expecting a blanket advantage, one should look for the structural components of an application that are classically challenging and naturally expressed as QUBO subproblems; those are the places where potential or limited quantum advantage may realistically appear \cite{ajagekar_quantum_2020,ronnow2014defining}. For domain problems such as food production -- where bottlenecks are combinatorial, high-dimensional, and time-sensitive -- hybrid quantum-classical pipelines can therefore represent a research-driven opportunity: they may accelerate decision-making and reduce decomposition costs in ways that pure classical solvers cannot, provided embedding and modeling overheads are managed appropriately.
 
 \section{Implementation of a proof of concept}
 
@@ -232,12 +231,12 @@ Our Proof of Concept consists of two main components: \textbf{scenarios} and \te
 The solvers are structured as follows:
 \begin{enumerate}
     \item Classical Solvers\begin{itemize}
-        \item Linear problems are modeled via PuLP, which offers - among others - these two solvers:
+        \item Linear problems are modeled via PuLP, which offers -- among others -- these two solvers:
         \begin{itemize}
             \item Gurobi \cite{gurobi2023}
             \item CPLEX \cite{cplex2023} (used as fallback)
         \end{itemize}
-        \item Non Linear problems are modeled via Pyomo \cite{bynum2021pyomo}, which offers - among other solvers:
+        \item Non Linear problems are modeled via Pyomo \cite{bynum2021pyomo}, which offers -- among other solvers:
         \begin{itemize}
             \item Gurobi \cite{gurobi2023}
             \item SCIP \cite{BolusaniEtal2024OO} (used as fallback)
@@ -246,7 +245,7 @@ The solvers are structured as follows:
     \item \begin{itemize}
         \item Quantum Solvers
         \begin{itemize}
-            \item Dwave Leap Hybrid Solver \cite{DwaveLeapHybrid} which - among others - contains:
+            \item Dwave Leap Hybrid Solver \cite{DwaveLeapHybrid} which -- among others -- contains:
             \begin{itemize}
                 \item LeapHybridCQMSampler for Constrained Quadratic Model (CQM) solver
                 \item LeapHybridBQMSampler for Binary Quadratic Model (CQM) solver, which is used to solve the QUBO form of the problems
@@ -358,14 +357,14 @@ $10$--$20$  & $\sim 5$  & $\sim 20$ \\
 $>20$       & $\sim 7$  & $\sim 25$ \\
 
 \end{tabular}
-\caption{Distribution of farm sizes and land shares in the Global South}
+\caption{Distribution of farm sizes and land shares in low-mid to low income countries}
 \label{tab:farm_size_distribution}
 \end{table}
 
 
 \paragraph{Weights:}
 
-To satisfy the convexity constraint, the weights were chosen to be 
+The weights were chosen to be:
 
 
 
@@ -377,6 +376,12 @@ w_{\text{affordability}} &= 0.15 \\
 w_{\text{sustainability}} &= 0.15
 \end{align*}
 
+to maintain L-1 Normalization:
+
+\begin{equation}
+    \sum_i |w_i| =1
+\end{equation}
+
 
 
 \subsection{Benchmarking strategy}
@@ -386,7 +391,7 @@ w_{\text{sustainability}} &= 0.15
 
 Due to how the model is  formulated, the total area is a parameter known \textit{a priori}; this total area is going to get subdivided either into a number of farms with uneven area, or into a number of uniformly sized plots.
 
-Additional information regarding the difference between the two choices can be found in the appendix \ref{sec:appx}.
+Additional information regarding the difference between the two choices can be found in the Methods \ref{sub:refinement}.
 
 \subsubsection{Overview}
 The benchmark will be comprehensive of two formulations:
@@ -417,7 +422,7 @@ where the composite value $B_c$ for crop $c$ is defined as:
 
 $$B_c = w_{nv} \cdot v_{nv,c} + w_{nd} \cdot v_{nd,c} - w_{ei} \cdot v_{ei,c} + w_{af} \cdot v_{af,c} + w_{su} \cdot v_{su,c}$$
 
-\textbf{Note:} This is equivalent to \ref{eq:linear_obj} after appropriate renormalization.
+% \textbf{Note:} This is equivalent to \ref{eq:linear_obj} after appropriate renormalization.
 
 \paragraph{Binary Formulation Objective}
 
@@ -617,7 +622,7 @@ Resource estimation for quantum annealing applications differs fundamentally fro
 
 \subsubsection{Problem Scaling and Variable Requirements}
 
-The number of binary decision variables scales with the product of farms (or patches) and crops. For the binary crop allocation formulation (Variant A), the total variable count is:
+The number of binary decision variables scales with the product of farms (or patches) and crops. For the binary crop allocation formulation, the total variable count is:
 \begin{equation}
 N_{\text{vars}} = |\mathcal{F}| \times |\mathcal{C}| + |\mathcal{C}|
 \end{equation}
@@ -689,7 +694,7 @@ The chain length column indicates the average number of physical qubits required
 % \end{tabular}
 % \end{table}
 
-% The apparent paradox - QPU times orders of magnitude faster than hybrid or classical solvers - reflects that pure QPU time excludes embedding overhead and post-processing. Total wall-clock time for QPU-based solutions is dominated by classical preprocessing (embedding computation: 95--99\% of runtime) rather than quantum annealing itself \cite{reinholdsson2023embedding, mcgeoch2020dwave}.
+% The apparent paradox -- QPU times orders of magnitude faster than hybrid or classical solvers -- reflects that pure QPU time excludes embedding overhead and post-processing. Total wall-clock time for QPU-based solutions is dominated by classical preprocessing (embedding computation: 95--99\% of runtime) rather than quantum annealing itself \cite{reinholdsson2023embedding, mcgeoch2020dwave}.
 
 \subsubsection{Empirical Simulated Annealing Benchmarks}
 
@@ -697,16 +702,25 @@ To ground our resource estimates in empirical data, we conducted simulated annea
 
 \paragraph{BP (Binary Patch) Formulation}
 
-The BP formulation uses pure binary variables $Y_{p,c} \in \{0,1\}$ and $U_c \in \{0,1\}$, making it directly compatible with QUBO/quantum annealing \cite{lucas2014ising, glover2018tutorial}. Total variables scale as $n_{\text{patches}} \times n_{\text{foods}} + n_{\text{foods}}$.
+The BP formulation uses pure binary variables $Y_{p,c} \in \{0,1\}$ and $U_c \in \{0,1\}$, making it directly compatible with QUBO/quantum annealing \cite{lucas2014ising, glover2018tutorial}. Total variables scale as 
+\begin{equation}
+N_{\text{vars}} = |\mathcal{F}| \times |\mathcal{C}| + |\mathcal{C}|
+\end{equation}
+
 
 \paragraph{MIP (Farm-level) Formulation with Discretization}
 
-The original MIP formulation with continuous area variables $A_{f,c}$ cannot be directly solved by SA. To enable QUBO conversion, we discretize areas into $k$ binary levels \cite{chancellor2019domain}: $$A_{f,c} \approx \sum_{l=1}^{k} (L_f/k) \cdot a_{f,c,l} \quad\text{ where }a_{f,c,l} \in \{0,1\}$$. This significantly increases variable count to $n_{\text{farms}} \times n_{\text{foods}} \times k + n_{\text{farms}} \times n_{\text{foods}} + n_{\text{foods}}$.
+The original MIP formulation with continuous area variables $A_{f,c}$ cannot be directly solved by SA. To enable QUBO conversion, we discretize areas into $k$ binary levels \cite{chancellor2019domain}: $$A_{f,c} \approx \sum_{l=1}^{k} (L_f/k) \cdot a_{f,c,l} \quad\text{ where }a_{f,c,l} \in \{0,1\}$$ This significantly increases variable count to 
+
+\begin{equation}
+N_{\text{vars}} = |\mathcal{F}| \times |\mathcal{C}|\times k + |\mathcal{F}| \times |\mathcal{C}| + |\mathcal{C}|
+\end{equation}
 
 \begin{table}[H]
 \centering
 \caption{Empirical SA runtime measurements (100 reads, 1000 sweeps)}
 \label{tab:sa_empirical}
+\begin{adjustbox}{width=\textwidth}
 \begin{tabular}{@{}lccccc@{}}
 \toprule
 \textbf{Formulation} & \textbf{Scale} & \textbf{Variables} & \textbf{Interactions} & \textbf{SA Time (s)} & \textbf{ms/var} \\
@@ -726,6 +740,7 @@ The original MIP formulation with continuous area variables $A_{f,c}$ cannot be 
  & 50 farms & 6,777 & 295,650 & 26.21 & 3.87 \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 \paragraph{Scaling Analysis}
@@ -740,7 +755,7 @@ The BP formulation is more efficient per variable because it avoids the addition
 
 \paragraph{Comparison with Gurobi}
 
-For context, Gurobi solves the \emph{original} MIP formulation (with continuous $A_{f,c}$ variables) in under 1 second for problems up to 1,000 farms, exploiting the tight LP relaxation \cite{gurobi2023}. However, when Gurobi solves the BP formulation as a pure binary MIP, performance degrades significantly - the same problem that takes 0.1s with MIP may require 10--60s with BP due to the exponential worst-case complexity of branch-and-bound on pure binary problems without strong LP bounds \cite{wolsey1998integer, achterberg2007constraint}.
+For context, Gurobi solves the \emph{original} MIP formulation (with continuous $A_{f,c}$ variables) in under 1 second for problems up to 1,000 farms, exploiting the tight LP relaxation \cite{gurobi2023}. However, when Gurobi solves the BP formulation as a pure binary MIP, performance degrades significantly -- the same problem that takes 0.1s with MIP may require 10--60s with BP due to the exponential worst-case complexity of branch-and-bound on pure binary problems without strong LP bounds \cite{wolsey1998integer, achterberg2007constraint}.
 
 \subsubsection{Hybrid Solver Scaling from Literature}
 
@@ -764,7 +779,7 @@ Recent benchmarking studies provide empirical data on D-Wave hybrid solver perfo
 Key observations:
 \begin{itemize}
     \item The hybrid solver maintains \textbf{near-constant runtime} (3--5 seconds) across problem sizes from 800 to 10,000 variables, demonstrating excellent scaling properties \cite{hrga2024maxcut}.
-    \item For problems below 251 variables, both hybrid and SA consistently achieve \textbf{global optima} \cite{hrga2024maxcut}.
+    \item For specific problems below 251 variables, both hybrid and SA consistently achieve \textbf{global optima} \cite{hrga2024maxcut}.
     \item For larger problems (G-set Max-Cut benchmarks \cite{gset_benchmarks}), hybrid solver solutions are within 1--2\% of best-known values while being 100--200$\times$ faster than quality-focused SA \cite{hrga2024maxcut}.
     \item The Toshiba Simulated Bifurcation Machine (SBM) provides competitive quality at similar speeds to hybrid solvers \cite{goto2019combinatorial, toshiba_sbm}.
 \end{itemize}
@@ -775,8 +790,8 @@ The LeapHybridBQMSampler uses piecewise-linear minimum runtime scaling \cite{dwa
 \begin{equation}
 T_{\text{min}}(n) = \begin{cases}
 3\,\text{s} & n \leq 1024 \\
-3 + 0.0023(n - 1024)\,\text{s} & 1024 < n \leq 4096 \\
-10 + 0.005(n - 4096)\,\text{s} & 4096 < n \leq 10000 \\
+3 + 0.0023(n -- 1024)\,\text{s} & 1024 < n \leq 4096 \\
+10 + 0.005(n -- 4096)\,\text{s} & 4096 < n \leq 10000 \\
 \end{cases}
 \end{equation}
 
@@ -957,20 +972,17 @@ The proof of concept requires the following data categories:
 \begin{enumerate}
 \item \textbf{Population and Nutritional Needs}
 \begin{itemize}
-    \item Demographics: Age, gender distribution, pregnant and lactating women (PLW)
     \item Nutritional requirements: Calories, protein, dietary fats, essential micronutrients per population group
 \end{itemize}
 
 \item \textbf{Food System Parameters}
 \begin{itemize}
-    \item Culturally acceptable foods from the Diet Quality Questionnaire Database
     \item GAIN nLCA scores for nutrition-environment optimization
     \item Market prices for affordability scoring via Nutritional Value Score
 \end{itemize}
 
 \item \textbf{Production Constraints}
 \begin{itemize}
-    \item Crop yields per hectare for selected varieties
     \item Total arable land availability and farm size distribution
     \item Agronomic compatibility constraints between crops
 \end{itemize}
@@ -1006,53 +1018,29 @@ The food production optimization solution targets multiple dimensions of sustain
 
 \textbf{SDG 2 (Zero Hunger):} The solution delivers optimized crop planning outputs that balance nutritional value, affordability, and environmental impact. Through quantum-classical hybrid optimization, the system produces planting assignments across diversified food groups that can be implemented immediately by farming communities. This addresses SDG Target 2.3 (doubling agricultural productivity of small-scale producers) and 2.4 (ensuring sustainable food production systems).
 
-
-
 \textbf{SDG 1 (No Poverty):} By optimizing crop selection toward higher-value, market-appropriate foods, the system enables immediate income increases for small-scale farmers. Household income surveys demonstrate measurable improvements in earnings from optimized crop sales compared to traditional planting patterns. This directly supports Target 1.2 (reducing poverty by at least half).
-
-
-
 
 \textbf{SDG 8 (Decent Work and Economic Growth):} Diversified crop production creates additional employment opportunities in sustainable agriculture, from planting through harvest and post-harvest processing. Employment surveys document new labor positions generated by optimized farming operations, supporting Target 8.5 (full employment and decent work with equal pay).
 
-
-
 \textbf{SDG 9 (Industry, Innovation and Infrastructure):} The deployment of the digital mapping and quantum optimization platform provides stakeholders with accessible technology tools for agricultural planning, directly supporting SDG Target 9.a (facilitating sustainable infrastructure development in developing countries).
-
-
 
 \textbf{SDG 10 (Reduced Inequalities):} Platform design prioritizes accessibility for smallholder farmers, with usage metrics tracking the percentage of small-scale producers accessing quantum planning tools. This addresses Target 10.2 (promoting social inclusion of all).
 
-
-
 \textbf{SDG 17 (Partnerships for the Goals):} Implementation establishes multi-stakeholder partnerships between research institutions, government agencies, NGOs, and farmer cooperatives for technology deployment. Partnership agreements and MOUs document collaboration frameworks, supporting Target 17.16 (enhanced global partnerships).
-
-
 
 \subsubsection{Mid-Term Impacts (2-5 years)}
 
 \textbf{SDG 2 (Zero Hunger):} Sustained implementation of optimized crop plans leads to measurable improvements in micronutrient intake. Biomarker analysis (blood/urine samples) can quantify changes in key nutrients (iron, vitamin A, zinc, folate) among participating households, addressing SDG Target 2.2 (ending all forms of malnutrition). Household Dietary Diversity Scores (HDDS) track the number of food groups consumed, demonstrating improved dietary variety.
 
-
 \textbf{SDG 6 (Clean Water and Sanitation):} Optimized crop selection favoring water-efficient species reduces total agricultural water consumption per season. Water meter readings and irrigation monitoring systems quantify improvements, addressing Target 6.4 (substantially increasing water-use efficiency).
-
-
 
 \textbf{SDG 10 (Reduced Inequalities):} Income inequality among farmers decreases as smallholders adopt optimized practices previously accessible only to larger operations. Gini coefficient calculations track changes in income distribution, supporting Target 10.1 (income growth of bottom 40\%).
 
-
-
 \textbf{SDG 12 (Responsible Consumption and Production):} Farms adopting sustainable production methods increase measurably. Practice surveys and certification records document implementation of environmentally-sound techniques, addressing Target 12.2 (sustainable management of natural resources).
-
-
 
 \textbf{SDG 13 (Climate Action):} The environmental optimization component, when consistently applied, contributes to measurable reductions in CO$_2$ emissions from agricultural activities. This supports climate mitigation efforts while maintaining food security.
 
-
-
 \textbf{SDG 15 (Life on Land):} Biodiversity on participating farmland improves through sustainable land use practices. Ecological surveys measuring species richness and abundance document ecosystem health, addressing Target 15.5 (reducing degradation and halting biodiversity loss).
-
-
 
 \subsubsection{Long-Term Impacts (5-10 years)}
 
@@ -1060,151 +1048,121 @@ The food production optimization solution targets multiple dimensions of sustain
 
 \textbf{SDG 1 (No Poverty):} Poverty rates in farming communities decline measurably as sustained agricultural improvements compound over time. Economic surveys comparing household incomes to national poverty thresholds document the share of farming households moving above poverty lines, approaching Target 1.1 (eradicating extreme poverty).
 
-
-
 \textbf{SDG 3 (Good Health and Well-being):} Reduced malnutrition and improved dietary diversity lower healthcare costs at the community level through decreased incidence of nutrition-related diseases. Average monthly household healthcare expenditure declines measurably, addressing Target 3.9 (reducing deaths and illnesses from pollution and contamination). This creates a positive feedback loop with agricultural productivity.
-
-
 
 \textbf{SDG 8 (Decent Work and Economic Growth):} Agricultural sector contribution to regional GDP increases measurably as productivity gains scale across farming communities. Economic impact assessments document the sector's enhanced role in sustainable growth, supporting Target 8.1 (sustaining per capita economic growth).
 
-
-
 \textbf{SDG 13 (Climate Action):} Cumulative emissions reductions from optimized agricultural systems contribute to global warming mitigation efforts, with measurable impacts on regional climate resilience. GHG monitoring tools, soil tests, and energy-use records document greenhouse gas reduction per farming season, supporting Target 13.2 (integrating climate measures into policies and planning).
-
-
 
 \textbf{SDG 15 (Life on Land):} Soil quality improves on farms using optimized agriculture, preventing land degradation. Soil testing at baseline and regular intervals measures composite indicators (organic matter, nutrients, pH), addressing Target 15.3 (combating desertification and restoring degraded land).
 
+\subsection{SDG Interlinkages: Synergies, Trade-offs, and Mitigation Strategies}
 
+The quantum optimization approach creates a complex network of SDG interlinkages that must be carefully managed to maximize synergies and minimize trade-offs \cite{Fanzo2022,UNFSS_Planet_2023,Sylvester2024}. Understanding these relationships enables responsible innovation that advances holistic sustainable development rather than optimizing narrow metrics at the expense of broader welfare.
 
-\subsubsection{Interlinkages}
+\subsubsection{Primary Synergies}
 
-\begin{itemize}
-\item \textbf{SDG1}\par
-\textbf{Positive Interlinkages:} Poverty reduction enables better access to nutritious food and improved health (SDG 2, SDG 3), supports educational attainment (SDG 4), and strengthens economic participation and productivity (SDG 8).
+Several mutually reinforcing pathways amplify the solution's positive impacts across multiple SDGs simultaneously.
 
-\textbf{Negative Interlinkages \& Mitigation:} Climate policies embedded in the optimization may increase short-term costs for poor households (SDG 13). Mitigation includes phased implementation with transition support, subsidies for sustainable inputs, social protection systems, climate-resilient livelihoods diversification, and ensuring affordability remains a weighted objective in the optimization function across all time horizons.
+The \textbf{nutrition-health-productivity pathway} (SDG 2 $\rightarrow$ SDG 3 $\rightarrow$ SDG 8) creates a virtuous cycle. Optimizing for nutritional density directly improves health outcomes, which in turn enhances workforce productivity and agricultural capacity. This reinforcing loop compounds benefits over time as healthier populations demonstrate greater economic participation and better educational attainment.
 
-\item \textbf{SDG2}\par
-\textbf{Positive Interlinkages:} Better nutrition from diversified crops improves health outcomes and reduces disease burden (SDG 3). Increased agricultural productivity through optimization reduces poverty in rural areas (SDG 1) and creates decent work opportunities (SDG 8). The optimized planning also reduces food waste and resource use (SDG 12).
+The \textbf{poverty-food-economics triangle} interconnects poverty reduction (SDG 1), food security (SDG 2), and economic growth (SDG 8) in a mutually supporting relationship. Agricultural optimization addressing all three simultaneously achieves greater total impact than addressing any single goal in isolation. Higher-value crop selection increases farmer incomes, reducing poverty while diversified production improves nutritional security and generates employment opportunities that drive local economic growth.
 
-\textbf{Negative Interlinkages \& Mitigation:} Without proper environmental constraints in the optimization model, intensive agriculture may increase GHG emissions (SDG 13), strain water resources (SDG 6), and harm terrestrial ecosystems (SDG 15). To mitigate these trade-offs, the optimization explicitly includes environmental impact scores from life-cycle assessments and constrains solutions to minimize land use, water consumption, and carbon footprint while maintaining nutritional adequacy.
+The \textbf{technology-innovation-partnership chain} demonstrates how quantum computing application (SDG 9) strengthens international partnerships (SDG 17) by facilitating cutting-edge technology transfer to developing contexts while building local technical capacity. This pathway enables knowledge sharing, reduces inequalities through accessible technology (SDG 10), and drives economic growth (SDG 8) through innovation adoption.
 
-\item \textbf{SDG3}\par
-\textbf{Positive Interlinkages:} Better health outcomes enable improved agricultural productivity (SDG 2), better educational outcomes (SDG 4), and support economic growth through a healthier workforce (SDG 8).
+The \textbf{climate-ecosystem nexus} shows how environmental optimization constraints simultaneously address climate action (SDG 13), terrestrial ecosystems (SDG 15), water management (SDG 6), and marine ecosystems (SDG 14) through integrated land-use planning. Optimizing for reduced emissions also protects biodiversity, improves water efficiency, and prevents agricultural runoff that degrades aquatic systems.
 
-\textbf{Negative Interlinkages \& Mitigation:} Healthcare infrastructure expansion may increase energy use and emissions (SDG 13) and generate medical waste (SDG 12). Mitigation includes integrating preventive health approaches that reduce infrastructure needs, using renewable energy for health facilities, and implementing waste management systems.
+\subsubsection{Critical Trade-offs and Mitigation Strategies}
 
-\item \textbf{SDG6}\par
-\textbf{Positive Interlinkages:} Improved water access and quality directly enhance health outcomes (SDG 3), and sustainable water management protects ecosystems (SDG 15).
+While the solution generates numerous synergies, several fundamental tensions require active management to prevent negative impacts.
 
-\textbf{Negative Interlinkages \& Mitigation:} Agricultural water use may compete with drinking water needs (SDG 2) in water-scarce regions. Mitigation includes: integrated water resource management, rainwater harvesting systems, drip irrigation technologies, and drought-resistant crop varieties in the optimization portfolio.
+\textbf{Productivity-Environment Tension (SDG 2 vs SDGs 6, 13, 14, 15):}
 
-\item \textbf{SDG8}\par
-\textbf{Positive Interlinkages:} Economic growth reduces poverty (SDG 1) and innovation infrastructure drives job creation (SDG 9).
+The fundamental trade-off between maximizing food production and minimizing environmental impact represents the core challenge of sustainable agriculture. Without explicit constraints, optimization might select high-yield crops that deplete water resources, increase GHG emissions, harm terrestrial ecosystems, or generate agricultural runoff degrading aquatic environments.
 
-\textbf{Negative Interlinkages \& Mitigation:} Economic growth without environmental safeguards may increase emissions (SDG 13). The optimization explicitly constrains environmental impacts while maximizing economic value, balancing growth with sustainability. Long-term mitigation includes mainstreaming environmental safeguards in agricultural policy, carbon pricing or offset mechanisms, and demonstrating that sustainable intensification supports both growth and climate goals.
+\textit{Mitigation:} The optimization framework employs explicit multi-objective formulations that balance nutritional adequacy and affordability with environmental sustainability. Environmental impact scores from life-cycle assessments constrain solutions to minimize land use, water consumption, and carbon footprint while maintaining nutritional adequacy. Pareto analysis reveals optimal balance points where multiple objectives coexist rather than compete. Continuous monitoring ensures environmental constraints remain effective as agricultural practices evolve.
 
-\item \textbf{SDG9}\par
-\textbf{Positive Interlinkages:} Innovation infrastructure drives economic growth and job creation (SDG 8), enables smart planning for sustainable cities (SDG 11), and strengthens partnerships through data sharing (SDG 17).
+\textbf{Technology Access and Digital Divide (SDG 9 vs SDG 10):}
 
-\textbf{Negative Interlinkages \& Mitigation:} Technology production and operation increase energy demand (SDG 13), generate electronic waste (SDG 12), and may worsen inequalities if access is uneven (SDG 10). Mitigation strategies include: using renewable energy for computing infrastructure, designing for minimal computational overhead through efficient hybrid algorithms, providing open-source tools to ensure equitable access, and incorporating training programs to bridge the digital divide.
+While quantum optimization provides powerful capabilities, it risks exacerbating inequalities if access is limited to well-resourced actors. Technology adoption may inadvertently widen the gap between large commercial operations and smallholder farmers, undermining poverty reduction (SDG 1) and equality (SDG 10) goals even while advancing innovation (SDG 9).
 
-\item \textbf{SDG10}\par
-\textbf{Positive Interlinkages:} Reduced inequality lifts vulnerable populations (SDG 1) and fair wages support economic growth (SDG 8).
+\textit{Mitigation:} Access equity requires deliberate design choices including: open-source software releases ensuring zero-cost availability; user-friendly interfaces requiring minimal technical expertise; partnerships with agricultural extension services providing last-mile technology dissemination to smallholder farmers; community-based facilitator models bridging the digital divide; differentiated support mechanisms for smaller farms; cooperative models enabling resource pooling; and progressive pricing structures favoring disadvantaged farmers. Capacity-building programs ensure technology access translates to effective utilization.
 
-\textbf{Negative Interlinkages \& Mitigation:} Poverty reduction efforts that rely heavily on technology adoption may inadvertently widen inequalities if access is uneven (SDG 9, SDG 10). Mitigation includes zero-cost access models, offline-capable tools, agricultural extension partnerships for technology dissemination, community facilitators bridging the digital divide, differentiated support for smaller farms, cooperative models pooling resources, and progressive pricing structures favoring disadvantaged farmers.
+\textbf{Climate Policy Costs (SDG 13 vs SDGs 1, 2, 8):}
 
-\item \textbf{SDG12}\par
-\textbf{Positive Interlinkages:} Responsible consumption reduces emissions (SDG 13) and reduced waste protects ecosystems (SDG 15).
+Environmental optimization may increase short-term costs for implementing sustainable practices, potentially harming poor households and slowing immediate economic growth. The transition to climate-smart agriculture requires upfront investments that may be prohibitive for resource-constrained farmers, creating tension between climate action and poverty reduction.
 
-\textbf{Negative Interlinkages \& Mitigation:} Consumption limits may slow short-term economic growth (SDG 8). Mitigation through: market development for sustainable products commanding premium prices, certification programs adding value, and demonstrating long-term economic benefits of sustainable practices.
+\textit{Mitigation:} Balancing climate goals with poverty reduction and food security requires complementary policy interventions: phased implementation allowing gradual adaptation; transition subsidies protecting vulnerable households during the shift to sustainable practices; technical assistance reducing implementation costs through knowledge transfer; market development for sustainable products commanding premium prices; payments for ecosystem services compensating farmers for environmental benefits they generate; social protection systems providing safety nets during transitions; climate-resilient livelihood diversification reducing farmer vulnerability; and staged optimization ensuring affordability remains a weighted objective across all time horizons. Just transition frameworks ensure equitable distribution of costs and benefits.
 
-\item \textbf{SDG13}\par
-\textbf{Positive Interlinkages:} Climate action drives renewable energy adoption (SDG 7) and protects terrestrial (SDG 15) and marine (SDG 14) ecosystems through reduced agricultural runoff and land conversion.
+\textbf{Conservation-Production Balance (SDG 15 vs SDG 2):}
 
-\textbf{Negative Interlinkages \& Mitigation:} Climate policies and optimization constraints may increase costs for poor households (SDG 1), temporarily limit agricultural expansion options (SDG 2), and slow economic growth during transition (SDG 8). Mitigation requires careful policy design including gradual implementation timelines, subsidies for sustainable inputs, technical assistance for farmers, just transition frameworks ensuring equitable distribution of costs and benefits, investment in climate adaptation alongside mitigation, and continuous optimization refinement balancing affordability with environmental objectives.
+Protecting biodiversity and preventing land degradation may constrain agricultural expansion, creating tension between environmental protection and food security. In land-scarce contexts, preserving natural areas for ecosystem health can limit the area available for food production.
 
-\item \textbf{SDG15}\par
-\textbf{Positive Interlinkages:} Ecosystem protection supports climate action (SDG 13) and forests regulate water cycles (SDG 6).
+\textit{Mitigation:} Resolution requires landscape-level approaches including: sustainable intensification on existing farmland rather than extensification into natural areas; agroforestry and agroecological systems integrating conservation with production; landscape-level planning designating distinct conservation and production zones; restoration of degraded lands for agricultural use; payment schemes compensating farmers for conservation activities; and demonstrating that soil health improvements and ecosystem services support long-term agricultural productivity, aligning conservation with food security objectives.
 
-\textbf{Negative Interlinkages \& Mitigation:} Land conservation may limit agricultural expansion (SDG 2) in land-scarce contexts. Mitigation includes intensification on existing farmland via optimization rather than extensification, agroforestry systems integrating conservation with production, payment for ecosystem services programs compensating farmers for conservation, landscape-level planning balancing production and conservation zones, restoration of degraded lands for agricultural use, and demonstrating that soil health improvements boost long-term productivity, aligning conservation with food security.
+\textbf{Healthcare Infrastructure Expansion (SDG 3 vs SDGs 12, 13):}
 
-\item \textbf{SDG17}\par
-\textbf{Positive Interlinkages:} Effective partnerships facilitate technology transfer and innovation adoption (SDG 9) and strengthen food systems through multi-stakeholder collaboration (SDG 2).
+Improved nutrition drives better health outcomes, but healthcare infrastructure expansion to serve larger populations may increase energy use, generate medical waste, and raise emissions. The solution's success in improving health could paradoxically increase environmental pressures.
 
-\textbf{Negative Interlinkages \& Mitigation:} Unequal partnerships may reinforce power imbalances (SDG 10). Mitigation includes: participatory governance structures, farmer representatives in decision-making bodies, transparent benefit-sharing agreements, and capacity building to equalize negotiating power.
-\end{itemize}
+\textit{Mitigation:} Integrating preventive health approaches reduces infrastructure needs by lowering disease incidence; renewable energy powers health facilities; comprehensive waste management systems handle medical waste safely; and efficiency improvements in healthcare delivery minimize per-capita resource consumption.
+
+\textbf{Economic Growth Without Safeguards (SDG 8 vs SDG 13):}
+
+Agricultural economic growth, if pursued without environmental constraints, may increase emissions and resource consumption. The drive for productivity and income gains could undermine climate goals if environmental impacts are not explicitly managed.
+
+\textit{Mitigation:} The optimization explicitly constrains environmental impacts while maximizing economic value, ensuring growth aligns with sustainability. Long-term strategies include mainstreaming environmental safeguards in agricultural policy, implementing carbon pricing or offset mechanisms, and demonstrating that sustainable intensification supports both growth and climate goals simultaneously.
+
+\textbf{Consumption Patterns and Economic Growth (SDG 12 vs SDG 8):}
+
+Promoting responsible consumption and reducing waste may slow short-term economic growth if it limits market expansion or increases production costs.
+
+\textit{Mitigation:} Market development for sustainable products commanding premium prices transforms environmental responsibility into economic opportunity. Certification programs add value to sustainably produced crops, while consumer education creates demand. Long-term economic benefits of sustainable practices—including soil health, reduced input costs, and climate resilience—outweigh short-term transition costs.
+
+\textbf{Unequal Partnership Structures (SDG 17 vs SDG 10):}
+
+Multi-stakeholder partnerships, while essential for technology deployment, may reinforce existing power imbalances if not carefully structured. Partnerships dominated by well-resourced institutions could marginalize smallholder farmer voices.
+
+\textit{Mitigation:} Participatory governance structures with farmer representatives in decision-making bodies ensure equitable influence. Transparent benefit-sharing agreements document how gains are distributed. Capacity building programs equalize negotiating power between partners. Regular stakeholder consultations verify that partnership benefits reach intended beneficiaries.
+
+\subsubsection{Monitoring and Adaptive Management}
+
+Responsible innovation requires ongoing assessment of both intended and unintended consequences across the SDG network. The impact framework includes: baseline and endline surveys for all indicator measurements, participatory monitoring engaging farming communities in data collection and interpretation, regular SDG interlinkage assessments using network analysis methods \cite{Fanzo2022} to identify emerging trade-offs or unexpected synergies, and adaptive optimization that adjusts objective weights based on observed outcomes and stakeholder feedback. This adaptive approach ensures the solution remains aligned with holistic sustainable development goals rather than inadvertently creating negative externalities while optimizing for specific metrics.
 
 \subsection{Global Transposability}
 
 The quantum-enabled crop optimization approach is highly transposable to diverse geographical contexts, particularly in regions facing the triple burden of malnutrition, environmental degradation, and climate vulnerability.
 
-\textbf{Target Geographies:}
-\begin{itemize}
-\item \textbf{Sub-Saharan Africa:} With 45\% of the population in rural areas and less than 10\% of health professionals serving these communities \cite{Fanzo2022}, optimized agricultural planning can address both nutritional deficiencies and economic development. Small-scale farms ($<$1 hectare) constitute approximately 45\% of farms but control only 10\% of agricultural land \cite{LOWDER201616}, making optimization critical for efficient resource utilization.
+\subsubsection{Target Geographies}
 
-\item \textbf{South and Southeast Asia:} High population density, diverse crop systems, and significant climate risks make these regions ideal candidates. The methodology has been validated using Indonesian food data, demonstrating cultural adaptability through locally acceptable food baskets.
+\textbf{Sub-Saharan Africa:} With 45\% of the population in rural areas and less than 10\% of health professionals serving these communities \cite{Fanzo2022}, optimized agricultural planning can address both nutritional deficiencies and economic development. Small-scale farms ($<$1 hectare) constitute approximately 45\% of farms but control only 10\% of agricultural land \cite{LOWDER201616}, making optimization critical for efficient resource utilization.
 
-\item \textbf{Latin America:} Regions with high biodiversity but also significant deforestation pressures (80\% driven by food systems \cite{Fanzo2022}) would benefit from optimization that explicitly balances productivity with ecosystem conservation.
+\textbf{South and Southeast Asia:} High population density, diverse crop systems, and significant climate risks make these regions ideal candidates. The methodology has been validated using Indonesian food data, demonstrating cultural adaptability through locally acceptable food baskets.
 
-\item \textbf{Small Island Developing States (SIDS):} Limited arable land and climate vulnerability necessitate highly efficient crop planning. The optimization approach can maximize nutritional output per hectare while minimizing import dependence.
-\end{itemize}
+\textbf{Latin America:} Regions with high biodiversity but also significant deforestation pressures (80\% driven by food systems \cite{Fanzo2022}) would benefit from optimization that explicitly balances productivity with ecosystem conservation.
 
-\textbf{Data Requirements \& Feasibility:} The proof of concept requires three data categories: (1) nutritional composition and environmental impact scores (available from GAIN databases and life-cycle assessments), (2) local food preferences and prices (collectible through household surveys and market data), and (3) farm characteristics and constraints (accessible through agricultural census data or participatory mapping). These data types are increasingly available through global initiatives like the Food Systems Dashboard, making deployment feasible in most contexts with appropriate partnerships.
+\textbf{Small Island Developing States (SIDS):} Limited arable land and climate vulnerability necessitate highly efficient crop planning. The optimization approach can maximize nutritional output per hectare while minimizing import dependence.
 
+\subsubsection{Data Requirements and Deployment Feasibility}
 
+The proof of concept requires three data categories, all of which are increasingly accessible in diverse global contexts. First, nutritional composition and environmental impact scores are available from GAIN databases and life-cycle assessments, providing standardized inputs across geographies. Second, local food preferences and prices can be collected through household surveys and market data, ensuring cultural relevance and economic realism. Third, farm characteristics and constraints are accessible through agricultural census data or participatory mapping exercises.
 
-\subsection{SDG Interlinkages and Responsible Innovation}
+These data types are becoming widely available through global initiatives like the Food Systems Dashboard, making deployment feasible in most contexts with appropriate partnerships. The modular architecture allows regions with partial data availability to implement simplified versions while building toward more comprehensive optimization as data infrastructure improves.
 
-The quantum optimization approach creates a complex network of SDG interlinkages that must be carefully managed to maximize synergies and minimize trade-offs \cite{Fanzo2022,UNFSS_Planet_2023,Sylvester2024}.
-
-
-\begin{itemize}
-\item \textbf{Nutrition-Health-Productivity:} The primary pathway from SDG 2 $\rightarrow$ SDG 3 $\rightarrow$ SDG 8 creates reinforcing benefits. Optimizing for nutritional density directly improves health outcomes, which in turn enhances workforce productivity and agricultural capacity.
-
-\item \textbf{Technology-Innovation-Partnership:} The quantum computing application (SDG 9) strengthens international partnerships (SDG 17) by demonstrating cutting-edge technology transfer to developing contexts while building local technical capacity. This chain enables knowledge sharing, reduces inequalities through accessible technology (SDG 10), and drives economic growth (SDG 8).
-
-\item \textbf{Climate-Ecosystem Protection:} Environmental optimization constraints simultaneously address SDG 13 (climate action), SDG 15 (terrestrial ecosystems), SDG 6 (water management), and SDG 14 (marine ecosystems) through integrated land-use planning.
-
-
-
-\item \textbf{Poverty-Food-Economics:} The interconnection between poverty reduction (SDG 1), food security (SDG 2), and economic growth (SDG 8) forms a mutually reinforcing triangle. Agricultural optimization addressing all three simultaneously achieves greater total impact than addressing any single goal in isolation.
-\end{itemize}
-
-\textbf{Critical Trade-offs Requiring Active Management:}
-\begin{itemize}
-\item \textbf{Productivity-Environment Tension:} The fundamental trade-off between maximizing food production (SDG 2) and minimizing environmental impact (SDGs 6, 13, 14, 15) requires explicit multi-objective optimization. Sufficient analysis reveals optimal balance points where nutritional adequacy, affordability, and environmental sustainability coexist.
-
-\item \textbf{Technology Access and Digital Divide:} While quantum optimization provides powerful capabilities (SDG 9), it risks exacerbating inequalities (SDG 10) if access is limited to well-resourced actors. Mitigation strategies include: open-source software releases, capacity-building programs, user-friendly interfaces requiring minimal technical expertise, partnerships with agricultural extension services ensuring smallholder farmer access, and community-based facilitator models bridging the digital divide.
-
-\item \textbf{Climate Policy Costs:} Environmental optimization may increase short-term costs for implementing sustainable practices, potentially harming poor households (SDG 1) and slowing immediate economic growth (SDG 8). This trade-off requires careful balancing between climate action (SDG 13) and poverty reduction. Complementary policy interventions include: transition subsidies protecting vulnerable households, technical assistance reducing implementation costs, market development for sustainable products commanding premium prices, payments for ecosystem services compensating farmers for environmental benefits, and staged implementation allowing gradual adaptation.
-
-
-% \item \textbf{Conservation-Production Balance:} Protecting biodiversity and preventing land degradation (SDG 15) may constrain agricultural expansion (SDG 2), creating tension between environmental protection and food security. Resolution requires: landscape-level planning designating conservation and production zones, sustainable intensification on existing farmland rather than extensification into natural areas, agroforestry and agroecological approaches integrating conservation with production, and demonstrating that ecosystem health supports long-term agricultural productivity.
-
-
-
-\textbf{Monitoring and Adaptive Management:} Responsible innovation requires ongoing assessment of both intended and unintended consequences. The impact framework includes: baseline and endline surveys for all indicator measurements, participatory monitoring engaging farming communities, regular SDG interlinkage assessments using network analysis methods \cite{Fanzo2022}, and adaptive optimization that adjusts objective weights based on observed outcomes and stakeholder feedback. This ensures the solution remains aligned with holistic sustainable development goals rather than optimizing narrow metrics at the expense of broader welfare.
-
-\subsection{Risks, Assumptions, and Key Activities}
-
-Achieving the anticipated impacts depends on managing key risks, validating critical assumptions, and implementing essential preparatory activities.
+\subsection{Implementation Considerations}
 
 \subsubsection{Key Risks}
 
-Several risks could affect impact achievement across different time horizons. Income inequality between farms may persist or widen if optimization benefits apply primarily to well-resourced farmers rather than smallholders, affecting both short-term and mid-term outcomes. Lack of market access for new crops poses a significant barrier—even optimally selected crops cannot improve incomes if buyers are unavailable, particularly impacting short-term and mid-term economic gains. Regulatory barriers to new seed varieties or agricultural inputs may slow implementation at the short-term stage. 
+Several risks could affect impact achievement across different time horizons and must be proactively managed. Income inequality between farms may persist or widen if optimization benefits apply primarily to well-resourced farmers rather than smallholders, affecting both short-term and mid-term outcomes. Lack of market access for new crops poses a significant barrier—even optimally selected crops cannot improve incomes if buyers are unavailable, particularly impacting short-term and mid-term economic gains. Regulatory barriers to new seed varieties or agricultural inputs may slow implementation at the short-term stage.
 
 Climate-related risks span multiple timeframes. Crops may not be resilient enough for accelerating climate change impacts, threatening both short-term and mid-term productivity gains. More acutely, severe climate shocks (droughts, floods, extreme temperatures) can dramatically reduce yields across all timeframes—short-term, mid-term, and long-term—potentially undermining the entire impact logic chain. Finally, poor quality or missing baseline data compromises the ability to measure impacts accurately in the short term, weakening evidence generation and adaptive management.
 
 \subsubsection{Critical Assumptions}
 
-First, local input supply chains must be able to scale to support new crop varieties—seed suppliers, fertilizer distributors, and agricultural extension services need sufficient capacity to meet changing demands. Second, buyers will purchase new nutrient-dense crops, creating market incentives for farmers to adopt optimized crop plans. Third, national regulations must permit trial of new varieties, enabling innovation while maintaining biosafety and quality standards. Fourth, farmers will accept and implement optimized crop plans if they prove profitable, assuming economic rationality drives adoption decisions. Fifth, sufficient soil and climate data are available for baseline surveys, enabling accurate optimization and impact measurement.
+Several foundational assumptions underpin the impact pathway and require validation during implementation. First, local input supply chains must be able to scale to support new crop varieties—seed suppliers, fertilizer distributors, and agricultural extension services need sufficient capacity to meet changing demands. Second, buyers will purchase new nutrient-dense crops, creating market incentives for farmers to adopt optimized crop plans. Third, national regulations must permit trial of new varieties, enabling innovation while maintaining biosafety and quality standards. Fourth, farmers will accept and implement optimized crop plans if they prove profitable, assuming economic rationality drives adoption decisions. Fifth, sufficient soil and climate data are available for baseline surveys, enabling accurate optimization and impact measurement.
 
 \subsubsection{Preparatory Activities}
 
-Conducting baseline soil, climate, and household surveys establishes the data foundation for optimization algorithms and impact evaluation, quantifying initial conditions across agronomic, environmental, and socioeconomic dimensions. Linking producer groups with buyers and processors creates the market channels necessary for farmers to sell optimized crop outputs, addressing the market access risk proactively. Engaging regulators and documenting compliance needs ensures regulatory pathways are clear before implementation, reducing delays and enabling adaptive policy development that supports innovation while protecting public interests.
+Three essential activities lay the groundwork for successful implementation. Conducting baseline soil, climate, and household surveys establishes the data foundation for optimization algorithms and impact evaluation, quantifying initial conditions across agronomic, environmental, and socioeconomic dimensions. Linking producer groups with buyers and processors creates the market channels necessary for farmers to sell optimized crop outputs, addressing the market access risk proactively. Engaging regulators and documenting compliance needs ensures regulatory pathways are clear before implementation, reducing delays and enabling adaptive policy development that supports innovation while protecting public interests.
 
 \subsection{Stakeholder Engagement}
 
@@ -1216,13 +1174,139 @@ Retailers sell nutrient-dense crops to end consumers, with interests in maintain
 
 
 
-\end{itemize}
-
 
 
 
 \section{Methods}
 \label{sec:appx}
+
+
+
+
+% Standalone subsection: derivation of the project model as a subset of Esteso et al. (2022)
+% To be \input{} or pasted into the Methods section of the report.
+
+\subsection{Derivation from the reference model}
+\label{sub:model_derivation}
+
+Our formulation is derived from the multi-objective sustainable crop planning model of Esteso et al.~\cite{esteso_sustainable_2023}, which we simplify along several dimensions to obtain a problem instance suitable for QUBO reformulation and quantum annealing benchmarks. We summarize below the full reference model and detail each reduction.
+
+\subsubsection{The reference model}
+
+Esteso et al.\ propose a multi-echelon supply-chain (SC) optimization model for sustainable crop production.
+The model spans a multi-period planning horizon (indexed by~$t$) and covers three echelons---farms, a shared drying facility, and processing plants---connected by transport logistics.
+
+\paragraph{Indices and sets.}
+The reference model is defined over the following index sets: crops~$c$, farms~$f$, processing plants~$l$, planting periods~$p$, harvest periods~$h$, harvest seasons~$s$, and a growth-time index $z$ (the number of periods between planting or consecutive harvests).
+
+\paragraph{Decision variables.}
+The full model contains thirteen families of decision variables:
+\begin{enumerate}
+    \item $AP^{p}_{cf}$~(continuous): area planted with crop~$c$ on farm~$f$ in planting period~$p$;
+    \item $AH^{shz}_{cf}$: area harvested, indexed by season~$s$, period~$h$, and growth time~$z$;
+    \item $QH^{shz}_{cf}$, $QD^{shz}_{cf}$, $QCD^{shz}_{cf}$: quantities harvested, dried on-farm, and dried at the central facility;
+    \item $ID^{shzt}_{cf}$, $QS^{shzt}_{cf}$, $IS^{shzt}_{cf}$: inventories of dried and sorted crops, and quantities sorted;
+    \item $QT^{shzt}_{cfl}$: quantity transported from farm~$f$ to processing plant~$l$;
+    \item $YT^{t}_{cfl}$~(binary): indicates whether a transport shipment occurs;
+    \item $I^{t}_{cl}$: inventory at processing plants;
+    \item $Pr_f$, $U_f$~(continuous): farm profit and unfairness measure.
+\end{enumerate}
+
+\paragraph{Objectives.}
+Three objectives are optimized simultaneously via the $\varepsilon$-constraint method:
+\begin{align}
+    \max\; Z_A &= \sum_{c,f,l,s,h,z,t} am^{sz}_{c}\cdot QT^{shzt}_{cfl}
+        & \text{(active-molecule concentration),} \label{eq:esteso_ZA}\\[4pt]
+    \min\; Z_C &= \sum (\text{planting} + \text{harvesting} + \text{drying} \notag\\
+               &\quad + \text{sorting} + \text{inventory} + \text{transport costs})
+        & \text{(SC costs),} \label{eq:esteso_ZC}\\[4pt]
+    \min\; Z_U &= \sum_f U_f
+        & \text{(farmer unfairness).} \label{eq:esteso_ZU}
+\end{align}
+$Z_A$ maximizes the total concentration of active molecules in deliveries to processors, where $am^{sz}_c$ depends on the growth time~$z$. $Z_C$ minimizes the aggregate cost across five SC stages (planting, harvesting, drying, sorting, inventory, and transport). $Z_U$ minimizes economic unfairness among farmers, measured as the deviation of each farm's profit-per-hectare from the average.
+
+\paragraph{Constraints.}
+Sixteen constraint families enforce: (i)~farm area limits, (ii)~harvest-to-planting area balances across seasons, (iii)~yield equations linking harvest quantity to area and growth time, (iv)~on-farm and central drying capacity limits, (v)~inventory balance equations for dried and sorted products, (vi)~sorting and storage capacity limits, (vii)~minimum transport lot sizes with binary linking, (viii)~processor inventory balance and demand fulfillment, and (ix)~the linearization of the unfairness measure.
+
+In the case study of the reference paper (10~farms, 2~crops, 104-week horizon), the resulting MILP instance contains 413\,844 decision variables and 292\,717 constraints.
+
+\subsubsection{Reductions applied}
+\label{sub:reductions}
+
+We retain the general structure of centralized multi-farm crop allocation from the reference model, but apply the following simplifications to isolate the combinatorial core of the problem.
+
+\paragraph{1. Elimination of the temporal dimension.}
+The multi-period planning horizon is collapsed to a single static allocation period. All time indices ($p$, $h$, $s$, $t$) and the growth-time variable~$z$ are removed. As a consequence, the harvest-area balances (Eqs.~6--7 of the reference), the yield equations (Eq.~8), and all inventory balance constraints (Eqs.~12--13, 15, 19) are no longer applicable.
+
+\paragraph{2. Elimination of post-harvest supply-chain stages.}
+We restrict the model to the farm echelon. The drying (Eqs.~9--11), sorting (Eq.~14), storage (Eq.~16), and transport (Eqs.~17--18) stages are removed together with their associated variables ($QD$, $QCD$, $QS$, $QT$, $YT$, $ID$, $IS$, $I$) and capacity parameters. This eliminates the entire downstream SC structure and all inter-echelon flow constraints.
+
+\paragraph{3. Replacement of the objective functions.}
+The three original objectives---active-molecule concentration~\eqref{eq:esteso_ZA}, supply-chain costs~\eqref{eq:esteso_ZC}, and farmer unfairness~\eqref{eq:esteso_ZU}---are replaced by four objectives relevant to food security and dietary adequacy:
+\begin{enumerate}
+    \item \emph{maximize nutritional value} (score $v_{nv,c}$),
+    \item \emph{maximize nutrient density} (score $v_{nd,c}$),
+    \item \emph{maximize affordability} (score $v_{af,c}$),
+    \item \emph{minimize environmental impact} (score $v_{ei,c}$).
+\end{enumerate}
+These per-crop scores are derived from external nutritional and environmental databases (see Section~\ref{...}) and are \emph{static}, in contrast to the growth-time-dependent molecule concentration of the reference model. In addition, a sustainability score~$v_{su,c}$ is included to capture the aggregate environmental footprint.
+
+The $\varepsilon$-constraint resolution of the reference is replaced by a weighted-sum scalarization: the four (plus sustainability) objectives are combined into a single composite benefit
+\begin{equation}
+    B_c = w_{nv}\,v_{nv,c} + w_{nd}\,v_{nd,c} - w_{ei}\,v_{ei,c} + w_{af}\,v_{af,c} + w_{su}\,v_{su,c}\,,
+    \label{eq:composite_benefit}
+\end{equation}
+yielding the scalar objective presented in Eq.~\eqref{eq:generalized objective}.
+
+\paragraph{4. Simplification of the decision variables.}
+Of the thirteen variable families in the reference model, only the planted-area variable $AP^{p}_{cf}$ is retained, in simplified form as $A_{f,c} \in [0, L_f]$ (continuous, without the temporal index). Two new binary variable families are introduced to support the MILP structure:
+\begin{itemize}
+    \item $Y_{f,c} \in \{0,1\}$: indicates whether food~$c$ is planted on farm~$f$;
+    \item $U_c \in \{0,1\}$: indicates whether food~$c$ is planted on \emph{at least one} farm (used for counting distinct foods in food-group diversity constraints).
+\end{itemize}
+
+\paragraph{5. Retained and added constraints.}
+From the sixteen constraint families in the reference model, only the farm area limit (Eq.~5) is retained:
+\begin{equation}
+    \sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall\, f \in \mathcal{F}\,.
+    \label{eq:land_avail}
+\end{equation}
+Five new constraint families---absent from the reference model---are introduced to encode the agronomic and dietary requirements of the simplified problem:
+\begin{itemize}
+    \item \emph{Minimum planting area}: $A_{f,c} \geq A_{\min,c}\cdot Y_{f,c}$;
+    \item \emph{Selection linking}: $A_{f,c} \leq L_f \cdot Y_{f,c}$;
+    \item \emph{Food-group diversity} (min/max): $N_{\min,g} \leq \sum_{c \in \mathcal{G}_g} U_c \leq N_{\max,g}$;
+    \item \emph{$U$--$Y$ linking}: $Y_{f,c} \leq U_c$ and $U_c \leq \sum_{f} Y_{f,c}$.
+\end{itemize}
+
+\paragraph{6. Change of application domain.}
+The reference model targets biennial medicinal plants (lemon balm and sage) grown for active-molecule extraction. Our model addresses 27~food crops spanning five food groups (fruits, vegetables, starchy staples, pulses/nuts/seeds, and animal-source foods), selected for nutritional adequacy and dietary diversity in a development context.
+
+\subsubsection{Summary of the subset}
+Table~\ref{tab:model_reduction} summarizes the relationship between the reference model and our reduced formulation.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model element} & \textbf{Esteso et al.} & \textbf{This work} \\
+\midrule
+Objectives             & 3  & 4 (+1 sust.) \\
+Decision var.\ families & 13 & 3 \\
+Constraint families    & 16 & 6 \\
+Time periods           & 104 & 1 (static) \\
+SC echelons            & 3  & 1 (farm only) \\
+Crops                  & 2  & 27 \\
+Resolution method      & $\varepsilon$-constraint + TOPSIS & weighted sum \\
+\bottomrule
+\end{tabular}
+\caption{Comparison between the full reference model of Esteso et al.~\cite{esteso_sustainable_2023} and the reduced formulation used in this work. The reduction eliminates the temporal dimension and all post-harvest SC stages, retains the farm area constraint, replaces the original objectives with nutritional and environmental scores, and adds food-group diversity constraints.}
+\label{tab:model_reduction}
+\end{table}
+
+The rationale for these simplifications is twofold. First, removing the temporal dynamics and the downstream supply chain isolates the \emph{combinatorial crop-allocation core} of the problem---the assignment of crops to farms subject to area and diversity constraints---which is the component most naturally amenable to QUBO reformulation and quantum annealing (see Section~\ref{PoC}). Second, replacing the domain-specific medicinal-plant objectives with broadly applicable nutritional and environmental scores allows the model to address the food-security context motivating this work, while preserving the multi-objective structure of the original formulation.
+
 
 \subsection{Lagrange Multiplier Calibration Study}
 
@@ -1424,7 +1508,7 @@ Both scenarios use the same total land area for fair comparison.
 \textbf{Evaluation Metrics:}
 \begin{itemize}
     \item \textbf{Objective Value:} $Z_{\text{cont}}$ (continuous) vs. $Z_{\text{disc}}$ (discretized)
-    \item \textbf{Optimality Gap:} $\Delta = \frac{Z_{\text{cont}} - Z_{\text{disc}}}{Z_{\text{cont}}} \times 100\%$
+    \item \textbf{Optimality Gap:} $\Delta = \frac{Z_{\text{cont}} -- Z_{\text{disc}}}{Z_{\text{cont}}} \times 100\%$
     \item \textbf{Solve Time:} Wall-clock time for PuLP/Gurobi
     \item \textbf{Time Ratio:} $t_{\text{disc}} / t_{\text{cont}}$
 \end{itemize}
@@ -1450,7 +1534,7 @@ The test script (\texttt{Grid\_Refinement.py}) executes the following workflow:
     \State Create binary CQM with $Y_{p,c}$ variables only
     \State Solve with PuLP/Gurobi $\to$ $Z_{\text{disc}}, t_{\text{disc}}$
     \State
-    \State Compute gap: $\Delta = (Z_{\text{cont}} - Z_{\text{disc}})/Z_{\text{cont}} \times 100\%$
+    \State Compute gap: $\Delta = (Z_{\text{cont}} -- Z_{\text{disc}})/Z_{\text{cont}} \times 100\%$
     \State Record: $n, Z_{\text{cont}}, Z_{\text{disc}}, \Delta, t_{\text{cont}}, t_{\text{disc}}, t_{\text{disc}}/t_{\text{cont}}$
 \EndFor
 \State \textbf{Output:} Table and convergence analysis
@@ -1463,7 +1547,7 @@ The test script (\texttt{Grid\_Refinement.py}) executes the following workflow:
 
 For a linear objective $f(A) = \sum_c B_c A_c$, the discretization error is:
 
-$$\epsilon(n) = \left| \sum_c B_c A_c^{\text{opt}} - \sum_c B_c \left(\sum_p a_p Y_{p,c}^{\text{opt}}\right) \right|$$
+$$\epsilon(n) = \left| \sum_c B_c A_c^{\text{opt}} -- \sum_c B_c \left(\sum_p a_p Y_{p,c}^{\text{opt}}\right) \right|$$
 
 where $A_c^{\text{opt}}$ is the continuous optimal area and $Y_{p,c}^{\text{opt}}$ is the discrete solution.
 
@@ -1636,7 +1720,7 @@ The fitted constant $C \approx 63.2$ shows good agreement with observed data, co
 % \State Subproblem is feasible; compute $\phi(\bar{Y}^{(k)})$ and extract corresponding dual variables.
 % \State Construct an optimality cut using the duals and add it to the master.
 % \EndIf
-% \State Evaluate the optimality gap: $|\theta^{(k)} - \phi(\bar{Y}^{(k)})|$.
+% \State Evaluate the optimality gap: $|\theta^{(k)} -- \phi(\bar{Y}^{(k)})|$.
 % \If{gap $\le$ tolerance}
 % \State \textbf{Stop:} Current solution is optimal.
 % \Else
@@ -1657,7 +1741,7 @@ The fitted constant $C \approx 63.2$ shows good agreement with observed data, co
 % \textbf{Symbol} & \textbf{Meaning} & \textbf{Domain / notes} \\ 
 % $A_{f,c}$ & Area (continuous) allocated on farm $f$ to crop $c$. & $A_{f,c}\ge0$ (continuous) \\
 % $Y_{f,c}$ & Binary selection: 1 if crop $c$ is planted on farm $f$, 0 otherwise. & $Y_{f,c}\in\{0,1\}$ \\
-% $\mathbf{A},\:\mathbf{Y}$ & Stacked vectors/matrices of $A_{f,c}$ and $Y_{f,c}$ respectively. & - \\
+% $\mathbf{A},\:\mathbf{Y}$ & Stacked vectors/matrices of $A_{f,c}$ and $Y_{f,c}$ respectively. & -- \\
 % $Z(A)$ & Continuous part of the objective (e.g., profit or yield) as a function of $A$. & sign convention: you minimize $-Z(A)$ in the model \\ 
 % $\mathbf{d}$ & Vector of coefficients multiplying $Y$ in the objective (fixed costs or penalties). & $\mathbf{d}^T\mathbf{Y}$ appears in master objective \\ 
 % $L_f$ & Total land (available area) on farm $f$. & scalar, farm-local upper bound \\ 

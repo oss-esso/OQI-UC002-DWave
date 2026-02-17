@@ -1,0 +1,123 @@
+% Standalone subsection: derivation of the project model as a subset of Esteso et al. (2022)
+% To be \input{} or pasted into the Methods section of the report.
+
+\subsection{Derivation from the reference model}
+\label{sub:model_derivation}
+
+Our formulation is derived from the multi-objective sustainable crop planning model of Esteso et al.~\cite{esteso_sustainable_2023}, which we simplify along several dimensions to obtain a problem instance suitable for QUBO reformulation and quantum annealing benchmarks. We summarize below the full reference model and detail each reduction.
+
+\subsubsection{The reference model}
+
+Esteso et al.\ propose a multi-echelon supply-chain (SC) optimization model for sustainable crop production.
+The model spans a multi-period planning horizon (indexed by~$t$) and covers three echelons---farms, a shared drying facility, and processing plants---connected by transport logistics.
+
+\paragraph{Indices and sets.}
+The reference model is defined over the following index sets: crops~$c$, farms~$f$, processing plants~$l$, planting periods~$p$, harvest periods~$h$, harvest seasons~$s$, and a growth-time index $z$ (the number of periods between planting or consecutive harvests).
+
+\paragraph{Decision variables.}
+The full model contains thirteen families of decision variables:
+\begin{enumerate}
+    \item $AP^{p}_{cf}$~(continuous): area planted with crop~$c$ on farm~$f$ in planting period~$p$;
+    \item $AH^{shz}_{cf}$: area harvested, indexed by season~$s$, period~$h$, and growth time~$z$;
+    \item $QH^{shz}_{cf}$, $QD^{shz}_{cf}$, $QCD^{shz}_{cf}$: quantities harvested, dried on-farm, and dried at the central facility;
+    \item $ID^{shzt}_{cf}$, $QS^{shzt}_{cf}$, $IS^{shzt}_{cf}$: inventories of dried and sorted crops, and quantities sorted;
+    \item $QT^{shzt}_{cfl}$: quantity transported from farm~$f$ to processing plant~$l$;
+    \item $YT^{t}_{cfl}$~(binary): indicates whether a transport shipment occurs;
+    \item $I^{t}_{cl}$: inventory at processing plants;
+    \item $Pr_f$, $U_f$~(continuous): farm profit and unfairness measure.
+\end{enumerate}
+
+\paragraph{Objectives.}
+Three objectives are optimized simultaneously via the $\varepsilon$-constraint method:
+\begin{align}
+    \max\; Z_A &= \sum_{c,f,l,s,h,z,t} am^{sz}_{c}\cdot QT^{shzt}_{cfl}
+        & \text{(active-molecule concentration),} \label{eq:esteso_ZA}\\[4pt]
+    \min\; Z_C &= \sum (\text{planting} + \text{harvesting} + \text{drying} \notag\\
+               &\quad + \text{sorting} + \text{inventory} + \text{transport costs})
+        & \text{(SC costs),} \label{eq:esteso_ZC}\\[4pt]
+    \min\; Z_U &= \sum_f U_f
+        & \text{(farmer unfairness).} \label{eq:esteso_ZU}
+\end{align}
+$Z_A$ maximizes the total concentration of active molecules in deliveries to processors, where $am^{sz}_c$ depends on the growth time~$z$. $Z_C$ minimizes the aggregate cost across five SC stages (planting, harvesting, drying, sorting, inventory, and transport). $Z_U$ minimizes economic unfairness among farmers, measured as the deviation of each farm's profit-per-hectare from the average.
+
+\paragraph{Constraints.}
+Sixteen constraint families enforce: (i)~farm area limits, (ii)~harvest-to-planting area balances across seasons, (iii)~yield equations linking harvest quantity to area and growth time, (iv)~on-farm and central drying capacity limits, (v)~inventory balance equations for dried and sorted products, (vi)~sorting and storage capacity limits, (vii)~minimum transport lot sizes with binary linking, (viii)~processor inventory balance and demand fulfillment, and (ix)~the linearization of the unfairness measure.
+
+In the case study of the reference paper (10~farms, 2~crops, 104-week horizon), the resulting MILP instance contains 413\,844 decision variables and 292\,717 constraints.
+
+\subsubsection{Reductions applied}
+\label{sub:reductions}
+
+We retain the general structure of centralized multi-farm crop allocation from the reference model, but apply the following simplifications to isolate the combinatorial core of the problem.
+
+\paragraph{1. Elimination of the temporal dimension.}
+The multi-period planning horizon is collapsed to a single static allocation period. All time indices ($p$, $h$, $s$, $t$) and the growth-time variable~$z$ are removed. As a consequence, the harvest-area balances (Eqs.~6--7 of the reference), the yield equations (Eq.~8), and all inventory balance constraints (Eqs.~12--13, 15, 19) are no longer applicable.
+
+\paragraph{2. Elimination of post-harvest supply-chain stages.}
+We restrict the model to the farm echelon. The drying (Eqs.~9--11), sorting (Eq.~14), storage (Eq.~16), and transport (Eqs.~17--18) stages are removed together with their associated variables ($QD$, $QCD$, $QS$, $QT$, $YT$, $ID$, $IS$, $I$) and capacity parameters. This eliminates the entire downstream SC structure and all inter-echelon flow constraints.
+
+\paragraph{3. Replacement of the objective functions.}
+The three original objectives---active-molecule concentration~\eqref{eq:esteso_ZA}, supply-chain costs~\eqref{eq:esteso_ZC}, and farmer unfairness~\eqref{eq:esteso_ZU}---are replaced by four objectives relevant to food security and dietary adequacy:
+\begin{enumerate}
+    \item \emph{maximize nutritional value} (score $v_{nv,c}$),
+    \item \emph{maximize nutrient density} (score $v_{nd,c}$),
+    \item \emph{maximize affordability} (score $v_{af,c}$),
+    \item \emph{minimize environmental impact} (score $v_{ei,c}$).
+\end{enumerate}
+These per-crop scores are derived from external nutritional and environmental databases (see Section~\ref{...}) and are \emph{static}, in contrast to the growth-time-dependent molecule concentration of the reference model. In addition, a sustainability score~$v_{su,c}$ is included to capture the aggregate environmental footprint.
+
+The $\varepsilon$-constraint resolution of the reference is replaced by a weighted-sum scalarization: the four (plus sustainability) objectives are combined into a single composite benefit
+\begin{equation}
+    B_c = w_{nv}\,v_{nv,c} + w_{nd}\,v_{nd,c} - w_{ei}\,v_{ei,c} + w_{af}\,v_{af,c} + w_{su}\,v_{su,c}\,,
+    \label{eq:composite_benefit}
+\end{equation}
+yielding the scalar objective presented in Eq.~\eqref{eq:generalized objective}.
+
+\paragraph{4. Simplification of the decision variables.}
+Of the thirteen variable families in the reference model, only the planted-area variable $AP^{p}_{cf}$ is retained, in simplified form as $A_{f,c} \in [0, L_f]$ (continuous, without the temporal index). Two new binary variable families are introduced to support the MILP structure:
+\begin{itemize}
+    \item $Y_{f,c} \in \{0,1\}$: indicates whether food~$c$ is planted on farm~$f$;
+    \item $U_c \in \{0,1\}$: indicates whether food~$c$ is planted on \emph{at least one} farm (used for counting distinct foods in food-group diversity constraints).
+\end{itemize}
+
+\paragraph{5. Retained and added constraints.}
+From the sixteen constraint families in the reference model, only the farm area limit (Eq.~5) is retained:
+\begin{equation}
+    \sum_{c \in \mathcal{C}} A_{f,c} \leq L_f \quad \forall\, f \in \mathcal{F}\,.
+    \label{eq:land_avail}
+\end{equation}
+Five new constraint families---absent from the reference model---are introduced to encode the agronomic and dietary requirements of the simplified problem:
+\begin{itemize}
+    \item \emph{Minimum planting area}: $A_{f,c} \geq A_{\min,c}\cdot Y_{f,c}$;
+    \item \emph{Selection linking}: $A_{f,c} \leq L_f \cdot Y_{f,c}$;
+    \item \emph{Food-group diversity} (min/max): $N_{\min,g} \leq \sum_{c \in \mathcal{G}_g} U_c \leq N_{\max,g}$;
+    \item \emph{$U$--$Y$ linking}: $Y_{f,c} \leq U_c$ and $U_c \leq \sum_{f} Y_{f,c}$.
+\end{itemize}
+
+\paragraph{6. Change of application domain.}
+The reference model targets biennial medicinal plants (lemon balm and sage) grown for active-molecule extraction. Our model addresses 27~food crops spanning five food groups (fruits, vegetables, starchy staples, pulses/nuts/seeds, and animal-source foods), selected for nutritional adequacy and dietary diversity in a development context.
+
+\subsubsection{Summary of the subset}
+Table~\ref{tab:model_reduction} summarizes the relationship between the reference model and our reduced formulation.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model element} & \textbf{Esteso et al.} & \textbf{This work} \\
+\midrule
+Objectives             & 3  & 4 (+1 sust.) \\
+Decision var.\ families & 13 & 3 \\
+Constraint families    & 16 & 6 \\
+Time periods           & 104 & 1 (static) \\
+SC echelons            & 3  & 1 (farm only) \\
+Crops                  & 2  & 27 \\
+Resolution method      & $\varepsilon$-constraint + TOPSIS & weighted sum \\
+\bottomrule
+\end{tabular}
+\caption{Comparison between the full reference model of Esteso et al.~\cite{esteso_sustainable_2023} and the reduced formulation used in this work. The reduction eliminates the temporal dimension and all post-harvest SC stages, retains the farm area constraint, replaces the original objectives with nutritional and environmental scores, and adds food-group diversity constraints.}
+\label{tab:model_reduction}
+\end{table}
+
+The rationale for these simplifications is twofold. First, removing the temporal dynamics and the downstream supply chain isolates the \emph{combinatorial crop-allocation core} of the problem---the assignment of crops to farms subject to area and diversity constraints---which is the component most naturally amenable to QUBO reformulation and quantum annealing (see Section~\ref{PoC}). Second, replacing the domain-specific medicinal-plant objectives with broadly applicable nutritional and environmental scores allows the model to address the food-security context motivating this work, while preserving the multi-objective structure of the original formulation.
