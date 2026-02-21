@@ -1664,26 +1664,98 @@ The $Z$-string ensures fermionic anti-commutation is preserved. This converts th
 \subsection*{Task}
 Build VQE for H$_2$ from scratch --- understand every stage of the pipeline.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Load molecular data}
 \begin{lstlisting}
-# Load molecular data
-dataset = qml.data.load("qchem", molname="H2", basis="STO-3G", bondlength=0.742)[0]
-H, hf_state = dataset.hamiltonian, dataset.hf_state
+import pennylane as qml
+from pennylane import numpy as np
 
-# Setup device
-dev = qml.device("default.qubit", wires=4)
+# Load precomputed H2 data (no PySCF needed!)
+dataset = qml.data.load("qchem", molname="H2",
+                        basis="STO-3G", bondlength=0.742)[0]
 
-# VQE circuit components
-qml.BasisState(hf_state, wires=range(4))           # Prepare HF state |1100>
-qml.DoubleExcitation(params[0], wires=[0,1,2,3])   # Ansatz (1 param)
-qml.expval(H)                                       # Measure Hamiltonian
+H = dataset.hamiltonian        # The qubit Hamiltonian
+hf_state = dataset.hf_state    # [1, 1, 0, 0] = 2 electrons in 2 orbitals
+n_qubits = len(hf_state)       # 4 qubits for H2 in STO-3G
+\end{lstlisting}
 
-# Optimizer
+\textbf{Step 2: Inspect the Hamiltonian}
+\begin{lstlisting}
+# Print all Pauli terms
+print(f"Number of Pauli terms: {len(H.ops)}")
+for coeff, op in zip(H.coeffs, H.ops):
+    print(f"  {coeff:.6f} * {op}")
+# You should see ~15 terms like: 0.17 * Z0, -0.22 * Z0Z1, etc.
+\end{lstlisting}
+
+\textbf{Step 3: Setup the quantum device}
+\begin{lstlisting}
+dev = qml.device("default.qubit", wires=n_qubits)
+\end{lstlisting}
+
+\textbf{Step 4: Build the VQE circuit with ansatz}
+
+The \textbf{ansatz} is the parameterized circuit that prepares our trial state. For chemistry, we use excitation gates that move electrons between orbitals.
+\begin{lstlisting}
+@qml.qnode(dev)
+def vqe_circuit(params):
+    # Step 1: Prepare Hartree-Fock state |1100>
+    # This puts 2 electrons in the lowest 2 orbitals
+    qml.BasisState(hf_state, wires=range(n_qubits))
+    
+    # Step 2: Apply double excitation ansatz
+    # This excites both electrons from orbitals 0,1 to 2,3
+    # params[0] controls the amplitude of this excitation
+    qml.DoubleExcitation(params[0], wires=[0, 1, 2, 3])
+    
+    # Step 3: Measure the Hamiltonian expectation value
+    return qml.expval(H)
+\end{lstlisting}
+
+\textbf{Step 5: Run the optimization}
+\begin{lstlisting}
+# Initialize parameter
+params = np.array([0.0], requires_grad=True)
+
+# Choose optimizer
 opt = qml.GradientDescentOptimizer(stepsize=0.4)
-params, energy = opt.step_and_cost(cost_fn, params)
 
-# Parameter-shift gradient (exact on hardware)
-grad = (circuit(theta + np.pi/2) - circuit(theta - np.pi/2)) / 2
+# Store energies for plotting
+energies = []
+
+# Optimization loop
+for step in range(100):
+    params, energy = opt.step_and_cost(vqe_circuit, params)
+    energies.append(energy)
+    if step % 20 == 0:
+        print(f"Step {step}: E = {energy:.6f} Ha")
+
+print(f"Final VQE energy: {energies[-1]:.6f} Ha")
+print(f"Exact FCI energy: -1.1373 Ha")
+print(f"Error: {(energies[-1] - (-1.1373))*1000:.2f} mHa")
+\end{lstlisting}
+
+\textbf{Step 6: Verify gradients with parameter-shift rule}
+
+The \textbf{parameter-shift rule} computes exact gradients on quantum hardware:
+\[
+\frac{\partial E}{\partial \theta} = \frac{E(\theta + \pi/2) - E(\theta - \pi/2)}{2}
+\]
+\begin{lstlisting}
+# Manual parameter-shift gradient
+theta = params[0]
+grad_param_shift = (vqe_circuit([theta + np.pi/2]) 
+                   - vqe_circuit([theta - np.pi/2])) / 2
+
+# Finite difference gradient (for comparison)
+eps = 1e-5
+grad_finite_diff = (vqe_circuit([theta + eps]) 
+                   - vqe_circuit([theta - eps])) / (2*eps)
+
+print(f"Parameter-shift gradient: {grad_param_shift:.8f}")
+print(f"Finite-diff gradient:     {grad_finite_diff:.8f}")
+print(f"Difference: {abs(grad_param_shift - grad_finite_diff):.2e}")
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -1730,20 +1802,103 @@ More qubits $\to$ better accuracy but harder to simulate on quantum hardware.
 \subsection*{Task}
 Compute the H$_2$ dissociation curve and observe where Hartree-Fock fails.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Set up the bond length sweep}
 \begin{lstlisting}
-# Load data at different bond lengths
-dataset = qml.data.load("qchem", molname="H2", basis="STO-3G", bondlength=bl)[0]
-hf_energy = dataset.hf_energy          # Hartree-Fock energy
-fci_energy = dataset.fci_energy        # Exact FCI energy (if available)
+import pennylane as qml
+from pennylane import numpy as np
+import matplotlib.pyplot as plt
 
-# FCI via matrix diagonalization
-H_matrix = qml.matrix(H)               # Convert to numpy matrix
-eigenvalues = np.linalg.eigvalsh(H_matrix)
-E_ground = np.min(eigenvalues)         # Ground state = smallest eigenvalue
+# Bond lengths to scan (Angstroms)
+# Equilibrium is ~0.74 A, we go from compressed to stretched
+bond_lengths = [0.5, 0.7, 0.742, 0.9, 1.1, 1.3, 1.5, 1.7, 2.1]
 
-# VQE at each geometry (same circuit as Project 1)
-# Loop over bond_lengths = [0.5, 0.7, 0.742, 0.9, 1.1, 1.3, 1.5, 1.7, 2.1]
+# Storage for results
+hf_energies = []
+fci_energies = []
+vqe_energies = []
+\end{lstlisting}
+
+\textbf{Step 2: Compute FCI (exact) energy via matrix diagonalization}
+
+Full Configuration Interaction (FCI) is the \textbf{exact answer} within a given basis set. We compute it by diagonalizing the Hamiltonian matrix.
+\begin{lstlisting}
+def compute_fci_energy(H):
+    """Exact diagonalization of the Hamiltonian."""
+    # Convert Hamiltonian to matrix form
+    H_matrix = qml.matrix(H)
+    # Find eigenvalues
+    eigenvalues = np.linalg.eigvalsh(H_matrix)
+    # Ground state is the smallest eigenvalue
+    return np.min(eigenvalues)
+\end{lstlisting}
+
+\textbf{Step 3: Run VQE at each bond length}
+\begin{lstlisting}
+for bl in bond_lengths:
+    print(f"Bond length: {bl} A")
+    
+    # Load data for this geometry
+    dataset = qml.data.load("qchem", molname="H2",
+                            basis="STO-3G", bondlength=bl)[0]
+    H = dataset.hamiltonian
+    hf_state = dataset.hf_state
+    n_qubits = len(hf_state)
+    
+    # Store HF energy (from dataset or compute)
+    hf_energies.append(dataset.hf_energy)
+    
+    # Compute FCI energy
+    fci_e = compute_fci_energy(H)
+    fci_energies.append(fci_e)
+    
+    # Run VQE
+    dev = qml.device("default.qubit", wires=n_qubits)
+    
+    @qml.qnode(dev)
+    def circuit(params):
+        qml.BasisState(hf_state, wires=range(n_qubits))
+        qml.DoubleExcitation(params[0], wires=[0, 1, 2, 3])
+        return qml.expval(H)
+    
+    # Optimize
+    opt = qml.GradientDescentOptimizer(stepsize=0.4)
+    params = np.array([0.0], requires_grad=True)
+    for _ in range(50):
+        params = opt.step(circuit, params)
+    
+    vqe_energies.append(circuit(params))
+    print(f"  HF: {hf_energies[-1]:.4f}, FCI: {fci_e:.4f}, VQE: {vqe_energies[-1]:.4f}")
+\end{lstlisting}
+
+\textbf{Step 4: Plot the results}
+\begin{lstlisting}
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+
+# Top panel: Energy curves
+ax1.plot(bond_lengths, hf_energies, 'b-o', label='Hartree-Fock')
+ax1.plot(bond_lengths, fci_energies, 'k-s', label='FCI (exact)')
+ax1.plot(bond_lengths, vqe_energies, 'r-^', label='VQE')
+ax1.set_xlabel('Bond Length (Angstrom)')
+ax1.set_ylabel('Energy (Hartree)')
+ax1.legend()
+ax1.set_title('H2 Dissociation Curve')
+
+# Bottom panel: Error vs FCI
+vqe_errors = [(v - f)*1000 for v, f in zip(vqe_energies, fci_energies)]
+hf_errors = [(h - f)*1000 for h, f in zip(hf_energies, fci_energies)]
+ax2.plot(bond_lengths, hf_errors, 'b-o', label='HF error')
+ax2.plot(bond_lengths, vqe_errors, 'r-^', label='VQE error')
+ax2.axhline(y=1.6, color='g', linestyle='--', label='Chemical accuracy')
+ax2.axhline(y=-1.6, color='g', linestyle='--')
+ax2.set_xlabel('Bond Length (Angstrom)')
+ax2.set_ylabel('Error vs FCI (mHa)')
+ax2.legend()
+
+plt.tight_layout()
+plt.savefig('h2_dissociation.png', dpi=150)
+plt.show()
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -1799,26 +1954,132 @@ This means for 50 qubits, gradients are $\sim 10^{-15}$ in magnitude --- effecti
 \subsection*{Task}
 Compare hardware-efficient vs.\ chemically-inspired ansätze. Empirically demonstrate the barren plateau phenomenon.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Define the three ansatz types}
 \begin{lstlisting}
-# Hardware-efficient layer
-qml.RY(params[i], wires=w)        # Rotation layer
-qml.RZ(params[i+1], wires=w)
-qml.CNOT(wires=[i, i+1])          # Entangling layer
+import pennylane as qml
+from pennylane import numpy as np
 
-# Chemistry-inspired ansatz
-qml.BasisState(hf_state, wires=range(4))         # Start from HF
-qml.SingleExcitation(params[0], wires=[0, 2])    # Single excitation
-qml.DoubleExcitation(params[1], wires=[0,1,2,3]) # Double excitation
+# Load H2 data
+dataset = qml.data.load("qchem", molname="H2",
+                        basis="STO-3G", bondlength=0.742)[0]
+H = dataset.hamiltonian
+hf_state = dataset.hf_state
+n_qubits = 4
 
-# Extended UCCSD (multiple excitations)
-qml.AllSinglesDoubles(params, wires=range(n), hf_state=hf, 
-                      singles=singles, doubles=doubles)
+dev = qml.device("default.qubit", wires=n_qubits)
 
-# Barren plateau: measure gradient variance vs qubit count
-# For n = 4, 6, 8, 10 qubits with L=n layers:
-grad_variance = np.var([param_shift_grad(random_params) for _ in range(200)])
-# Expect: Var ~ 2^{-n} (exponential decay)
+# ANSATZ 1: Hardware-efficient (random structure)
+def hardware_efficient_layer(params, wires):
+    """One layer: Ry, Rz on each qubit, then CNOT ladder."""
+    n = len(wires)
+    for i, w in enumerate(wires):
+        qml.RY(params[2*i], wires=w)
+        qml.RZ(params[2*i+1], wires=w)
+    for i in range(n-1):
+        qml.CNOT(wires=[wires[i], wires[i+1]])
+
+@qml.qnode(dev)
+def ansatz_hardware_efficient(params, n_layers=2):
+    # Start from |0000>
+    for layer in range(n_layers):
+        start = layer * 2 * n_qubits
+        hardware_efficient_layer(params[start:start+2*n_qubits], range(n_qubits))
+    return qml.expval(H)
+
+# ANSATZ 2: UCCSD (single double excitation)
+@qml.qnode(dev)
+def ansatz_uccsd(params):
+    qml.BasisState(hf_state, wires=range(n_qubits))
+    qml.DoubleExcitation(params[0], wires=[0, 1, 2, 3])
+    return qml.expval(H)
+
+# ANSATZ 3: Extended UCCSD (singles + doubles)
+@qml.qnode(dev)
+def ansatz_extended(params):
+    qml.BasisState(hf_state, wires=range(n_qubits))
+    # Single excitations
+    qml.SingleExcitation(params[0], wires=[0, 2])
+    qml.SingleExcitation(params[1], wires=[1, 3])
+    # Double excitation
+    qml.DoubleExcitation(params[2], wires=[0, 1, 2, 3])
+    return qml.expval(H)
+\end{lstlisting}
+
+\textbf{Step 2: Compare VQE performance}
+\begin{lstlisting}
+def run_vqe(cost_fn, n_params, n_steps=100):
+    """Run VQE and return final energy + convergence history."""
+    opt = qml.GradientDescentOptimizer(stepsize=0.4)
+    params = np.random.randn(n_params) * 0.1  # Small random init
+    params = np.array(params, requires_grad=True)
+    
+    energies = []
+    for _ in range(n_steps):
+        params, energy = opt.step_and_cost(cost_fn, params)
+        energies.append(energy)
+    
+    return energies[-1], energies
+
+# Run each ansatz
+e_hw, hist_hw = run_vqe(lambda p: ansatz_hardware_efficient(p, n_layers=2), 
+                        n_params=2*n_qubits*2)
+e_uccsd, hist_uccsd = run_vqe(ansatz_uccsd, n_params=1)
+e_ext, hist_ext = run_vqe(ansatz_extended, n_params=3)
+
+print(f"Hardware-efficient: {e_hw:.6f} Ha")
+print(f"UCCSD:              {e_uccsd:.6f} Ha")
+print(f"Extended:           {e_ext:.6f} Ha")
+print(f"Exact (FCI):        -1.1373 Ha")
+\end{lstlisting}
+
+\textbf{Step 3: Barren plateau experiment}
+
+Now we demonstrate that hardware-efficient ansätze have exponentially vanishing gradients as qubit count increases.
+\begin{lstlisting}
+def measure_gradient_variance(n_qubits, n_layers, n_samples=200):
+    """Measure variance of gradient w.r.t. first parameter."""
+    dev = qml.device("default.qubit", wires=n_qubits)
+    n_params = 2 * n_qubits * n_layers
+    
+    # Simple cost function: just measure Z on first qubit
+    @qml.qnode(dev)
+    def circuit(params):
+        for layer in range(n_layers):
+            for i in range(n_qubits):
+                qml.RY(params[layer*2*n_qubits + 2*i], wires=i)
+                qml.RZ(params[layer*2*n_qubits + 2*i + 1], wires=i)
+            for i in range(n_qubits - 1):
+                qml.CNOT(wires=[i, i+1])
+        return qml.expval(qml.PauliZ(0))
+    
+    gradients = []
+    for _ in range(n_samples):
+        # Random parameters
+        params = np.random.uniform(0, 2*np.pi, n_params)
+        params = np.array(params, requires_grad=True)
+        # Compute gradient of first parameter via parameter-shift
+        grad = (circuit(params.at[0].set(params[0] + np.pi/2)) 
+               - circuit(params.at[0].set(params[0] - np.pi/2))) / 2
+        gradients.append(grad)
+    
+    return np.var(gradients)
+
+# Sweep qubit counts
+qubit_counts = [4, 6, 8, 10]
+variances = []
+for n in qubit_counts:
+    var = measure_gradient_variance(n, n_layers=n)  # depth = width
+    variances.append(var)
+    print(f"n={n} qubits: Var[grad] = {var:.2e}")
+
+# Plot
+plt.semilogy(qubit_counts, variances, 'o-')
+plt.xlabel('Number of qubits')
+plt.ylabel('Gradient variance')
+plt.title('Barren Plateau: Gradient Variance vs Qubits')
+plt.savefig('barren_plateau.png')
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -1873,28 +2134,112 @@ It uses Hadamard gates and controlled-phase rotations. The inverse QFT ``decodes
 \subsection*{Task}
 Implement QPE from scratch and use it to find eigenvalues.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Implement the QFT}
 \begin{lstlisting}
-# Quantum Fourier Transform
-qml.Hadamard(wires=i)
-qml.ControlledPhaseShift(angle, wires=[control, target])  # angle = pi/2^k
-qml.SWAP(wires=[i, j])                                     # Bit reversal
-qml.adjoint(qft)(wires)                                    # Inverse QFT
+import pennylane as qml
+from pennylane import numpy as np
 
-# QPE circuit structure
-for i in range(n_ancilla):
-    qml.Hadamard(wires=i)                                  # Superposition
-qml.ctrl(U, control=k)(power=2**k)                         # Controlled-U^{2^k}
-inverse_qft(wires=range(n_ancilla))                        # Decode phase
-qml.probs(wires=range(n_ancilla))                          # Measure ancillas
+def qft(wires):
+    """Quantum Fourier Transform on given wires."""
+    n = len(wires)
+    for i in range(n):
+        qml.Hadamard(wires=wires[i])
+        for j in range(i+1, n):
+            # Controlled phase rotation
+            angle = np.pi / (2 ** (j - i))
+            qml.ControlledPhaseShift(angle, wires=[wires[j], wires[i]])
+    # Swap to reverse bit order
+    for i in range(n // 2):
+        qml.SWAP(wires=[wires[i], wires[n-1-i]])
 
-# Trotterized time evolution U = exp(-iHt)
-qml.IsingZZ(2*J*dt, wires=[0, 1])   # exp(-i*J*ZZ*dt)
-qml.RX(2*h*dt, wires=i)             # exp(-i*h*X*dt)
+def inverse_qft(wires):
+    """Inverse QFT - just reverse the operations."""
+    qml.adjoint(qft)(wires)
+\end{lstlisting}
 
-# Phase extraction
-estimated_phase = np.argmax(probs) / (2**n_ancilla)
-energy = 2 * np.pi * estimated_phase / t
+\textbf{Step 2: Test QFT with a simple example}
+\begin{lstlisting}
+# Test: QFT should convert computational basis to Fourier basis
+dev = qml.device("default.qubit", wires=3)
+
+@qml.qnode(dev)
+def test_qft():
+    qml.BasisState([1, 0, 1], wires=[0,1,2])  # |5> = |101>
+    qft(wires=[0,1,2])
+    return qml.state()
+
+state = test_qft()
+# Should see uniform amplitudes with phases encoding "5"
+\end{lstlisting}
+
+\textbf{Step 3: Implement QPE for a simple unitary}
+
+Start with $U = R_z(\phi)$ where we know $\phi$.
+\begin{lstlisting}
+n_ancilla = 3
+n_system = 1
+total_wires = n_ancilla + n_system
+
+dev = qml.device("default.qubit", wires=total_wires)
+
+# The unitary: Rz(2*pi*phase)
+# Eigenstate |1> has eigenvalue e^{i*phase*2*pi}
+true_phase = 3/8  # We'll try to recover this
+
+@qml.qnode(dev)
+def qpe_circuit():
+    # 1. Prepare ancillas in |+>
+    for i in range(n_ancilla):
+        qml.Hadamard(wires=i)
+    
+    # 2. Prepare eigenstate |1> on system qubit
+    qml.PauliX(wires=n_ancilla)
+    
+    # 3. Controlled-U^(2^k) operations
+    for k in range(n_ancilla):
+        power = 2 ** (n_ancilla - 1 - k)
+        angle = 2 * np.pi * true_phase * power
+        # Controlled-Rz = controlled phase on |1>
+        qml.ControlledPhaseShift(angle, wires=[k, n_ancilla])
+    
+    # 4. Inverse QFT on ancillas
+    inverse_qft(wires=range(n_ancilla))
+    
+    # 5. Measure ancillas
+    return qml.probs(wires=range(n_ancilla))
+
+probs = qpe_circuit()
+estimated_phase = np.argmax(probs) / (2 ** n_ancilla)
+print(f"True phase: {true_phase}")
+print(f"Estimated phase: {estimated_phase}")
+print(f"Error: {abs(true_phase - estimated_phase)}")
+\end{lstlisting}
+
+\textbf{Step 4: Apply QPE to a Hamiltonian}
+
+For a simple 2-qubit Ising model, implement Trotterized time evolution and extract the ground state energy.
+\begin{lstlisting}
+# Ising Hamiltonian: H = J*Z0*Z1 + h*(X0 + X1)
+J, h = 1.0, 0.5
+
+def trotter_step(t, n_steps):
+    """First-order Trotter approximation to exp(-i*H*t)."""
+    dt = t / n_steps
+    for _ in range(n_steps):
+        # exp(-i * J * Z0*Z1 * dt)
+        qml.IsingZZ(2*J*dt, wires=[0, 1])
+        # exp(-i * h * X0 * dt) and exp(-i * h * X1 * dt)
+        qml.RX(2*h*dt, wires=0)
+        qml.RX(2*h*dt, wires=1)
+
+# Exact ground state energy (for comparison)
+H_matrix = J * np.array([[1,0,0,0],[0,-1,0,0],[0,0,-1,0],[0,0,0,1]])
+H_matrix += h * np.kron(np.array([[0,1],[1,0]]), np.eye(2))
+H_matrix += h * np.kron(np.eye(2), np.array([[0,1],[1,0]]))
+exact_energies = np.linalg.eigvalsh(H_matrix)
+print(f"Exact ground state energy: {min(exact_energies):.4f}")
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -1948,28 +2293,125 @@ For surface codes: $p_{\text{th}} \approx 1\%$ (circuit-level noise).
 \subsection*{Task}
 Simulate the repetition code, observe error correction in action, and verify threshold behavior.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Implement the repetition code encoder}
 \begin{lstlisting}
-# Repetition code encoding (|0>_L = |000>, |1>_L = |111>)
-qml.CNOT(wires=[0, 1])   # Copy qubit 0 to qubit 1
-qml.CNOT(wires=[0, 2])   # Copy qubit 0 to qubit 2
+import pennylane as qml
+from pennylane import numpy as np
+import matplotlib.pyplot as plt
 
-# Apply bit-flip error
-qml.PauliX(wires=i)      # Random X error with probability p
+def encode_repetition_code(logical_state, wires):
+    """Encode a logical qubit into repetition code.
+    
+    |0>_L -> |000...0>
+    |1>_L -> |111...1>
+    """
+    # First qubit already has the logical state
+    # CNOT from first to all others
+    for i in range(1, len(wires)):
+        qml.CNOT(wires=[wires[0], wires[i]])
+\end{lstlisting}
 
-# Syndrome measurement: Z_i Z_{i+1}
-qml.expval(qml.PauliZ(i) @ qml.PauliZ(i+1))
+\textbf{Step 2: Apply random bit-flip errors}
+\begin{lstlisting}
+def apply_bit_flip_errors(wires, error_prob):
+    """Apply X errors with probability error_prob."""
+    for w in wires:
+        # In simulation, we can use a random choice
+        if np.random.random() < error_prob:
+            qml.PauliX(wires=w)
+\end{lstlisting}
 
-# Majority vote decoder
-decoded = 1 if sum(measurements) > len(measurements)//2 else 0
+\textbf{Step 3: Measure syndrome and decode}
+\begin{lstlisting}
+def measure_syndrome(wires):
+    """Measure stabilizers Z_i Z_{i+1}.
+    Returns syndrome bits."""
+    n = len(wires)
+    syndrome = []
+    for i in range(n - 1):
+        # Syndrome bit = parity of adjacent qubits
+        # In real implementation, use ancillas
+        syndrome.append(qml.expval(qml.PauliZ(wires[i]) @ qml.PauliZ(wires[i+1])))
+    return syndrome
 
-# For surface code (stim + pymatching):
-import stim, pymatching
-circuit = stim.Circuit.generated("surface_code:rotated_memory_z",
-                                  distance=3, rounds=3,
-                                  after_clifford_depolarization=0.01)
+def decode_majority_vote(measurements):
+    """Simple majority vote decoder."""
+    n_ones = sum(1 for m in measurements if m == 1)
+    n_zeros = sum(1 for m in measurements if m == 0)
+    return 1 if n_ones > n_zeros else 0
+\end{lstlisting}
+
+\textbf{Step 4: Simulate logical error rate}
+\begin{lstlisting}
+def simulate_repetition_code(d, p_error, n_shots=10000):
+    """Simulate logical error rate for distance-d repetition code."""
+    dev = qml.device("default.qubit", wires=d)
+    
+    logical_errors = 0
+    for _ in range(n_shots):
+        # Encode |0>_L = |00...0>
+        # Apply random bit flips
+        errors = [1 if np.random.random() < p_error else 0 for _ in range(d)]
+        # Count errors
+        n_errors = sum(errors)
+        # Majority vote: logical error if > d/2 errors
+        if n_errors > d // 2:
+            logical_errors += 1
+    
+    return logical_errors / n_shots
+
+# Sweep error rates for different distances
+distances = [3, 5, 7]
+error_rates = np.linspace(0.01, 0.5, 20)
+
+plt.figure(figsize=(8, 6))
+for d in distances:
+    logical_rates = [simulate_repetition_code(d, p) for p in error_rates]
+    plt.semilogy(error_rates, logical_rates, '-o', label=f'd={d}')
+
+plt.xlabel('Physical error rate')
+plt.ylabel('Logical error rate')
+plt.legend()
+plt.title('Repetition Code: Threshold Behavior')
+plt.axvline(x=0.5, color='r', linestyle='--', label='Threshold p=0.5')
+plt.savefig('repetition_code_threshold.png')
+\end{lstlisting}
+
+\textbf{Step 5: Observe the threshold crossing}
+
+All curves should cross at $p \approx 0.5$ (the theoretical threshold). Below threshold, higher distance = lower logical error rate. Above threshold, higher distance makes things worse!
+
+\subsection*{Extension: Surface Code (Optional)}
+
+For the surface code, use \texttt{stim} and \texttt{pymatching}:
+\begin{lstlisting}
+# pip install stim pymatching
+import stim
+import pymatching
+
+# Generate a distance-3 surface code circuit
+circuit = stim.Circuit.generated(
+    "surface_code:rotated_memory_z",
+    distance=3,
+    rounds=3,
+    after_clifford_depolarization=0.01  # 1% error rate
+)
+
+# Sample syndromes and decode
+sampler = circuit.compile_detector_sampler()
+detector_samples, observable_samples = sampler.sample(
+    shots=10000, separate_observables=True
+)
+
+# Decode with MWPM
 matcher = pymatching.Matching.from_detector_error_model(
-    circuit.detector_error_model())
+    circuit.detector_error_model()
+)
+predictions = matcher.decode_batch(detector_samples)
+logical_errors = np.sum(predictions != observable_samples)
+print(f"Logical error rate: {logical_errors / 10000:.4f}")
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2035,23 +2477,109 @@ The \textbf{T gate is the bottleneck} of fault-tolerant quantum computing. You c
 \subsection*{Task}
 Model magic state distillation mathematically and quantify the resource overhead.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Model the 15-to-1 protocol}
 \begin{lstlisting}
-# 15-to-1 distillation: p_out = 35 * p_in^3
+import numpy as np
+import matplotlib.pyplot as plt
+
 def distill_15_to_1(p_in):
+    """15-to-1 magic state distillation.
+    
+    Input: error rate p_in
+    Output: error rate p_out = 35 * p_in^3
+    
+    This is the leading-order approximation.
+    """
     return 35 * p_in**3
 
-# Multiple rounds
-p = p_initial
-for round in range(n_rounds):
-    p = distill_15_to_1(p)
+def distill_multiple_rounds(p_initial, n_rounds):
+    """Apply distillation n_rounds times."""
+    p = p_initial
+    for _ in range(n_rounds):
+        p = distill_15_to_1(p)
+    return p
+\end{lstlisting}
 
-# Resource cost: 15^r input states for r rounds
-total_input_states = 15 ** n_rounds
+\textbf{Step 2: Analyze error reduction}
+\begin{lstlisting}
+# Starting error rate (typical for encoded magic states)
+p_initial = 1e-3
 
-# T-factory qubit estimate
-phys_per_logical = 2 * code_distance**2   # Surface code
-factory_qubits = 15 * phys_per_logical * n_rounds
+# How many rounds to reach different targets?
+targets = [1e-6, 1e-9, 1e-12, 1e-15]
+
+print("Rounds needed to reach target error:")
+for target in targets:
+    rounds = 0
+    p = p_initial
+    while p > target and rounds < 10:
+        p = distill_15_to_1(p)
+        rounds += 1
+    print(f"  Target {target:.0e}: {rounds} rounds, final p = {p:.2e}")
+\end{lstlisting}
+
+\textbf{Step 3: Compute resource cost}
+\begin{lstlisting}
+def magic_state_cost(p_initial, p_target):
+    """Compute total magic states consumed to produce one distilled state."""
+    p = p_initial
+    n_rounds = 0
+    while p > p_target:
+        p = distill_15_to_1(p)
+        n_rounds += 1
+    
+    # Each round uses 15 input states
+    total_input_states = 15 ** n_rounds
+    return n_rounds, total_input_states
+
+# Example: Going from p=1e-3 to p=1e-10
+rounds, cost = magic_state_cost(1e-3, 1e-10)
+print(f"Rounds: {rounds}, Input states per output: {cost}")
+\end{lstlisting}
+
+\textbf{Step 4: Plot error vs.\ rounds}
+\begin{lstlisting}
+# Sweep initial error rates
+p_initials = [0.1, 0.05, 0.01, 0.005, 0.001]
+rounds_range = range(5)
+
+plt.figure(figsize=(10, 6))
+for p_init in p_initials:
+    errors = [p_init]
+    for r in range(1, 5):
+        errors.append(distill_multiple_rounds(p_init, r))
+    plt.semilogy(range(len(errors)), errors, 'o-', label=f'p_init={p_init}')
+
+plt.xlabel('Distillation rounds')
+plt.ylabel('Magic state error rate')
+plt.axhline(y=1e-10, color='r', linestyle='--', label='Typical target')
+plt.legend()
+plt.title('Magic State Distillation: Error vs Rounds')
+plt.grid(True)
+plt.savefig('magic_state_distillation.png')
+\end{lstlisting}
+
+\textbf{Step 5: Estimate physical qubit overhead}
+\begin{lstlisting}
+def estimate_t_factory_qubits(p_physical, p_target, code_distance):
+    """Estimate qubits for one T-factory."""
+    rounds, states_per_output = magic_state_cost(p_physical, p_target)
+    
+    # Each magic state is one logical qubit
+    # Each logical qubit needs ~2*d^2 physical qubits (surface code)
+    phys_per_logical = 2 * code_distance**2
+    
+    # Factory processes 15 states at a time (simplified)
+    factory_qubits = 15 * phys_per_logical * rounds
+    
+    return factory_qubits, rounds, states_per_output
+
+qubits, rounds, cost = estimate_t_factory_qubits(1e-3, 1e-10, d=17)
+print(f"T-factory estimate: {qubits} physical qubits")
+print(f"Distillation rounds: {rounds}")
+print(f"Magic states consumed per T gate: {cost}")
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2109,32 +2637,82 @@ The \textbf{Azure Quantum Resource Estimator} is Microsoft's tool for understand
 \subsection*{Task}
 Use the Azure Quantum Resource Estimator to analyze fault-tolerant chemistry costs.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Access the Resource Estimator}
+
+Go to: \url{https://learn.microsoft.com/en-us/azure/quantum/intro-to-resource-estimation}
+
+You can use the browser-based Jupyter notebooks (free Azure account needed) or install locally:
 \begin{lstlisting}[language=bash]
-# Installation
 pip install azure-quantum qsharp
 \end{lstlisting}
 
+\textbf{Step 2: Follow the chemistry tutorial}
+
+Microsoft provides a detailed tutorial for chemistry resource estimation:
+\url{https://learn.microsoft.com/en-us/azure/quantum/tutorial-resource-estimator-chemistry}
+
+The tutorial walks through estimating resources for a small molecule using the Double-Factorized Qubitization algorithm.
+
+\textbf{Step 3: Key Q\# code structure}
 \begin{lstlisting}
-# Python: Run resource estimation
-import qsharp
-result = qsharp.estimate("EstimateChemistry()")
+// Q# code for resource estimation (simplified)
+open Microsoft.Quantum.ResourceEstimation;
 
-# Key outputs
-result['logicalQubitCount']   # Logical qubits needed
-result['physicalQubitCount']  # Physical qubits (after QEC)
-result['tCount']              # Number of T gates
-result['numTFactories']       # Parallel T-factories
-result['runtime']             # Total execution time
-result['codeDistance']        # Required code distance
-
-# Compare configurations
-qsharp.estimate("...", errorBudget=1e-3, qubitParams="surface_code")
-qsharp.estimate("...", errorBudget=1e-3, qubitParams="floquet_code")
-qsharp.estimate("...", errorBudget=1e-3, qubitParams="majorana")
+@EntryPoint()
+operation EstimateChemistry() : Unit {
+    // The algorithm being estimated
+    use qubits = Qubit[numQubits];
+    
+    // Apply the chemistry circuit
+    // (In practice, use pre-built chemistry libraries)
+    
+    // The Resource Estimator counts all operations
+}
 \end{lstlisting}
 
-\textbf{Tutorial:} \url{https://learn.microsoft.com/en-us/azure/quantum/tutorial-resource-estimator-chemistry}
+\textbf{Step 4: Interpret the results}
+
+Key outputs to record:
+\begin{lstlisting}
+# Python code to display results
+result = qsharp.estimate("EstimateChemistry()")
+
+print(f"Logical qubits: {result['logicalQubitCount']}")
+print(f"Physical qubits: {result['physicalQubitCount']}")
+print(f"T gates: {result['tCount']}")
+print(f"T factories: {result['numTFactories']}")
+print(f"Runtime: {result['runtime']}")
+print(f"Code distance: {result['codeDistance']}")
+\end{lstlisting}
+
+\textbf{Step 5: Compare different configurations}
+
+Run the estimator with different parameters:
+\begin{lstlisting}
+configurations = [
+    {"errorBudget": 1e-3, "qubitParams": "surface_code"},
+    {"errorBudget": 1e-6, "qubitParams": "surface_code"},
+    {"errorBudget": 1e-3, "qubitParams": "floquet_code"},
+    {"errorBudget": 1e-3, "qubitParams": "majorana"},
+]
+
+results = []
+for config in configurations:
+    result = qsharp.estimate("EstimateChemistry()", **config)
+    results.append({
+        "config": config,
+        "physical_qubits": result['physicalQubitCount'],
+        "runtime": result['runtime'],
+        "code_distance": result['codeDistance']
+    })
+
+# Create comparison table
+import pandas as pd
+df = pd.DataFrame(results)
+print(df)
+\end{lstlisting}
 
 \subsection*{Deliverables}
 \begin{itemize}
@@ -2198,26 +2776,127 @@ Molecular Hamiltonians have symmetries (electron number, spin, point group). The
 \subsection*{Task}
 Apply qubit reduction techniques to LiH and run VQE on the reduced system.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Load LiH and examine the Hamiltonian}
 \begin{lstlisting}
-# Load LiH data
-dataset = qml.data.load("qchem", molname="LiH", basis="STO-3G", bondlength=1.548)[0]
-H, hf_state = dataset.hamiltonian, dataset.hf_state  # 12 qubits
+import pennylane as qml
+from pennylane import numpy as np
+
+# Load LiH dataset
+dataset = qml.data.load("qchem", molname="LiH",
+                        basis="STO-3G", bondlength=1.548)[0]
+
+H = dataset.hamiltonian
+hf_state = dataset.hf_state
+
+print(f"Number of qubits (full): {len(hf_state)}")
+print(f"Hartree-Fock state: {hf_state}")
+print(f"Number of Pauli terms: {len(H.ops)}")
+print(f"HF energy: {dataset.hf_energy:.6f} Ha")
+\end{lstlisting}
+
+\textbf{Step 2: Identify symmetries}
+
+PennyLane provides tools to find $\mathbb{Z}_2$ symmetries:
+\begin{lstlisting}
+# Get molecular parameters
+symbols = ["Li", "H"]
+geometry = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.548]])
+
+# Build the molecular Hamiltonian
+H, n_qubits = qml.qchem.molecular_hamiltonian(
+    symbols, geometry, basis="sto-3g"
+)
 
 # Find Z2 symmetry generators
 generators = qml.qchem.symmetry_generators(H)
+print(f"Number of symmetry generators: {len(generators)}")
+for i, gen in enumerate(generators):
+    print(f"  Generator {i}: {gen}")
+\end{lstlisting}
+
+\textbf{Step 3: Apply qubit tapering}
+\begin{lstlisting}
+# Get the Pauli-X operators (tapering operators)
 paulix_ops = qml.qchem.paulix_ops(generators, n_qubits)
 
-# Taper the Hamiltonian (remove qubits)
-H_tapered, n_tapered = qml.qchem.taper(H, generators, paulix_ops, n_electrons=4)
-hf_tapered = qml.qchem.taper_hf(generators, paulix_ops, n_electrons, n_qubits, hf_state)
+# Optimal sector for the ground state
+# (determined by the HF state or trial)
+n_electrons = 4  # LiH has 4 electrons
 
-# Get excitations for tapered system
-singles, doubles = qml.qchem.excitations(n_electrons, n_tapered)
+# Taper the Hamiltonian
+H_tapered, qubits_tapered = qml.qchem.taper(
+    H, generators, paulix_ops, n_electrons
+)
 
-# Extended ansatz
-qml.AllSinglesDoubles(params, wires=range(n_tapered), hf_state=hf_tapered,
-                      singles=singles, doubles=doubles)
+print(f"Original qubits: {n_qubits}")
+print(f"Tapered qubits: {qubits_tapered}")
+print(f"Qubits saved: {n_qubits - qubits_tapered}")
+\end{lstlisting}
+
+\textbf{Step 4: Taper the ansatz operations}
+\begin{lstlisting}
+# Also taper the HF state and excitations
+hf_tapered = qml.qchem.taper_hf(
+    generators, paulix_ops, n_electrons, 
+    num_wires=n_qubits, hf_state=hf_state
+)
+
+print(f"Tapered HF state: {hf_tapered}")
+\end{lstlisting}
+
+\textbf{Step 5: Run VQE on the tapered system}
+\begin{lstlisting}
+# Device with tapered qubit count
+dev = qml.device("default.qubit", wires=qubits_tapered)
+
+# Use AllSinglesDoubles ansatz (adapts to qubit count)
+singles, doubles = qml.qchem.excitations(n_electrons, qubits_tapered)
+print(f"Single excitations: {len(singles)}")
+print(f"Double excitations: {len(doubles)}")
+
+@qml.qnode(dev)
+def circuit(params):
+    qml.BasisState(hf_tapered, wires=range(qubits_tapered))
+    qml.AllSinglesDoubles(params, wires=range(qubits_tapered),
+                         hf_state=hf_tapered,
+                         singles=singles, doubles=doubles)
+    return qml.expval(H_tapered)
+
+# Optimize
+n_params = len(singles) + len(doubles)
+params = np.zeros(n_params, requires_grad=True)
+opt = qml.GradientDescentOptimizer(stepsize=0.4)
+
+energies = []
+for step in range(100):
+    params, energy = opt.step_and_cost(circuit, params)
+    energies.append(energy)
+    if step % 20 == 0:
+        print(f"Step {step}: E = {energy:.6f} Ha")
+
+# Compare to exact
+H_matrix = qml.matrix(H_tapered)
+exact_energy = np.min(np.linalg.eigvalsh(H_matrix))
+print(f"\nVQE energy:   {energies[-1]:.6f} Ha")
+print(f"Exact (FCI):  {exact_energy:.6f} Ha")
+print(f"Error: {(energies[-1] - exact_energy)*1000:.2f} mHa")
+\end{lstlisting}
+
+\textbf{Step 6: Discuss active space (conceptual)}
+\begin{lstlisting}
+# In a full active space treatment:
+# - Li 1s orbital: FROZEN (always doubly occupied)
+# - Li 2s, 2p and H 1s: ACTIVE (participate in bonding)
+# 
+# This would reduce from 12 qubits to ~8 qubits
+# Combined with tapering: possibly 4-6 qubits
+
+# The key insight: quantum computers should focus on
+# the "hard" part (active space) where classical methods
+# struggle, while classical computers handle the easy
+# parts (core orbitals, dynamic correlation)
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2281,23 +2960,128 @@ The cost is $O(T)$ regardless of how many observables we want!
 \subsection*{Task}
 Implement classical shadows from scratch and demonstrate efficient observable estimation.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Prepare a test state}
 \begin{lstlisting}
-# Random Pauli measurement
-bases = np.random.randint(0, 3, size=n_qubits)  # 0=X, 1=Y, 2=Z
-for i, b in enumerate(bases):
-    if b == 0: qml.Hadamard(wires=i)       # X basis
-    elif b == 1:                            # Y basis
-        qml.adjoint(qml.S)(wires=i)
-        qml.Hadamard(wires=i)
-outcome = qml.sample(wires=range(n_qubits))
+import pennylane as qml
+from pennylane import numpy as np
+import matplotlib.pyplot as plt
 
-# Classical shadow from snapshot: shadow = (3|b><b| - I) per qubit
-shadow_op = 3 * np.outer(state, state.conj()) - np.eye(2)
-full_shadow = np.kron(shadow_ops[0], shadow_ops[1], ...)
+# Use the H2 ground state from VQE
+n_qubits = 4
+dev = qml.device("default.qubit", wires=n_qubits)
 
-# Estimate observable
-estimate = np.mean([np.trace(shadow @ O) for shadow in shadows])
+# Prepare ground state circuit (from Project 1)
+@qml.qnode(dev)
+def prepare_state():
+    qml.BasisState([1, 1, 0, 0], wires=range(n_qubits))
+    qml.DoubleExcitation(0.22, wires=[0, 1, 2, 3])  # Optimized param
+    return qml.state()
+
+psi = prepare_state()
+\end{lstlisting}
+
+\textbf{Step 2: Implement random Pauli measurement}
+\begin{lstlisting}
+def random_pauli_measurement(state, n_qubits):
+    """Perform random Pauli measurement and return snapshot."""
+    # Random basis for each qubit: 0=X, 1=Y, 2=Z
+    bases = np.random.randint(0, 3, size=n_qubits)
+    
+    # Basis rotation unitaries
+    # X basis: H
+    # Y basis: H @ S^dag = HSdag
+    # Z basis: I
+    
+    dev = qml.device("default.qubit", wires=n_qubits)
+    
+    @qml.qnode(dev)
+    def measure_circuit():
+        # Load the state
+        qml.StatePrep(state, wires=range(n_qubits))
+        
+        # Apply basis rotations
+        for i, b in enumerate(bases):
+            if b == 0:  # X basis
+                qml.Hadamard(wires=i)
+            elif b == 1:  # Y basis
+                qml.adjoint(qml.S)(wires=i)
+                qml.Hadamard(wires=i)
+            # Z basis: no rotation needed
+        
+        return qml.sample(wires=range(n_qubits))
+    
+    outcome = measure_circuit()
+    return bases, outcome
+\end{lstlisting}
+
+\textbf{Step 3: Compute classical shadow from snapshot}
+\begin{lstlisting}
+def snapshot_to_shadow(bases, outcome, n_qubits):
+    """Convert measurement snapshot to classical shadow operator."""
+    # For random Pauli: shadow = (3|b><b| - I) for each qubit
+    # where |b> is the post-measurement state in original basis
+    
+    shadow_ops = []
+    for i in range(n_qubits):
+        b = outcome[i]  # 0 or 1
+        basis = bases[i]  # X, Y, or Z
+        
+        # Post-measurement state rotated back
+        if basis == 0:  # X measurement
+            state = np.array([1, (-1)**b]) / np.sqrt(2)  # |+> or |->
+        elif basis == 1:  # Y measurement
+            state = np.array([1, 1j*(-1)**(b+1)]) / np.sqrt(2)  # |+i> or |-i>
+        else:  # Z measurement
+            state = np.array([1-b, b])  # |0> or |1>
+        
+        # Shadow operator: 3|s><s| - I
+        shadow_op = 3 * np.outer(state, state.conj()) - np.eye(2)
+        shadow_ops.append(shadow_op)
+    
+    # Full shadow is tensor product
+    full_shadow = shadow_ops[0]
+    for op in shadow_ops[1:]:
+        full_shadow = np.kron(full_shadow, op)
+    
+    return full_shadow
+\end{lstlisting}
+
+\textbf{Step 4: Estimate observables from shadows}
+\begin{lstlisting}
+def estimate_observable(shadows, observable_matrix):
+    """Estimate <O> from classical shadows."""
+    estimates = []
+    for shadow in shadows:
+        # Tr(shadow @ O)
+        est = np.real(np.trace(shadow @ observable_matrix))
+        estimates.append(est)
+    return np.mean(estimates), np.std(estimates) / np.sqrt(len(estimates))
+
+# Collect shadows
+n_shadows = 1000
+shadows = []
+for _ in range(n_shadows):
+    bases, outcome = random_pauli_measurement(psi, n_qubits)
+    shadow = snapshot_to_shadow(bases, outcome, n_qubits)
+    shadows.append(shadow)
+\end{lstlisting}
+
+\textbf{Step 5: Compare to exact expectation values}
+\begin{lstlisting}
+# Test with simple Pauli observables
+observables = {
+    "Z0": np.kron(np.diag([1, -1]), np.eye(8)),
+    "Z0Z1": np.kron(np.kron(np.diag([1, -1]), np.diag([1, -1])), np.eye(4)),
+}
+
+rho_exact = np.outer(psi, psi.conj())
+
+for name, O in observables.items():
+    exact = np.real(np.trace(rho_exact @ O))
+    est, err = estimate_observable(shadows, O)
+    print(f"{name}: exact={exact:.4f}, shadow={est:.4f} +/- {err:.4f}")
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2351,25 +3135,158 @@ Symmetric ordering cancels first-order error. Error scales as $O(t^3/n^2)$ --- q
 \subsection*{Task}
 Implement Trotter-based time evolution and verify the error scaling.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Define a test Hamiltonian}
 \begin{lstlisting}
-# First-order Trotter step for Heisenberg: H = J*(XX + YY + ZZ) + h*Z
-qml.IsingXX(2*J*dt, wires=[i, i+1])
-qml.IsingYY(2*J*dt, wires=[i, i+1])
-qml.IsingZZ(2*J*dt, wires=[i, i+1])
-qml.RZ(2*h*dt, wires=i)
+import pennylane as qml
+from pennylane import numpy as np
+import matplotlib.pyplot as plt
+from scipy.linalg import expm
 
-# Second-order Trotter: symmetric ordering
-for i in range(n-1): apply_forward(dt/2)
-for i in range(n-1): apply_backward(dt/2)
+# Heisenberg model on 4 qubits: H = J*sum(XX + YY + ZZ) + h*sum(Z)
+n_qubits = 4
+J = 1.0
+h = 0.5
 
-# Fidelity with exact evolution
-U_exact = scipy.linalg.expm(-1j * H_matrix * t)
-fidelity = np.abs(np.vdot(psi_exact, psi_trotter))**2
+def build_hamiltonian_matrix():
+    """Build the full Hamiltonian matrix."""
+    dim = 2**n_qubits
+    H = np.zeros((dim, dim), dtype=complex)
+    
+    # Pauli matrices
+    I = np.eye(2)
+    X = np.array([[0, 1], [1, 0]])
+    Y = np.array([[0, -1j], [1j, 0]])
+    Z = np.array([[1, 0], [0, -1]])
+    
+    for i in range(n_qubits - 1):
+        # XX term
+        ops = [I]*n_qubits
+        ops[i] = X
+        ops[i+1] = X
+        term = ops[0]
+        for op in ops[1:]:
+            term = np.kron(term, op)
+        H += J * term
+        
+        # YY and ZZ terms (similar)
+        # ... (add YY and ZZ contributions)
+    
+    # Field term
+    for i in range(n_qubits):
+        ops = [I]*n_qubits
+        ops[i] = Z
+        term = ops[0]
+        for op in ops[1:]:
+            term = np.kron(term, op)
+        H += h * term
+    
+    return H
 
-# Error scaling (log-log fit)
-# First-order: error ~ O(t^2/n) ~ 1/n
-# Second-order: error ~ O(t^3/n^2) ~ 1/n^2
+H_matrix = build_hamiltonian_matrix()
+\end{lstlisting}
+
+\textbf{Step 2: Exact time evolution}
+\begin{lstlisting}
+def exact_evolution(H, t, psi_0):
+    """Exact time evolution via matrix exponentiation."""
+    U = expm(-1j * H * t)
+    return U @ psi_0
+
+# Initial state |0110>
+psi_0 = np.zeros(2**n_qubits)
+psi_0[6] = 1.0  # |0110> = binary 6
+
+t = 1.0
+psi_exact = exact_evolution(H_matrix, t, psi_0)
+\end{lstlisting}
+
+\textbf{Step 3: First-order Trotter circuit}
+\begin{lstlisting}
+dev = qml.device("default.qubit", wires=n_qubits)
+
+def trotter_step_first_order(t, wires):
+    """One first-order Trotter step."""
+    n = len(wires)
+    dt = t
+    
+    # XX + YY + ZZ interactions
+    for i in range(n - 1):
+        qml.IsingXX(2*J*dt, wires=[wires[i], wires[i+1]])
+        qml.IsingYY(2*J*dt, wires=[wires[i], wires[i+1]])
+        qml.IsingZZ(2*J*dt, wires=[wires[i], wires[i+1]])
+    
+    # Field terms
+    for i in range(n):
+        qml.RZ(2*h*dt, wires=wires[i])
+
+@qml.qnode(dev)
+def trotter_circuit(n_steps, t_total):
+    # Initial state |0110>
+    qml.PauliX(wires=1)
+    qml.PauliX(wires=2)
+    
+    # Trotter steps
+    dt = t_total / n_steps
+    for _ in range(n_steps):
+        trotter_step_first_order(dt, range(n_qubits))
+    
+    return qml.state()
+\end{lstlisting}
+
+\textbf{Step 4: Second-order Trotter circuit}
+\begin{lstlisting}
+def trotter_step_second_order(t, wires):
+    """One second-order (symmetric) Trotter step."""
+    n = len(wires)
+    dt = t / 2  # Half step
+    
+    # Forward direction
+    for i in range(n - 1):
+        qml.IsingXX(2*J*dt, wires=[wires[i], wires[i+1]])
+        qml.IsingYY(2*J*dt, wires=[wires[i], wires[i+1]])
+        qml.IsingZZ(2*J*dt, wires=[wires[i], wires[i+1]])
+    for i in range(n):
+        qml.RZ(2*h*dt, wires=wires[i])
+    
+    # Backward direction (same operations, achieves symmetric ordering)
+    for i in range(n):
+        qml.RZ(2*h*dt, wires=wires[i])
+    for i in range(n-2, -1, -1):
+        qml.IsingZZ(2*J*dt, wires=[wires[i], wires[i+1]])
+        qml.IsingYY(2*J*dt, wires=[wires[i], wires[i+1]])
+        qml.IsingXX(2*J*dt, wires=[wires[i], wires[i+1]])
+\end{lstlisting}
+
+\textbf{Step 5: Measure fidelity vs.\ Trotter steps}
+\begin{lstlisting}
+def fidelity(psi1, psi2):
+    """State fidelity |<psi1|psi2>|^2."""
+    return np.abs(np.vdot(psi1, psi2))**2
+
+trotter_steps = [1, 2, 4, 8, 16, 32, 64]
+errors_first = []
+errors_second = []
+
+for n in trotter_steps:
+    # First-order
+    psi_trotter = trotter_circuit(n, t)
+    f = fidelity(psi_exact, psi_trotter)
+    errors_first.append(1 - f)
+    
+    # Second-order (similar implementation)
+    # ...
+    
+# Plot
+plt.figure(figsize=(8, 6))
+plt.loglog(trotter_steps, errors_first, 'o-', label='First-order')
+plt.loglog(trotter_steps, errors_second, 's-', label='Second-order')
+plt.xlabel('Trotter steps')
+plt.ylabel('Infidelity (1 - F)')
+plt.legend()
+plt.title('Trotter Error Scaling')
+plt.savefig('trotter_error.png')
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2430,26 +3347,163 @@ Key insight: If we could run at different noise levels, we could extrapolate to 
 \subsection*{Task}
 Simulate VQE under noise and implement ZNE to recover the correct energy.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Setup noisy simulation}
 \begin{lstlisting}
-# Noisy device (mixed-state simulator)
-dev = qml.device("default.mixed", wires=n_qubits)
+import pennylane as qml
+from pennylane import numpy as np
+import matplotlib.pyplot as plt
 
-# Noise channels
-qml.DepolarizingChannel(noise_prob, wires=i)      # General decoherence
-qml.AmplitudeDamping(gamma, wires=i)               # T1 decay
-qml.PhaseDamping(gamma, wires=i)                   # T2 dephasing
+# Load H2 data
+dataset = qml.data.load("qchem", molname="H2",
+                        basis="STO-3G", bondlength=0.742)[0]
+H = dataset.hamiltonian
+hf_state = [1, 1, 0, 0]
+n_qubits = 4
 
-# Unitary folding for noise amplification (scale_factor = 1, 3, 5, ...)
-qml.DoubleExcitation(theta, wires=[0,1,2,3])       # Original
-qml.adjoint(qml.DoubleExcitation)(theta, ...)      # U^dag (adds noise)
-qml.DoubleExcitation(theta, ...)                   # U again (adds noise)
+# Use mixed-state simulator for noise
+dev_noisy = qml.device("default.mixed", wires=n_qubits)
 
-# ZNE extrapolation
-scale_factors = [1, 3, 5]
-energies = [run_circuit(s) for s in scale_factors]
-coeffs = np.polyfit(scale_factors, energies, deg=1)  # Linear fit
-E_zne = coeffs[1]  # Extrapolate to scale=0
+# Optimal VQE parameter (from noiseless optimization)
+theta_opt = 0.22
+\end{lstlisting}
+
+\textbf{Step 2: Create noisy VQE circuit}
+\begin{lstlisting}
+def create_noisy_circuit(noise_prob):
+    """Create VQE circuit with depolarizing noise after each gate."""
+    
+    @qml.qnode(dev_noisy)
+    def circuit():
+        # Prepare HF state (with noise)
+        qml.BasisState(hf_state, wires=range(n_qubits))
+        
+        # Add noise after state prep
+        for i in range(n_qubits):
+            qml.DepolarizingChannel(noise_prob, wires=i)
+        
+        # Double excitation (decomposed into native gates)
+        # Each gate gets noise
+        qml.DoubleExcitation(theta_opt, wires=[0, 1, 2, 3])
+        
+        # Add noise after the ansatz
+        for i in range(n_qubits):
+            qml.DepolarizingChannel(noise_prob, wires=i)
+        
+        return qml.expval(H)
+    
+    return circuit
+
+# Exact (noiseless) energy
+dev_exact = qml.device("default.qubit", wires=n_qubits)
+
+@qml.qnode(dev_exact)
+def exact_circuit():
+    qml.BasisState(hf_state, wires=range(n_qubits))
+    qml.DoubleExcitation(theta_opt, wires=[0, 1, 2, 3])
+    return qml.expval(H)
+
+E_exact = exact_circuit()
+print(f"Exact VQE energy: {E_exact:.6f} Ha")
+\end{lstlisting}
+
+\textbf{Step 3: Implement unitary folding for noise amplification}
+\begin{lstlisting}
+def create_folded_circuit(noise_prob, scale_factor):
+    """Circuit with noise amplified by scale_factor via folding."""
+    
+    @qml.qnode(dev_noisy)
+    def circuit():
+        # Prepare HF state
+        qml.BasisState(hf_state, wires=range(n_qubits))
+        for i in range(n_qubits):
+            qml.DepolarizingChannel(noise_prob, wires=i)
+        
+        # Original ansatz
+        qml.DoubleExcitation(theta_opt, wires=[0, 1, 2, 3])
+        for i in range(n_qubits):
+            qml.DepolarizingChannel(noise_prob, wires=i)
+        
+        # Folding: apply U^dag U for (scale_factor-1) times
+        for _ in range(scale_factor - 1):
+            # U^dagger
+            qml.adjoint(qml.DoubleExcitation)(theta_opt, wires=[0, 1, 2, 3])
+            for i in range(n_qubits):
+                qml.DepolarizingChannel(noise_prob, wires=i)
+            # U again
+            qml.DoubleExcitation(theta_opt, wires=[0, 1, 2, 3])
+            for i in range(n_qubits):
+                qml.DepolarizingChannel(noise_prob, wires=i)
+        
+        return qml.expval(H)
+    
+    return circuit
+\end{lstlisting}
+
+\textbf{Step 4: Run ZNE}
+\begin{lstlisting}
+def zne_extrapolation(noise_prob, scale_factors=[1, 2, 3]):
+    """Perform zero-noise extrapolation."""
+    
+    energies = []
+    for s in scale_factors:
+        circuit = create_folded_circuit(noise_prob, s)
+        E = circuit()
+        energies.append(E)
+        print(f"  Scale {s}: E = {E:.6f} Ha")
+    
+    # Linear extrapolation
+    coeffs = np.polyfit(scale_factors, energies, 1)
+    E_zne_linear = coeffs[1]  # Value at lambda=0
+    
+    # Quadratic extrapolation (if enough points)
+    if len(scale_factors) >= 3:
+        coeffs_quad = np.polyfit(scale_factors, energies, 2)
+        E_zne_quad = coeffs_quad[2]
+    else:
+        E_zne_quad = None
+    
+    return energies, E_zne_linear, E_zne_quad
+
+# Test at different noise levels
+noise_levels = [0.001, 0.005, 0.01, 0.02]
+
+results = []
+for p in noise_levels:
+    print(f"\nNoise probability = {p}")
+    raw_energy = create_noisy_circuit(p)()
+    energies, E_linear, E_quad = zne_extrapolation(p)
+    
+    results.append({
+        'noise': p,
+        'raw': raw_energy,
+        'zne_linear': E_linear,
+        'zne_quad': E_quad,
+        'exact': E_exact
+    })
+    
+    print(f"  Raw energy:    {raw_energy:.6f} Ha (error: {(raw_energy-E_exact)*1000:.2f} mHa)")
+    print(f"  ZNE (linear):  {E_linear:.6f} Ha (error: {(E_linear-E_exact)*1000:.2f} mHa)")
+\end{lstlisting}
+
+\textbf{Step 5: Visualize results}
+\begin{lstlisting}
+fig, ax = plt.subplots(figsize=(8, 6))
+
+noise = [r['noise'] for r in results]
+raw = [r['raw'] for r in results]
+zne = [r['zne_linear'] for r in results]
+
+ax.axhline(y=E_exact, color='k', linestyle='--', label='Exact')
+ax.plot(noise, raw, 'ro-', label='Raw (noisy)')
+ax.plot(noise, zne, 'bs-', label='ZNE (linear)')
+
+ax.set_xlabel('Noise probability')
+ax.set_ylabel('Energy (Ha)')
+ax.legend()
+ax.set_title('Zero-Noise Extrapolation for VQE')
+plt.savefig('zne_results.png')
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2513,28 +3567,172 @@ Start with just the HF state, then iteratively:
 \subsection*{Task}
 Implement ADAPT-VQE and compare to fixed-ansatz VQE.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Setup and operator pool}
 \begin{lstlisting}
+import pennylane as qml
+from pennylane import numpy as np
+
+# Load LiH data (more interesting than H2)
+dataset = qml.data.load("qchem", molname="LiH",
+                        basis="STO-3G", bondlength=1.548)[0]
+H = dataset.hamiltonian
+hf_state = dataset.hf_state
+n_qubits = len(hf_state)
+n_electrons = sum(hf_state)
+
 # Generate operator pool
 singles, doubles = qml.qchem.excitations(n_electrons, n_qubits)
-pool = [('single', s) for s in singles] + [('double', d) for d in doubles]
+print(f"Pool size: {len(singles)} singles + {len(doubles)} doubles")
 
-# Excitation operators
-qml.SingleExcitation(theta, wires=[occ, virt])
-qml.DoubleExcitation(theta, wires=[occ1, occ2, virt1, virt2])
+# Create the operator pool
+def create_operator_pool():
+    """Create list of excitation operators."""
+    pool = []
+    
+    # Single excitations
+    for s in singles:
+        pool.append(('single', s))
+    
+    # Double excitations
+    for d in doubles:
+        pool.append(('double', d))
+    
+    return pool
 
-# Gradient screening (at theta=0)
-grad = (circuit(pi/2) - circuit(-pi/2)) / 2
-best_op = pool[np.argmax(np.abs(gradients))]
+operator_pool = create_operator_pool()
+\end{lstlisting}
 
-# ADAPT loop
-while max(gradients) > threshold:
-    ansatz_ops.append(best_op)
-    ansatz_params = optimize(ansatz_params)  # Re-optimize all
+\textbf{Step 2: Compute gradients for operator selection}
+\begin{lstlisting}
+dev = qml.device("default.qubit", wires=n_qubits)
 
+def compute_operator_gradient(ansatz_ops, ansatz_params, candidate_op):
+    """Compute gradient of energy w.r.t. candidate operator at theta=0."""
+    
+    @qml.qnode(dev)
+    def circuit(params):
+        # HF state
+        qml.BasisState(hf_state, wires=range(n_qubits))
+        
+        # Current ansatz
+        for i, (op_type, wires) in enumerate(ansatz_ops):
+            if op_type == 'single':
+                qml.SingleExcitation(params[i], wires=wires)
+            else:
+                qml.DoubleExcitation(params[i], wires=wires)
+        
+        # Candidate operator at theta=0 (no effect yet)
+        # We compute gradient via parameter-shift
+        op_type, wires = candidate_op
+        if op_type == 'single':
+            qml.SingleExcitation(params[-1], wires=wires)
+        else:
+            qml.DoubleExcitation(params[-1], wires=wires)
+        
+        return qml.expval(H)
+    
+    # Parameter-shift for gradient at theta=0
+    params = list(ansatz_params) + [0.0]
+    params = np.array(params, requires_grad=True)
+    
+    # Gradient of last parameter (candidate)
+    E_plus = circuit(params.at[-1].set(np.pi/2))
+    E_minus = circuit(params.at[-1].set(-np.pi/2))
+    grad = (E_plus - E_minus) / 2
+    
+    return np.abs(grad)
+\end{lstlisting}
+
+\textbf{Step 3: ADAPT-VQE main loop}
+\begin{lstlisting}
+def adapt_vqe(max_iterations=10, grad_threshold=1e-3):
+    """Run ADAPT-VQE algorithm."""
+    
+    ansatz_ops = []
+    ansatz_params = np.array([], requires_grad=True)
+    available_ops = operator_pool.copy()
+    
+    history = []
+    
+    for iteration in range(max_iterations):
+        print(f"\n=== ADAPT Iteration {iteration + 1} ===")
+        
+        # Compute gradients for all unused operators
+        gradients = []
+        for op in available_ops:
+            grad = compute_operator_gradient(ansatz_ops, ansatz_params, op)
+            gradients.append(grad)
+        
+        # Find best operator
+        max_grad_idx = np.argmax(gradients)
+        max_grad = gradients[max_grad_idx]
+        print(f"Max gradient: {max_grad:.6f}")
+        
+        # Check convergence
+        if max_grad < grad_threshold:
+            print("Converged!")
+            break
+        
+        # Add best operator to ansatz
+        best_op = available_ops.pop(max_grad_idx)
+        ansatz_ops.append(best_op)
+        ansatz_params = np.append(ansatz_params, 0.0)
+        ansatz_params = np.array(ansatz_params, requires_grad=True)
+        
+        print(f"Added operator: {best_op}")
+        
+        # Re-optimize all parameters
+        @qml.qnode(dev)
+        def full_circuit(params):
+            qml.BasisState(hf_state, wires=range(n_qubits))
+            for i, (op_type, wires) in enumerate(ansatz_ops):
+                if op_type == 'single':
+                    qml.SingleExcitation(params[i], wires=wires)
+                else:
+                    qml.DoubleExcitation(params[i], wires=wires)
+            return qml.expval(H)
+        
+        opt = qml.GradientDescentOptimizer(stepsize=0.4)
+        for _ in range(50):
+            ansatz_params = opt.step(full_circuit, ansatz_params)
+        
+        energy = full_circuit(ansatz_params)
+        print(f"Energy: {energy:.6f} Ha")
+        history.append({'iteration': iteration, 'energy': energy, 
+                       'n_params': len(ansatz_params)})
+    
+    return ansatz_ops, ansatz_params, history
+
+# Run ADAPT-VQE
+final_ops, final_params, adapt_history = adapt_vqe()
+\end{lstlisting}
+
+\textbf{Step 4: Compare to fixed UCCSD}
+\begin{lstlisting}
 # Fixed UCCSD for comparison
-qml.AllSinglesDoubles(params, wires=range(n), hf_state=hf,
-                      singles=singles, doubles=doubles)
+@qml.qnode(dev)
+def uccsd_circuit(params):
+    qml.BasisState(hf_state, wires=range(n_qubits))
+    qml.AllSinglesDoubles(params, wires=range(n_qubits),
+                         hf_state=hf_state,
+                         singles=singles, doubles=doubles)
+    return qml.expval(H)
+
+n_uccsd_params = len(singles) + len(doubles)
+uccsd_params = np.zeros(n_uccsd_params, requires_grad=True)
+
+opt = qml.GradientDescentOptimizer(stepsize=0.4)
+for _ in range(100):
+    uccsd_params = opt.step(uccsd_circuit, uccsd_params)
+
+E_uccsd = uccsd_circuit(uccsd_params)
+E_adapt = adapt_history[-1]['energy']
+
+print(f"\nComparison:")
+print(f"UCCSD:  E = {E_uccsd:.6f} Ha, params = {n_uccsd_params}")
+print(f"ADAPT:  E = {E_adapt:.6f} Ha, params = {len(final_params)}")
 \end{lstlisting}
 
 \subsection*{Deliverables}
@@ -2598,26 +3796,92 @@ Instead of teleporting $\ket{\psi}$, teleport $G\ket{\psi}$ where $G$ is the des
 \subsection*{Task}
 Implement teleportation and gate teleportation circuits.
 
-\subsection*{Key Functions \& Usage}
-\begin{lstlisting}
-# Standard teleportation protocol
-qml.Hadamard(wires=1)          # Create Bell pair
-qml.CNOT(wires=[1, 2])
-qml.CNOT(wires=[0, 1])         # Bell measurement
-qml.Hadamard(wires=0)
-m0 = qml.measure(0)            # Mid-circuit measurement
-m1 = qml.measure(1)
-qml.cond(m1, qml.PauliX)(wires=2)  # Corrections
-qml.cond(m0, qml.PauliZ)(wires=2)
+\subsection*{Step-by-Step Instructions}
 
-# T-gate teleportation via magic state
-qml.Hadamard(wires=1); qml.T(wires=1)  # Prepare |T>
-qml.CNOT(wires=[0, 1])                  # Entangle
-qml.Hadamard(wires=0)
-m = qml.measure(0)
-qml.cond(m, qml.S)(wires=1)            # S correction if m=1
-# Result: T|psi> on qubit 1
+\textbf{Step 1: Standard teleportation}
+\begin{lstlisting}
+import pennylane as qml
+from pennylane import numpy as np
+
+dev = qml.device("default.qubit", wires=3)
+
+@qml.qnode(dev)
+def teleportation_circuit(input_state_params):
+    """Teleport a state from qubit 0 to qubit 2."""
+    theta, phi = input_state_params
+    
+    # Prepare input state on qubit 0
+    # |psi> = cos(theta/2)|0> + e^{i*phi}*sin(theta/2)|1>
+    qml.RY(theta, wires=0)
+    qml.RZ(phi, wires=0)
+    
+    # Create Bell pair between qubits 1 and 2
+    qml.Hadamard(wires=1)
+    qml.CNOT(wires=[1, 2])
+    
+    # Bell measurement on qubits 0 and 1
+    qml.CNOT(wires=[0, 1])
+    qml.Hadamard(wires=0)
+    
+    # Measure qubits 0 and 1 (classically controlled)
+    # In PennyLane, we use mid-circuit measurements + cond
+    m0 = qml.measure(0)
+    m1 = qml.measure(1)
+    
+    # Apply corrections to qubit 2
+    qml.cond(m1, qml.PauliX)(wires=2)
+    qml.cond(m0, qml.PauliZ)(wires=2)
+    
+    # Return Bloch vector of output qubit
+    return [qml.expval(qml.PauliX(2)),
+            qml.expval(qml.PauliY(2)),
+            qml.expval(qml.PauliZ(2))]
+
+# Test with random input states
+def test_teleportation(n_tests=10):
+    print("Testing quantum teleportation...")
+    for i in range(n_tests):
+        theta = np.random.uniform(0, np.pi)
+        phi = np.random.uniform(0, 2*np.pi)
+        
+        # Expected Bloch vector of input state
+        expected_x = np.sin(theta) * np.cos(phi)
+        expected_y = np.sin(theta) * np.sin(phi)
+        expected_z = np.cos(theta)
+        
+        # Run teleportation
+        output = teleportation_circuit([theta, phi])
+        
+        # Compare (allow for some variance due to mid-circuit measurement)
+        print(f"  Test {i+1}: Expected Z={expected_z:.3f}, Got Z={output[2]:.3f}")
+
+test_teleportation()
 \end{lstlisting}
+
+\textbf{Step 2: Gate teleportation for T gate}
+\begin{lstlisting}
+@qml.qnode(dev)
+def t_gate_teleportation(input_state_params):
+    """Apply T gate via gate teleportation."""
+    theta, phi = input_state_params
+    
+    # Prepare input state on qubit 0
+    qml.RY(theta, wires=0)
+    qml.RZ(phi, wires=0)
+    
+    # Prepare magic state on qubit 1
+    # |T> = (|0> + e^{i*pi/4}|1>)/sqrt(2)
+    qml.Hadamard(wires=1)
+    qml.T(wires=1)
+    
+    # Gate teleportation circuit
+    qml.CNOT(wires=[0, 1])
+    qml.Hadamard(wires=0)
+    
+    # Measure qubit 0
+    m = qml.measure(0)
+    
+    # Apply S correction if m=1
     qml.cond(m, qml.S)(wires=1)
     
     # Output is on qubit 1 = T|psi>
@@ -2742,30 +4006,152 @@ Implemented using multi-controlled Z gates with X gates to flip the target patte
 \subsection*{Task}
 Implement Grover's algorithm from scratch and verify the quadratic speedup.
 
-\subsection*{Key Functions \& Usage}
+\subsection*{Step-by-Step Instructions}
+
+\textbf{Step 1: Implement the oracle}
 \begin{lstlisting}
-# Oracle for marked state (e.g., |0111> for state 7)
-def grover_oracle(marked_bits, wires):
-    for i, bit in enumerate(marked_bits):
-        if bit == 0: qml.PauliX(wires=wires[i])  # Flip 0->1
-    qml.ctrl(qml.PauliZ, control=wires[:-1])(wires=wires[-1])  # Multi-controlled Z
-    for i, bit in enumerate(marked_bits):
-        if bit == 0: qml.PauliX(wires=wires[i])  # Unflip
+import pennylane as qml
+from pennylane import numpy as np
+import matplotlib.pyplot as plt
 
-# Diffusion operator (reflect about |s>)
-def diffusion(wires):
-    for w in wires: qml.Hadamard(wires=w)
-    for w in wires: qml.PauliX(wires=w)
+def grover_oracle(marked_state, wires):
+    """Oracle that flips phase of marked state.
+    
+    marked_state: binary list, e.g., [1, 0, 1] for |101>
+    """
+    n = len(wires)
+    
+    # Flip qubits where marked_state is 0
+    for i, bit in enumerate(marked_state):
+        if bit == 0:
+            qml.PauliX(wires=wires[i])
+    
+    # Multi-controlled Z (flip phase when all qubits are |1>)
     qml.ctrl(qml.PauliZ, control=wires[:-1])(wires=wires[-1])
-    for w in wires: qml.PauliX(wires=w)
-    for w in wires: qml.Hadamard(wires=w)
+    
+    # Unflip qubits
+    for i, bit in enumerate(marked_state):
+        if bit == 0:
+            qml.PauliX(wires=wires[i])
+\end{lstlisting}
 
-# Full Grover circuit
-for w in wires: qml.Hadamard(wires=w)      # Initial superposition
-for _ in range(int(np.pi/4 * np.sqrt(N))):  # Optimal iterations
-    grover_oracle(marked, wires)
-    diffusion(wires)
-qml.probs(wires=wires)                       # Measure
+\textbf{Step 2: Implement the diffusion operator}
+\begin{lstlisting}
+def diffusion_operator(wires):
+    """Reflect about the uniform superposition state.
+    
+    Implements 2|s><s| - I where |s> = H^n|0>
+    """
+    n = len(wires)
+    
+    # Apply H to go to computational basis
+    for w in wires:
+        qml.Hadamard(wires=w)
+    
+    # Apply X to flip (so we're reflecting about |0...0>)
+    for w in wires:
+        qml.PauliX(wires=w)
+    
+    # Multi-controlled Z
+    qml.ctrl(qml.PauliZ, control=wires[:-1])(wires=wires[-1])
+    
+    # Undo X and H
+    for w in wires:
+        qml.PauliX(wires=w)
+    for w in wires:
+        qml.Hadamard(wires=w)
+\end{lstlisting}
+
+\textbf{Step 3: Full Grover circuit}
+\begin{lstlisting}
+def optimal_iterations(n_qubits):
+    """Optimal number of Grover iterations."""
+    N = 2**n_qubits
+    return int(np.round(np.pi/4 * np.sqrt(N)))
+
+def grover_circuit(n_qubits, marked_state, n_iterations):
+    """Build Grover's algorithm circuit."""
+    dev = qml.device("default.qubit", wires=n_qubits)
+    
+    @qml.qnode(dev)
+    def circuit():
+        wires = range(n_qubits)
+        
+        # Initial superposition
+        for w in wires:
+            qml.Hadamard(wires=w)
+        
+        # Grover iterations
+        for _ in range(n_iterations):
+            grover_oracle(marked_state, wires)
+            diffusion_operator(wires)
+        
+        # Return probabilities
+        return qml.probs(wires=wires)
+    
+    return circuit
+
+# Test with n=4 qubits, mark state |7> = |0111>
+n = 4
+marked = [0, 1, 1, 1]  # Binary for 7
+opt_iter = optimal_iterations(n)
+
+circuit = grover_circuit(n, marked, opt_iter)
+probs = circuit()
+
+print(f"n = {n} qubits, N = {2**n} states")
+print(f"Optimal iterations: {opt_iter}")
+print(f"Probability of marked state (7): {probs[7]:.4f}")
+print(f"Expected: ~{1.0:.4f}")
+\end{lstlisting}
+
+\textbf{Step 4: Observe Grover oscillation}
+\begin{lstlisting}
+# Plot probability of success vs. number of iterations
+n = 4
+marked = [0, 1, 1, 1]
+marked_idx = 7
+
+iterations_range = range(0, 15)
+success_probs = []
+
+for n_iter in iterations_range:
+    circuit = grover_circuit(n, marked, n_iter)
+    probs = circuit()
+    success_probs.append(probs[marked_idx])
+
+plt.figure(figsize=(8, 5))
+plt.plot(iterations_range, success_probs, 'o-')
+plt.axhline(y=1.0, color='r', linestyle='--', alpha=0.5)
+plt.xlabel('Number of Grover iterations')
+plt.ylabel('Probability of finding marked state')
+plt.title(f'Grover Oscillation (n={n} qubits)')
+plt.grid(True)
+plt.savefig('grover_oscillation.png')
+\end{lstlisting}
+
+\textbf{Step 5: Verify quadratic speedup}
+\begin{lstlisting}
+# Optimal iterations vs qubit count
+qubit_counts = [2, 3, 4, 5, 6]
+iterations_needed = []
+classical_queries = []
+
+for n in qubit_counts:
+    N = 2**n
+    opt = optimal_iterations(n)
+    iterations_needed.append(opt)
+    classical_queries.append(N // 2)  # Expected classical
+
+plt.figure(figsize=(8, 5))
+plt.semilogy(qubit_counts, classical_queries, 's-', label='Classical O(N)')
+plt.semilogy(qubit_counts, iterations_needed, 'o-', label='Grover O(sqrt(N))')
+plt.xlabel('Number of qubits (n)')
+plt.ylabel('Queries needed')
+plt.legend()
+plt.title('Grover\'s Quadratic Speedup')
+plt.grid(True)
+plt.savefig('grover_speedup.png')
 \end{lstlisting}
 
 \subsection*{Deliverables}
