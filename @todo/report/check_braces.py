@@ -20,3 +20,4 @@ else:
 lines=s.splitlines()
 for ln in range(max(1,len(lines)-80),len(lines)+1):
     print(f"{ln:04}: {lines[ln-1]}")
+
