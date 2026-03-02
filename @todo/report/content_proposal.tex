@@ -108,6 +108,7 @@ The subset contains the following objectives:
     \item maximize nutritional value
     \item maximize nutrient density
     \item maximize affordability
+    \item maximize sustainability
     \item minimize environmental impact
 \end{itemize}
 Our objective can in a first approximation be expressed as:
@@ -291,6 +292,15 @@ The values were processed as follows to obtain normalized scores:
     \end{equation}
 \end{itemize}
 
+The precise content of each score deserves clarification, as the environmental and sustainability objectives are grounded in specific Life Cycle Assessment (LCA) impact categories from the GAIN database:
+\begin{itemize}
+    \item \textbf{Environmental Impact} is derived from \texttt{Primary\_production\_mPt\_100NVS}, which aggregates the environmental damage of the \textit{farming (primary production) stage only}, expressed in millipoints per 100 units of Nutritional Value Score (NVS). The underlying LCA categories at this stage include: climate change, acidification, particulate matter formation, eutrophication, land use, fossil resource use, and water use. By minimizing this score, the optimizer penalizes crops with high environmental damage during cultivation.
+    \item \textbf{Sustainability} is derived from the inverse of \texttt{TOTAL\_categories\_mPt\_100NVS}, which sums all eight LCA damage categories (climate change, acidification, particulate matter, eutrophication, land use, fossil resource use, water use, and other) across the \textit{entire product lifecycle}---from primary production through processing, packaging, distribution, retail, consumer use, and waste treatment. Maximizing the inverse favors crops whose full supply chain has low total environmental damage per unit of nutritional value.
+    \item \textbf{Affordability} is derived from the inverse of the cost required to achieve an NVS score of 100, sourced from Indonesian market price data. Maximizing this score favors crops that deliver high nutritional value at low cost to the consumer---i.e.\ the optimizer selects \textit{affordable} crops, not necessarily high-market-value crops.
+    \item \textbf{Nutritional Value} and \textbf{Nutrient Density} are both derived from the NVS database and capture distinct aspects of nutritional quality per food item.
+\end{itemize}
+
+This distinction between Environmental Impact (production-stage damage) and Sustainability (full-lifecycle damage) allows the optimizer to separately penalize farming-phase externalities and total supply-chain externalities, providing finer-grained control over which environmental costs are weighted.
 
 To create a comprehensive dataset, the same food was found in all three files (manually due to different naming conventions) and added to a separate dataset with the normalized scores. Then all rows containing empty values were discarded and the columns aggregated.
 
@@ -1012,39 +1022,43 @@ Anticipating a future deployment of the full-scale quantum solution in the real-
 
 \subsection{Local Impact Assessment}
 
-The food production optimization solution targets multiple dimensions of sustainable development across different time horizons. The anticipated impacts span nutritional security, environmental sustainability, and economic prosperity for agricultural communities.
+The food production optimization solution targets multiple dimensions of sustainable development across different time horizons. As described in Section~1, both local and global populations are impacted, with particular vulnerability among low-income communities and regions with limited arable land. The solution addresses the fundamental optimization challenge of allocating limited farms and arable land to feed the maximum number of people in a nutritionally intelligent way, at the lowest cost to the population, while minimizing environmental harm. The optimizer pursues this through five explicit objectives---nutritional value, nutrient density, affordability, sustainability, and environmental impact---each grounded in quantitative data from LCA and nutritional databases (see Section~3.1 for definitions).
+
+The anticipated impacts span nutritional security, environmental sustainability, and economic prosperity for agricultural communities.
 
 \subsubsection{Short-Term Impacts (0-2 years)}
 
 \textbf{SDG 2 (Zero Hunger):} The solution delivers optimized crop planning outputs that balance nutritional value, affordability, and environmental impact. Through quantum-classical hybrid optimization, the system produces planting assignments across diversified food groups that can be implemented immediately by farming communities. This addresses SDG Target 2.3 (doubling agricultural productivity of small-scale producers) and 2.4 (ensuring sustainable food production systems).
 
-\textbf{SDG 1 (No Poverty):} By optimizing crop selection toward higher-value, market-appropriate foods, the system enables immediate income increases for small-scale farmers. Household income surveys demonstrate measurable improvements in earnings from optimized crop sales compared to traditional planting patterns. This directly supports Target 1.2 (reducing poverty by at least half).
-
-\textbf{SDG 8 (Decent Work and Economic Growth):} Diversified crop production creates additional employment opportunities in sustainable agriculture, from planting through harvest and post-harvest processing. Employment surveys document new labor positions generated by optimized farming operations, supporting Target 8.5 (full employment and decent work with equal pay).
+\textbf{SDG 1 (No Poverty):} By optimizing crop selection toward affordable, nutritionally dense foods, the system reduces food expenditure burdens on low-income households while maintaining dietary quality. Household income surveys can measure changes in the share of income spent on food compared to traditional planting patterns. This directly supports Target 1.2 (reducing poverty by at least half).
 
 \textbf{SDG 9 (Industry, Innovation and Infrastructure):} The deployment of the digital mapping and quantum optimization platform provides stakeholders with accessible technology tools for agricultural planning, directly supporting SDG Target 9.a (facilitating sustainable infrastructure development in developing countries).
 
-\textbf{SDG 10 (Reduced Inequalities):} Platform design prioritizes accessibility for smallholder farmers, with usage metrics tracking the percentage of small-scale producers accessing quantum planning tools. This addresses Target 10.2 (promoting social inclusion of all).
-
-\textbf{SDG 17 (Partnerships for the Goals):} Implementation establishes multi-stakeholder partnerships between research institutions, government agencies, NGOs, and farmer cooperatives for technology deployment. Partnership agreements and MOUs document collaboration frameworks, supporting Target 17.16 (enhanced global partnerships).
+\textbf{SDG 10 (Reduced Inequalities):} The optimization tool is designed as open-source software whose outputs---crop allocation plans---can be communicated through existing agricultural extension services without requiring specialized hardware from farmers. Critically, the underlying farm model explicitly represents the fragmented land distribution typical of low-income countries: sub-1\,ha farms constitute approximately 45\% of holdings \cite{LOWDER201616}, and the optimizer handles these small parcels natively. This lowers the barrier for smallholder farmers to access data-driven decision support that was previously available only through costly private consultancy, addressing Target 10.2 (promoting social inclusion of all).
 
 \subsubsection{Mid-Term Impacts (2-5 years)}
 
 \textbf{SDG 2 (Zero Hunger):} Sustained implementation of optimized crop plans leads to measurable improvements in micronutrient intake. Biomarker analysis (blood/urine samples) can quantify changes in key nutrients (iron, vitamin A, zinc, folate) among participating households, addressing SDG Target 2.2 (ending all forms of malnutrition). Household Dietary Diversity Scores (HDDS) track the number of food groups consumed, demonstrating improved dietary variety.
 
-\textbf{SDG 6 (Clean Water and Sanitation):} Optimized crop selection favoring water-efficient species reduces total agricultural water consumption per season. Water meter readings and irrigation monitoring systems quantify improvements, addressing Target 6.4 (substantially increasing water-use efficiency).
+\textbf{SDG 6 (Clean Water and Sanitation):} The sustainability objective explicitly includes \texttt{Water\_use\_mPt} as one of its eight LCA damage categories, meaning the optimizer penalizes crops with high water-use impact per unit of nutritional value. When consistently applied, this favors crop mixes with lower aggregate water footprints. Water meter readings and irrigation monitoring systems can quantify the resulting improvements in agricultural water consumption per season, addressing Target 6.4 (substantially increasing water-use efficiency).
 
-\textbf{SDG 10 (Reduced Inequalities):} Income inequality among farmers decreases as smallholders adopt optimized practices previously accessible only to larger operations. Gini coefficient calculations track changes in income distribution, supporting Target 10.1 (income growth of bottom 40\%).
+\textbf{SDG 8 (Decent Work and Economic Growth):} As optimized crop diversification takes hold, additional employment opportunities emerge across sustainable agriculture---from planting through harvest and post-harvest processing. Employment surveys can document new labor positions generated by diversified farming operations, supporting Target 8.5 (full employment and decent work with equal pay).
 
-\textbf{SDG 12 (Responsible Consumption and Production):} Farms adopting sustainable production methods increase measurably. Practice surveys and certification records document implementation of environmentally-sound techniques, addressing Target 12.2 (sustainable management of natural resources).
+\textbf{SDG 10 (Reduced Inequalities):} As smallholder farmers adopt the tool over successive planting seasons, the leveling effect of equal access to data-driven decision support may begin to narrow income gaps. However, we note that the optimizer does not directly target income inequality; rather, the mechanism is indirect---providing small-scale producers with crop plans of comparable quality to those available to larger, better-resourced operations. Monitoring changes in income distribution among participating farmers can track progress toward Target 10.1 (income growth of bottom 40\%).
 
-\textbf{SDG 13 (Climate Action):} The environmental optimization component, when consistently applied, contributes to measurable reductions in CO$_2$ emissions from agricultural activities. This supports climate mitigation efforts while maintaining food security.
+\textbf{SDG 12 (Responsible Consumption and Production):} Farms adopting optimized production methods---guided by the environmental impact and sustainability objectives that penalize high-damage crops---increasingly shift toward environmentally sound practices. Practice surveys and certification records can document this transition, addressing Target 12.2 (sustainable management of natural resources).
 
-\textbf{SDG 15 (Life on Land):} Biodiversity on participating farmland improves through sustainable land use practices. Ecological surveys measuring species richness and abundance document ecosystem health, addressing Target 15.5 (reducing degradation and halting biodiversity loss).
+\textbf{SDG 13 (Climate Action):} The environmental impact objective includes \texttt{Climate\_change\_mPt} at the production stage, while the sustainability objective captures climate change impact across the full lifecycle. When consistently applied, these objectives favor crop mixes with lower aggregate greenhouse gas emissions. GHG monitoring can quantify the resulting reductions in CO$_2$-equivalent emissions from agricultural activities, supporting climate mitigation efforts while maintaining food security.
+
+\textbf{SDG 15 (Life on Land):} The sustainability objective includes \texttt{Land\_use\_mPt} as an LCA damage category, meaning the optimizer penalizes crops with high land-use impact per unit of nutritional value. This may contribute to reduced pressure on natural habitats by favoring land-efficient crops. Ecological surveys measuring species richness and abundance can document whether this translates to improved ecosystem health on participating farmland, addressing Target 15.5 (reducing degradation and halting biodiversity loss).
+
+\textbf{SDG 17 (Partnerships for the Goals):} Successful adoption of the optimization solution requires multi-stakeholder partnerships between research institutions, government agencies, NGOs, and farmer cooperatives. Building these collaboration frameworks is a mid-term process; partnership agreements and MOUs documenting the resulting structures support Target 17.16 (enhanced global partnerships).
 
 \subsubsection{Long-Term Impacts (5-10 years)}
 
-\textbf{SDG 2 (Zero Hunger):} Long-term adoption leads to improved hunger rates at community and regional scales. Household dietary recall surveys and nutritional assessments show increased percentages of households meeting minimum dietary needs. Nutritional adequacy translates to functional outcomes: adults demonstrate improved work capacity and productivity (measured through self-rating scores), while children show better school performance through improved attendance, concentration, and test scores.
+\textbf{SDG 2 (Zero Hunger):} Long-term adoption leads to improved hunger rates at community and regional scales. Household dietary recall surveys and nutritional assessments show increased percentages of households meeting minimum dietary needs, addressing Target 2.1 (ending hunger and ensuring access to safe, nutritious, and sufficient food).
+
+\textbf{SDG 4 (Quality Education) and SDG 8 (Decent Work):} Improved nutritional adequacy among communities translates to functional outcomes beyond hunger reduction: children show better school performance through improved attendance, concentration, and test scores (SDG~4, Target~4.1), while adults demonstrate improved work capacity and productivity (SDG~8, Target~8.5). These are downstream effects of sustained nutritional improvements rather than direct outputs of the optimizer.
 
 \textbf{SDG 1 (No Poverty):} Poverty rates in farming communities decline measurably as sustained agricultural improvements compound over time. Economic surveys comparing household incomes to national poverty thresholds document the share of farming households moving above poverty lines, approaching Target 1.1 (eradicating extreme poverty).
 
@@ -1054,7 +1068,7 @@ The food production optimization solution targets multiple dimensions of sustain
 
 \textbf{SDG 13 (Climate Action):} Cumulative emissions reductions from optimized agricultural systems contribute to global warming mitigation efforts, with measurable impacts on regional climate resilience. GHG monitoring tools, soil tests, and energy-use records document greenhouse gas reduction per farming season, supporting Target 13.2 (integrating climate measures into policies and planning).
 
-\textbf{SDG 15 (Life on Land):} Soil quality improves on farms using optimized agriculture, preventing land degradation. Soil testing at baseline and regular intervals measures composite indicators (organic matter, nutrients, pH), addressing Target 15.3 (combating desertification and restoring degraded land).
+\textbf{SDG 15 (Life on Land):} Reduced land-use intensity, as incentivized by the sustainability objective's inclusion of \texttt{Land\_use\_mPt}, may contribute to lower pressure on soils over time. However, direct soil quality improvement (organic matter, nutrient content, pH) would require complementary agronomic practices such as cover cropping and reduced tillage that are not explicitly modeled by the optimizer. Soil testing at baseline and regular intervals can track whether optimized crop selection correlates with improved soil indicators, addressing Target 15.3 (combating desertification and restoring degraded land).
 
 \subsection{SDG Interlinkages: Synergies, Trade-offs, and Mitigation Strategies}
 
@@ -1066,11 +1080,11 @@ Several mutually reinforcing pathways amplify the solution's positive impacts ac
 
 The \textbf{nutrition-health-productivity pathway} (SDG 2 $\rightarrow$ SDG 3 $\rightarrow$ SDG 8) creates a virtuous cycle. Optimizing for nutritional density directly improves health outcomes, which in turn enhances workforce productivity and agricultural capacity. This reinforcing loop compounds benefits over time as healthier populations demonstrate greater economic participation and better educational attainment.
 
-The \textbf{poverty-food-economics triangle} interconnects poverty reduction (SDG 1), food security (SDG 2), and economic growth (SDG 8) in a mutually supporting relationship. Agricultural optimization addressing all three simultaneously achieves greater total impact than addressing any single goal in isolation. Higher-value crop selection increases farmer incomes, reducing poverty while diversified production improves nutritional security and generates employment opportunities that drive local economic growth.
+The \textbf{poverty-food-economics triangle} interconnects poverty reduction (SDG 1), food security (SDG 2), and economic growth (SDG 8) in a mutually supporting relationship. Agricultural optimization addressing all three simultaneously achieves greater total impact than addressing any single goal in isolation. By maximizing affordability (low cost per unit of nutritional value), the optimizer reduces food expenditure burdens on consumers; combined with dietary diversification, this improves nutritional security while freeing household income for other needs, contributing to local economic activity.
 
 The \textbf{technology-innovation-partnership chain} demonstrates how quantum computing application (SDG 9) strengthens international partnerships (SDG 17) by facilitating cutting-edge technology transfer to developing contexts while building local technical capacity. This pathway enables knowledge sharing, reduces inequalities through accessible technology (SDG 10), and drives economic growth (SDG 8) through innovation adoption.
 
-The \textbf{climate-ecosystem nexus} shows how environmental optimization constraints simultaneously address climate action (SDG 13), terrestrial ecosystems (SDG 15), water management (SDG 6), and marine ecosystems (SDG 14) through integrated land-use planning. Optimizing for reduced emissions also protects biodiversity, improves water efficiency, and prevents agricultural runoff that degrades aquatic systems.
+The \textbf{climate-ecosystem nexus} shows how the environmental optimization objectives simultaneously address multiple environmental SDGs through their underlying LCA damage categories. Specifically: \texttt{Climate\_change\_mPt} directly relates to climate action (SDG~13); \texttt{Land\_use\_mPt} relates to terrestrial ecosystem pressure (SDG~15); \texttt{Water\_use\_mPt} relates to water management (SDG~6); and \texttt{Eutrophication\_mPt} captures nutrient runoff that can degrade aquatic systems (SDG~14). By penalizing crops with high scores in these categories, the optimizer indirectly favors crop mixes with lower aggregate environmental footprints across these dimensions. However, biodiversity protection (SDG~15) is only indirectly supported through reduced land-use pressure; the optimizer does not explicitly model species richness or habitat preservation.
 
 \subsubsection{Critical Trade-offs and Mitigation Strategies}
 
@@ -1102,9 +1116,7 @@ Protecting biodiversity and preventing land degradation may constrain agricultur
 
 \textbf{Healthcare Infrastructure Expansion (SDG 3 vs SDGs 12, 13):}
 
-Improved nutrition drives better health outcomes, but healthcare infrastructure expansion to serve larger populations may increase energy use, generate medical waste, and raise emissions. The solution's success in improving health could paradoxically increase environmental pressures.
-
-\textit{Mitigation:} Integrating preventive health approaches reduces infrastructure needs by lowering disease incidence; renewable energy powers health facilities; comprehensive waste management systems handle medical waste safely; and efficiency improvements in healthcare delivery minimize per-capita resource consumption.
+\textit{Note: While improved nutrition may increase demand for healthcare services in the long term as populations grow, this effect is several causal steps removed from the optimizer's direct outputs and is not considered a primary trade-off of the solution.}
 
 \textbf{Economic Growth Without Safeguards (SDG 8 vs SDG 13):}
 
@@ -1114,15 +1126,15 @@ Agricultural economic growth, if pursued without environmental constraints, may 
 
 \textbf{Consumption Patterns and Economic Growth (SDG 12 vs SDG 8):}
 
-Promoting responsible consumption and reducing waste may slow short-term economic growth if it limits market expansion or increases production costs.
+The sustainability objective includes \texttt{Waste\_treatment\_mPt} as part of the full-lifecycle environmental assessment, meaning the optimizer indirectly penalizes crops whose post-consumer waste processing has high environmental costs. However, the optimizer does not directly model consumer behavior, food waste rates, or consumption patterns. Claims about responsible consumption are therefore limited to the production side: the optimizer favors crops with lower full-lifecycle environmental damage, which includes the waste treatment stage. Promoting responsible consumption at the consumer level would require complementary interventions beyond the scope of this optimization.
 
-\textit{Mitigation:} Market development for sustainable products commanding premium prices transforms environmental responsibility into economic opportunity. Certification programs add value to sustainably produced crops, while consumer education creates demand. Long-term economic benefits of sustainable practices—including soil health, reduced input costs, and climate resilience—outweigh short-term transition costs.
+\textit{Mitigation:} Market development for sustainable products commanding premium prices transforms environmental responsibility into economic opportunity. Certification programs add value to sustainably produced crops, while consumer education creates demand. Long-term economic benefits of sustainable practices---including reduced input costs and climate resilience---outweigh short-term transition costs.
 
 \textbf{Unequal Partnership Structures (SDG 17 vs SDG 10):}
 
-Multi-stakeholder partnerships, while essential for technology deployment, may reinforce existing power imbalances if not carefully structured. Partnerships dominated by well-resourced institutions could marginalize smallholder farmer voices.
+Multi-stakeholder partnerships, while essential for technology deployment, may reinforce existing power imbalances if not carefully structured. Partnerships dominated by well-resourced institutions could marginalize smallholder farmer voices. Furthermore, quantum computing hardware and cloud services are predominantly provided by technology companies in North America and Europe, which could create technological dependencies for developing countries relying on these platforms for agricultural decision support.
 
-\textit{Mitigation:} Participatory governance structures with farmer representatives in decision-making bodies ensure equitable influence. Transparent benefit-sharing agreements document how gains are distributed. Capacity building programs equalize negotiating power between partners. Regular stakeholder consultations verify that partnership benefits reach intended beneficiaries.
+\textit{Mitigation:} Participatory governance structures with farmer representatives in decision-making bodies ensure equitable influence. Transparent benefit-sharing agreements document how gains are distributed. Capacity building programs equalize negotiating power between partners. Regular stakeholder consultations verify that partnership benefits reach intended beneficiaries. To mitigate technological dependency, the optimization framework is designed to also run on classical solvers (Gurobi, SCIP) when quantum access is unavailable, ensuring the solution remains functional independently of quantum cloud providers.
 
 \subsubsection{Monitoring and Adaptive Management}
 
