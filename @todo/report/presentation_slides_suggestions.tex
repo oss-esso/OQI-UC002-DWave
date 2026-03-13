@@ -1,0 +1,462 @@
+\begin{frame}{Problem Variant A: Binary Crop Allocation}
+    \framesubtitle{The Big Picture}
+
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{What are we trying to do?}
+            \vspace{0.3cm}
+
+            We have a set of \textbf{farms} (patches of land) and a set of
+            \textbf{crops} we could plant. We want to decide:
+
+            \vspace{0.3cm}
+            \begin{itemize}
+                \item Which crop (if any) goes on each farm patch?
+                \item Which crops do we use at all?
+            \end{itemize}
+
+            \vspace{0.4cm}
+            \textbf{Goal:} Assign crops to farms to \textbf{maximise overall benefit}
+            (e.g.\ nutritional value, revenue) while respecting
+            land-use rules and dietary diversity requirements.
+        \end{column}
+        \begin{column}{0.42\textwidth}
+            \begin{tikzpicture}
+                % Farm patches
+                \foreach \x/\col/\lbl in {0/primaryBlue/Farm 1, 1.2/accentTeal/Farm 2, 2.4/accentGreen/Farm 3}{
+                    \draw[fill=\col!30,rounded corners=3pt]
+                        (\x,0) rectangle (\x+1,1.4);
+                    \node[font=\tiny,align=center] at (\x+0.5,0.7) {\lbl};
+                }
+                \node[font=\footnotesize] at (1.7,1.8) {Assign one crop per patch};
+                % Arrow
+                \draw[->,thick] (1.7,1.6) -- (1.7,1.1);
+                % Crops
+                \foreach \x/\col/\lbl in {0/warmOrange/Wheat, 1.2/primaryBlue/Corn, 2.4/accentGreen/Soy}{
+                    \draw[fill=\col!40,rounded corners=3pt]
+                        (\x,-1.8) rectangle (\x+1,-0.7);
+                    \node[font=\tiny,align=center] at (\x+0.5,-1.25) {\lbl};
+                }
+                \node[font=\footnotesize] at (1.7,-2.2) {Available crops};
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Decision Variables: What the Computer Decides}
+    \framesubtitle{Two yes/no questions per assignment}
+
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \textbf{Variable 1 — Is crop $c$ planted on farm $f$?}
+            \vspace{0.2cm}
+
+            \begin{equation*}
+                Y_{f,c} \in \{0, 1\}
+            \end{equation*}
+
+            \vspace{0.1cm}
+            \begin{itemize}\small
+                \item $Y_{f,c} = 1$ \quad \textbf{Yes}, plant crop $c$ on farm $f$
+                \item $Y_{f,c} = 0$ \quad \textbf{No}, don't
+            \end{itemize}
+
+            \vspace{0.5cm}
+            \textit{Example:} $Y_{\text{Farm2, Wheat}} = 1$ means
+            Farm~2 is assigned to Wheat.
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \textbf{Variable 2 — Is crop $c$ used anywhere?}
+            \vspace{0.2cm}
+
+            \begin{equation*}
+                U_{c} \in \{0, 1\}
+            \end{equation*}
+
+            \vspace{0.1cm}
+            \begin{itemize}\small
+                \item $U_c = 1$ \quad Crop $c$ appears on \textit{at least one} farm
+                \item $U_c = 0$ \quad Crop $c$ is not grown at all
+            \end{itemize}
+
+            \vspace{0.5cm}
+            \textit{Why do we need $U_c$?}\\
+            It lets us enforce rules like
+            \emph{``include at least 3 vegetable types''} without
+            counting the same crop twice.
+        \end{column}
+    \end{columns}
+
+    \vspace{0.4cm}
+    \begin{alertblock}{Scale}
+        With 1,000 farms and 27 crops this gives
+        $1000 \times 27 + 27 = \mathbf{27{,}027}$ binary variables.
+    \end{alertblock}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Objective Function: What We Want to Maximise}
+    \framesubtitle{Reward bigger farms growing more beneficial crops}
+
+    \begin{equation*}
+        \max\; Z \;=\; \frac{1}{A_{\text{total}}}
+        \sum_{f,\, c} L_f \cdot B_c \cdot Y_{f,c}
+    \end{equation*}
+
+    \vspace{0.4cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{What each symbol means:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item $L_f$ — area (hectares) of farm patch $f$
+                \item $B_c$ — benefit score of crop $c$\\
+                      {\small (e.g.\ nutritional value, profit/ha)}
+                \item $Y_{f,c}$ — our yes/no decision variable
+                \item $A_{\text{total}}$ — total farmland area\\
+                      {\small (normalises $Z$ to a 0–1 scale)}
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Plain English:}
+            \vspace{0.2cm}
+
+            For every farm–crop pair that we \emph{do} assign
+            ($Y_{f,c}=1$), we earn a reward equal to the
+            \textbf{farm's area} times the \textbf{crop's benefit}.
+            Pairs we skip ($Y_{f,c}=0$) contribute nothing.
+
+            \vspace{0.3cm}
+            Dividing by total area means $Z$ represents the
+            \textbf{average benefit per hectare} across all land.
+        \end{column}
+    \end{columns}
+
+    \vspace{0.3cm}
+    \begin{exampleblock}{Intuition}
+        A large, fertile farm growing a high-value crop contributes
+        a lot to $Z$. A tiny patch with a low-benefit crop barely moves the needle.
+    \end{exampleblock}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Constraints: The Rules We Must Follow}
+    \framesubtitle{Four guardrails that keep solutions realistic}
+
+    \begin{tikzpicture}[
+        box/.style={rounded corners=3pt, minimum width=10.8cm,
+                    minimum height=1.05cm, font=\small, align=left,
+                    text=white, inner sep=8pt}
+    ]
+        \node[box, fill=primaryBlue] at (0,0) {
+            \textbf{C1. One crop per patch:}\quad
+            $\displaystyle\sum_{c} Y_{f,c} \leq 1 \;\forall f$
+            \hfill{\footnotesize Each farm gets \emph{at most} one crop — no double-planting.}
+        };
+        \node[box, fill=accentTeal] at (0,-1.35) {
+            \textbf{C2. Food-group diversity:}\quad
+            $m_g \leq \displaystyle\sum_{c\in G_g} U_c \leq M_g$
+            \hfill{\footnotesize Between $m_g$ and $M_g$ distinct crops from food group $g$ must appear.}
+        };
+        \node[box, fill=accentGreen] at (0,-2.7) {
+            \textbf{C3. Area bounds per crop:}\quad
+            $a^{\min}_c \leq \displaystyle\sum_f L_f Y_{f,c} \leq a^{\max}_c$
+            \hfill{\footnotesize Total land for crop $c$ stays within prescribed min/max hectares.}
+        };
+        \node[box, fill=warmOrange] at (0,-4.05) {
+            \textbf{C4. Linking (consistency):}\quad
+            $Y_{f,c} \leq U_c \;\forall f,c$
+            \hfill{\footnotesize If crop $c$ is planted anywhere, $U_c$ must equal 1.}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Constraints Explained: Plain Language}
+    \framesubtitle{Why each rule exists}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{\textcolor{primaryBlue}{C1 — One crop per patch}}\\[4pt]
+            A field can only grow one thing at a time.
+            This stops the model from cheating by
+            ``planting'' wheat \emph{and} corn on the same land.
+
+            \vspace{0.5cm}
+            \textbf{\textcolor{accentTeal}{C2 — Food-group diversity}}\\[4pt]
+            Regulations (or nutrition goals) may require, say,
+            \emph{at least 2 and at most 5 distinct vegetables}.
+            $G_g$ is the list of crops in that food group;
+            we count how many are used ($U_c=1$) and keep
+            the count in range $[m_g, M_g]$.
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{\textcolor{accentGreen}{C3 — Area bounds}}\\[4pt]
+            Some crops need a minimum scale to be viable
+            (e.g.\ a processing facility requires 50 ha of tomatoes).
+            Others have an upper cap due to market demand or
+            crop-rotation rules. $\sum_f L_f Y_{f,c}$ is simply the
+            total hectares assigned to crop $c$.
+
+            \vspace{0.5cm}
+            \textbf{\textcolor{warmOrange}{C4 — Linking}}\\[4pt]
+            A bookkeeping rule: if \emph{any} $Y_{f,c}=1$ then
+            $U_c$ must be 1 too. Without this, the solver could
+            claim a crop is ``not used'' to dodge diversity
+            constraints while still planting it.
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{Problem Variant B: Multi-Period Crop Rotation}
+    \framesubtitle{The Big Picture}
+
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{What is different from Variant A?}
+            \vspace{0.3cm}
+
+            Instead of a single snapshot decision, we now plan
+            \textbf{across time}: which crop goes on which farm
+            in each of \textbf{3 successive seasons}.
+
+            \vspace{0.3cm}
+            \begin{itemize}
+                \item We group 27 crops into \textbf{6 families}\\
+                      {\small (e.g.\ cereals, legumes, root vegetables\ldots)}
+                \item We plan \textbf{3 periods} ahead ($T = 3$)
+                \item Consecutive choices \textbf{interact} —\\
+                      some sequences are beneficial,\\
+                      most are harmful
+            \end{itemize}
+
+            \vspace{0.3cm}
+            \textbf{Goal:} Find the rotation sequence that
+            maximises long-run benefit while avoiding
+            bad crop-after-crop combinations.
+        \end{column}
+        \begin{column}{0.42\textwidth}
+            \begin{tikzpicture}
+                \foreach \t/\lbl in {0/Season 1, 1.5/Season 2, 3.0/Season 3}{
+                    \draw[fill=primaryBlue!20, rounded corners=3pt]
+                        (\t-0.55, 0) rectangle (\t+0.55, 2.2);
+                    \node[font=\tiny, align=center] at (\t, 2.45) {\lbl};
+                    \foreach \y in {0.3, 0.85, 1.4, 1.95}{
+                        \draw[fill=accentTeal!30, rounded corners=2pt]
+                            (\t-0.42,\y-0.18) rectangle (\t+0.42,\y+0.18);
+                        \node[font=\tiny] at (\t, \y) {Farm};
+                    }
+                }
+                \foreach \y in {0.3, 0.85, 1.4, 1.95}{
+                    \draw[->, thick, warmOrange] (0.58,\y) -- (0.92,\y);
+                    \draw[->, thick, warmOrange] (2.08,\y) -- (2.42,\y);
+                }
+                \node[font=\scriptsize, warmOrange] at (1.5,-0.35)
+                    {rotation synergy};
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{The Rotation Objective: Rewarding Good Sequences}
+    \framesubtitle{Some crops improve the soil for the next season; most do not}
+
+    \begin{equation*}
+        Z_{\text{rot}} \;=\;
+        \sum_{f,\;t} \;\sum_{c,\;c'}
+        S_{c,c'} \;\cdot\; x_{f,c,t} \;\cdot\; x_{f,c',t+1}
+    \end{equation*}
+
+    \vspace{0.4cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Symbol glossary:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item $x_{f,c,t}$ — 1 if farm $f$ grows crop family
+                      $c$ in period $t$, else 0
+                \item $x_{f,c',t+1}$ — same for the \emph{next} period
+                \item $S_{c,c'}$ — \textbf{synergy score} between
+                      crop $c$ followed by crop $c'$\\
+                      {\small Positive = good sequence,
+                       negative = harmful}
+                \item $\sum_{f,t}$ — we sum over every farm
+                      and every season transition
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Plain English:}
+            \vspace{0.2cm}
+
+            Every time a farm switches from crop $c$ in one
+            season to crop $c'$ the next, we add the synergy
+            score $S_{c,c'}$ to the total.
+
+            \vspace{0.3cm}
+            \begin{exampleblock}{Good example}
+                \small Legumes fix nitrogen in the soil.
+                Planting wheat \emph{after} legumes gives a
+                positive $S_{\text{legume,wheat}} > 0$.
+            \end{exampleblock}
+            \begin{alertblock}{Bad example}
+                \small Planting the same crop family twice
+                depletes the same nutrients and invites pests:
+                $S_{c,c} < 0$.
+            \end{alertblock}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{The Synergy Matrix: Why This Problem Is Hard}
+    \framesubtitle{Most crop transitions are harmful — creating a ``frustrated'' landscape}
+
+    \begin{columns}[T]
+        \begin{column}{0.50\textwidth}
+            \textbf{What the matrix shows:}
+            \vspace{0.2cm}
+
+            Each cell $(c, c')$ shows whether growing crop $c'$
+            \emph{after} crop $c$ is beneficial \textcolor{accentGreen}{\textbf{(green)}}
+            or harmful \textcolor{alertRed}{\textbf{(red)}}.
+
+            \vspace{0.4cm}
+            \textbf{The problem:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item \textbf{70--88\%} of all pairs are harmful
+                \item Avoiding one bad pair often forces
+                      another bad pair elsewhere
+                \item No ``obviously good'' global solution exists
+            \end{itemize}
+
+            \vspace{0.4cm}
+            This is called \textbf{frustration} — a concept from
+            physics where competing constraints cannot all be
+            satisfied simultaneously.
+        \end{column}
+        \begin{column}{0.47\textwidth}
+            \begin{tikzpicture}[scale=1.0,transform shape]
+                \node[font=\bfseries,primaryBlue] at (1.2,2.8) {Synergy Matrix $S_{c,c'}$};
+
+                \fill[alertRed!80] (0,0) rectangle (0.35,0.35);
+                \fill[alertRed!40] (0.4,0) rectangle (0.75,0.35);
+                \fill[accentGreen!60] (0.8,0) rectangle (1.15,0.35);
+                \fill[alertRed!60] (1.2,0) rectangle (1.55,0.35);
+                \fill[alertRed!30] (1.6,0) rectangle (1.95,0.35);
+                \fill[alertRed!50] (2.0,0) rectangle (2.35,0.35);
+
+                \fill[alertRed!40] (0,0.4) rectangle (0.35,0.75);
+                \fill[alertRed!80] (0.4,0.4) rectangle (0.75,0.75);
+                \fill[alertRed!50] (0.8,0.4) rectangle (1.15,0.75);
+                \fill[accentGreen!40] (1.2,0.4) rectangle (1.55,0.75);
+                \fill[alertRed!60] (1.6,0.4) rectangle (1.95,0.75);
+                \fill[alertRed!35] (2.0,0.4) rectangle (2.35,0.75);
+
+                \fill[accentGreen!60] (0,0.8) rectangle (0.35,1.15);
+                \fill[alertRed!50] (0.4,0.8) rectangle (0.75,1.15);
+                \fill[alertRed!80] (0.8,0.8) rectangle (1.15,1.15);
+                \fill[alertRed!45] (1.2,0.8) rectangle (1.55,1.15);
+                \fill[accentGreen!50] (1.6,0.8) rectangle (1.95,1.15);
+                \fill[alertRed!55] (2.0,0.8) rectangle (2.35,1.15);
+
+                \fill[alertRed!60] (0,1.2) rectangle (0.35,1.55);
+                \fill[accentGreen!40] (0.4,1.2) rectangle (0.75,1.55);
+                \fill[alertRed!45] (0.8,1.2) rectangle (1.15,1.55);
+                \fill[alertRed!80] (1.2,1.2) rectangle (1.55,1.55);
+                \fill[alertRed!40] (1.6,1.2) rectangle (1.95,1.55);
+                \fill[accentGreen!35] (2.0,1.2) rectangle (2.35,1.55);
+
+                \fill[alertRed!30] (0,1.6) rectangle (0.35,1.95);
+                \fill[alertRed!60] (0.4,1.6) rectangle (0.75,1.95);
+                \fill[accentGreen!50] (0.8,1.6) rectangle (1.15,1.95);
+                \fill[alertRed!40] (1.2,1.6) rectangle (1.55,1.95);
+                \fill[alertRed!80] (1.6,1.6) rectangle (1.95,1.95);
+                \fill[alertRed!65] (2.0,1.6) rectangle (2.35,1.95);
+
+                \fill[alertRed!50] (0,2.0) rectangle (0.35,2.35);
+                \fill[alertRed!35] (0.4,2.0) rectangle (0.75,2.35);
+                \fill[alertRed!55] (0.8,2.0) rectangle (1.15,2.35);
+                \fill[accentGreen!35] (1.2,2.0) rectangle (1.55,2.35);
+                \fill[alertRed!65] (1.6,2.0) rectangle (1.95,2.35);
+                \fill[alertRed!80] (2.0,2.0) rectangle (2.35,2.35);
+
+                \node[font=\small,anchor=west] at (2.6,1.4)
+                    {\textcolor{accentGreen}{$\blacksquare$} Benefit};
+                \node[font=\small,anchor=west] at (2.6,0.9)
+                    {\textcolor{alertRed}{$\blacksquare$} Penalty};
+
+                % axis labels
+                \node[font=\tiny,rotate=90] at (-0.25,1.2) {crop at $t$};
+                \node[font=\tiny] at (1.2,-0.25) {crop at $t+1$};
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Frustration: Why Classical Solvers Struggle}
+    \framesubtitle{Competing constraints with no clean solution}
+
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{What is a ``frustrated'' system?}
+            \vspace{0.2cm}
+
+            Imagine three farms that must all differ from each other,
+            but there are only two crop families available.
+            \emph{At least one pair will always clash} — the system
+            is \textbf{frustrated}.
+
+            \vspace{0.4cm}
+            \textbf{Consequence for optimisation:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item The solution landscape has many
+                      \textbf{local optima} — valleys that look good
+                      but are not globally best
+                \item Classical Branch \& Bound must explore
+                      an exponentially large tree
+                \item Small changes in one farm's rotation
+                      can cascade into many constraint violations
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.42\textwidth}
+            \vspace{0.3cm}
+            \begin{tikzpicture}
+                % Energy landscape sketch
+                \draw[thick, ->] (0,0) -- (4.2,0)
+                    node[right,font=\tiny] {solution space};
+                \draw[thick, ->] (0,0) -- (0,2.8)
+                    node[above,font=\tiny] {cost};
+                \draw[thick, accentTeal, rounded corners=4pt]
+                    (0,2.2) -- (0.4,1.0) -- (0.8,1.6) --
+                    (1.2,0.7) -- (1.6,1.4) -- (2.0,0.5) --
+                    (2.4,1.3) -- (2.8,0.3) -- (3.2,1.1) --
+                    (3.6,0.8) -- (4.0,1.5);
+                % mark global min
+                \fill[warmOrange] (2.8,0.3) circle (3pt);
+                \node[font=\tiny, warmOrange, above right] at (2.8,0.3)
+                    {global min};
+                % mark a local min
+                \fill[alertRed] (1.2,0.7) circle (2.5pt);
+                \node[font=\tiny, alertRed, above right] at (1.2,0.7)
+                    {local trap};
+                \fill[alertRed] (2.0,0.5) circle (2.5pt);
+                \node[font=\tiny, alertRed, above right] at (2.0,0.5)
+                    {local trap};
+            \end{tikzpicture}
+
+            \vspace{0.3cm}
+            \begin{warningbox}[Why quantum helps]
+                \scriptsize Quantum tunnelling can escape local traps
+                that classical hill-climbing cannot.\\[2pt]
+                $\Rightarrow$ Variant B is a natural benchmark
+                for quantum advantage.
+            \end{warningbox}
+        \end{column}
+    \end{columns}
+\end{frame}

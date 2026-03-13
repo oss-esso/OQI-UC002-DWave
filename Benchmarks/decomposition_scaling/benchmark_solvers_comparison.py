@@ -50,11 +50,14 @@ from dimod import BinaryQuadraticModel
 # ============================================================================
 
 # Load 27-crop data — must match QPU benchmark (full_family scenario)
+import math
+import pandas as pd
+
 try:
     _f0, _foods_dict, _fg0, _cfg0 = load_food_data("full_family")
     FOOD_NAMES_27 = list(_foods_dict.keys()) if isinstance(_foods_dict, dict) else list(_foods_dict)
-    # Use the same weights as qpu_benchmark.py / load_problem_data()
-    _WEIGHTS = _cfg0.get('parameters', {}).get('weights', {
+    _PARAMS = _cfg0.get('parameters', {})
+    _WEIGHTS = _PARAMS.get('weights', {
         'nutritional_value': 0.25,
         'nutrient_density': 0.20,
         'environmental_impact': 0.25,
@@ -63,6 +66,9 @@ try:
     })
     FOOD_BENEFITS = {}
     FOOD_GROUPS: Dict[str, List[str]] = {}
+    FOOD_GROUP_CONSTRAINTS: Dict[str, Dict[str, int]] = {}
+    MIN_PLANTING_AREA: Dict[str, float] = {}
+    MAX_PERCENTAGE_PER_CROP: Dict[str, float] = {}
     if isinstance(_foods_dict, dict):
         for cname, attrs in _foods_dict.items():
             FOOD_BENEFITS[cname] = (
@@ -73,16 +79,39 @@ try:
                 + _WEIGHTS.get('sustainability', 0.15) * attrs.get("sustainability", 0.5)
             )
         FOOD_GROUPS = _fg0
+        FOOD_GROUP_CONSTRAINTS = _PARAMS.get('food_group_constraints', {
+            g: {'min_foods': 2, 'max_foods': len(lst)}
+            for g, lst in _fg0.items()
+        })
+        MIN_PLANTING_AREA = _PARAMS.get('minimum_planting_area', {
+            c: 0.01 for c in FOOD_NAMES_27
+        })
+        MAX_PERCENTAGE_PER_CROP = _PARAMS.get('max_percentage_per_crop', {
+            c: 0.4 for c in FOOD_NAMES_27
+        })
 except Exception:
     FOOD_NAMES_27 = [f"Crop_{i}" for i in range(27)]
     FOOD_BENEFITS = {c: np.random.default_rng(42).random() for c in FOOD_NAMES_27}
     FOOD_GROUPS = {"GroupA": FOOD_NAMES_27[:9], "GroupB": FOOD_NAMES_27[9:18],
                    "GroupC": FOOD_NAMES_27[18:27]}
+    FOOD_GROUP_CONSTRAINTS = {g: {'min_foods': 2, 'max_foods': len(v)}
+                              for g, v in FOOD_GROUPS.items()}
+    MIN_PLANTING_AREA = {c: 0.01 for c in FOOD_NAMES_27}
+    MAX_PERCENTAGE_PER_CROP = {c: 0.4 for c in FOOD_NAMES_27}
 
 
-FAMILIES_6 = ["Fruits", "Grains", "Legumes", "Leafy_Vegetables",
-              "Root_Vegetables", "Proteins"]
+# Variant B uses 27 crops × 3 periods (same crops as Variant A)
 N_PERIODS = 3
+ROTATION_GAMMA = 0.5  # matches rotation_benchmark.py DEFAULT_GAMMA
+
+# Load real rotation matrix from CSV
+def _load_rotation_matrix() -> Optional[pd.DataFrame]:
+    csv_path = PROJECT_ROOT / "rotation_data" / "rotation_crop_matrix.csv"
+    if csv_path.exists():
+        return pd.read_csv(csv_path, index_col=0)
+    return None
+
+ROTATION_MATRIX_DF = _load_rotation_matrix()
 
 # ============================================================================
 # Variant A — build CQM / Gurobi model
@@ -90,11 +119,21 @@ N_PERIODS = 3
 
 def build_variant_a_gurobi(farm_names: List[str], food_names: List[str],
                            land: Dict[str, float]) -> Tuple[gp.Model, dict]:
-    """Build the Binary Patch Gurobi model (Variant A full)."""
+    """Build the Binary Patch Gurobi model (Variant A full).
+
+    Matches create_cqm_plots() from solver_runner_BINARY.py:
+      - One-crop-per-farm (<=1)
+      - U-Y linking: lower (Y<=U) AND upper (U <= sum Y)
+      - Min plots per crop (conditional on U)
+      - Max plots per crop (from max_percentage_per_crop)
+      - Food group diversity: min_foods=2, max_foods per group
+    """
     m = gp.Model("VariantA_full")
     m.setParam("OutputFlag", 0)
 
     total_area = sum(land.values())
+    plot_area = total_area / len(farm_names) if farm_names else 1.0
+
     Y = {}
     for f in farm_names:
         for c in food_names:
@@ -104,7 +143,7 @@ def build_variant_a_gurobi(farm_names: List[str], food_names: List[str],
     for c in food_names:
         U[c] = m.addVar(vtype=GRB.BINARY, name=f"U_{c}")
 
-    # Objective
+    # Objective: maximize area-weighted benefit / total_area
     obj = gp.LinExpr()
     for f in farm_names:
         area_f = land.get(f, 1.0)
@@ -113,22 +152,53 @@ def build_variant_a_gurobi(farm_names: List[str], food_names: List[str],
             obj += benefit * area_f / total_area * Y[f, c]
     m.setObjective(obj, GRB.MAXIMIZE)
 
-    # One crop per farm
+    # Constraint: one crop per farm
     for f in farm_names:
         m.addConstr(gp.quicksum(Y[f, c] for c in food_names) <= 1,
                     name=f"one_crop_{f}")
 
-    # U-Y linking
+    # U-Y linking: lower bound (Y_{f,c} <= U_c)
     for f in farm_names:
         for c in food_names:
-            m.addConstr(U[c] >= Y[f, c], name=f"link_{f}_{c}")
+            m.addConstr(Y[f, c] <= U[c], name=f"link_lower_{f}_{c}")
 
-    # Food group diversity (min_foods=1, matching QPU benchmark)
+    # U-Y linking: upper bound (U_c <= sum_f Y_{f,c})
+    for c in food_names:
+        m.addConstr(U[c] <= gp.quicksum(Y[f, c] for f in farm_names),
+                    name=f"link_upper_{c}")
+
+    # Min plots per crop (conditional on U): sum_f Y >= min_plots * U
+    for c in food_names:
+        min_area = MIN_PLANTING_AREA.get(c, 0.0)
+        if min_area > 0:
+            min_plots = math.ceil(min_area / plot_area)
+            if min_plots > 1:
+                m.addConstr(
+                    gp.quicksum(Y[f, c] for f in farm_names) >= min_plots * U[c],
+                    name=f"min_plots_{c}")
+
+    # Max plots per crop: sum_f Y <= max_plots
+    for c in food_names:
+        max_pct = MAX_PERCENTAGE_PER_CROP.get(c, 0.4)
+        max_plots = math.floor(max_pct * total_area / plot_area)
+        if max_plots < len(farm_names):
+            m.addConstr(
+                gp.quicksum(Y[f, c] for f in farm_names) <= max_plots,
+                name=f"max_plots_{c}")
+
+    # Food group diversity: min_foods and max_foods per group
     for gname, gcrops in FOOD_GROUPS.items():
         valid = [c for c in gcrops if c in food_names]
-        if valid:
-            m.addConstr(gp.quicksum(U[c] for c in valid) >= 1,
-                        name=f"fg_min_{gname}")
+        if not valid:
+            continue
+        gc = FOOD_GROUP_CONSTRAINTS.get(gname, {})
+        min_f = gc.get('min_foods', 2)
+        max_f = gc.get('max_foods', len(valid))
+        m.addConstr(gp.quicksum(U[c] for c in valid) >= min_f,
+                    name=f"fg_min_{gname}")
+        if max_f < len(valid):
+            m.addConstr(gp.quicksum(U[c] for c in valid) <= max_f,
+                        name=f"fg_max_{gname}")
 
     m.update()
     return m, {"Y": Y, "U": U, "food_names": food_names, "farm_names": farm_names}
@@ -162,87 +232,81 @@ def build_variant_a_sub_gurobi(sub_farms: List[str], food_names: List[str],
 
 
 # ============================================================================
-# Variant B — build rotation BQM (QUBO)
+# Variant B — build rotation BQM (QUBO) — 27 crops × 3 periods
+# Matches create_cqm_plots_rotation_3period from solver_runner_ROTATION.py
 # ============================================================================
 
-def _build_rotation_matrix(seed: int = 42) -> np.ndarray:
-    """6×6 family rotation synergy matrix (frustrated)."""
-    rng = np.random.default_rng(seed)
-    n = len(FAMILIES_6)
-    R = np.zeros((n, n))
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                R[i, j] = -0.3  # Self-rotation penalty
-            elif rng.random() < 0.7:
-                R[i, j] = rng.uniform(-0.8, -0.1)
-            else:
-                R[i, j] = rng.uniform(0.1, 0.5)
-    return (R + R.T) / 2
-
-
-ROT_MATRIX = _build_rotation_matrix()
+def _get_rotation_value(crop_prev: str, crop_curr: str) -> float:
+    """Look up R(crop_prev, crop_curr) from the real rotation CSV matrix."""
+    if ROTATION_MATRIX_DF is None:
+        return 0.0
+    try:
+        return float(ROTATION_MATRIX_DF.loc[crop_prev, crop_curr])
+    except KeyError:
+        return 0.0
 
 
 def build_variant_b_bqm(farm_names: List[str], land: Dict[str, float],
-                         rotation_gamma: float = 0.5,
-                         one_hot_penalty: float = 3.0,
-                         diversity_bonus: float = 0.15) -> BinaryQuadraticModel:
-    """Build full Variant-B rotation BQM."""
+                         food_names: Optional[List[str]] = None,
+                         rotation_gamma: float = ROTATION_GAMMA,
+                         one_hot_penalty: float = 3.0) -> BinaryQuadraticModel:
+    """Build full Variant-B rotation BQM (27 crops × 3 periods).
+
+    Matches create_cqm_plots_rotation_3period from solver_runner_ROTATION.py:
+      - Linear: a_p * B_c * Y / A_tot  (summed across periods)
+      - Quadratic: gamma * a_p * R(c,c') * Y_{p,c,t-1} * Y_{p,c',t} / A_tot²
+        (double normalization: /A_tot inside synergy + /A_tot on whole objective)
+      - One-hot penalty per farm-period
+      - No diversity bonus, no spatial synergy
+    """
+    if food_names is None:
+        food_names = FOOD_NAMES_27
     total_area = sum(land.values())
     bqm = BinaryQuadraticModel(vartype="BINARY")
-    families = FAMILIES_6
-    R = ROT_MATRIX
 
     for f in farm_names:
-        area_frac = land.get(f, 1.0) / total_area
-        # Family benefit scores
-        benefits = {"Fruits": 0.65, "Grains": 0.72, "Legumes": 0.80,
-                    "Leafy_Vegetables": 0.70, "Root_Vegetables": 0.60,
-                    "Proteins": 0.68}
-        for ci, fam in enumerate(families):
+        area_f = land.get(f, 1.0)
+        # Linear benefit terms: a_p * B_c / A_tot (per period — from the CQM
+        # the objective is (sum of linear + quadratic) / A_tot, which is
+        # maximized via CQM's -objective, here minimized directly in BQM)
+        for c in food_names:
+            B_c = FOOD_BENEFITS.get(c, 0.5)
             for t in range(1, N_PERIODS + 1):
-                vn = f"Y_{f}_{fam}_t{t}"
-                linear = -benefits.get(fam, 0.5) * area_frac
-                linear -= diversity_bonus / N_PERIODS
+                vn = f"Y_{f}_{c}_t{t}"
+                # Negative because CQM maximizes (sets -obj), BQM minimizes
+                linear = -(area_f * B_c) / total_area
                 bqm.add_variable(vn, linear)
 
-        # Rotation synergies (temporal)
+        # Rotation synergy: gamma * a_p * R(c,c') / A_tot  (then whole /A_tot)
+        # Net coefficient per pair: -gamma * a_p * R / A_tot²
         for t in range(2, N_PERIODS + 1):
-            for ci, f1 in enumerate(families):
-                for cj, f2 in enumerate(families):
-                    synergy = R[ci, cj]
-                    v1 = f"Y_{f}_{f1}_t{t-1}"
-                    v2 = f"Y_{f}_{f2}_t{t}"
-                    bqm.add_quadratic(v1, v2,
-                                      -rotation_gamma * synergy * area_frac)
+            for c_prev in food_names:
+                for c_curr in food_names:
+                    R_cc = _get_rotation_value(c_prev, c_curr)
+                    if R_cc == 0.0:
+                        continue
+                    v1 = f"Y_{f}_{c_prev}_t{t-1}"
+                    v2 = f"Y_{f}_{c_curr}_t{t}"
+                    # Negative: maximization -> minimization
+                    coeff = -(rotation_gamma * area_f * R_cc) / (total_area * total_area)
+                    bqm.add_quadratic(v1, v2, coeff)
 
-        # One-hot penalty per period
+        # One-hot penalty per period: exactly one crop per farm per period
         for t in range(1, N_PERIODS + 1):
-            vt = [f"Y_{f}_{fam}_t{t}" for fam in families]
+            vt = [f"Y_{f}_{c}_t{t}" for c in food_names]
             for i in range(len(vt)):
                 for j in range(i + 1, len(vt)):
                     bqm.add_quadratic(vt[i], vt[j], 2 * one_hot_penalty)
                 bqm.add_linear(vt[i], -one_hot_penalty)
 
-    # Spatial synergies (consecutive farms)
-    for idx in range(len(farm_names) - 1):
-        f1, f2 = farm_names[idx], farm_names[idx + 1]
-        for t in range(1, N_PERIODS + 1):
-            for ci, fam1 in enumerate(families):
-                for cj, fam2 in enumerate(families):
-                    syn = R[ci, cj] * 0.3
-                    v1 = f"Y_{f1}_{fam1}_t{t}"
-                    v2 = f"Y_{f2}_{fam2}_t{t}"
-                    bqm.add_quadratic(v1, v2, -rotation_gamma * 0.5 * syn)
-
     return bqm
 
 
 def build_variant_b_sub_bqm(sub_farms: List[str], land: Dict[str, float],
+                              food_names: Optional[List[str]] = None,
                               **kwargs) -> BinaryQuadraticModel:
     """Build a rotation BQM for a farm sub-cluster."""
-    return build_variant_b_bqm(sub_farms, land, **kwargs)
+    return build_variant_b_bqm(sub_farms, land, food_names=food_names, **kwargs)
 
 
 def build_variant_b_gurobi(bqm: BinaryQuadraticModel) -> Tuple[gp.Model, dict]:
@@ -484,17 +548,95 @@ def _partition_hybrid_grid_A(farm_names, food_names, fg=5, cg=9):
     parts.append({f"U_{c}" for c in food_names})
     return parts
 
-def _partition_clique_B(farm_names):
-    return [{f"Y_{f}_{fam}_t{t}" for fam in FAMILIES_6 for t in range(1, N_PERIODS+1)}
+def _partition_clique_B(farm_names, food_names=None):
+    if food_names is None:
+        food_names = FOOD_NAMES_27
+    return [{f"Y_{f}_{c}_t{t}" for c in food_names for t in range(1, N_PERIODS+1)}
             for f in farm_names]
 
-def _partition_spatial_temporal_B(farm_names, fpc=5):
+def _partition_spatial_temporal_B(farm_names, fpc=5, food_names=None):
+    if food_names is None:
+        food_names = FOOD_NAMES_27
     parts = []
     for i in range(0, len(farm_names), fpc):
         cl = farm_names[i:i + fpc]
         for t in range(1, N_PERIODS + 1):
-            parts.append({f"Y_{f}_{fam}_t{t}" for f in cl for fam in FAMILIES_6})
+            parts.append({f"Y_{f}_{c}_t{t}" for f in cl for c in food_names})
     return parts
+
+
+def _parse_B_partition(part: Set[str], farm_names: List[str],
+                        food_names: List[str]) -> Dict[str, Set[int]]:
+    """Parse a Variant-B partition's variable names into {farm: {periods}}.
+
+    Variable format: Y_{farm}_{crop}_t{period}
+    """
+    from collections import defaultdict
+    farm_periods: Dict[str, Set[int]] = defaultdict(set)
+    farm_set = set(farm_names)
+    for v in part:
+        if not v.startswith("Y_"):
+            continue
+        rest = v[2:]  # strip "Y_"
+        # Try splitting: rest = "{farm}_{crop}_t{period}"
+        # Farm names are like "Patch1", "Patch2", etc. — find first "_" after farm
+        idx_us = rest.index("_")
+        fname = rest[:idx_us]
+        if fname in farm_set:
+            suffix = rest[idx_us + 1:]
+            idx_t = suffix.rfind("_t")
+            if idx_t >= 0:
+                try:
+                    period = int(suffix[idx_t + 2:])
+                    farm_periods[fname].add(period)
+                except ValueError:
+                    pass
+    return dict(farm_periods)
+
+
+def _build_sub_bqm_B_from_partition(farm_periods: Dict[str, Set[int]],
+                                      land: Dict[str, float],
+                                      food_names: List[str],
+                                      one_hot_penalty: float = 3.0) -> BinaryQuadraticModel:
+    """Build a Variant-B sub-BQM restricted to specified (farm, periods) pairs."""
+    total_area = sum(land.values())
+    bqm = BinaryQuadraticModel(vartype="BINARY")
+
+    for f, periods in farm_periods.items():
+        area_f = land.get(f, 1.0)
+
+        for t in sorted(periods):
+            # Linear benefit
+            for c in food_names:
+                vn = f"Y_{f}_{c}_t{t}"
+                linear = -(area_f * FOOD_BENEFITS.get(c, 0.5)) / total_area
+                bqm.add_variable(vn, linear)
+
+            # One-hot penalty
+            vt = [f"Y_{f}_{c}_t{t}" for c in food_names]
+            for i in range(len(vt)):
+                for j in range(i + 1, len(vt)):
+                    bqm.add_quadratic(vt[i], vt[j], 2 * one_hot_penalty)
+                bqm.add_linear(vt[i], -one_hot_penalty)
+
+        # Rotation synergies (only between consecutive periods BOTH in partition)
+        sorted_periods = sorted(periods)
+        for idx in range(len(sorted_periods) - 1):
+            t_prev = sorted_periods[idx]
+            t_curr = sorted_periods[idx + 1]
+            if t_curr != t_prev + 1:
+                continue
+            for c_prev in food_names:
+                for c_curr in food_names:
+                    R_cc = _get_rotation_value(c_prev, c_curr)
+                    if R_cc == 0.0:
+                        continue
+                    v1 = f"Y_{f}_{c_prev}_t{t_prev}"
+                    v2 = f"Y_{f}_{c_curr}_t{t_curr}"
+                    coeff = -(ROTATION_GAMMA * area_f * R_cc) / (total_area * total_area)
+                    bqm.add_quadratic(v1, v2, coeff)
+
+    return bqm
 
 
 # ============================================================================
@@ -513,25 +655,39 @@ def solve_gurobi_full_A(farm_names, food_names, land, timeout=300):
             "status": m.Status, "n_vars": m.NumVars}
 
 
+def _extract_sub_farms_foods(part: Set[str], farm_names: List[str],
+                              food_names: List[str]) -> Tuple[List[str], List[str]]:
+    """Extract sub-farms and sub-crops from a partition's variable names."""
+    farm_set = set(farm_names)
+    food_set = set(food_names)
+    sub_farms = set()
+    sub_foods = set()
+    for v in part:
+        if v.startswith("Y_"):
+            rest = v[2:]  # Strip "Y_"
+            idx = rest.index("_")
+            fname = rest[:idx]
+            if fname in farm_set:
+                sub_farms.add(fname)
+                crop_part = rest[idx + 1:]
+                if crop_part in food_set:
+                    sub_foods.add(crop_part)
+    sf = [f for f in farm_names if f in sub_farms]
+    sc = [c for c in food_names if c in sub_foods]
+    return sf, sc if sc else food_names  # fallback to all crops if none extracted
+
+
 def solve_gurobi_decomposed_A(farm_names, food_names, land, partitioner, timeout=300):
     """Solve Variant-A: Gurobi per sub-problem + merge."""
     parts = partitioner(farm_names, food_names)
-    # Identify farm partitions (those that have Y_ variables)
     total_obj = 0.0
     t0 = time.perf_counter()
     sub_times = []
     for part in parts:
-        # Extract farm names in this partition
-        sub_farms = set()
-        for v in part:
-            if v.startswith("Y_"):
-                pieces = v.split("_", 2)
-                if len(pieces) >= 2:
-                    sub_farms.add(pieces[1])
-        sub_farms = [f for f in farm_names if f in sub_farms]
+        sub_farms, sub_foods = _extract_sub_farms_foods(part, farm_names, food_names)
         if not sub_farms:
             continue
-        sm, sinfo = build_variant_a_sub_gurobi(sub_farms, food_names, land)
+        sm, sinfo = build_variant_a_sub_gurobi(sub_farms, sub_foods, land)
         sm.setParam("TimeLimit", timeout)
         st0 = time.perf_counter()
         sm.optimize()
@@ -544,9 +700,9 @@ def solve_gurobi_decomposed_A(farm_names, food_names, land, partitioner, timeout
             "sub_times": sub_times}
 
 
-def solve_gurobi_full_B(farm_names, land, timeout=300):
+def solve_gurobi_full_B(farm_names, land, food_names=None, timeout=300):
     """Solve full Variant-B with Gurobi (via QUBO)."""
-    bqm = build_variant_b_bqm(farm_names, land)
+    bqm = build_variant_b_bqm(farm_names, land, food_names=food_names)
     m, info = build_variant_b_gurobi(bqm)
     m.setParam("TimeLimit", timeout)
     t0 = time.perf_counter()
@@ -557,25 +713,19 @@ def solve_gurobi_full_B(farm_names, land, timeout=300):
             "status": m.Status, "n_vars": m.NumVars}
 
 
-def solve_gurobi_decomposed_B(farm_names, land, partitioner, timeout=300):
+def solve_gurobi_decomposed_B(farm_names, land, partitioner, food_names=None, timeout=300):
     """Solve Variant-B: Gurobi per sub-BQM + merge."""
-    # For partitions we need to build separate BQMs per cluster
+    if food_names is None:
+        food_names = FOOD_NAMES_27
     t0 = time.perf_counter()
-    # Infer clusters from partition
-    parts = partitioner(farm_names)
+    parts = partitioner(farm_names, food_names)
     total_energy = 0.0
     sub_times = []
     for part in parts:
-        sub_farms = set()
-        for v in part:
-            if v.startswith("Y_"):
-                pieces = v.split("_")
-                if len(pieces) >= 2:
-                    sub_farms.add(pieces[1])
-        sub_farms = [f for f in farm_names if f in sub_farms]
-        if not sub_farms:
+        fp = _parse_B_partition(part, farm_names, food_names)
+        if not fp:
             continue
-        sub_bqm = build_variant_b_sub_bqm(sub_farms, land)
+        sub_bqm = _build_sub_bqm_B_from_partition(fp, land, food_names)
         sm, _ = build_variant_b_gurobi(sub_bqm)
         sm.setParam("TimeLimit", timeout)
         st0 = time.perf_counter()
@@ -631,29 +781,19 @@ def solve_pticm_decomposed_A(farm_names, food_names, land, partitioner,
     t0 = time.perf_counter()
     sub_times = []
     for part in parts:
-        sub_farms = set()
-        for v in part:
-            if v.startswith("Y_"):
-                pieces = v.split("_", 2)
-                if len(pieces) >= 2:
-                    sub_farms.add(pieces[1])
-        sub_farms = [f for f in farm_names if f in sub_farms]
+        sub_farms, sub_foods = _extract_sub_farms_foods(part, farm_names, food_names)
         if not sub_farms:
             continue
-        # Build sub-BQM for these farms (Variant A QUBO)
-        sub_bqm = _build_variant_a_bqm(sub_farms, food_names, land)
+        sub_bqm = _build_variant_a_bqm(sub_farms, sub_foods, land)
         sample, energy, _ = pt.solve(sub_bqm, num_reads=1)
         sub_times.append(time.perf_counter() - t0)
-        # Extract CQM-equivalent objective and violations from sample
-        obj, viols, slots = _extract_cqm_objective_A(sample, sub_farms, food_names, land)
+        obj, viols, slots = _extract_cqm_objective_A(sample, sub_farms, sub_foods, land)
         total_obj += obj
         total_violations += viols
         total_slots += slots
     wall = time.perf_counter() - t0
     
-    # Compute violation rate and healed objective
     violation_rate = (total_violations / total_slots * 100) if total_slots > 0 else 0.0
-    # Healed objective: estimate benefit lost due to violations
     avg_benefit_per_slot = total_obj / (total_slots - total_violations) if (total_slots - total_violations) > 0 else 0.0
     healed_obj = total_obj + total_violations * avg_benefit_per_slot
     
@@ -664,21 +804,26 @@ def solve_pticm_decomposed_A(farm_names, food_names, land, partitioner,
             "violation_rate_pct": violation_rate, "healed_objective": healed_obj}
 
 
-def _extract_violations_B(sample: Dict[str, int], sub_farms: List[str]) -> Tuple[int, int]:
-    """Count one-hot and rotation violations for Variant B.
+def _extract_violations_B(sample: Dict[str, int], sub_farms: List[str],
+                          food_names: Optional[List[str]] = None,
+                          periods: Optional[List[int]] = None) -> Tuple[int, int]:
+    """Count one-hot violations for Variant B.
     
     Returns:
         (one_hot_violations, total_farm_periods)
-        - one_hot_violations: farm-period slots with 0 or >1 crops
     """
+    if food_names is None:
+        food_names = FOOD_NAMES_27
+    if periods is None:
+        periods = list(range(1, N_PERIODS + 1))
     n_violations = 0
-    total_slots = len(sub_farms) * N_PERIODS
+    total_slots = len(sub_farms) * len(periods)
     
     for f in sub_farms:
-        for t in range(1, N_PERIODS + 1):
+        for t in periods:
             crops_assigned = 0
-            for c in FAMILIES_6:
-                vn = f"Y_{f}_{c}_t{t}"  # Note: variable format is Y_{farm}_{family}_t{period}
+            for c in food_names:
+                vn = f"Y_{f}_{c}_t{t}"
                 if sample.get(vn, 0) == 1:
                     crops_assigned += 1
             if crops_assigned != 1:
@@ -688,80 +833,87 @@ def _extract_violations_B(sample: Dict[str, int], sub_farms: List[str]) -> Tuple
 
 
 def _extract_cqm_objective_B(sample: Dict[str, int], sub_farms: List[str],
-                              land: Dict[str, float]) -> float:
-    """Compute Variant-B CQM objective from sample (benefit + rotation synergy)."""
+                              land: Dict[str, float],
+                              food_names: Optional[List[str]] = None,
+                              periods: Optional[List[int]] = None) -> float:
+    """Compute Variant-B CQM objective from sample (benefit + rotation synergy).
+    
+    Matches create_cqm_plots_rotation_3period normalization:
+      linear:    a_p * B_c / A_tot   (per period)
+      synergy:   gamma * a_p * R / A_tot  then whole /A_tot  => gamma * a_p * R / A_tot²
+    """
+    if food_names is None:
+        food_names = FOOD_NAMES_27
+    if periods is None:
+        periods = list(range(1, N_PERIODS + 1))
     total_area = sum(land.values())
     obj = 0.0
-    families = FAMILIES_6
-    
-    # Family benefit scores (same as in build_variant_b_bqm)
-    benefits = {"Fruits": 0.65, "Grains": 0.72, "Legumes": 0.80,
-                "Leafy_Vegetables": 0.70, "Root_Vegetables": 0.60,
-                "Proteins": 0.68}
     
     # Linear benefit term
     for f in sub_farms:
         area_f = land.get(f, 1.0)
-        for t in range(1, N_PERIODS + 1):
-            for c in families:
-                vn = f"Y_{f}_{c}_t{t}"  # Note: variable format is Y_{farm}_{family}_t{period}
+        for t in periods:
+            for c in food_names:
+                vn = f"Y_{f}_{c}_t{t}"
                 if sample.get(vn, 0) == 1:
-                    obj += benefits.get(c, 0.5) * area_f / total_area
+                    obj += FOOD_BENEFITS.get(c, 0.5) * area_f / total_area
     
-    # Rotation synergy term (consecutive periods)
+    # Rotation synergy term (consecutive periods in the provided list)
+    sorted_p = sorted(periods)
     for f in sub_farms:
         area_f = land.get(f, 1.0)
-        for t in range(1, N_PERIODS):
-            for i, c1 in enumerate(families):
-                for j, c2 in enumerate(families):
-                    v1 = f"Y_{f}_{c1}_t{t}"
-                    v2 = f"Y_{f}_{c2}_t{t+1}"
-                    if sample.get(v1, 0) == 1 and sample.get(v2, 0) == 1:
-                        syn = ROT_MATRIX[i, j]
-                        obj += syn * 0.5 * area_f / total_area  # rotation_gamma=0.5
+        for idx in range(len(sorted_p) - 1):
+            t_prev, t_curr = sorted_p[idx], sorted_p[idx + 1]
+            if t_curr != t_prev + 1:
+                continue
+            for c_prev in food_names:
+                v1 = f"Y_{f}_{c_prev}_t{t_prev}"
+                if sample.get(v1, 0) != 1:
+                    continue
+                for c_curr in food_names:
+                    v2 = f"Y_{f}_{c_curr}_t{t_curr}"
+                    if sample.get(v2, 0) != 1:
+                        continue
+                    R_cc = _get_rotation_value(c_prev, c_curr)
+                    obj += ROTATION_GAMMA * area_f * R_cc / (total_area * total_area)
     
     return obj
 
 
-def solve_pticm_decomposed_B(farm_names, land, partitioner, pt_kwargs=None):
+def solve_pticm_decomposed_B(farm_names, land, partitioner, food_names=None,
+                              pt_kwargs=None):
     """Solve Variant-B sub-problems with PT-ICM + merge."""
+    if food_names is None:
+        food_names = FOOD_NAMES_27
     if pt_kwargs is None:
         pt_kwargs = {}
-    parts = partitioner(farm_names)
+    parts = partitioner(farm_names, food_names)
     pt = ParallelTemperingICM(**pt_kwargs)
     total_obj = 0.0
     total_violations = 0
     total_slots = 0
     t0 = time.perf_counter()
     sub_times = []
-    all_samples = {}  # Collect all samples for CQM objective extraction
     
     for part in parts:
-        sub_farms = set()
-        for v in part:
-            if v.startswith("Y_"):
-                pieces = v.split("_")
-                if len(pieces) >= 2:
-                    sub_farms.add(pieces[1])
-        sub_farms = [f for f in farm_names if f in sub_farms]
-        if not sub_farms:
+        fp = _parse_B_partition(part, farm_names, food_names)
+        if not fp:
             continue
-        sub_bqm = build_variant_b_sub_bqm(sub_farms, land)
+        sub_bqm = _build_sub_bqm_B_from_partition(fp, land, food_names)
         sample, energy, _ = pt.solve(sub_bqm, num_reads=1)
         sub_times.append(time.perf_counter() - t0)
-        all_samples.update(sample)
         
-        # Count violations for this sub-problem
-        viols, slots = _extract_violations_B(sample, sub_farms)
+        sub_farms = [f for f in farm_names if f in fp]
+        # Collect all periods present in this partition
+        all_periods = sorted(set().union(*fp.values()))
+        viols, slots = _extract_violations_B(sample, sub_farms, food_names, periods=all_periods)
         total_violations += viols
         total_slots += slots
         
-        # Extract CQM-equivalent objective (not raw QUBO energy)
-        total_obj += _extract_cqm_objective_B(sample, sub_farms, land)
+        total_obj += _extract_cqm_objective_B(sample, sub_farms, land, food_names, periods=all_periods)
     
     wall = time.perf_counter() - t0
     
-    # Compute violation rate and healed objective
     violation_rate = (total_violations / total_slots * 100) if total_slots > 0 else 0.0
     feasible_slots = total_slots - total_violations
     avg_benefit_per_slot = total_obj / feasible_slots if feasible_slots > 0 else 0.0
@@ -800,7 +952,8 @@ def _build_variant_a_bqm(sub_farms, food_names, land) -> BinaryQuadraticModel:
 # Main benchmark driver
 # ============================================================================
 
-FARM_SIZES = [5, 10, 25, 50, 100, 200]
+FARM_SIZES = [5, 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+PT_ICM_MAX_FARMS = 200  # PT-ICM is too slow beyond this with 27 crops × 3 periods
 
 DECOMPOSITIONS_A = {
     "PlotBased": _partition_plot_based_A,
@@ -810,7 +963,7 @@ DECOMPOSITIONS_A = {
 
 DECOMPOSITIONS_B = {
     "Clique": _partition_clique_B,
-    "SpatialTemporal(5)": lambda fn: _partition_spatial_temporal_B(fn, 5),
+    "SpatialTemporal(5)": lambda fn, cn: _partition_spatial_temporal_B(fn, 5, cn),
 }
 
 
@@ -827,7 +980,7 @@ def run_all():
         land = generate_grid(n_farms, area=100.0, seed=42)
         farm_names = list(land.keys())
         n_vars_a = n_farms * len(food_names) + len(food_names)
-        n_vars_b = n_farms * len(FAMILIES_6) * N_PERIODS
+        n_vars_b = n_farms * len(food_names) * N_PERIODS
 
         pt_kw = pt_small if n_farms <= 50 else pt_medium
 
@@ -847,27 +1000,50 @@ def run_all():
             r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
             results.append(r)
 
-            LOG.info(f"[A] PT-ICM decomposed ({dname})")
-            r = solve_pticm_decomposed_A(farm_names, food_names, land, dfn, pt_kw)
-            r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
-            results.append(r)
+            if n_farms <= PT_ICM_MAX_FARMS:
+                LOG.info(f"[A] PT-ICM decomposed ({dname})")
+                r = solve_pticm_decomposed_A(farm_names, food_names, land, dfn, pt_kw)
+                r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
+                results.append(r)
+            else:
+                LOG.info(f"[A] PT-ICM decomposed ({dname}) SKIPPED (n_farms > {PT_ICM_MAX_FARMS})")
 
-        # --- Variant B ---
-        LOG.info("[B] Gurobi full")
-        r = solve_gurobi_full_B(farm_names, land)
-        r.update(variant="B", decomposition="none", n_farms=n_farms, n_vars=n_vars_b)
-        results.append(r)
+        # --- Variant B (27 crops × 3 periods — much larger BQMs) ---
+        VARIANT_B_MAX_FARMS = 2000  # SpatialTemporal(5) Gurobi too slow beyond this
+        if n_farms > VARIANT_B_MAX_FARMS:
+            LOG.info(f"[B] ALL SKIPPED (n_farms={n_farms} > {VARIANT_B_MAX_FARMS})")
+            for dname in ["none"] + list(DECOMPOSITIONS_B.keys()):
+                results.append({"solver": "Gurobi_full" if dname == "none" else f"Gurobi_decomposed",
+                                "wall_time": 0, "objective": None,
+                                "variant": "B", "decomposition": dname,
+                                "n_farms": n_farms, "n_vars": n_vars_b, "status": "SKIPPED"})
+        else:
+            # Skip Variant B full Gurobi for very large instances
+            if n_vars_b <= 200000:
+                LOG.info("[B] Gurobi full")
+                r = solve_gurobi_full_B(farm_names, land, food_names=food_names)
+                r.update(variant="B", decomposition="none", n_farms=n_farms, n_vars=n_vars_b)
+                results.append(r)
+            else:
+                LOG.info(f"[B] Gurobi full SKIPPED (n_vars={n_vars_b} > 200000)")
+                results.append({"solver": "Gurobi_full", "wall_time": 0, "objective": None,
+                                "variant": "B", "decomposition": "none",
+                                "n_farms": n_farms, "n_vars": n_vars_b, "status": "SKIPPED"})
 
-        for dname, dfn in DECOMPOSITIONS_B.items():
-            LOG.info(f"[B] Gurobi decomposed ({dname})")
-            r = solve_gurobi_decomposed_B(farm_names, land, dfn)
-            r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
-            results.append(r)
+            for dname, dfn in DECOMPOSITIONS_B.items():
+                LOG.info(f"[B] Gurobi decomposed ({dname})")
+                r = solve_gurobi_decomposed_B(farm_names, land, dfn, food_names=food_names)
+                r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
+                results.append(r)
 
-            LOG.info(f"[B] PT-ICM decomposed ({dname})")
-            r = solve_pticm_decomposed_B(farm_names, land, dfn, pt_kw)
-            r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
-            results.append(r)
+                if n_farms <= PT_ICM_MAX_FARMS:
+                    LOG.info(f"[B] PT-ICM decomposed ({dname})")
+                    r = solve_pticm_decomposed_B(farm_names, land, dfn, food_names=food_names,
+                                                  pt_kwargs=pt_kw)
+                    r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
+                    results.append(r)
+                else:
+                    LOG.info(f"[B] PT-ICM decomposed ({dname}) SKIPPED (n_farms > {PT_ICM_MAX_FARMS})")
 
     return results
 

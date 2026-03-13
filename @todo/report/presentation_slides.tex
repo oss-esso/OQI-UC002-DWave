@@ -336,7 +336,7 @@
                 % QB
                 \node[org,fill=accentTeal] (gain) at (0,-4.7) {
                     \Large\faGlobeAfrica\\[4pt]
-                    \normalsize\textbf{Quantum Basel}\\[2pt]
+                    \normalsize\textbf{QuantumBasel}\\[2pt]
                     \tiny Providers for the access\\
                     \tiny to D-Wave Quantum Annealer
                 };
@@ -387,6 +387,98 @@
 \end{frame}
 
 % ============================================================================
+% THEORY OF CHANGE
+% ============================================================================
+\begin{frame}{Theory of Change}
+    \framesubtitle{How quantum optimization creates real-world impact}
+    \vspace{-0.3cm}
+
+    \centering
+    \begin{tikzpicture}[
+        stage/.style={rounded corners=6pt,minimum width=2.2cm,minimum height=1.5cm,
+                     font=\scriptsize,align=center,text=white,
+                     drop shadow={opacity=0.25,shadow xshift=0.5mm,shadow yshift=-0.5mm}},
+        arr/.style={->,very thick,line width=1.8pt},
+        lbl/.style={font=\tiny,align=center,text width=2.2cm,text=mutedGray}
+    ]
+        % Stage 1: Challenge
+        \node[stage,fill=alertRed!85] (ch) at (0,0) {
+            \normalsize\faExclamationTriangle\\[3pt]
+            \textbf{Challenge}\\[1pt]
+            \tiny Food systems must\\
+            \tiny feed 10B people\\
+            \tiny while cutting emissions
+        };
+
+        % Stage 2: Innovation
+        \node[stage,fill=primaryBlue] (inn) at (2.9,0) {
+            \normalsize\faAtom\\[3pt]
+            \textbf{Innovation}\\[1pt]
+            \tiny Quantum annealing\\
+            \tiny navigates complex\\
+            \tiny optimization landscapes
+        };
+
+        % Stage 3: Outputs
+        \node[stage,fill=accentTeal] (out) at (5.8,0) {
+            \normalsize\faCogs\\[3pt]
+            \textbf{Outputs}\\[1pt]
+            \tiny Better crop plans\\
+            \tiny Smarter rotation\\
+            \tiny More diverse allocations
+        };
+
+        % Stage 4: Outcomes
+        \node[stage,fill=accentGreen] (oc) at (8.7,0) {
+            \normalsize\faChartLine\\[3pt]
+            \textbf{Outcomes}\\[1pt]
+            \tiny Improved nutrition\\
+            \tiny Lower env.\ footprint\\
+            \tiny Resilient farming
+        };
+
+        % Stage 5: Impact
+        \node[stage,fill=warmOrange] (imp) at (11.6,0) {
+            \normalsize\faGlobeAfrica\\[3pt]
+            \textbf{Impact}\\[1pt]
+            \tiny SDGs 2, 3, 12, 13\\
+            \tiny Zero Hunger\\
+            \tiny Climate Action
+        };
+
+        % Arrows
+        \draw[arr,alertRed!60]    (ch.east)  -- (inn.west);
+        \draw[arr,primaryBlue!60] (inn.east) -- (out.west);
+        \draw[arr,accentTeal!60]  (out.east) -- (oc.west);
+        \draw[arr,accentGreen!60] (oc.east)  -- (imp.west);
+    \end{tikzpicture}
+
+    \vspace{0.4cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{keybox}
+                \centering\small
+                \textbf{Why quantum?}\\[3pt]
+                \scriptsize Classical solvers excel on simple, well-structured problems.
+                But when crop rotation rules create \textbf{millions of conflicting constraints},
+                quantum processors can explore the solution landscape in ways
+                classical computers cannot --- finding \textbf{3--5$\times$ better} plans.
+            \end{keybox}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{resultbox}
+                \centering\small
+                \textbf{The pathway to impact}\\[3pt]
+                \scriptsize Better optimization $\rightarrow$ smarter land use $\rightarrow$
+                more nutritious food with less environmental damage.
+                This project demonstrates that quantum computing can be a
+                \textbf{practical tool} for sustainable development --- today.
+            \end{resultbox}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
 % OUTLINE
 % ============================================================================
 \begin{frame}{Outline}
@@ -404,9 +496,9 @@
                 \node[section] (p1) at (0,0) {\color{primaryBlue}\faBook\ Part I: Background \& Setup};
                 \node[item,below=0.1cm of p1.south west,anchor=north west,xshift=0.3cm] {
                     1. Problem \& Motivation\\
-                    2. Mathematical Formulation\\
-                    3. Quantum Hardware\\
-                    4. Decomposition Strategies
+                    2. Theory of Change\\
+                    3. How We Formulated the Problem\\
+                    4. Why Crop Rotation Is Hard
                 };
                 
                 % Part II
@@ -427,20 +519,19 @@
                 item/.style={text=mutedGray,font=\scriptsize,align=left}
             ]
                 % Part III
-                \node[section] (p3) at (0,0) {\color{accentGreen}\faChartBar\ Part III: Analysis};
+                \node[section] (p3) at (0,0) {\color{accentGreen}\faChartBar\ Part III: Results \& Impact};
                 \node[item,below=0.1cm of p3.south west,anchor=north west,xshift=0.3cm] {
                     8. Results Comparison\\
-                    9. Solution Quality\\
-                    10. Hardware Effects \& Noise\\
-                    11. Grid Refinement
+                    9. Classical vs Quantum --- When to Use Which\\
+                    10. Key Takeaways
                 };
                 
                 % Part IV
-                \node[section,below=1.8cm of p3] (p4) {\color{warmOrange}\faLightbulb\ Part IV: Conclusions};
+                \node[section,below=1.8cm of p3] (p4) {\color{warmOrange}\faLightbulb\ Part IV: What's Next};
                 \node[item,below=0.1cm of p4.south west,anchor=north west,xshift=0.3cm] {
-                    12. Key Takeaways\\
-                    13. Impact Assessment\\
-                    14. Future Directions
+                    11. Impact \& SDG Alignment\\
+                    12. Future Directions\\
+                    13. Q\&A
                 };
             \end{tikzpicture}
         \end{column}
@@ -602,158 +693,467 @@
 \section{Mathematical Formulation}
 
 \begin{frame}{Problem Variant A: Binary Crop Allocation}
-    \framesubtitle{Constrained Quadratic Model (CQM)}
-    
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \textbf{Decision Variables:}
-            \begin{itemize}\small
-                \item $Y_{f,c} \in \{0,1\}$: crop $c$ on farm $f$
-                \item $U_c \in \{0,1\}$: crop $c$ used anywhere
-            \end{itemize}
-            
-            \vspace{0.6cm}
-            \textbf{Objective:} Maximize benefit
-            \begin{equation*}
-                \max Z = \frac{1}{A_{\text{total}}} \sum_{f,c} L_f \cdot B_c \cdot Y_{f,c}
-            \end{equation*}
-            
-            % \vspace{0.2cm}
-            % \begin{highlightbox}
-            %     \centering\small
-            %     \textbf{Problem Size at 1,000 farms:}\\
-            %     \Large\textcolor{primaryBlue}{27,027} \small variables
-            % \end{highlightbox}
-        \end{column}
+    \framesubtitle{The Big Picture}
 
-        \begin{column}{0.48\textwidth}
-\vspace{-0.5cm}
-            \textbf{Constraints:}
-            \vspace{0.15cm}
-            
-            \begin{tikzpicture}[
-                constraint/.style={rounded corners=2pt,minimum width=5.2cm,
-                                  minimum height=0.9cm,font=\footnotesize,align=left,
-                                  text=white,inner sep=4pt}
-            ]
-                \node[constraint,fill=primaryBlue] at (0,0) {
-                    \textbf{C1. Plot Assignment}\\
-                    $\sum_{c} Y_{f,c} \leq 1 \quad \forall f$
-                };
-                \node[constraint,fill=accentTeal] at (0,-1.4) {
-                    \textbf{C2. Food Group Diversity}\\
-                    $m_g \leq \sum_{c \in G_g} U_c \leq M_g$
-                };
-                \node[constraint,fill=accentGreen] at (0,-2.8) {
-                    \textbf{C3. Area Bounds}\\
-                    $a^{\min}_c \leq \sum_f L_f Y_{f,c} \leq a^{\max}_c$
-                };
-                \node[constraint,fill=warmOrange] at (0,-4.2) {
-                    \textbf{C4. Linking}\\
-                    $Y_{f,c} \leq U_c \quad \forall f,c$
-                };
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{What are we trying to do?}
+            \vspace{0.3cm}
+
+            We have a set of \textbf{farms} (patches of land) and a set of
+            \textbf{crops} we could plant. We want to decide:
+
+            \vspace{0.3cm}
+            \begin{itemize}
+                \item Which crop (if any) goes on each farm patch?
+                \item Which crops do we use at all?
+            \end{itemize}
+
+            \vspace{0.4cm}
+            \textbf{Goal:} Assign crops to farms to \textbf{maximise overall benefit}
+            (e.g.\ nutritional value, revenue) while respecting
+            land-use rules and dietary diversity requirements.
+        \end{column}
+        \begin{column}{0.42\textwidth}
+            \begin{tikzpicture}
+                % Farm patches
+                \foreach \x/\col/\lbl in {0/primaryBlue/Farm 1, 1.2/accentTeal/Farm 2, 2.4/accentGreen/Farm 3}{
+                    \draw[fill=\col!30,rounded corners=3pt]
+                        (\x,0) rectangle (\x+1,1.4);
+                    \node[font=\tiny,align=center] at (\x+0.5,0.7) {\lbl};
+                }
+                \node[font=\footnotesize] at (1.7,1.8) {Assign one crop per patch};
+                % Arrow
+                \draw[->,thick] (1.7,1.6) -- (1.7,1.1);
+                % Crops
+                \foreach \x/\col/\lbl in {0/warmOrange/Wheat, 1.2/primaryBlue/Corn, 2.4/accentGreen/Soy}{
+                    \draw[fill=\col!40,rounded corners=3pt]
+                        (\x,-1.8) rectangle (\x+1,-0.7);
+                    \node[font=\tiny,align=center] at (\x+0.5,-1.25) {\lbl};
+                }
+                \node[font=\footnotesize] at (1.7,-2.2) {Available crops};
             \end{tikzpicture}
         \end{column}
     \end{columns}
 \end{frame}
 
+%---------------------------------------------------------------
+\begin{frame}{Decision Variables: What the Computer Decides}
+    \framesubtitle{Two yes/no questions per assignment}
+
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \textbf{Variable 1 --- Is crop $c$ planted on farm $f$?}
+            \vspace{0.2cm}
+
+            \begin{equation*}
+                Y_{f,c} \in \{0, 1\}
+            \end{equation*}
+
+            \vspace{0.1cm}
+            \begin{itemize}\small
+                \item $Y_{f,c} = 1$ \quad \textbf{Yes}, plant crop $c$ on farm $f$
+                \item $Y_{f,c} = 0$ \quad \textbf{No}, don't
+            \end{itemize}
+
+            \vspace{0.5cm}
+            \textit{Example:} $Y_{\text{Farm2, Wheat}} = 1$ means
+            Farm~2 is assigned to Wheat.
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \textbf{Variable 2 --- Is crop $c$ used anywhere?}
+            \vspace{0.2cm}
+
+            \begin{equation*}
+                U_{c} \in \{0, 1\}
+            \end{equation*}
+
+            \vspace{0.1cm}
+            \begin{itemize}\small
+                \item $U_c = 1$ \quad Crop $c$ appears on \textit{at least one} farm
+                \item $U_c = 0$ \quad Crop $c$ is not grown at all
+            \end{itemize}
+
+            \vspace{0.5cm}
+            \textit{Why do we need $U_c$?}\\
+            It lets us enforce rules like
+            \emph{``include at least 3 vegetable types''} without
+            counting the same crop twice.
+        \end{column}
+    \end{columns}
+
+    \vspace{0.4cm}
+    \begin{alertblock}{Scale}
+        With 1,000 farms and 27 crops this gives
+        $1000 \times 27 + 27 = \mathbf{27{,}027}$ binary variables.
+    \end{alertblock}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Objective Function: What We Want to Maximise}
+    \framesubtitle{Reward bigger farms growing more beneficial crops}
+
+    \begin{equation*}
+        \max\; Z \;=\; \frac{1}{A_{\text{total}}}
+        \sum_{f,\, c} L_f \cdot B_c \cdot Y_{f,c}
+    \end{equation*}
+
+    \vspace{0.4cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{What each symbol means:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item $L_f$ --- area (hectares) of farm patch $f$
+                \item $B_c$ --- benefit score of crop $c$\\
+                      {\small (e.g.\ nutritional value, profit/ha)}
+                \item $Y_{f,c}$ --- our yes/no decision variable
+                \item $A_{\text{total}}$ --- total farmland area\\
+                      {\small (normalises $Z$ to a 0--1 scale)}
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Plain English:}
+            \vspace{0.2cm}
+
+            For every farm--crop pair that we \emph{do} assign
+            ($Y_{f,c}=1$), we earn a reward equal to the
+            \textbf{farm's area} times the \textbf{crop's benefit}.
+            Pairs we skip ($Y_{f,c}=0$) contribute nothing.
+
+            \vspace{0.3cm}
+            Dividing by total area means $Z$ represents the
+            \textbf{average benefit per hectare} across all land.
+        \end{column}
+    \end{columns}
+
+    \vspace{0.3cm}
+    \begin{exampleblock}{Intuition}
+        A large, fertile farm growing a high-value crop contributes
+        a lot to $Z$. A tiny patch with a low-benefit crop barely moves the needle.
+    \end{exampleblock}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Constraints: The Rules We Must Follow}
+    \framesubtitle{Four guardrails that keep solutions realistic}
+
+    \begin{tikzpicture}[
+        box/.style={rounded corners=3pt, minimum width=10.8cm,
+                    minimum height=1.05cm, font=\small, align=left,
+                    text=white, inner sep=8pt}
+    ]
+        \node[box, fill=primaryBlue] at (0,0) {
+            \textbf{C1. One crop per patch:}\quad
+            $\displaystyle\sum_{c} Y_{f,c} \leq 1 \;\forall f$
+            \hfill{\footnotesize Each farm gets \emph{at most} one crop --- no double-planting.}
+        };
+        \node[box, fill=accentTeal] at (0,-1.35) {
+            \textbf{C2. Food-group diversity:}\quad
+            $m_g \leq \displaystyle\sum_{c\in G_g} U_c \leq M_g$
+            \hfill{\footnotesize Between $m_g$ and $M_g$ distinct crops from food group $g$ must appear.}
+        };
+        \node[box, fill=accentGreen] at (0,-2.7) {
+            \textbf{C3. Area bounds per crop:}\quad
+            $a^{\min}_c \leq \displaystyle\sum_f L_f Y_{f,c} \leq a^{\max}_c$
+            \hfill{\footnotesize Total land for crop $c$ stays within prescribed min/max hectares.}
+        };
+        \node[box, fill=warmOrange] at (0,-4.05) {
+            \textbf{C4. Linking (consistency):}\quad
+            $Y_{f,c} \leq U_c \;\forall f,c$
+            \hfill{\footnotesize If crop $c$ is planted anywhere, $U_c$ must equal 1.}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{Constraints Explained: Plain Language}
+    \framesubtitle{Why each rule exists}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{\textcolor{primaryBlue}{C1 --- One crop per patch}}\\[4pt]
+            A field can only grow one thing at a time.
+            This stops the model from cheating by
+            ``planting'' wheat \emph{and} corn on the same land.
+
+            \vspace{0.5cm}
+            \textbf{\textcolor{accentTeal}{C2 --- Food-group diversity}}\\[4pt]
+            Regulations (or nutrition goals) may require, say,
+            \emph{at least 2 and at most 5 distinct vegetables}.
+            $G_g$ is the list of crops in that food group;
+            we count how many are used ($U_c=1$) and keep
+            the count in range $[m_g, M_g]$.
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{\textcolor{accentGreen}{C3 --- Area bounds}}\\[4pt]
+            Some crops need a minimum scale to be viable
+            (e.g.\ a processing facility requires 50\,ha of tomatoes).
+            Others have an upper cap due to market demand or
+            crop-rotation rules. $\sum_f L_f Y_{f,c}$ is simply the
+            total hectares assigned to crop $c$.
+
+            \vspace{0.5cm}
+            \textbf{\textcolor{warmOrange}{C4 --- Linking}}\\[4pt]
+            A bookkeeping rule: if \emph{any} $Y_{f,c}=1$ then
+            $U_c$ must be 1 too. Without this, the solver could
+            claim a crop is ``not used'' to dodge diversity
+            constraints while still planting it.
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
 \begin{frame}{Problem Variant B: Multi-Period Crop Rotation}
-    \framesubtitle{Enhanced formulation with frustrated constraints}
-    
+    \framesubtitle{The Big Picture}
+
     \begin{columns}[T]
         \begin{column}{0.55\textwidth}
-            \small\textbf{Enhanced Formulation:}
+            \textbf{What is different from Variant A?}
+            \vspace{0.3cm}
+
+            Instead of a single snapshot decision, we now plan
+            \textbf{across time}: which crop goes on which farm
+            in each of \textbf{3 successive seasons}.
+
+            \vspace{0.3cm}
             \begin{itemize}
-                \item 6 aggregated crop families (not 27)
-                \item 3-period temporal horizon ($T=3$)
-                \item Quadratic rotation synergies
-                \item Frustrated spatial interactions
+                \item We group 27 crops into \textbf{6 families}\\
+                      {\small (e.g.\ cereals, legumes, root vegetables\ldots)}
+                \item We plan \textbf{3 periods} ahead ($T = 3$)
+                \item Consecutive choices \textbf{interact} ---\\
+                      some sequences are beneficial,\\
+                      most are harmful
             \end{itemize}
-            
-            \vspace{0.8cm}
-            \textbf{Rotation Objective:}
-            \begin{equation*}
-                Z_{\text{rot}} = \sum_{f,t} \sum_{c,c'} S_{c,c'} \cdot x_{f,c,t} \cdot x_{f,c',t+1}
-            \end{equation*}
-            
-            % \textbf{Combined:}
-            % \begin{equation*}
-            %     \max Z = (1-\gamma) Z_{\text{base}} + \gamma Z_{\text{rot}}
-            % \end{equation*}
-            
-            % \vspace{0.1cm}
-            % \begin{tikzpicture}
-            %     \node[rounded corners=3pt,fill=accentTeal!20,draw=accentTeal,
-            %           font=\scriptsize,inner sep=4pt] {
-            %         $\gamma = 0.2$ (rotation weight)
-            %     };
-            % \end{tikzpicture}
+
+            \vspace{0.3cm}
+            \textbf{Goal:} Find the rotation sequence that
+            maximises long-run benefit while avoiding
+            bad crop-after-crop combinations.
         \end{column}
-        
-        \begin{column}{0.43\textwidth}
-        \vspace{-0.5cm}
-            % Frustration visualization
+        \begin{column}{0.42\textwidth}
+            \begin{tikzpicture}
+                \foreach \t/\lbl in {0/Season 1, 1.5/Season 2, 3.0/Season 3}{
+                    \draw[fill=primaryBlue!20, rounded corners=3pt]
+                        (\t-0.55, 0) rectangle (\t+0.55, 2.2);
+                    \node[font=\tiny, align=center] at (\t, 2.45) {\lbl};
+                    \foreach \y in {0.3, 0.85, 1.4, 1.95}{
+                        \draw[fill=accentTeal!30, rounded corners=2pt]
+                            (\t-0.42,\y-0.18) rectangle (\t+0.42,\y+0.18);
+                        \node[font=\tiny] at (\t, \y) {Farm};
+                    }
+                }
+                \foreach \y in {0.3, 0.85, 1.4, 1.95}{
+                    \draw[->, thick, warmOrange] (0.58,\y) -- (0.92,\y);
+                    \draw[->, thick, warmOrange] (2.08,\y) -- (2.42,\y);
+                }
+                \node[font=\scriptsize, warmOrange] at (1.5,-0.35)
+                    {rotation synergy};
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{The Rotation Objective: Rewarding Good Sequences}
+    \framesubtitle{Some crops improve the soil for the next season; most do not}
+
+    \begin{equation*}
+        Z_{\text{rot}} \;=\;
+        \sum_{f,\;t} \;\sum_{c,\;c'}
+        S_{c,c'} \;\cdot\; x_{f,c,t} \;\cdot\; x_{f,c',t+1}
+    \end{equation*}
+
+    \vspace{0.4cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Symbol glossary:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item $x_{f,c,t}$ --- 1 if farm $f$ grows crop family
+                      $c$ in period $t$, else 0
+                \item $x_{f,c',t+1}$ --- same for the \emph{next} period
+                \item $S_{c,c'}$ --- \textbf{synergy score} between
+                      crop $c$ followed by crop $c'$\\
+                      {\small Positive = good sequence,
+                       negative = harmful}
+                \item $\sum_{f,t}$ --- we sum over every farm
+                      and every season transition
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Plain English:}
+            \vspace{0.2cm}
+
+            Every time a farm switches from crop $c$ in one
+            season to crop $c'$ the next, we add the synergy
+            score $S_{c,c'}$ to the total.
+
+            \vspace{0.3cm}
+            \begin{exampleblock}{Good example}
+                \small Legumes fix nitrogen in the soil.
+                Planting wheat \emph{after} legumes gives a
+                positive $S_{\text{legume,wheat}} > 0$.
+            \end{exampleblock}
+            \begin{alertblock}{Bad example}
+                \small Planting the same crop family twice
+                depletes the same nutrients and invites pests:
+                $S_{c,c} < 0$.
+            \end{alertblock}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%---------------------------------------------------------------
+\begin{frame}{The Synergy Matrix: Why This Problem Is Hard}
+    \framesubtitle{Most crop transitions are harmful --- creating a ``frustrated'' landscape}
+
+    \begin{columns}[T]
+        \begin{column}{0.50\textwidth}
+            \textbf{What the matrix shows:}
+            \vspace{0.2cm}
+
+            Each cell $(c, c')$ shows whether growing crop $c'$
+            \emph{after} crop $c$ is beneficial \textcolor{accentGreen}{\textbf{(green)}}
+            or harmful \textcolor{alertRed}{\textbf{(red)}}.
+
+            \vspace{0.4cm}
+            \textbf{The problem:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item \textbf{70--88\%} of all pairs are harmful
+                \item Avoiding one bad pair often forces
+                      another bad pair elsewhere
+                \item No ``obviously good'' global solution exists
+            \end{itemize}
+
+            \vspace{0.4cm}
+            This is called \textbf{frustration} --- a concept from
+            physics where competing constraints cannot all be
+            satisfied simultaneously.
+        \end{column}
+        \begin{column}{0.47\textwidth}
             \begin{tikzpicture}[scale=1.0,transform shape]
-                \node[font=\bfseries,primaryBlue] at (1.2,2.8) {Synergy Matrix};
-                
-                % Mini heatmap representation - simplified
-                % Row 0
+                \node[font=\bfseries,primaryBlue] at (1.2,2.8) {Synergy Matrix $S_{c,c'}$};
+
                 \fill[alertRed!80] (0,0) rectangle (0.35,0.35);
                 \fill[alertRed!40] (0.4,0) rectangle (0.75,0.35);
                 \fill[accentGreen!60] (0.8,0) rectangle (1.15,0.35);
                 \fill[alertRed!60] (1.2,0) rectangle (1.55,0.35);
                 \fill[alertRed!30] (1.6,0) rectangle (1.95,0.35);
                 \fill[alertRed!50] (2.0,0) rectangle (2.35,0.35);
-                % Row 1
+
                 \fill[alertRed!40] (0,0.4) rectangle (0.35,0.75);
                 \fill[alertRed!80] (0.4,0.4) rectangle (0.75,0.75);
                 \fill[alertRed!50] (0.8,0.4) rectangle (1.15,0.75);
                 \fill[accentGreen!40] (1.2,0.4) rectangle (1.55,0.75);
                 \fill[alertRed!60] (1.6,0.4) rectangle (1.95,0.75);
                 \fill[alertRed!35] (2.0,0.4) rectangle (2.35,0.75);
-                % Row 2
+
                 \fill[accentGreen!60] (0,0.8) rectangle (0.35,1.15);
                 \fill[alertRed!50] (0.4,0.8) rectangle (0.75,1.15);
                 \fill[alertRed!80] (0.8,0.8) rectangle (1.15,1.15);
                 \fill[alertRed!45] (1.2,0.8) rectangle (1.55,1.15);
                 \fill[accentGreen!50] (1.6,0.8) rectangle (1.95,1.15);
                 \fill[alertRed!55] (2.0,0.8) rectangle (2.35,1.15);
-                % Row 3
+
                 \fill[alertRed!60] (0,1.2) rectangle (0.35,1.55);
                 \fill[accentGreen!40] (0.4,1.2) rectangle (0.75,1.55);
                 \fill[alertRed!45] (0.8,1.2) rectangle (1.15,1.55);
                 \fill[alertRed!80] (1.2,1.2) rectangle (1.55,1.55);
                 \fill[alertRed!40] (1.6,1.2) rectangle (1.95,1.55);
                 \fill[accentGreen!35] (2.0,1.2) rectangle (2.35,1.55);
-                % Row 4
+
                 \fill[alertRed!30] (0,1.6) rectangle (0.35,1.95);
                 \fill[alertRed!60] (0.4,1.6) rectangle (0.75,1.95);
                 \fill[accentGreen!50] (0.8,1.6) rectangle (1.15,1.95);
                 \fill[alertRed!40] (1.2,1.6) rectangle (1.55,1.95);
                 \fill[alertRed!80] (1.6,1.6) rectangle (1.95,1.95);
                 \fill[alertRed!65] (2.0,1.6) rectangle (2.35,1.95);
-                % Row 5
+
                 \fill[alertRed!50] (0,2.0) rectangle (0.35,2.35);
                 \fill[alertRed!35] (0.4,2.0) rectangle (0.75,2.35);
                 \fill[alertRed!55] (0.8,2.0) rectangle (1.15,2.35);
                 \fill[accentGreen!35] (1.2,2.0) rectangle (1.55,2.35);
                 \fill[alertRed!65] (1.6,2.0) rectangle (1.95,2.35);
                 \fill[alertRed!80] (2.0,2.0) rectangle (2.35,2.35);
-                
-                \node[font=\small,anchor=west] at (2.6,1.2) {\textcolor{accentGreen}{$\blacksquare$} Benefit};
-                \node[font=\small,anchor=west] at (2.6,0.7) {\textcolor{alertRed}{$\blacksquare$} Penalty};
+
+                \node[font=\small,anchor=west] at (2.6,1.4)
+                    {\textcolor{accentGreen}{$\blacksquare$} Benefit};
+                \node[font=\small,anchor=west] at (2.6,0.9)
+                    {\textcolor{alertRed}{$\blacksquare$} Penalty};
+
+                % axis labels
+                \node[font=\tiny,rotate=90] at (-0.25,1.2) {crop at $t$};
+                \node[font=\tiny] at (1.2,-0.25) {crop at $t+1$};
             \end{tikzpicture}
-            
-            \vspace{0.2cm}
-            \begin{warningbox}[Frustration]
-                \scriptsize \textbf{70--88\%} of crop rotation pairs have \textbf{negative} synergy\\[2pt]
-                $\Rightarrow$ Rugged energy landscape\\
-                $\Rightarrow$ Classical B\&B struggles
-            \end{warningbox}
         \end{column}
     \end{columns}
 \end{frame}
 
+%---------------------------------------------------------------
+\begin{frame}{Frustration: Why Classical Solvers Struggle}
+    \framesubtitle{Competing constraints with no clean solution}
+
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{What is a ``frustrated'' system?}
+            \vspace{0.2cm}
+
+            Imagine three farms that must all differ from each other,
+            but there are only two crop families available.
+            \emph{At least one pair will always clash} --- the system
+            is \textbf{frustrated}.
+
+            \vspace{0.4cm}
+            \textbf{Consequence for optimisation:}
+            \vspace{0.2cm}
+            \begin{itemize}
+                \item The solution landscape has many
+                      \textbf{local optima} --- valleys that look good
+                      but are not globally best
+                \item Classical solvers must explore
+                      an exponentially large search tree
+                \item Small changes in one farm's rotation
+                      can cascade into many constraint violations
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.42\textwidth}
+            \vspace{0.3cm}
+            \begin{tikzpicture}
+                % Energy landscape sketch
+                \draw[thick, ->] (0,0) -- (4.2,0)
+                    node[right,font=\tiny] {solution space};
+                \draw[thick, ->] (0,0) -- (0,2.8)
+                    node[above,font=\tiny] {cost};
+                \draw[thick, accentTeal, rounded corners=4pt]
+                    (0,2.2) -- (0.4,1.0) -- (0.8,1.6) --
+                    (1.2,0.7) -- (1.6,1.4) -- (2.0,0.5) --
+                    (2.4,1.3) -- (2.8,0.3) -- (3.2,1.1) --
+                    (3.6,0.8) -- (4.0,1.5);
+                % mark global min
+                \fill[warmOrange] (2.8,0.3) circle (3pt);
+                \node[font=\tiny, warmOrange, above right] at (2.8,0.3)
+                    {global min};
+                % mark a local min
+                \fill[alertRed] (1.2,0.7) circle (2.5pt);
+                \node[font=\tiny, alertRed, above right] at (1.2,0.7)
+                    {local trap};
+                \fill[alertRed] (2.0,0.5) circle (2.5pt);
+                \node[font=\tiny, alertRed, above right] at (2.0,0.5)
+                    {local trap};
+            \end{tikzpicture}
+
+            \vspace{0.3cm}
+            \begin{warningbox}[Why quantum helps]
+                \scriptsize Quantum tunnelling can escape local traps
+                that classical hill-climbing cannot.\\[2pt]
+                $\Rightarrow$ Variant B is a natural benchmark
+                for quantum advantage.
+            \end{warningbox}
+        \end{column}
+    \end{columns}
+\end{frame}
 
 
 % ----------------------------------------------------------------------------
@@ -767,11 +1167,11 @@
 \section{Experimental Studies}
 
 \begin{frame}{Three Complementary Studies}
-    \framesubtitle{Comprehensive evaluation of quantum and classical performance}
+    \framesubtitle{We tested quantum vs.\ classical solvers on three progressively harder problems}
     
     \centering
     \begin{tikzpicture}[
-        study/.style={rounded corners=8pt,minimum width=4.2cm,minimum height=2.5cm,
+        study/.style={rounded corners=8pt,minimum width=3.5cm,minimum height=2.3cm,
                      font=\scriptsize,align=center,text=white,
                      drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}},
         legend/.style={rounded corners=6pt,fill=white,draw=mutedGray,align=center,font=\scriptsize,inner sep=6pt}
@@ -782,25 +1182,25 @@
             \normalsize\textbf{Study 1}\\[2pt]
             \small Hybrid Solver\\
             Benchmarking\\[4pt]
-            \scriptsize Variant 1.A\\
+            \scriptsize Variant 1.A
         };
         
         % Study 2
-        \node[study,fill=accentTeal] (s2) at (5,0) {
+        \node[study,fill=accentTeal] (s2) at (4.5,0) {
             \Large\faMicrochip\\[4pt]
             \normalsize\textbf{Study 2}\\[2pt]
             \small Pure QPU\\
             Decomposition\\[4pt]
-            \scriptsize Variant 2.A\\
+            \scriptsize Variant 2.A
         };
         
         % Study 3
-        \node[study,fill=accentGreen] (s3) at (10,0) {
+        \node[study,fill=accentGreen] (s3) at (9,0) {
             \Large\faRocket\\[4pt]
             \normalsize\textbf{Study 3}\\[2pt]
             \small Quantum\\
             Improvement\\[4pt]
-            \scriptsize Variant 2.B\\
+            \scriptsize Variant 2.B
         };
         
         % Arrows
@@ -808,7 +1208,7 @@
         \draw[->,very thick,accentTeal!60] (s2.east) -- (s3.west);
 
         % Legend / footnote box at bottom
-        \node[legend] (legend) at (5,-2.3) {
+        \node[legend] (legend) at (4.5,-2.1) {
              A / B = Variants \quad\;\; 1 = Hybrid Solvers \quad\;\; 2 = Quantum Annealer
         };
     \end{tikzpicture}
@@ -817,7 +1217,7 @@
 
 
 \begin{frame}{Study 1.A: Research Question \& Setup}
-    \framesubtitle{Can D-Wave hybrid solvers compete with classical MILP on linear problems?}
+    \framesubtitle{Can a quantum computer match the best classical solver on a straightforward problem?}
     
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
@@ -849,15 +1249,15 @@
             ]
                 \node[config,fill=primaryBlue] at (0,0) {
                     \textbf{Gurobi 12.0.1}\\[2pt]
-                    Timeout: 300s, MIP gap: 0.01\%
+                    Timeout: 100s, MIP gap: 0.01\%
                 };
                 \node[config,fill=accentTeal] at (0,-1.2) {
                     \textbf{D-Wave Hybrid (CQM)}\\[2pt]
-                    Time limit: 300s, Auto-tuned
+                    Time limit: None
                 };
                 \node[config,fill=secondaryBlue] at (0,-2.4) {
                     \textbf{D-Wave Hybrid (BQM)}\\[2pt]
-                    QUBO conversion, 300s limit
+                    QUBO conversion, None
                 };
             \end{tikzpicture}
             
@@ -873,7 +1273,7 @@
 \end{frame}
 
 \begin{frame}{Study 1.A: Hybrid Solver Results}
-    \framesubtitle{D-Wave vs Gurobi on Variant A}
+    \framesubtitle{Quantum vs.\ classical on the simple crop allocation problem}
     
 \centering
     \begin{columns}
@@ -885,8 +1285,9 @@
 
         \textbf{Timing Comparison:}
 \begin{itemize}
-    \item \textbf{Gurobi:} Solves 27,027 vars in \textcolor{accentGreen}{\textbf{1.15 seconds}}
-    \item \textbf{D-Wave Hybrid:} Constant \textbf{5.3--5.5 seconds}
+    \item \textbf{Gurobi:} Solves 27,027 vars in \textcolor{accentGreen}{\textbf{0.15 seconds}}
+    \item \textbf{CQM Hybrid:} Mostly constant \textbf{5.3--5.5 seconds}
+    \item \textbf{BQM Hybrid:} Scales from 100 variables onward probably due to the conversion
     \item \textbf{QPU time:} Only 70ms (\textbf{1.3\%} of hybrid)
 \end{itemize}
 
@@ -914,8 +1315,8 @@
 \end{itemize}
 \vspace{0.2cm}
 \begin{warnbox}
-\small\textbf{Conclusion:}\\
-For well-structured \textbf{linear} problems (Variant A), classical solvers with decades of optimization outperform quantum approaches.
+\small\textbf{Takeaway:}\\
+On simple, straightforward problems, classical computers --- with decades of engineering behind them --- are hard to beat. Quantum shines elsewhere.
 \end{warnbox}
 \end{column}
 \end{columns}
@@ -925,7 +1326,7 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 \end{frame}
 
 \begin{frame}{Study 2.A: Research Question \& Setup}
-    \framesubtitle{How do decomposition strategies affect pure QPU performance?}
+    \framesubtitle{How do we use a quantum chip directly when problems are too large to fit on it?}
     
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
@@ -939,7 +1340,7 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
             \small\textbf{Problem Characteristics:}
             \begin{itemize}\scriptsize
                 \item \textbf{Formulation:} Variant A (Binary Allocation)
-                \item \textbf{Challenge:} QPU embeds $<$500 variables
+                \item \textbf{Challenge:} QPU embeds $<$150 variables
                 \item \textbf{Scale:} 10 to 1,000 farms
                 \item \textbf{Variables:} 270 to 27,027
                 \item \textbf{Need:} Partition into QPU-sized subproblems
@@ -1033,21 +1434,21 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 
             \small\textbf{Solution Quality at 1,000 Farms}
 
-            \vspace{0.2cm}
-            \begin{table}[h]\small
-                \centering
-                \begin{tabular}{lccc}
-                    \toprule
-                    \textbf{Method} & \textbf{Objective} & \textbf{Gap} & \textbf{Crops} \\
-                    \midrule
-                    \rowcolor{accentGreen!20} Gurobi (optimal) & 0.4292 & 0.0\% & 5 \\
-                    Coordinated & 0.2926 & 31.8\% & 25 \\
-                    \rowcolor{primaryBlue!10} Multilevel(10) & 0.2579 & 39.9\% & 27 \\
-                    Louvain & 0.2341 & 45.5\% & 22 \\
-                    PlotBased & 0.1842 & 57.1\% & 18 \\
-                    \bottomrule
-                \end{tabular}
-            \end{table}
+\vspace{0.2cm}
+\begin{table}[h]\small
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Method} & \textbf{Objective} & \textbf{Gap} \\
+        \midrule
+        HybridGrid(5,9) & 0.3863 & 10.0\% \\
+        HybridGrid(10,9) & 0.3517 & 18.1\% \\
+        Coordinated & 0.2926 & 31.8\% \\
+        \rowcolor{accentGreen!10} Multilevel(10) & 0.2579 & 39.9\% \\
+        PlotBased & 0.2579 & 39.9\% \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
             
 
@@ -1060,8 +1461,7 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 
             \begin{itemize}
                 \item Embedding: 95--99\% of total time
-                \item Pure QPU: $<$30s at 1,000 farms
-                \item Chain break rate: $<$2\%
+                \item QPU usage: $<$30s at 1,000 farms
             \end{itemize}
 
             %\vspace{0.3cm}
@@ -1092,7 +1492,7 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 
 
 \begin{frame}{Study 2.B: Research Question \& Setup}
-    \framesubtitle{Can quantum annealing outperform classical solvers on frustrated problems?}
+    \framesubtitle{Can the quantum chip do better on the harder crop rotation problem?}
     
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
@@ -1124,7 +1524,7 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
             ]
                 \node[config,fill=primaryBlue] at (0,0) {
                     \textbf{Gurobi 12.0.1}\\[2pt]
-                    Timeout: 300s, MIP gap: 0.01\%
+                    Timeout: 100s, MIP gap: 0.01\%
                 };
                 \node[config,fill=accentTeal] at (0,-1.2) {
                     \textbf{D-Wave QPU (Hierarchical)}\\[2pt]
@@ -1144,46 +1544,46 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 \end{frame}
 
 \begin{frame}{Hierarchical Decomposition Framework}
-    \framesubtitle{Four-phase approach to enable large-scale QPU optimization}
+    \framesubtitle{Break the big problem into small pieces the quantum chip can handle}
     
     \centering
     \begin{tikzpicture}[
-        phase/.style={rounded corners=8pt,minimum width=3.2cm,minimum height=2.2cm,
+        phase/.style={rounded corners=8pt,minimum width=2.6cm,minimum height=2cm,
                      font=\scriptsize,align=center,text=white,
                      drop shadow={opacity=0.3,shadow xshift=1mm,shadow yshift=-1mm}},
         arrow/.style={->,very thick,line width=2pt},
-        desc/.style={font=\tiny,align=center,text width=3cm}
+        desc/.style={font=\tiny,align=center,text width=2.6cm}
     ]
         % Phase 1: Decompose
         \node[phase,fill=primaryBlue] (p1) at (0,0) {
             \Large\faCut\\[4pt]
             \normalsize\textbf{Decompose}\\[2pt]
             \small Partition\\
-            Problem\\[2pt]
+            Problem
         };
         
         % Phase 2: Aggregate
-        \node[phase,fill=secondaryBlue] (p2) at (4,0) {
+        \node[phase,fill=secondaryBlue] (p2) at (3.4,0) {
             \Large\faLayerGroup\\[4pt]
             \normalsize\textbf{Aggregate}\\[2pt]
             \small Combine\\
-            Subproblems\\[2pt]
+            Subproblems
         };
         
         % Phase 3: Solve
-        \node[phase,fill=accentTeal] (p3) at (8,0) {
+        \node[phase,fill=accentTeal] (p3) at (6.8,0) {
             \Large\faMicrochip\\[4pt]
             \normalsize\textbf{Solve}\\[2pt]
             \small QPU\\
-            Optimization\\[2pt]
+            Optimization
         };
         
         % Phase 4: Refine
-        \node[phase,fill=accentGreen] (p4) at (12,0) {
-            \Large\faSyncAlt\\[4pt]
+        \node[phase,fill=accentGreen] (p4) at (10.2,0) {
+            \Large\faSync\\[4pt]
             \normalsize\textbf{Refine}\\[2pt]
             \small Iterative\\
-            Improvement\\[2pt]
+            Improvement
         };
         
         % Arrows between phases
@@ -1191,34 +1591,30 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
         \draw[arrow,secondaryBlue!60] (p2.east) -- (p3.west);
         \draw[arrow,accentTeal!60] (p3.east) -- (p4.west);
         
-        % Feedback loop from Refine back to Aggregate
-        % \draw[arrow,accentGreen!60,dashed] (p4.south) -- ++(0,-1.4) -| (p2.south);
-        
         % Description boxes below each phase
-        \node[desc] at (0,-1.8) {
+        \node[desc] at (0,-1.6) {
             Split large problem\\
             temporally into\\
             subproblems
         };
-        \node[desc] at (4,-1.8) {
+        \node[desc] at (3.4,-1.6) {
             Split partitions\\
             to Clique compatible\\
             size ($<$25 vars)
         };
-        \node[desc] at (8,-1.8) {
+        \node[desc] at (6.8,-1.6) {
             Quantum annealing\\
             on each\\
             subproblem
         };
-        \node[desc] at (12,-1.8) {
+        \node[desc] at (10.2,-1.6) {
             Coordinate solutions\\
-            \& iterate until\\
-            convergence
+            and heal graph boundaries
         };
 
         % Key insight box at bottom
-        \node[rounded corners=6pt,fill=white,draw=mutedGray,align=center,font=\scriptsize,inner sep=6pt] at (6,-3.2) {
-            \textbf{Key:} Enables scaling from 500 vars (QPU limit) to 27,000+ vars via hierarchical partitioning
+        \node[rounded corners=6pt,fill=white,draw=mutedGray,align=center,font=\scriptsize,inner sep=6pt] at (5.1,-2.8) {
+            \textbf{Key:} Enables scaling from 160 vars (QPU limit) to 27,000+ vars via hierarchical partitioning
         };
     \end{tikzpicture}
 \end{frame}
@@ -1273,10 +1669,11 @@ For well-structured \textbf{linear} problems (Variant A), classical solvers with
 % \end{frame}
 
 \begin{frame}{Study 3: Detailed Results}
+\framesubtitle{Quantum delivers 3--5$\times$ better crop rotation plans as problems grow}
 \small
 \begin{columns}[T]
 \begin{column}{0.55\textwidth}
-\textbf{QPU vs Gurobi Benefit Comparison:}
+\textbf{QPU vs Gurobi --- Benefit Comparison:}
 \begin{table}[h]\scriptsize
 \centering
 \begin{tabular}{lrrrr}
@@ -1344,9 +1741,9 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 \begin{block}{\faDesktop\ Classical (Gurobi)}
 \textbf{Best for:}
 \begin{itemize}
-    \item Linear objectives (MILP)
-    \item Well-structured constraints
-    \item Tight LP relaxations
+    \item Simple, well-structured problems
+    \item When constraints don't conflict
+    \item Linear objectives (no interactions)
 \end{itemize}
 
 \textbf{Performance:}
@@ -1360,9 +1757,9 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 \begin{block}{\faAtom\ Quantum (D-Wave)}
 \textbf{Best for:}
 \begin{itemize}
-    \item Quadratic objectives (QUBO)
-    \item Frustrated constraints
-    \item Rugged energy landscapes
+    \item Problems with many conflicting rules
+    \item Crop interactions \& rotation planning
+    \item ``Needle in a haystack'' solution landscapes
 \end{itemize}
 
 \textbf{Performance:}
@@ -1376,7 +1773,7 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 \vspace{0.1cm}
 \begin{keybox}
 \centering
-\small\textbf{Key Insight:} Neither approach universally dominates. Optimal solver depends on \textbf{problem structure}, not just size.
+\small\textbf{Key Insight:} Neither approach always wins. The right tool depends on \textbf{how complex the problem is}, not just how big it is.
 \end{keybox}
 \end{frame}
 
@@ -1392,7 +1789,7 @@ rotation\_medium\_100 & 360 & 12.78 & 39.24 & 3.07$\times$ \\
 & \textit{(Binary Alloc.)} & \textit{(Decomposition)} & \textit{(Multi-Period)} \\
 \midrule
 Max Variables & 27,027 & 27,027 & 16,200 \\
-Gurobi Time & 0.1-10s & 0.1-10s & 300s (timeout) \\
+Gurobi Time & 0.1-10s & 0.1-10s & 100s (timeout) \\
 \textit{Quantum} Time & 10-300s & 5-3,495s & 10-200s\footnote{Classical processing is underperforming due to being unoptimized compared to Gurobi} \\
 QPU Time & 35ms & 02-20s & 0.1-10s \\
 Solution Quality Ratio & <0.5$\times$ & <0.5$\times$ & 3.80$\times$ \\
@@ -1562,6 +1959,233 @@ Winner & \textcolor{accentGreen}{\textbf{Gurobi}} & \textcolor{accentGreen}{\tex
 % \end{frame}
 
 % ============================================================================
+% THE FULL NARRATIVE — One slide that tells the whole story
+% ============================================================================
+\begin{frame}{The Full Story: From Fields to Qubits}
+    \framesubtitle{How quantum computing met sustainable agriculture}
+    \vspace{-0.4cm}
+
+    \centering
+    \begin{tikzpicture}[
+        step/.style={rounded corners=5pt,minimum width=11.5cm,minimum height=0.7cm,
+                    font=\scriptsize,align=left,inner sep=5pt},
+        num/.style={circle,minimum size=0.5cm,font=\scriptsize\bfseries,text=white,inner sep=0pt},
+        connector/.style={->,thick,mutedGray}
+    ]
+        % Step 1
+        \node[num,fill=alertRed!85] (n1) at (0,0) {1};
+        \node[step,fill=alertRed!8,draw=alertRed!40,anchor=west] (s1) at (0.4,0) {
+            \textbf{The Problem:} 9.2\% of humanity faces hunger while agriculture emits 34\% of
+            greenhouse gases. We need to grow \textbf{more nutritious food on less land}.
+        };
+
+        % Step 2
+        \node[num,fill=primaryBlue] (n2) at (0,-1.05) {2};
+        \node[step,fill=primaryBlue!6,draw=primaryBlue!40,anchor=west] (s2) at (0.4,-1.05) {
+            \textbf{The Formulation:} We encoded crop allocation and multi-period rotation as
+            binary optimization --- up to \textbf{27,027 variables} with diversity, area, and synergy constraints.
+        };
+
+        % Step 3
+        \node[num,fill=accentTeal] (n3) at (0,-2.1) {3};
+        \node[step,fill=accentTeal!6,draw=accentTeal!40,anchor=west] (s3) at (0.4,-2.1) {
+            \textbf{The Experiment:} Three studies compared D-Wave quantum annealing against Gurobi
+            on progressively harder variants --- from simple allocation to frustrated crop rotation.
+        };
+
+        % Step 4
+        \node[num,fill=accentGreen] (n4) at (0,-3.15) {4};
+        \node[step,fill=accentGreen!6,draw=accentGreen!40,anchor=west] (s4) at (0.4,-3.15) {
+            \textbf{The Finding:} On simple problems, classical wins easily. But when crop rotation
+            creates \textbf{frustrated landscapes}, the QPU delivers \textbf{3--5$\times$ better} plans.
+        };
+
+        % Step 5
+        \node[num,fill=warmOrange] (n5) at (0,-4.2) {5};
+        \node[step,fill=warmOrange!6,draw=warmOrange!40,anchor=west] (s5) at (0.4,-4.2) {
+            \textbf{The Implication:} Quantum computing is \textbf{not universally better} --- but for
+            the \emph{hardest, most impactful} agricultural planning problems, it is already a practical tool.
+        };
+
+        % Vertical connector line
+        \foreach \a/\b in {n1/n2, n2/n3, n3/n4, n4/n5}{
+            \draw[connector] (\a.south) -- (\b.north);
+        }
+    \end{tikzpicture}
+\end{frame}
+
+% ============================================================================
+% LESSONS LEARNED — What we would do differently
+% ============================================================================
+\begin{frame}{Lessons Learned}
+    \framesubtitle{Practical insights from applying quantum computing to a real-world problem}
+    \vspace{-0.3cm}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \small\textbf{\textcolor{accentGreen}{\faCheckCircle}\ What Worked Well:}
+            \begin{itemize}\small
+                \item Hierarchical decomposition enabled scaling far beyond QPU limits
+                \item Temporal splitting naturally fits crop rotation structure
+                \item Auto-scaled chain strength kept break rate below 2\%
+                \item QUBO formulation of frustrated synergies is a natural fit for annealing
+            \end{itemize}
+
+            \vspace{0.3cm}
+            \small\textbf{\textcolor{alertRed}{\faTimesCircle}\ What Was Challenging:}
+            \begin{itemize}\small
+                \item Embedding overhead dominates runtime (95--99\%)
+                \item Penalty term tuning requires manual experimentation
+                \item CQM$\to$BQM conversion loses constraint structure
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \small\textbf{\textcolor{primaryBlue}{\faLightbulb}\ Key Takeaways:}
+            \vspace{0.2cm}
+
+            \begin{tikzpicture}[
+                lesson/.style={rounded corners=3pt,fill=primaryBlue!8,draw=primaryBlue!30,
+                              font=\scriptsize,inner sep=5pt,minimum width=5.5cm,align=left}
+            ]
+                \node[lesson] at (0,0) {
+                    \textbf{Match solver to structure:}\\
+                    Linear $\to$ classical; frustrated $\to$ quantum
+                };
+                \node[lesson] at (0,-1.2) {
+                    \textbf{Decomposition is essential:}\\
+                    The algorithm matters more than the hardware
+                };
+                \node[lesson] at (0,-2.4) {
+                    \textbf{Diversity is a feature:}\\
+                    Lower objective + more crop types may be\\
+                    agriculturally preferable
+                };
+                \node[lesson] at (0,-3.6) {
+                    \textbf{QPU time scales linearly:}\\
+                    The bottleneck is classical embedding,\\
+                    not quantum processing
+                };
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% IMPACT & SDG ALIGNMENT
+% ============================================================================
+\begin{frame}{Impact \& SDG Alignment}
+    \framesubtitle{From optimization research to sustainable development outcomes}
+    \vspace{-0.3cm}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \small\textbf{Agricultural Impact:}
+
+            \begin{tikzpicture}[
+                impact/.style={rounded corners=3pt,fill=accentGreen!15,draw=accentGreen,
+                              font=\scriptsize,inner sep=5pt,minimum width=5.5cm,
+                              minimum height=0.55cm,align=left}
+            ]
+                \node[impact] at (0,0) {\faCarrot\ 3--5$\times$ better crop rotation plans};
+                \node[impact] at (0,-0.7) {\faHeartbeat\ More diverse, nutritious allocations};
+                \node[impact] at (0,-1.4) {\faLeaf\ Reduced monoculture environmental harm};
+                \node[impact] at (0,-2.1) {\faShieldAlt\ Resilient farming through rotation};
+            \end{tikzpicture}
+
+            \vspace{0.3cm}
+            \small\textbf{Technical Contributions:}
+            \begin{itemize}\scriptsize
+                \item Novel hierarchical QPU decomposition framework
+                \item Systematic benchmark methodology for quantum annealing
+                \item Open-source codebase for agricultural QUBO
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \small\textbf{SDG Alignment:}
+
+            \begin{tikzpicture}[
+                sdg/.style={rounded corners=4pt,minimum width=5.5cm,minimum height=0.65cm,
+                           font=\scriptsize,align=left,text=white,inner sep=5pt}
+            ]
+                \node[sdg,fill=warmOrange] at (0,0) {\textbf{SDG 2:} Maximise nutrition, crop diversity};
+                \node[sdg,fill=accentGreen] at (0,-0.8) {\textbf{SDG 3:} Diverse diets, better health};
+                \node[sdg,fill=accentTeal] at (0,-1.6) {\textbf{SDG 12:} Sustainable production patterns};
+                \node[sdg,fill=secondaryBlue] at (0,-2.4) {\textbf{SDG 13:} Lower emissions via rotation};
+            \end{tikzpicture}
+
+            \vspace{0.3cm}
+            \begin{resultbox}
+                \centering\scriptsize
+                \textbf{Bottom line:}\\
+                Quantum-optimised crop rotation simultaneously\\
+                addresses food security, nutrition, and climate\\
+                --- the \emph{exact} intersection of SDGs 2, 3, 12, 13.
+            \end{resultbox}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+% FUTURE DIRECTIONS
+% ============================================================================
+\begin{frame}{Future Directions}
+    \framesubtitle{Where this work goes next}
+    \vspace{-0.3cm}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \small\textbf{Hardware Roadmap:}
+
+            \begin{tikzpicture}[
+                dir/.style={rounded corners=3pt,fill=primaryBlue!12,draw=primaryBlue!40,
+                           font=\scriptsize,inner sep=5pt,minimum width=5.5cm,align=left}
+            ]
+                \node[dir] at (0,0) {
+                    \faPlug\ \textbf{Advantage2 (Zephyr topology)}\\
+                    \tiny Higher connectivity $\to$ less embedding overhead
+                };
+                \node[dir] at (0,-1.1) {
+                    \faClock\ \textbf{Longer coherence times}\\
+                    \tiny Better annealing $\to$ higher solution quality
+                };
+                \node[dir] at (0,-2.2) {
+                    \faCogs\ \textbf{Native constraint support}\\
+                    \tiny Avoid lossy penalty-term conversion
+                };
+            \end{tikzpicture}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \small\textbf{Application Extensions:}
+
+            \begin{tikzpicture}[
+                ext/.style={rounded corners=3pt,fill=accentTeal!12,draw=accentTeal!40,
+                           font=\scriptsize,inner sep=5pt,minimum width=5.5cm,align=left}
+            ]
+                \node[ext] at (0,0) {
+                    \faExpand\ \textbf{Scale to 10,000+ farms}\\
+                    \tiny Improved decomposition + better hardware
+                };
+                \node[ext] at (0,-1.1) {
+                    \faCalendarAlt\ \textbf{Multi-year planning (5--10 seasons)}\\
+                    \tiny More temporal depth = more frustration = more quantum benefit
+                };
+                \node[ext] at (0,-2.2) {
+                    \faCloudSun\ \textbf{Climate-adaptive scenarios}\\
+                    \tiny Integrate weather uncertainty into rotation planning
+                };
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.3cm}
+    \begin{keybox}
+        \centering\small
+        \textbf{Near-term target:} With Advantage2, embedding overhead could drop below 50\%, making quantum competitive on a broader class of agricultural problems.
+    \end{keybox}
+\end{frame}
+
+% ============================================================================
 % CLOSING SLIDE
 % ============================================================================
 {
@@ -1597,333 +2221,5 @@ Winner & \textcolor{accentGreen}{\textbf{Gurobi}} & \textcolor{accentGreen}{\tex
 \end{tikzpicture}
 \end{frame}
 }
-
-% ============================================================================
-% BACKUP SLIDES
-% ============================================================================
- \appendix
-
-\begin{frame}{Crop Rotation Parameters: Agronomic Grounding}
-    \framesubtitle{Calibrated from field-trial meta-analyses}
-    
-    \begin{columns}[T]
-        \begin{column}{0.55\textwidth}
-            \begin{table}[h]\small
-                \centering
-                \begin{tabular}{lcc}
-                    \toprule
-                    \textbf{Parameter} & \textbf{Our Value} & \textbf{Literature} \\
-                    \midrule
-                    \rowcolor{primaryBlue!10} Rotation weight $\gamma$ & 0.2 & 0.1--0.3 \\
-                    Monoculture penalty & 24\% & 15--30\% \\
-                    \rowcolor{primaryBlue!10} Legume benefit & 16--25\% & 16--23\% \\
-                    Spatial dampening & 0.15 & 0.1--0.2 \\
-                    \rowcolor{primaryBlue!10} Frustration ratio & 70--88\% & 50--80\% \\
-                    Planning horizon $T$ & 3 years & 2--5 years \\
-                    \bottomrule
-                \end{tabular}
-            \end{table}
-            
-            \vspace{0.1cm}
-            \begin{keyinsight}[Literature Source]
-                \scriptsize Based on 3,663 paired field-trial observations across six continents (Mudare et al., 2025).
-            \end{keyinsight}
-        \end{column}
-        \begin{column}{0.43\textwidth}
-            \vspace{0.1cm}
-            \small\textbf{Synergy Matrix $S_{c,c'}$:}
-            \begin{itemize}
-                \item Diagonal: Monoculture penalty ($-0.24$)
-                \item Legume$\to$Non-legume: Benefit ($+0.16$ to $+0.25$)
-                \item Most pairs: Negative or zero
-            \end{itemize}
-            
-            % \vspace{0.3cm}
-            % \begin{tikzpicture}
-            %     \node[rounded corners=5pt,fill=accentTeal!15,draw=accentTeal,
-            %           inner sep=6pt,font=\scriptsize,align=center] {
-            %         \textbf{Key Insight:}\\[2pt]
-            %         High frustration creates\\
-            %         optimization landscape where\\
-            %         \textbf{quantum tunneling}\\
-            %         outperforms classical search
-            %     };
-            % \end{tikzpicture}
-        \end{column}
-    \end{columns}
-\end{frame}
-
-\begin{frame}{D-Wave Advantage System Specifications}
-\small
-\begin{columns}[T]
-\begin{column}{0.48\textwidth}
-\begin{table}[h]\small
-\centering
-\begin{tabular}{ll}
-\toprule
-\textbf{Parameter} & \textbf{Value} \\
-\midrule
-Total Qubits & 5,760 \\
-Topology & Pegasus P16 \\
-Avg. Connectivity & 15 neighbors \\
-Native Clique & 15--20 qubits \\
-Annealing Time & 0.5--2,000 $\mu$s \\
-Thermalization & 1 ms (default) \\
-Chain Strength & Auto-scaled \\
-Max Variables & $\sim$5,000 \\
-\bottomrule
-\end{tabular}
-\end{table}
-\end{column}
-\begin{column}{0.48\textwidth}
-\textbf{Pegasus Topology Advantages:}
-\begin{itemize}
-    \item Native cliques of 15--20 fully connected qubits
-    \item 27-crop farm subproblems embed with minimal chains
-    \item Average chain length $\leq 1.2$
-\end{itemize}
-\vspace{0.2cm}
-\textbf{QPU Configuration:}
-\begin{itemize}
-    \item 100--500 samples/subproblem
-    \item Auto-scaled chain strength
-    \item Chain break rate: \textcolor{accentGreen}{\textbf{$<$2\%}}
-\end{itemize}
-\end{column}
-\end{columns}
-\vspace{0.2cm}
-\begin{keybox}
-\small\textbf{Classical Baseline:} Gurobi 12.0.1 with 300-second timeout, MIP gap tolerance 0.01\%.
-\end{keybox}
-\end{frame}
-
-\begin{frame}{CQM to BQM Conversion}
-\small
-\textbf{Challenge:} QPU accepts only QUBO/Ising models, not CQM directly.
-
-\vspace{0.2cm}
-\begin{columns}[T]
-\begin{column}{0.48\textwidth}
-\textbf{Penalty Method:}
-\begin{equation*}
-H_{\text{BQM}} = -Z_{\text{obj}} + \sum_k \lambda_k \cdot (\text{violation}_k)^2
-\end{equation*}
-
-\textbf{Constraint Penalties:}
-\begin{itemize}
-    \item Plot assignment: $\lambda_1 = 10.0$
-    \item Diversity bounds: $\lambda_2 = 5.0$
-    \item Area constraints: $\lambda_3 = 2.0$
-    \item Linking constraints: $\lambda_4 = 8.0$
-\end{itemize}
-\end{column}
-\begin{column}{0.48\textwidth}
-\textbf{Grid Refinement (Continuous$\to$Binary):}
-\begin{equation*}
-x_{\text{cont}} \approx \sum_{i=1}^{n} \frac{i}{n} \cdot b_i, \quad b_i \in \{0,1\}
-\end{equation*}
-
-\textbf{Convergence:}
-\begin{itemize}
-    \item Gap: 12.63\% at $n=5$ $\to$ 0.00\% at $n=100$
-    \item Rate: $O(n^{-1})$
-    \item Binary is 3.7$\times$ faster than continuous
-\end{itemize}
-\end{column}
-\end{columns}
-\end{frame}
-
-
-\begin{frame}{Decomposition Strategies for Large Problems}
-    \framesubtitle{8 methods to partition problems for QPU}
-    
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Basic Methods:}
-            
-            \begin{tikzpicture}[
-                method/.style={rounded corners=2pt,minimum width=5.5cm,minimum height=0.7cm,
-                              font=\scriptsize,align=left,inner sep=4pt,text=white}
-            ]
-                \node[method,fill=primaryBlue] at (0,0) {
-                    \textbf{1. Direct QPU} --- No decomposition\\
-                    \tiny Embedding-limited ($<$500 vars)
-                };
-                \node[method,fill=secondaryBlue] at (0,-0.9) {
-                    \textbf{2. PlotBased} --- Farm-level partition\\
-                    \tiny 27 vars/farm, independent
-                };
-                \node[method,fill=accentTeal] at (0,-1.8) {
-                    \textbf{3. Multilevel(5)} --- Hierarchical\\
-                    \tiny $\sim$135 vars/partition
-                };
-                \node[method,fill=accentGreen] at (0,-2.7) {
-                    \textbf{4. Multilevel(10)} --- Deep hierarchy\\
-                    \tiny $\sim$270 vars, \textbf{best scaling}
-                };
-            \end{tikzpicture}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            \small\textbf{Advanced Methods:}
-            
-            \begin{tikzpicture}[
-                method/.style={rounded corners=2pt,minimum width=5.5cm,minimum height=0.7cm,
-                              font=\scriptsize,align=left,inner sep=4pt,text=white}
-            ]
-                \node[method,fill=warmOrange] at (0,0) {
-                    \textbf{5. Louvain} --- Community detection\\
-                    \tiny Adaptive clustering
-                };
-                \node[method,fill=alertRed!80] at (0,-0.9) {
-                    \textbf{6. Spectral(10)} --- Spectral clustering\\
-                    \tiny Fixed partition count
-                };
-                \node[method,fill=mutedGray] at (0,-1.8) {
-                    \textbf{7. CQM-First} --- Two-phase\\
-                    \tiny CQM$\to$partition$\to$BQM
-                };
-                \node[method,fill=primaryBlue!70] at (0,-2.7) {
-                    \textbf{8. Coordinated} --- Master-sub\\
-                    \tiny Iterative refinement
-                };
-            \end{tikzpicture}
-        \end{column}
-    \end{columns}
-    
-    \vspace{0.3cm}
-    \begin{highlightbox}
-        \centering\small
-        \textbf{Why Decomposition?} The MinorMiner embedding algorithm fails above 160 variables at $40\%$ graph density.
-    \end{highlightbox}
-\end{frame}
-
-\begin{frame}{Why Does Gurobi Struggle with Crop Rotation?}
-\small
-\begin{columns}[T]
-\begin{column}{0.55\textwidth}
-\textbf{Classical Solver Barriers:}
-\begin{enumerate}
-    \item \textbf{Quadratic terms} break LP relaxation quality
-    \item \textbf{Frustrated constraints} create many local minima
-    \item \textbf{Poor bounds} $\Rightarrow$ no effective pruning
-    \item Branch-and-bound explores exponentially
-\end{enumerate}
-\vspace{0.2cm}
-\textbf{The Computational Cliff:}
-\begin{itemize}
-    \item Variant A (linear): 0.3 seconds
-    \item Variant B (quadratic): 300+ seconds timeout
-    \item Same scale, different formulation
-\end{itemize}
-\end{column}
-\begin{column}{0.43\textwidth}
-\begin{warnbox}
-\small\textbf{Non-Monotonic Hardness:}\\
-Problem difficulty is \textbf{formulation-dependent}, not just size-dependent.
-\end{warnbox}
-\vspace{0.3cm}
-\textbf{Quantum Advantage Mechanism:}
-\begin{itemize}
-    \item Quantum tunneling escapes local minima
-    \item Naturally explores rugged landscapes
-    \item Parallel exploration via superposition
-\end{itemize}
-\end{column}
-\end{columns}
-\end{frame}
-
-\begin{frame}{Hardware Effects Analysis}
-\small
-\begin{columns}[T]
-\begin{column}{0.48\textwidth}
-\textbf{Chain Breaking:}
-\begin{itemize}
-    \item Rate: Consistently $<$2\%
-    \item Auto-scaled chain strength effective
-    \item Minimal impact on solution quality
-\end{itemize}
-\vspace{0.2cm}
-\textbf{Embedding Overhead:}
-\begin{itemize}
-    \item 95--99\% of total runtime
-    \item Classical preprocessing bottleneck
-    \item Not inherent to quantum computation
-\end{itemize}
-\end{column}
-\begin{column}{0.48\textwidth}
-\textbf{Noise Mitigation:}
-\begin{itemize}
-    \item Multiple samples (100--500)
-    \item Majority voting for robust solutions
-    \item Auto-scaling chain strength
-\end{itemize}
-\vspace{0.2cm}
-\small\textbf{Future Hardware Impact:}
-            
-            \begin{tikzpicture}[
-                future/.style={rounded corners=2pt,fill=accentTeal!20,draw=accentTeal,
-                              font=\scriptsize,inner sep=3pt,minimum width=5cm}
-            ]
-                \node[future] at (0,0) {Higher connectivity $\rightarrow$ Less embedding};
-                \node[future] at (0,-0.6) {Longer coherence $\rightarrow$ Better quality};
-                \node[future] at (0,-1.2) {Native constraints $\rightarrow$ No penalties};
-            \end{tikzpicture}
-\end{column}
-\end{columns}
-\vspace{0.2cm}
-\begin{keybox}
-\small The embedding bottleneck is a \textbf{classical preprocessing issue}, not a fundamental quantum limitation. Next-generation hardware (Advantage2) promises significantly reduced overhead.
-\end{keybox}
-\end{frame}
-
-\begin{frame}{Grid Refinement Analysis}
-    \begin{columns}[T]
-        \begin{column}{0.55\textwidth}
-            \small\textbf{Convergence Analysis:}
-            
-            \vspace{0.1cm}
-            \begin{table}[h]\small
-                \centering
-                \begin{tabular}{rrrr}
-                    \toprule
-                    \textbf{Grid $n$} & \textbf{Gap (\%)} & \textbf{Binary} & \textbf{Cont.} \\
-                    \midrule
-                    \rowcolor{alertRed!15} 5 & 12.63 & 0.08s & 0.12s \\
-                    10 & 6.42 & 0.15s & 0.31s \\
-                    \rowcolor{warmOrange!15} 25 & 2.58 & 0.42s & 1.24s \\
-                    50 & 1.29 & 1.21s & 4.12s \\
-                    \rowcolor{accentGreen!15} 100 & 0.00 & 3.87s & 14.32s \\
-                    \bottomrule
-                \end{tabular}
-            \end{table}
-            
-            \begin{highlightbox}
-                \centering\small
-                Convergence Rate: $O(n^{-1})$
-            \end{highlightbox}
-        \end{column}
-        \begin{column}{0.43\textwidth}
-\textbf{Key Findings:}
-\begin{itemize}
-    \item Binary is \textbf{3.7$\times$ faster} than continuous at $n=100$
-    \item Gap decreases monotonically
-    \item $n=50$ sufficient for most applications
-\end{itemize}
-\vspace{0.2cm}
-\begin{keybox}
-\scriptsize Binary formulation preferred for QPU: faster embedding, comparable accuracy.
-\end{keybox}
-\end{column}
-    \end{columns}
-\end{frame}
-
-\begin{frame}{Solution Composition Analysis}
-    \centering
-    \includegraphics[width=0.55\textwidth]{images/Plots/solution_composition_pies.pdf}
-    
-    \vspace{0.2cm}
-    \small Crop family distribution in QPU solutions across scenarios.
-\end{frame}
-
 
 \end{document}

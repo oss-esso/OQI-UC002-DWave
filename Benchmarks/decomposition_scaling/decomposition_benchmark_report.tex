@@ -30,7 +30,8 @@ for Quantum-Classical Hybrid Food Production Optimization}
 We benchmark the decomposition strategies used in Study~2.A (Binary Patch allocation,
 Variant~A) and Study~2.B (Crop Rotation, Variant~B) of the UC-002 food production
 optimization framework, measuring their computational overhead and scaling behaviour
-across problem sizes from 5 to 1000 farms. We compare three solving paradigms:
+across problem sizes from 5 to 10000 farms (with runtime caps for the heaviest
+Variant~B cases). We compare three solving paradigms:
 (i) Gurobi solving the monolithic problem, (ii) Gurobi solving independently
 decomposed sub-problems followed by solution merging, and (iii) Parallel Tempering
 with Isoenergetic Cluster Moves (PT-ICM) on the decomposed sub-problems. Finally,
@@ -72,8 +73,8 @@ plus $C$ usage indicators).
 \subsection{Variant B --- Crop Rotation (Study 2.B)}
 \label{sec:varB}
 
-Variant~B assigns one of 6 crop families to each farm across $T=3$ time periods.
-Let $Y_{f,k,t}\in\{0,1\}$ indicate farm $f$ grows family $k$ in period $t$.
+Variant~B assigns one of 27 crops to each farm across $T=3$ time periods.
+Let $Y_{f,c,t}\in\{0,1\}$ indicate farm $f$ grows crop $c$ in period $t$.
 
 \paragraph{QUBO objective.}
 \begin{equation}
@@ -81,17 +82,15 @@ Let $Y_{f,k,t}\in\{0,1\}$ indicate farm $f$ grows family $k$ in period $t$.
   + \sum_{\substack{(f,k,t)\\(f',k',t')}} J_{(f,k,t),(f',k',t')}\,Y_{f,k,t}\,Y_{f',k',t'}
 \label{eq:obj-B}
 \end{equation}
-where the linear terms encode family benefit scores and diversity bonuses, and the
+where the linear terms encode crop benefit scores, and the
 quadratic terms encode:
 \begin{itemize}
-  \item \textbf{Temporal rotation synergies:} $R_{k,k'}$ between consecutive periods
+  \item \textbf{Temporal rotation synergies:} $R_{c,c'}$ between consecutive periods
     on the~same~farm,
-  \item \textbf{Spatial synergies:} scaled interactions between adjacent farms in the
-    same period,
-  \item \textbf{One-hot penalties:} enforcing exactly one family per farm per period.
+  \item \textbf{One-hot penalties:} enforcing exactly one crop per farm per period.
 \end{itemize}
 
-The decision space has $n = 6FT = 18F$ binary variables.
+The decision space has $n = 27FT = 81F$ binary variables.
 
 %% ====================================================================
 \section{Decomposition Strategies}
@@ -120,10 +119,10 @@ The decision space has $n = 6FT = 18F$ binary variables.
 \subsection{Variant B Decompositions}
 
 \begin{description}
-  \item[Clique (farm-by-farm):] One sub-problem per farm, each with $6T = 18$
+  \item[Clique (farm-by-farm):] One sub-problem per farm, each with $27T = 81$
     variables. Partition count: $F$. Ignores inter-farm spatial couplings.
   \item[SpatialTemporal($g$):] Cluster $g$ farms $\times$ one period per partition.
-    Partition count: $\lceil F/g\rceil \cdot T$; max sub-problem: $6g$.
+    Partition count: $\lceil F/g\rceil \cdot T$; max sub-problem: $27g$.
 \end{description}
 
 %% ====================================================================
@@ -180,22 +179,25 @@ Python~3.12 with NumPy, scikit-learn, and NetworkX.
   \includegraphics[width=\textwidth]{fig_partition_count_B.pdf}
   \caption{Partition count}
 \end{subfigure}
-\caption{Variant B decomposition scaling from 5 to 1000 farms (6 families $\times$ 3 periods).}
+\caption{Variant B decomposition scaling from 5 to 1000 farms (27 crops $\times$ 3 periods).}
 \label{fig:decomp-B}
 \end{figure}
 
 \paragraph{Observations.}
 Variant B decompositions are purely combinatorial set operations with no graph
 construction overhead. Both Clique and SpatialTemporal run in $O(FKT)$ time,
-below 6\,ms at 1000 farms.  The key difference is in sub-problem \emph{size}: Clique
-keeps each sub-problem at a fixed 18 variables, while SpatialTemporal(5) has 30
-and SpatialTemporal(10) has 60.
+with decomposition itself still fast; the expensive part is solver time on larger
+QUBOs. The key difference is in sub-problem \emph{size}: Clique keeps each
+sub-problem at a fixed 81 variables, while SpatialTemporal(5) has 135.
 
 %% ====================================================================
 \section{Solver Comparison: Whole-Problem vs.\ Decomposed}
 \label{sec:solvers}
 
-We compare three solving approaches across farm sizes $F \in \{5, 10, 25, 50, 100, 200\}$:
+We compare three solving approaches across farm sizes
+$F \in \{5, 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000\}$.
+PT-ICM runs are reported up to 200 farms (runtime cap), and Variant~B is skipped
+beyond 2000 farms (runtime cap).
 
 \begin{enumerate}
   \item \textbf{Gurobi (full):} Solve the monolithic formulation.
@@ -281,8 +283,8 @@ with violation counters:
     $\sum_{c} Y_{f,c} \le 1$ (at-most-one-crop).
     A violation means a farm is assigned zero or more than one crop.
   \item \textbf{Variant~B:}  For each farm--period pair $(f, t)$, check
-    $\sum_{k} Y_{f,k,t} = 1$ (one-hot).
-    A violation means a slot has zero or more than one family assigned.
+    $\sum_{c} Y_{f,c,t} = 1$ (one-hot).
+    A violation means a slot has zero or more than one crop assigned.
 \end{itemize}
 
 We also compute a \emph{healed objective}: the CQM-equivalent objective evaluated
@@ -292,7 +294,7 @@ BQM energy).
 
 \begin{table}[H]
 \centering
-\caption{PT-ICM constraint feasibility across problem sizes (farm sizes 5--50).
+\caption{PT-ICM constraint feasibility across problem sizes (farm sizes 5--200).
   Violations are counted per farm-slot; violation rate is violations$/$total slots.
   ``CQM Obj'' is the healed (penalty-free) objective.}
 \label{tab:violations}
@@ -302,30 +304,32 @@ BQM energy).
 \midrule
 A & PlotBased         &   5 &   5 & 0 & 0.0 & 0.304 & 0.304 \\
 A & PlotBased         &  10 &  10 & 0 & 0.0 & 0.255 & 0.255 \\
-A & PlotBased         &  25 &  25 & 0 & 0.0 & 0.260 & 0.260 \\
 A & PlotBased         &  50 &  50 & 0 & 0.0 & 0.266 & 0.266 \\
+A & PlotBased         & 200 & 200 & 0 & 0.0 & 0.279 & 0.279 \\
 A & Multilevel(5)     &   5 &   5 & 0 & 0.0 & 0.176 & 0.176 \\
 A & Multilevel(5)     &  50 &  50 & 0 & 0.0 & 0.261 & 0.261 \\
-A & HybridGrid(5,9)   &   5 &   5 & 0 & 0.0 & 0.754 & 0.754 \\
-A & HybridGrid(5,9)   &  50 &  50 & 0 & 0.0 & 0.721 & 0.721 \\
+A & Multilevel(5)     & 200 & 200 & 0 & 0.0 & 0.244 & 0.244 \\
+A & HybridGrid(5,9)   &  10 &  10 & 0 & 0.0 & 0.677 & 0.677 \\
+A & HybridGrid(5,9)   &  50 &  50 & 0 & 0.0 & 0.723 & 0.723 \\
+A & HybridGrid(5,9)   & 200 & 200 & 0 & 0.0 & 0.742 & 0.742 \\
 \midrule
-B & Clique            &   5 &  15 & 0 & 0.0 & 1.960 & 1.960 \\
-B & Clique            &  10 &  30 & 0 & 0.0 & 2.170 & 2.170 \\
-B & Clique            &  25 &  75 & 0 & 0.0 & 2.178 & 2.178 \\
-B & Clique            &  50 & 150 & 0 & 0.0 & 2.097 & 2.097 \\
-B & SpatialTemporal(5) &  5 &  15 & 0 & 0.0 & 6.046 & 6.046 \\
-B & SpatialTemporal(5) & 10 &  30 & 0 & 0.0 & 6.032 & 6.032 \\
-B & SpatialTemporal(5) & 25 &  75 & 0 & 0.0 & 5.708 & 5.708 \\
-B & SpatialTemporal(5) & 50 & 150 & 0 & 0.0 & 5.908 & 5.908 \\
+B & Clique            &   5 &  15 & 0 & 0.0 & 0.790 & 0.790 \\
+B & Clique            &  10 &  30 & 0 & 0.0 & 0.724 & 0.724 \\
+B & Clique            &  50 & 150 & 0 & 0.0 & 0.711 & 0.711 \\
+B & Clique            & 200 & 600 & 0 & 0.0 & 0.754 & 0.754 \\
+B & SpatialTemporal(5) &  5 &  15 & 0 & 0.0 & 0.754 & 0.754 \\
+B & SpatialTemporal(5) & 10 &  30 & 0 & 0.0 & 0.708 & 0.708 \\
+B & SpatialTemporal(5) & 50 & 150 & 0 & 0.0 & 0.721 & 0.721 \\
+B & SpatialTemporal(5) &200 & 600 & 0 & 0.0 & 0.728 & 0.728 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \paragraph{Observation.}
 PT-ICM achieves \textbf{zero constraint violations} across all tested configurations
-(5--50 farms, all decomposition strategies, both variants).  This confirms that
+(5--200 farms, all decomposition strategies, both variants).  This confirms that
 the one-hot penalty terms in the BQM/QUBO formulation are strong enough
-($\lambda = 3.0$ for Variant~B, $\lambda = 10$ for Variant~A) to guide the
+($\lambda = 3.0$ in the PT-ICM sub-BQMs for both variants) to guide the
 metaheuristic towards feasible solutions, even with modest sweep counts (500--800).
 Consequently, the BQM objective and the healed CQM objective coincide exactly,
 meaning no post-hoc constraint repair is needed.
@@ -347,39 +351,39 @@ objective ratio.
 \toprule
 \textbf{Var.} & \textbf{Decomposition} & $F$ & \textbf{Gurobi} & \textbf{PT-ICM} & \textbf{Ratio} \\
 \midrule
-A & PlotBased        &   5 & 0.430 & 0.304 & 0.708 \\
-A & PlotBased        &  50 & 0.430 & 0.266 & 0.618 \\
-A & Multilevel(5)    &   5 & 0.430 & 0.176 & 0.410 \\
-A & Multilevel(5)    &  50 & 0.430 & 0.261 & 0.607 \\
-A & HybridGrid(5,9)  &   5 & 0.430 & 0.754 & 1.754$^\dagger$ \\
-A & HybridGrid(5,9)  &  50 & 0.430 & 0.721 & 1.677$^\dagger$ \\
+A & PlotBased        &  10 & 0.266 & 0.255 & 0.956 \\
+A & PlotBased        &  50 & 0.346 & 0.266 & 0.769 \\
+A & Multilevel(5)    &  10 & 0.266 & 0.211 & 0.793 \\
+A & Multilevel(5)    &  50 & 0.346 & 0.261 & 0.755 \\
+A & HybridGrid(5,9)  &  10 & 0.266 & 0.677 & 2.545$^\dagger$ \\
+A & HybridGrid(5,9)  &  50 & 0.346 & 0.723 & 2.091$^\dagger$ \\
 \midrule
-B & Clique           &   5 & $-48.5$ & 1.96 & $-0.040$ \\
-B & Clique           &  50 & $-463.9$ & 2.10 & $-0.005$ \\
-B & SpatialTemporal(5) & 5 & $-48.5$ & 6.05 & $-0.125$ \\
-B & SpatialTemporal(5) &50 & $-463.9$ & 5.91 & $-0.013$ \\
+B & Clique           &  10 & $-91.3$ & 0.724 & $-0.0079$ \\
+B & Clique           &  50 & $-451.3$ & 0.711 & $-0.0016$ \\
+B & SpatialTemporal(5) &10 & $-91.3$ & 0.708 & $-0.0078$ \\
+B & SpatialTemporal(5) &50 & $-451.3$ & 0.721 & $-0.0016$ \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-$^\dagger$HybridGrid decomposed-Gurobi returns 1.29 (above the full-Gurobi baseline),
-so the PT-ICM ratio appears $>1$ compared to the monolithic optimum; the actual quality
-is still below the decomposed-Gurobi reference.
+$^\dagger$HybridGrid decomposed-Gurobi is also above the monolithic baseline,
+so the PT-ICM ratio appears $>1$ against monolithic Gurobi; this reflects
+decomposition relaxation, not true global optimality.
 \end{table}
 
 \paragraph{Interpretation.}
-For Variant~A, PT-ICM recovers $\sim$41--71\% of the Gurobi objective across
-PlotBased and Multilevel decompositions, which is reasonable given 500--800 sweeps
+For Variant~A, PT-ICM recovers $\sim$75--96\% of the monolithic Gurobi objective
+for PlotBased/Multilevel at 10--50 farms, which is reasonable given 500--800 sweeps
 on sub-problems that are essentially independent per-farm assignment decisions.
 
 For Variant~B, the quality gap is qualitatively different: Gurobi finds deep
-negative-energy states (e.g.\ $-463.9$ at 50~farms) while PT-ICM settles on
-shallow positive-energy configurations ($+2$ to $+6$).  This is because
+negative-energy states (e.g.\ $-451.3$ at 50~farms) while PT-ICM settles on
+shallow positive-energy configurations ($\sim+0.7$).  This is because
 Variant~B's QUBO landscape has strong one-hot penalties ($\lambda = 3.0$ per pair)
 that create a rugged energy surface with many local minima separated by high
 barriers.  The PT-ICM sweep budget of 500--800 sweeps is insufficient to traverse
 these barriers, especially for the SpatialTemporal decomposition where sub-problems
-couple multiple farms and periods (30 variables per partition), creating denser
+couple multiple farms (135 variables per partition), creating denser
 quadratic coupling.  Increasing the sweep count, widening the temperature range,
 and tuning the ICM interval are expected to close this gap significantly.
 
@@ -618,14 +622,16 @@ enable quantum-classical hybrid solving by breaking monolithic problems into
 sub-problems small enough for quantum hardware.  Our benchmarks show that:
 
 \begin{enumerate}
-  \item \textbf{Decomposition overhead} is negligible ($<1$\,s for all strategies
-    up to 1000 farms) except for Spectral and Louvain, which incur $O(n^2)$ and
+  \item \textbf{Decomposition overhead} is negligible (milliseconds for the
+    linear-time partitioners even at large sizes) except for Spectral and Louvain,
+    which incur $O(n^2)$ and
     $O(n \cdot C^2)$ costs respectively.
   \item \textbf{Decomposed Gurobi} achieves near-optimal solutions much faster than
     monolithic Gurobi for large instances, at the cost of ignoring inter-partition
     couplings.
-  \item \textbf{PT-ICM} provides competitive quality on small sub-problems
-    ($\le 30$ variables) but scales poorly on larger sub-problems due to the
+  \item \textbf{PT-ICM} provides competitive quality on small-to-medium sub-problems
+    (here benchmarked up to 200 farms due to runtime caps) but scales poorly on
+    larger sub-problems due to the
     $O(n^2)$ per-sweep cost of the Ising energy evaluation.
   \item Both formulations can be reduced to MAX-$k$-SAT:
     Variant~B maps directly to weighted MAX-2-SAT;

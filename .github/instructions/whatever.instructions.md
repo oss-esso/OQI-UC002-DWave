@@ -24,6 +24,21 @@ New-Item -ItemType File -Path A, B, C
 - always use context7
 - always use sequentialthinking
 
+## Benchmark Consistency Rules (UC-002)
+
+When editing decomposition or solver-comparison benchmarks, keep formulations aligned with canonical scripts:
+
+- **Variant A (Study 2.A)** must match `Benchmark Scripts/solver_runner_BINARY.py`:
+    - include both U-Y linking directions (`Y<=U` and `U<=sum(Y)`),
+    - enforce group `min_foods` and `max_foods` from `load_food_data("full_family")`,
+    - use `minimum_planting_area` and `max_percentage_per_crop` derived plot constraints.
+
+- **Variant B (Study 2.B)** must match `Benchmark Scripts/solver_runner_ROTATION.py` + `rotation_benchmark.py`:
+    - use **27 crops** (not 6 families),
+    - use real `rotation_data/rotation_crop_matrix.csv`,
+    - use `gamma=0.5` benchmark setting,
+    - avoid adding non-canonical terms (no synthetic diversity bonuses or extra spatial couplings).
+
 ## 1. PRD Generation
 
 **Purpose:**
