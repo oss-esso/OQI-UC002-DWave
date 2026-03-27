@@ -42,8 +42,9 @@ the scripts that plot them, and the scripts that originally generated the data f
 - `paper_plots/generate_study_plots_v3.py`: Gurobi baseline for study plots
 
 **Generator script:** `unified_benchmark.py` via `unified_benchmark/core.py::save_benchmark_results()`
-- **Invocation:** `python unified_benchmark.py --mode gurobi-true-ground-truth --timeout 60 --output-json gurobi_baseline_60s.json`
+- **Invocation:** `python unified_benchmark.py --mode gurobi-true-ground-truth --timeout 3600 --output-json gurobi_baseline_60s.json`
 - The filename was passed as a CLI argument, not hardcoded.
+- **Note:** Output filename kept as `gurobi_baseline_60s.json` for backward compatibility (all loaders reference this name), but actual Gurobi timeout is now **3600 s** so Gurobi can find optimal/near-optimal solutions where previously it timed out at 60 s.
 
 ---
 
@@ -62,6 +63,7 @@ the scripts that plot them, and the scripts that originally generated the data f
 **Generator script:** `@todo/test_gurobi_timeout.py` (line 494) and `@todo/test_gurobi_timeout_WORKING.py` (line 338)
 - Writes to `OUTPUT_DIR / f'gurobi_timeout_test_{timestamp}.json'`
 - `OUTPUT_DIR = Path(__file__).parent / 'gurobi_timeout_verification'`
+- **Note:** `test_gurobi_timeout.py` updated 2026-03-27: `GUROBI_CONFIG['timeout']` changed **100 s → 3600 s**; `stopped_reason` updated to `'timeout_3600s'`. The specific file `gurobi_timeout_test_20251224_103144.json` (300 s run) is still the hardcoded default in `DEFAULT_GUROBI_300S_FILE` and remains on disk. New 3600 s results will be written to a new timestamped file and automatically picked up by `load_gurobi_300s()` (which selects the **latest** file matching `gurobi_timeout_test_*.json`).
 
 ---
 
@@ -116,6 +118,7 @@ the scripts that plot them, and the scripts that originally generated the data f
   - Writes to `out_dir / "decomposition_scaling_results.json"` where `out_dir = Path(__file__).parent`
 - `solver_comparison_results.json` ← `Benchmarks/decomposition_scaling/benchmark_solvers_comparison.py` (line 1067)
   - Writes to `out_dir / "solver_comparison_results.json"` where `out_dir = Path(__file__).parent`
+  - **Note:** `benchmark_solvers_comparison.py` updated 2026-03-27: `run_all()` now accepts `--timeout` CLI arg (default 3600 s). All Gurobi sub-problem calls (`solve_gurobi_full_A/B`, `solve_gurobi_decomposed_A/B`) now receive the timeout parameter.
 
 ---
 
@@ -260,3 +263,29 @@ These are noted as "REAL DATA from QPU Benchmarks" in comments at line 89.
 ./crop_benefit_weight_analysis.py       → content_report.tex Appendix Figs 9–18
 ./Benchmarks/decomposition_scaling/generate_plots.py → decomposition_benchmark_report.tex all figures
 ```
+
+---
+
+## 6. Last Regeneration Status (2026-03-27)
+
+### Completed plot regenerations
+| Script | Status | Output |
+|--------|--------|--------|
+| `generate_all_report_plots.py` | ✅ 9/9 plots | `phase3_results_plots/*.png/pdf` |
+| `paper_plots/generate_study_plots_v3.py` | ✅ 3/3 plots | `paper_plots/study1_*.png/pdf`, `study2_*.png/pdf`, `study3_*.png/pdf` |
+| `crop_benefit_weight_analysis.py` | ✅ 6 plots + CSV | `crop_weight_analysis/01–06*.png/pdf` |
+| `Benchmarks/decomposition_scaling/generate_plots.py` | ✅ 14 PDFs | `Benchmarks/decomposition_scaling/fig_*.pdf` |
+| `generate_single_plot_pdfs.py` | ✅ 54/54 plots | `phase3_single_plots/*.pdf` |
+
+### Data regeneration runs in progress (background, started ~19:25–19:27 local)
+| Script | Invocation | Output File | Status |
+|--------|-----------|-------------|--------|
+| `unified_benchmark.py` | `--mode gurobi-true-ground-truth --timeout 3600` | `gurobi_baseline_60s.json` | ⏳ Running |
+| `@todo/test_gurobi_timeout.py` | (no args) | `@todo/gurobi_timeout_verification/gurobi_timeout_test_<ts>.json` | ⏳ Running |
+| `Benchmarks/decomposition_scaling/benchmark_decomposition_scaling.py` | (no args) | `Benchmarks/decomposition_scaling/decomposition_scaling_results.json` | ✅ Done (19:29) |
+| `Benchmarks/decomposition_scaling/benchmark_solvers_comparison.py` | `--timeout 3600` | `Benchmarks/decomposition_scaling/solver_comparison_results.json` | ⏳ Running |
+
+After the in-progress runs complete, re-run the affected plot scripts:
+1. `python generate_all_report_plots.py` — picks up new `gurobi_baseline_60s.json` and `gurobi_timeout_test_*.json`
+2. `python generate_single_plot_pdfs.py` — same data
+3. `python Benchmarks/decomposition_scaling/generate_plots.py` — picks up new `solver_comparison_results.json`

@@ -1082,7 +1082,7 @@ DECOMPOSITIONS_B = {
 }
 
 
-def run_all():
+def run_all(timeout: float = 3600.0):
     results = []
     food_names = FOOD_NAMES_27[:27]
 
@@ -1105,13 +1105,13 @@ def run_all():
 
         # --- Variant A ---
         LOG.info("[A] Gurobi full")
-        r = solve_gurobi_full_A(farm_names, food_names, land)
+        r = solve_gurobi_full_A(farm_names, food_names, land, timeout=timeout)
         r.update(variant="A", decomposition="none", n_farms=n_farms, n_vars=n_vars_a)
         results.append(r)
 
         for dname, dfn in DECOMPOSITIONS_A.items():
             LOG.info(f"[A] Gurobi decomposed ({dname})")
-            r = solve_gurobi_decomposed_A(farm_names, food_names, land, dfn)
+            r = solve_gurobi_decomposed_A(farm_names, food_names, land, dfn, timeout=timeout)
             r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
             results.append(r)
 
@@ -1136,7 +1136,7 @@ def run_all():
             # Skip Variant B full Gurobi for very large instances
             if n_vars_b <= 200000:
                 LOG.info("[B] Gurobi full")
-                r = solve_gurobi_full_B(farm_names, land, food_names=food_names)
+                r = solve_gurobi_full_B(farm_names, land, food_names=food_names, timeout=timeout)
                 r.update(variant="B", decomposition="none", n_farms=n_farms, n_vars=n_vars_b)
                 results.append(r)
             else:
@@ -1147,7 +1147,7 @@ def run_all():
 
             for dname, dfn in DECOMPOSITIONS_B.items():
                 LOG.info(f"[B] Gurobi decomposed ({dname})")
-                r = solve_gurobi_decomposed_B(farm_names, land, dfn, food_names=food_names)
+                r = solve_gurobi_decomposed_B(farm_names, land, dfn, food_names=food_names, timeout=timeout)
                 r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
                 results.append(r)
 
@@ -1164,10 +1164,17 @@ def run_all():
 
 
 if __name__ == "__main__":
+    import argparse
+    _parser = argparse.ArgumentParser(description="Solver comparison benchmark")
+    _parser.add_argument("--timeout", type=float, default=3600.0,
+                         help="Gurobi time limit per sub-problem in seconds (default: 3600)")
+    _args = _parser.parse_args()
+
     out_dir = Path(__file__).parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    all_results = run_all()
+    LOG.info(f"Gurobi timeout per sub-problem: {_args.timeout}s")
+    all_results = run_all(timeout=_args.timeout)
 
     # Serialize: convert any numpy types
     def _ser(obj):

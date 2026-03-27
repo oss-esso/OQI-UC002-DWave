@@ -34,7 +34,7 @@ print()
 
 # Configuration
 GUROBI_CONFIG = {
-    'timeout': 100,  # 100 seconds HARD LIMIT
+    'timeout': 3600,  # 3600 seconds (1 hour) HARD LIMIT
     'mip_gap': 0.01,  # 1% - stop within 1% of optimum
     'mip_focus': 1,  # Find good feasible solutions quickly
     'improve_start_time': 30,  # Stop if no improvement for 30s
@@ -358,7 +358,7 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
         elif model.Status == GRB.TIME_LIMIT:
             result['result']['status'] = 'timeout'
             result['result']['hit_timeout'] = True
-            result['result']['stopped_reason'] = 'timeout_300s'
+            result['result']['stopped_reason'] = 'timeout_3600s'
             if model.SolCount > 0:
                 result['result']['objective_value'] = model.ObjVal
                 result['result']['mip_gap'] = model.MIPGap * 100
