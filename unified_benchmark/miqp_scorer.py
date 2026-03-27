@@ -153,7 +153,8 @@ def compute_miqp_objective(
                     if y2 == 0:
                         continue
                     synergy = R[c1_idx, c2_idx]
-                    spatial_synergy_val += spatial_gamma * (synergy / total_area) * y1 * y2
+                    # S[c1,c2] = 0.3·R[c1,c2] per content_report.tex spec
+                    spatial_synergy_val += spatial_gamma * 0.3 * (synergy / total_area) * y1 * y2
     
     # Part 4: Soft One-Hot Penalty (Quadratic)
     # Penalty = λ_oh * Σ_f Σ_t (Σ_c Y_{f,c,t} - 1)^2

@@ -36,6 +36,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from Utils.patch_sampler import generate_grid
 from src.scenarios import load_food_data
+from unified_benchmark.scenarios import build_rotation_matrix, build_spatial_neighbors
+from unified_benchmark.gurobi_solver import solve_gurobi_ground_truth
+from unified_benchmark.core import MIQP_PARAMS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s")
 LOG = logging.getLogger(__name__)
@@ -102,16 +105,30 @@ except Exception:
 
 # Variant B uses 27 crops × 3 periods (same crops as Variant A)
 N_PERIODS = 3
-ROTATION_GAMMA = 0.5  # matches rotation_benchmark.py DEFAULT_GAMMA
+# MIQP parameters matching content_report.tex and unified_benchmark (MIQP_PARAMS)
+ROTATION_GAMMA = MIQP_PARAMS["rotation_gamma"]   # 0.2
+SPATIAL_GAMMA = MIQP_PARAMS["spatial_gamma"]     # 0.1 (= 0.5 * gamma_rot)
+K_NEIGHBORS = MIQP_PARAMS["k_neighbors"]         # 4
 
-# Load real rotation matrix from CSV
-def _load_rotation_matrix() -> Optional[pd.DataFrame]:
-    csv_path = PROJECT_ROOT / "rotation_data" / "rotation_crop_matrix.csv"
-    if csv_path.exists():
-        return pd.read_csv(csv_path, index_col=0)
-    return None
+# Build synthetic rotation matrix with same seed/params as unified_benchmark
+# (replaces the real CSV lookup which was inconsistent with Study 3 scripts)
+_N_FOODS_27 = len(FOOD_NAMES_27)
+_FOOD_IDX_27: Dict[str, int] = {c: i for i, c in enumerate(FOOD_NAMES_27)}
+_R_MATRIX_27: np.ndarray = build_rotation_matrix(
+    _N_FOODS_27,
+    frustration_ratio=MIQP_PARAMS["frustration_ratio"],
+    negative_strength=MIQP_PARAMS["negative_strength"],
+    seed=42,
+)
 
-ROTATION_MATRIX_DF = _load_rotation_matrix()
+
+def _get_rotation_value(crop_prev: str, crop_curr: str) -> float:
+    """Look up R[c1, c2] from the synthetic rotation matrix."""
+    i1 = _FOOD_IDX_27.get(crop_prev, -1)
+    i2 = _FOOD_IDX_27.get(crop_curr, -1)
+    if i1 < 0 or i2 < 0:
+        return 0.0
+    return float(_R_MATRIX_27[i1, i2])
 
 # ============================================================================
 # Variant A — build CQM / Gurobi model
@@ -233,65 +250,58 @@ def build_variant_a_sub_gurobi(sub_farms: List[str], food_names: List[str],
 
 # ============================================================================
 # Variant B — build rotation BQM (QUBO) — 27 crops × 3 periods
-# Matches create_cqm_plots_rotation_3period from solver_runner_ROTATION.py
+# Formulation matches content_report.tex and unified_benchmark
 # ============================================================================
-
-def _get_rotation_value(crop_prev: str, crop_curr: str) -> float:
-    """Look up R(crop_prev, crop_curr) from the real rotation CSV matrix."""
-    if ROTATION_MATRIX_DF is None:
-        return 0.0
-    try:
-        return float(ROTATION_MATRIX_DF.loc[crop_prev, crop_curr])
-    except KeyError:
-        return 0.0
-
 
 def build_variant_b_bqm(farm_names: List[str], land: Dict[str, float],
                          food_names: Optional[List[str]] = None,
                          rotation_gamma: float = ROTATION_GAMMA,
-                         one_hot_penalty: float = 3.0) -> BinaryQuadraticModel:
+                         spatial_gamma: float = SPATIAL_GAMMA,
+                         one_hot_penalty: float = 3.0,
+                         k_neighbors: int = K_NEIGHBORS) -> BinaryQuadraticModel:
     """Build full Variant-B rotation BQM (27 crops × 3 periods).
 
-    Matches create_cqm_plots_rotation_3period from solver_runner_ROTATION.py:
-      - Linear: a_p * B_c * Y / A_tot  (summed across periods)
-      - Quadratic: gamma * a_p * R(c,c') * Y_{p,c,t-1} * Y_{p,c',t} / A_tot²
-        (double normalization: /A_tot inside synergy + /A_tot on whole objective)
-      - One-hot penalty per farm-period
-      - No diversity bonus, no spatial synergy
+    Formulation matches content_report.tex Formulation 1 and unified_benchmark:
+      - Benefit:  B_c · A_f/A_tot · Y  (per period, linear)
+      - Temporal: γ_rot · A_f/A_tot · R[c,c'] · Y_{f,c,t-1} · Y_{f,c',t}
+      - Spatial:  γ_spat · 0.3 · R[c1,c2]/A_tot · Y_{f1,c1,t} · Y_{f2,c2,t}
+                  for (f1,f2) in k-NN neighbor graph (k=4 on synthetic grid)
+      - One-hot penalty: λ · (Σ_c Y_{f,c,t} - 1)² per farm-period
+
+    Note: Diversity bonus excluded from BQM (requires indicator variables).
+    Uses synthetic rotation matrix with same seed/params as unified_benchmark.
     """
     if food_names is None:
         food_names = FOOD_NAMES_27
+    food_idx = {c: i for i, c in enumerate(food_names)}
+    n_foods = len(food_names)
     total_area = sum(land.values())
     bqm = BinaryQuadraticModel(vartype="BINARY")
 
     for f in farm_names:
         area_f = land.get(f, 1.0)
-        # Linear benefit terms: a_p * B_c / A_tot (per period — from the CQM
-        # the objective is (sum of linear + quadratic) / A_tot, which is
-        # maximized via CQM's -objective, here minimized directly in BQM)
+        area_frac = area_f / total_area
+
+        # Linear benefit (negative: BQM minimizes, MIQP maximizes)
         for c in food_names:
             B_c = FOOD_BENEFITS.get(c, 0.5)
             for t in range(1, N_PERIODS + 1):
-                vn = f"Y_{f}_{c}_t{t}"
-                # Negative because CQM maximizes (sets -obj), BQM minimizes
-                linear = -(area_f * B_c) / total_area
-                bqm.add_variable(vn, linear)
+                bqm.add_variable(f"Y_{f}_{c}_t{t}", -B_c * area_frac)
 
-        # Rotation synergy: gamma * a_p * R(c,c') / A_tot  (then whole /A_tot)
-        # Net coefficient per pair: -gamma * a_p * R / A_tot²
+        # Temporal synergy: -γ_rot · A_f/A_tot · R[c,c'] (single normalization)
         for t in range(2, N_PERIODS + 1):
             for c_prev in food_names:
+                i_prev = food_idx[c_prev]
                 for c_curr in food_names:
+                    i_curr = food_idx[c_curr]
                     R_cc = _get_rotation_value(c_prev, c_curr)
-                    if R_cc == 0.0:
+                    if abs(R_cc) < 1e-8:
                         continue
                     v1 = f"Y_{f}_{c_prev}_t{t-1}"
                     v2 = f"Y_{f}_{c_curr}_t{t}"
-                    # Negative: maximization -> minimization
-                    coeff = -(rotation_gamma * area_f * R_cc) / (total_area * total_area)
-                    bqm.add_quadratic(v1, v2, coeff)
+                    bqm.add_quadratic(v1, v2, -rotation_gamma * area_frac * R_cc)
 
-        # One-hot penalty per period: exactly one crop per farm per period
+        # One-hot penalty per period
         for t in range(1, N_PERIODS + 1):
             vt = [f"Y_{f}_{c}_t{t}" for c in food_names]
             for i in range(len(vt)):
@@ -299,13 +309,34 @@ def build_variant_b_bqm(farm_names: List[str], land: Dict[str, float],
                     bqm.add_quadratic(vt[i], vt[j], 2 * one_hot_penalty)
                 bqm.add_linear(vt[i], -one_hot_penalty)
 
+    # Spatial synergy: -γ_spat · 0.3 · R[c1,c2]/A_tot · Y[f1,c1,t] · Y[f2,c2,t]
+    # for each undirected edge (f1,f2) in k-NN graph on synthetic grid
+    neighbor_edges = build_spatial_neighbors(farm_names, k_neighbors=k_neighbors)
+    for (f1_i, f2_i) in neighbor_edges:
+        f1, f2 = farm_names[f1_i], farm_names[f2_i]
+        for t in range(1, N_PERIODS + 1):
+            for c1 in food_names:
+                i1 = food_idx[c1]
+                for c2 in food_names:
+                    i2 = food_idx[c2]
+                    R_cc = _get_rotation_value(c1, c2)
+                    if abs(R_cc) < 1e-8:
+                        continue
+                    v1 = f"Y_{f1}_{c1}_t{t}"
+                    v2 = f"Y_{f2}_{c2}_t{t}"
+                    bqm.add_quadratic(v1, v2, -spatial_gamma * 0.3 * R_cc / total_area)
+
     return bqm
 
 
 def build_variant_b_sub_bqm(sub_farms: List[str], land: Dict[str, float],
                               food_names: Optional[List[str]] = None,
                               **kwargs) -> BinaryQuadraticModel:
-    """Build a rotation BQM for a farm sub-cluster."""
+    """Build a rotation BQM for a farm sub-cluster.
+
+    Spatial neighbors are computed only within sub_farms (approximation;
+    cross-sub-problem spatial interactions are dropped by decomposition).
+    """
     return build_variant_b_bqm(sub_farms, land, food_names=food_names, **kwargs)
 
 
@@ -597,20 +628,31 @@ def _parse_B_partition(part: Set[str], farm_names: List[str],
 def _build_sub_bqm_B_from_partition(farm_periods: Dict[str, Set[int]],
                                       land: Dict[str, float],
                                       food_names: List[str],
-                                      one_hot_penalty: float = 3.0) -> BinaryQuadraticModel:
-    """Build a Variant-B sub-BQM restricted to specified (farm, periods) pairs."""
+                                      rotation_gamma: float = ROTATION_GAMMA,
+                                      spatial_gamma: float = SPATIAL_GAMMA,
+                                      one_hot_penalty: float = 3.0,
+                                      k_neighbors: int = K_NEIGHBORS) -> BinaryQuadraticModel:
+    """Build a Variant-B sub-BQM restricted to specified (farm, periods) pairs.
+
+    Formulation matches content_report.tex (single area normalization):
+      - Benefit:  B_c · A_f/A_tot
+      - Temporal: γ_rot · A_f/A_tot · R[c,c']  (consecutive periods in partition only)
+      - Spatial:  γ_spat · 0.3 · R[c1,c2]/A_tot  (within-partition farm pairs only)
+      - One-hot penalty per farm-period
+    """
     total_area = sum(land.values())
     bqm = BinaryQuadraticModel(vartype="BINARY")
+    sub_farms = list(farm_periods.keys())
 
     for f, periods in farm_periods.items():
         area_f = land.get(f, 1.0)
+        area_frac = area_f / total_area
 
         for t in sorted(periods):
             # Linear benefit
             for c in food_names:
                 vn = f"Y_{f}_{c}_t{t}"
-                linear = -(area_f * FOOD_BENEFITS.get(c, 0.5)) / total_area
-                bqm.add_variable(vn, linear)
+                bqm.add_variable(vn, -(area_frac * FOOD_BENEFITS.get(c, 0.5)))
 
             # One-hot penalty
             vt = [f"Y_{f}_{c}_t{t}" for c in food_names]
@@ -619,7 +661,7 @@ def _build_sub_bqm_B_from_partition(farm_periods: Dict[str, Set[int]],
                     bqm.add_quadratic(vt[i], vt[j], 2 * one_hot_penalty)
                 bqm.add_linear(vt[i], -one_hot_penalty)
 
-        # Rotation synergies (only between consecutive periods BOTH in partition)
+        # Temporal synergy (consecutive periods both in partition)
         sorted_periods = sorted(periods)
         for idx in range(len(sorted_periods) - 1):
             t_prev = sorted_periods[idx]
@@ -629,12 +671,27 @@ def _build_sub_bqm_B_from_partition(farm_periods: Dict[str, Set[int]],
             for c_prev in food_names:
                 for c_curr in food_names:
                     R_cc = _get_rotation_value(c_prev, c_curr)
-                    if R_cc == 0.0:
+                    if abs(R_cc) < 1e-8:
                         continue
                     v1 = f"Y_{f}_{c_prev}_t{t_prev}"
                     v2 = f"Y_{f}_{c_curr}_t{t_curr}"
-                    coeff = -(ROTATION_GAMMA * area_f * R_cc) / (total_area * total_area)
-                    bqm.add_quadratic(v1, v2, coeff)
+                    bqm.add_quadratic(v1, v2, -rotation_gamma * area_frac * R_cc)
+
+    # Spatial synergy: within-partition farm edges only
+    if len(sub_farms) > 1:
+        sub_edges = build_spatial_neighbors(sub_farms, k_neighbors=k_neighbors)
+        for (f1_i, f2_i) in sub_edges:
+            f1, f2 = sub_farms[f1_i], sub_farms[f2_i]
+            periods_shared = set(farm_periods.get(f1, set())) & set(farm_periods.get(f2, set()))
+            for t in periods_shared:
+                for c1 in food_names:
+                    for c2 in food_names:
+                        R_cc = _get_rotation_value(c1, c2)
+                        if abs(R_cc) < 1e-8:
+                            continue
+                        v1 = f"Y_{f1}_{c1}_t{t}"
+                        v2 = f"Y_{f2}_{c2}_t{t}"
+                        bqm.add_quadratic(v1, v2, -spatial_gamma * 0.3 * R_cc / total_area)
 
     return bqm
 
@@ -700,42 +757,75 @@ def solve_gurobi_decomposed_A(farm_names, food_names, land, partitioner, timeout
             "sub_times": sub_times}
 
 
+def _build_scenario_data(farm_names: List[str], land: Dict[str, float],
+                          food_names: Optional[List[str]] = None) -> Dict:
+    """Build scenario_data dict in the format expected by solve_gurobi_ground_truth."""
+    fn = food_names or FOOD_NAMES_27
+    return {
+        "farm_names": farm_names,
+        "food_names": fn,
+        "land_availability": land,
+        "food_benefits": FOOD_BENEFITS,
+        "total_area": sum(land.values()),
+        "n_farms": len(farm_names),
+        "n_foods": len(fn),
+        "scenario_name": f"custom_{len(farm_names)}farms",
+    }
+
+
 def solve_gurobi_full_B(farm_names, land, food_names=None, timeout=300):
-    """Solve full Variant-B with Gurobi (via QUBO)."""
-    bqm = build_variant_b_bqm(farm_names, land, food_names=food_names)
-    m, info = build_variant_b_gurobi(bqm)
-    m.setParam("TimeLimit", timeout)
-    t0 = time.perf_counter()
-    m.optimize()
-    wall = time.perf_counter() - t0
-    obj = m.ObjVal if m.Status in (GRB.OPTIMAL, GRB.SUBOPTIMAL) else None
-    return {"solver": "Gurobi_full", "wall_time": wall, "objective": obj,
-            "status": m.Status, "n_vars": m.NumVars}
+    """Solve full Variant-B with Gurobi (delegates to unified_benchmark ground truth).
+
+    Uses the true MIQP formulation from content_report.tex with correct
+    rotation_gamma=0.2, spatial_gamma=0.1, synthetic rotation matrix.
+    Returns objective_miqp (benefit + temporal + spatial - penalty + diversity).
+    """
+    scenario_data = _build_scenario_data(farm_names, land, food_names)
+    entry = solve_gurobi_ground_truth(scenario_data, timeout=timeout, verbose=False)
+    obj = entry.objective_miqp if entry.status != "error" else None
+    return {
+        "solver": "Gurobi_full",
+        "wall_time": entry.timing.total_wall_time if entry.timing else 0.0,
+        "objective": obj,
+        "status": entry.status,
+        "n_vars": len(farm_names) * len(food_names or FOOD_NAMES_27) * N_PERIODS,
+    }
 
 
 def solve_gurobi_decomposed_B(farm_names, land, partitioner, food_names=None, timeout=300):
-    """Solve Variant-B: Gurobi per sub-BQM + merge."""
+    """Solve Variant-B: Gurobi per sub-BQM + merge.
+
+    Solves each sub-problem via BQM→QUBO→Gurobi. Objective is reported as
+    the MIQP objective (benefit + temporal + spatial, no penalty), matching
+    the metric used by PT-ICM and Gurobi full.
+    """
     if food_names is None:
         food_names = FOOD_NAMES_27
     t0 = time.perf_counter()
     parts = partitioner(farm_names, food_names)
-    total_energy = 0.0
+    total_obj = 0.0
     sub_times = []
     for part in parts:
         fp = _parse_B_partition(part, farm_names, food_names)
         if not fp:
             continue
         sub_bqm = _build_sub_bqm_B_from_partition(fp, land, food_names)
-        sm, _ = build_variant_b_gurobi(sub_bqm)
+        sm, ginfo = build_variant_b_gurobi(sub_bqm)
         sm.setParam("TimeLimit", timeout)
         st0 = time.perf_counter()
         sm.optimize()
         sub_times.append(time.perf_counter() - st0)
-        if sm.Status in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
-            total_energy += sm.ObjVal
+        if sm.Status in (GRB.OPTIMAL, GRB.SUBOPTIMAL) and sm.SolCount > 0:
+            # Extract variable assignments and compute MIQP objective
+            sample = {str(v): int(round(ginfo["x"][v].X)) for v in sub_bqm.variables}
+            sub_farms = [f for f in farm_names if f in fp]
+            all_periods = sorted(set().union(*fp.values()))
+            total_obj += _extract_cqm_objective_B(
+                sample, sub_farms, land, food_names, periods=all_periods
+            )
     wall = time.perf_counter() - t0
     return {"solver": "Gurobi_decomposed", "wall_time": wall,
-            "objective": total_energy, "n_partitions": len(parts),
+            "objective": total_obj, "n_partitions": len(parts),
             "sub_times": sub_times}
 
 
@@ -835,12 +925,18 @@ def _extract_violations_B(sample: Dict[str, int], sub_farms: List[str],
 def _extract_cqm_objective_B(sample: Dict[str, int], sub_farms: List[str],
                               land: Dict[str, float],
                               food_names: Optional[List[str]] = None,
-                              periods: Optional[List[int]] = None) -> float:
-    """Compute Variant-B CQM objective from sample (benefit + rotation synergy).
-    
-    Matches create_cqm_plots_rotation_3period normalization:
-      linear:    a_p * B_c / A_tot   (per period)
-      synergy:   gamma * a_p * R / A_tot  then whole /A_tot  => gamma * a_p * R / A_tot²
+                              periods: Optional[List[int]] = None,
+                              rotation_gamma: float = ROTATION_GAMMA,
+                              spatial_gamma: float = SPATIAL_GAMMA,
+                              k_neighbors: int = K_NEIGHBORS) -> float:
+    """Compute Variant-B MIQP objective from a sample (benefit + temporal + spatial).
+
+    Formulation matches content_report.tex (single area normalization):
+      benefit:   B_c · A_f/A_tot   (per period)
+      temporal:  γ_rot · A_f/A_tot · R[c,c'] (consecutive periods)
+      spatial:   γ_spat · 0.3 · R[c1,c2]/A_tot (within sub_farms neighbor edges)
+
+    Note: Diversity bonus excluded (not in BQM; full-problem Gurobi includes it).
     """
     if food_names is None:
         food_names = FOOD_NAMES_27
@@ -848,20 +944,22 @@ def _extract_cqm_objective_B(sample: Dict[str, int], sub_farms: List[str],
         periods = list(range(1, N_PERIODS + 1))
     total_area = sum(land.values())
     obj = 0.0
-    
-    # Linear benefit term
+
+    # Benefit term
     for f in sub_farms:
         area_f = land.get(f, 1.0)
+        area_frac = area_f / total_area
         for t in periods:
             for c in food_names:
                 vn = f"Y_{f}_{c}_t{t}"
                 if sample.get(vn, 0) == 1:
-                    obj += FOOD_BENEFITS.get(c, 0.5) * area_f / total_area
-    
-    # Rotation synergy term (consecutive periods in the provided list)
+                    obj += FOOD_BENEFITS.get(c, 0.5) * area_frac
+
+    # Temporal synergy (consecutive periods in the provided list)
     sorted_p = sorted(periods)
     for f in sub_farms:
         area_f = land.get(f, 1.0)
+        area_frac = area_f / total_area
         for idx in range(len(sorted_p) - 1):
             t_prev, t_curr = sorted_p[idx], sorted_p[idx + 1]
             if t_curr != t_prev + 1:
@@ -875,8 +973,25 @@ def _extract_cqm_objective_B(sample: Dict[str, int], sub_farms: List[str],
                     if sample.get(v2, 0) != 1:
                         continue
                     R_cc = _get_rotation_value(c_prev, c_curr)
-                    obj += ROTATION_GAMMA * area_f * R_cc / (total_area * total_area)
-    
+                    obj += rotation_gamma * area_frac * R_cc
+
+    # Spatial synergy (within sub_farms neighbor edges)
+    if len(sub_farms) > 1:
+        sub_edges = build_spatial_neighbors(sub_farms, k_neighbors=k_neighbors)
+        for (f1_i, f2_i) in sub_edges:
+            f1, f2 = sub_farms[f1_i], sub_farms[f2_i]
+            for t in periods:
+                for c1 in food_names:
+                    v1 = f"Y_{f1}_{c1}_t{t}"
+                    if sample.get(v1, 0) != 1:
+                        continue
+                    for c2 in food_names:
+                        v2 = f"Y_{f2}_{c2}_t{t}"
+                        if sample.get(v2, 0) != 1:
+                            continue
+                        R_cc = _get_rotation_value(c1, c2)
+                        obj += spatial_gamma * 0.3 * R_cc / total_area
+
     return obj
 
 
