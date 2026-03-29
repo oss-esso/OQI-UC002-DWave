@@ -34,7 +34,7 @@ print()
 
 # Configuration
 GUROBI_CONFIG = {
-    'timeout': 3600,  # 3600 seconds (1 hour) HARD LIMIT
+    'timeout': 1200,  # 1200 seconds (20 minutes) HARD LIMIT
     'mip_gap': 0.01,  # 1% - stop within 1% of optimum
     'mip_focus': 1,  # Find good feasible solutions quickly
     'improve_start_time': 30,  # Stop if no improvement for 30s

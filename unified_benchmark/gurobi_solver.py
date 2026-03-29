@@ -14,6 +14,7 @@ Key features:
 
 import time
 import numpy as np
+import scipy.sparse
 from typing import Dict, List, Tuple, Optional, Any
 
 from .core import (
@@ -132,105 +133,126 @@ def solve_gurobi_ground_truth(
         model.setParam("OutputFlag", 1 if verbose else 0)
         model.setParam("TimeLimit", timeout)
         model.setParam("MIPGap", mip_gap)
-        model.setParam("MIPFocus", 1)  # Focus on finding good feasible solutions
-        model.setParam("Threads", 0)  # Use all cores
-        model.setParam("Presolve", 2)  # Aggressive presolve
-        
-        # Create decision variables: Y[f, c, t]
-        Y = {}
-        for f_idx, farm in enumerate(farm_names):
-            for c_idx, food in enumerate(food_names):
-                for t in range(1, n_periods + 1):
-                    Y[(f_idx, c_idx, t)] = model.addVar(
-                        vtype=GRB.BINARY,
-                        name=f"Y_{f_idx}_{c_idx}_{t}"
-                    )
-        
-        # ========== OBJECTIVE FUNCTION ==========
-        obj = 0
-        
-        # Part 1: Base Benefit (Linear)
-        for f_idx, farm in enumerate(farm_names):
-            farm_area = land_availability[farm]
-            area_frac = farm_area / total_area
-            for c_idx, food in enumerate(food_names):
-                B_c = food_benefits.get(food, 1.0)
-                for t in range(1, n_periods + 1):
-                    obj += (B_c * area_frac) * Y[(f_idx, c_idx, t)]
-        
-        # Part 2: Temporal Synergy (Quadratic)
-        for f_idx, farm in enumerate(farm_names):
-            farm_area = land_availability[farm]
-            area_frac = farm_area / total_area
-            for t in range(2, n_periods + 1):
-                for c1_idx in range(n_foods):
-                    for c2_idx in range(n_foods):
-                        synergy = R[c1_idx, c2_idx]
-                        if abs(synergy) > 1e-8:
-                            obj += (rotation_gamma * area_frac * synergy) * \
-                                   Y[(f_idx, c1_idx, t-1)] * Y[(f_idx, c2_idx, t)]
-        
-        # Part 3: Spatial Synergy (Quadratic)
-        # Formula (content_report.tex Term 3):
-        #   γ_spat · Σ_{(f1,f2)∈E} Σ_t Σ_{c1,c2} S[c1,c2]/A_total · Y[f1,c1,t] · Y[f2,c2,t]
-        # where S[c1,c2] = 0.3·R[c1,c2],  γ_spat = spatial_gamma = 0.1
-        for (f1_idx, f2_idx) in neighbor_edges:
-            for t in range(1, n_periods + 1):
-                for c1_idx in range(n_foods):
-                    for c2_idx in range(n_foods):
-                        synergy = R[c1_idx, c2_idx]
-                        if abs(synergy) > 1e-8:
-                            obj += (spatial_gamma * 0.3 * synergy / total_area) * \
-                                   Y[(f1_idx, c1_idx, t)] * Y[(f2_idx, c2_idx, t)]
-        
-        # Part 4: Soft One-Hot Penalty (Quadratic)
-        for f_idx in range(n_farms):
-            for t in range(1, n_periods + 1):
-                crop_sum = gp.quicksum(Y[(f_idx, c_idx, t)] for c_idx in range(n_foods))
-                # Penalty = λ * (sum - 1)^2
-                obj -= one_hot_penalty * (crop_sum - 1) * (crop_sum - 1)
-        
-        # Part 5: Diversity Bonus (Linear with indicator)
-        # Diversity = λ_div * Σ_f Σ_c I(Σ_t Y_{f,c,t} > 0)
-        # Linearized: introduce binary z_{f,c} where z_{f,c} = 1 iff crop c is used on farm f
-        Z = {}
-        for f_idx in range(n_farms):
-            for c_idx in range(n_foods):
-                z_name = f"z_{f_idx}_{c_idx}"
-                Z[(f_idx, c_idx)] = model.addVar(vtype=GRB.BINARY, name=z_name)
-                
-                # z_{f,c} >= Y_{f,c,t} / n_periods for all t (if any Y is 1, z must be 1)
-                crop_sum = gp.quicksum(Y[(f_idx, c_idx, t)] for t in range(1, n_periods + 1))
-                model.addConstr(Z[(f_idx, c_idx)] >= crop_sum / n_periods, name=f"div_lb_{f_idx}_{c_idx}")
-                # z_{f,c} <= Σ_t Y_{f,c,t} (if no Y is 1, z can be 0)
-                model.addConstr(Z[(f_idx, c_idx)] <= crop_sum, name=f"div_ub_{f_idx}_{c_idx}")
-                
-                # Add diversity bonus for using this crop
-                obj += diversity_bonus * Z[(f_idx, c_idx)]
-        
-        model.setObjective(obj, GRB.MAXIMIZE)
-        
-        # ========== CONSTRAINTS ==========
-        
-        # Constraint 1: Max 2 crops per farm per period
-        for f_idx in range(n_farms):
-            for t in range(1, n_periods + 1):
-                model.addConstr(
-                    gp.quicksum(Y[(f_idx, c_idx, t)] for c_idx in range(n_foods)) <= 2,
-                    name=f"max_crops_{f_idx}_{t}"
-                )
-        
-        # Constraint 2: Min 1 crop per farm per period
-        for f_idx in range(n_farms):
-            for t in range(1, n_periods + 1):
-                model.addConstr(
-                    gp.quicksum(Y[(f_idx, c_idx, t)] for c_idx in range(n_foods)) >= 1,
-                    name=f"min_crops_{f_idx}_{t}"
-                )
-        
-        # NOTE: Hard rotation constraint removed - relying on R[c,c] soft penalty in objective only
-        # The temporal synergy term with R[c,c] = -1.2 penalizes monoculture
-        
+        model.setParam("MIPFocus", 1)
+        model.setParam("Threads", 0)
+        model.setParam("Presolve", 2)
+
+        # ── Variable layout ──────────────────────────────────────────────────
+        # Flat binary vector x = [Y_flat, Z_flat]
+        # Y[f, c, t] → x[f*n_foods*n_periods + c*n_periods + t]   (t: 0-based)
+        # Z[f, c]    → x[n_Y + f*n_foods + c]
+        n_Y = n_farms * n_foods * n_periods
+        n_Z = n_farms * n_foods
+        n_x = n_Y + n_Z
+        x = model.addMVar(n_x, vtype=GRB.BINARY, name="x")
+
+        fa = np.arange(n_farms)
+        ca = np.arange(n_foods)
+        ta = np.arange(n_periods)
+
+        # Y_idx[f, c, t]: integer index into x  (shape n_farms × n_foods × n_periods)
+        Y_idx = (fa[:, None, None] * n_foods * n_periods
+                 + ca[None, :, None] * n_periods
+                 + ta[None, None, :])
+        # Z_idx[f, c]: integer index into x  (shape n_farms × n_foods)
+        Z_idx = n_Y + fa[:, None] * n_foods + ca[None, :]
+
+        # ── Pre-compute coefficient arrays ───────────────────────────────────
+        area_arr = np.array([land_availability[farm] / total_area for farm in farm_names])
+        B_arr    = np.array([food_benefits.get(food, 1.0) for food in food_names])
+
+        # ── Linear objective vector c_vec ────────────────────────────────────
+        c_vec = np.zeros(n_x)
+        # Benefit: B_c * area_f per Y[f,c,t]
+        benefit_3d = area_arr[:, None, None] * B_arr[None, :, None] * np.ones((1, 1, n_periods))
+        c_vec[Y_idx.ravel()] += benefit_3d.ravel()
+        # One-hot linear contribution +penalty per Y  (from expanding -(sum-1)^2)
+        c_vec[:n_Y] += one_hot_penalty
+        # Diversity bonus per Z[f,c]
+        c_vec[Z_idx.ravel()] += diversity_bonus
+
+        # ── Quadratic matrix Q (sparse, symmetric) ───────────────────────────
+        # setMObjective convention: max 0.5·x'Qx + c'x
+        # For term a·xi·xj (i≠j): Q[i,j]=Q[j,i]=a → contribution = a·xi·xj ✓
+        q_r: list = []
+        q_c: list = []
+        q_v: list = []
+
+        # Pre-filter R to non-zero (c1, c2) pairs
+        nz_c1, nz_c2 = np.where(np.abs(R) > 1e-8)
+        nz_R = R[nz_c1, nz_c2]                                 # (n_nz,)
+
+        # Temporal synergy: γ_rot · area[f] · R[c1,c2] · Y[f,c1,t] · Y[f,c2,t+1]
+        for t in range(n_periods - 1):
+            r_t = fa[:, None] * n_foods * n_periods + nz_c1[None, :] * n_periods + t
+            c_t = fa[:, None] * n_foods * n_periods + nz_c2[None, :] * n_periods + (t + 1)
+            v_t = rotation_gamma * area_arr[:, None] * nz_R[None, :]  # (n_farms, n_nz)
+            q_r += [r_t.ravel(), c_t.ravel()]
+            q_c += [c_t.ravel(), r_t.ravel()]
+            q_v += [v_t.ravel(), v_t.ravel()]
+
+        # Spatial synergy: γ_spat · 0.3/A_tot · R[c1,c2] · Y[f1,c1,t] · Y[f2,c2,t]
+        if len(neighbor_edges) > 0:
+            ea   = np.array(neighbor_edges, dtype=np.intp)
+            f1e, f2e = ea[:, 0], ea[:, 1]
+            sp_base  = spatial_gamma * 0.3 / total_area
+            for t in range(n_periods):
+                r_s = f1e[:, None] * n_foods * n_periods + nz_c1[None, :] * n_periods + t
+                c_s = f2e[:, None] * n_foods * n_periods + nz_c2[None, :] * n_periods + t
+                v_s = np.broadcast_to(sp_base * nz_R[None, :], r_s.shape).copy()
+                q_r += [r_s.ravel(), c_s.ravel()]
+                q_c += [c_s.ravel(), r_s.ravel()]
+                q_v += [v_s.ravel(), v_s.ravel()]
+
+        # One-hot quadratic penalty: -2·penalty · Y[f,c1,t]·Y[f,c2,t]  (c1 < c2)
+        oh_c1, oh_c2 = np.triu_indices(n_foods, k=1)
+        for t in range(n_periods):
+            r_oh = fa[:, None] * n_foods * n_periods + oh_c1[None, :] * n_periods + t
+            c_oh = fa[:, None] * n_foods * n_periods + oh_c2[None, :] * n_periods + t
+            v_oh = np.full(r_oh.size, -2.0 * one_hot_penalty)
+            q_r += [r_oh.ravel(), c_oh.ravel()]
+            q_c += [c_oh.ravel(), r_oh.ravel()]
+            q_v += [v_oh, v_oh]
+
+        Q_mat = scipy.sparse.csr_matrix(
+            (np.concatenate(q_v), (np.concatenate(q_r), np.concatenate(q_c))),
+            shape=(n_x, n_x),
+        )
+        model.setMObjective(Q_mat, c_vec, 0.0, sense=GRB.MAXIMIZE)
+
+        # ── Constraints (sparse matrix form) ────────────────────────────────
+        # Crop-sum selector: row f*n_periods+t → all Y[f,*,t] columns
+        fg, tg, cg = np.meshgrid(fa, ta, ca, indexing='ij')  # (n_farms, n_periods, n_foods)
+        aft_r = (fg * n_periods + tg).ravel()
+        aft_c = Y_idx[fg, cg, tg].ravel()
+        n_ft  = n_farms * n_periods
+        A_yt  = scipy.sparse.csr_matrix(
+            (np.ones(len(aft_c)), (aft_r, aft_c)), shape=(n_ft, n_x)
+        )
+        model.addMConstr(A_yt, x, '<', 2.0 * np.ones(n_ft))  # max 2 crops/farm/period
+        model.addMConstr(A_yt, x, '>', np.ones(n_ft))         # min 1 crop/farm/period
+
+        # Diversity: Z[f,c] ≥ (1/T)·Σ_t Y[f,c,t]  and  Z[f,c] ≤ Σ_t Y[f,c,t]
+        fg2, cg2, tg2 = np.meshgrid(fa, ca, ta, indexing='ij')  # (n_farms, n_foods, n_periods)
+        dy_r  = (fg2 * n_foods + cg2).ravel()
+        dy_c  = Y_idx[fg2, cg2, tg2].ravel()
+        dz_r  = (fa[:, None] * n_foods + ca[None, :]).ravel()
+        dz_c  = Z_idx.ravel()
+        n_fc  = n_farms * n_foods
+        ny_d  = len(dy_c)
+        A_dlb = scipy.sparse.csr_matrix(
+            (np.concatenate([-np.ones(ny_d) / n_periods, np.ones(n_fc)]),
+             (np.concatenate([dy_r, dz_r]), np.concatenate([dy_c, dz_c]))),
+            shape=(n_fc, n_x),
+        )
+        model.addMConstr(A_dlb, x, '>', np.zeros(n_fc))  # Z - (1/T)·ΣY ≥ 0
+        A_dub = scipy.sparse.csr_matrix(
+            (np.concatenate([np.ones(ny_d), -np.ones(n_fc)]),
+             (np.concatenate([dy_r, dz_r]), np.concatenate([dy_c, dz_c]))),
+            shape=(n_fc, n_x),
+        )
+        model.addMConstr(A_dub, x, '>', np.zeros(n_fc))  # ΣY - Z ≥ 0
+
         entry.timing.model_build_time = time.time() - build_start
         logger.model_build_done(entry.timing.model_build_time)
         
@@ -264,11 +286,11 @@ def solve_gurobi_ground_truth(
         
         # Extract solution
         if model.SolCount > 0:
-            solution = {}
-            for (f_idx, c_idx, t), var in Y.items():
-                val = var.X
-                if val > 0.5:  # Binary threshold
-                    solution[(f_idx, c_idx, t)] = 1
+            x_vals = x.X                            # numpy array (n_x,)
+            Y_vals = x_vals[Y_idx]                  # (n_farms, n_foods, n_periods)
+            f_s, c_s, t_s = np.where(Y_vals > 0.5)
+            solution = {(int(f), int(c), int(t) + 1): 1
+                        for f, c, t in zip(f_s, c_s, t_s)}
             
             entry.solution = solution
             

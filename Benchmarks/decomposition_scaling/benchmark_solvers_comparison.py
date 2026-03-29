@@ -340,10 +340,22 @@ def build_variant_b_sub_bqm(sub_farms: List[str], land: Dict[str, float],
     return build_variant_b_bqm(sub_farms, land, food_names=food_names, **kwargs)
 
 
-def build_variant_b_gurobi(bqm: BinaryQuadraticModel) -> Tuple[gp.Model, dict]:
-    """Convert a BQM to a Gurobi QUBO model."""
+def build_variant_b_gurobi(bqm: BinaryQuadraticModel,
+                            farm_periods: Optional[Dict[str, Set[int]]] = None,
+                            food_names_ordered: Optional[List[str]] = None
+                            ) -> Tuple[gp.Model, dict]:
+    """Convert a BQM to a Gurobi QUBO model.
+
+    If *farm_periods* and *food_names_ordered* are supplied, hard crop-count
+    constraints (1 ≤ Σ_c Y[f,c,t] ≤ 2) are added per farm-period.  This
+    dramatically tightens the LP relaxation and lets Gurobi solve small
+    sub-problems (e.g. SpatialTemporal partitions) in milliseconds instead
+    of timing out due to ill-conditioned QUBO coefficients.
+    """
     m = gp.Model("VariantB_QUBO")
     m.setParam("OutputFlag", 0)
+    m.setParam("NumericFocus", 1)
+    m.setParam("MIPGap", 1e-3)
 
     x = {}
     for v in bqm.variables:
@@ -357,6 +369,19 @@ def build_variant_b_gurobi(bqm: BinaryQuadraticModel) -> Tuple[gp.Model, dict]:
     obj += bqm.offset
 
     m.setObjective(obj, GRB.MINIMIZE)
+
+    # Optional hard constraints to tighten LP relaxation
+    if farm_periods is not None and food_names_ordered is not None:
+        for f, periods in farm_periods.items():
+            for t in sorted(periods):
+                vars_ft = [x[f"Y_{f}_{c}_t{t}"]
+                           for c in food_names_ordered
+                           if f"Y_{f}_{c}_t{t}" in x]
+                if vars_ft:
+                    crop_sum = gp.quicksum(vars_ft)
+                    m.addConstr(crop_sum >= 1, name=f"min_{f}_t{t}")
+                    m.addConstr(crop_sum <= 2, name=f"max_{f}_t{t}")
+
     m.update()
     return m, {"x": x}
 
@@ -792,17 +817,34 @@ def solve_gurobi_full_B(farm_names, land, food_names=None, timeout=300):
     }
 
 
-def solve_gurobi_decomposed_B(farm_names, land, partitioner, food_names=None, timeout=300):
+def solve_gurobi_decomposed_B(farm_names, land, partitioner, food_names=None,
+                               timeout=300, mode: str = "hard"):
     """Solve Variant-B: Gurobi per sub-BQM + merge.
 
-    Solves each sub-problem via BQM→QUBO→Gurobi. Objective is reported as
-    the MIQP objective (benefit + temporal + spatial, no penalty), matching
-    the metric used by PT-ICM and Gurobi full.
+    Two sub-timeout strategies (controlled by *mode*):
+
+    ``hard``  – Hard one-hot constraints added to every sub-problem so the LP
+                relaxation is tight; each sub-problem gets min(timeout, 10s).
+                Gurobi typically solves small partitions in milliseconds.
+
+    ``soft``  – Classic soft-penalty QUBO (no extra constraints); the total
+                timeout is spread proportionally across all partitions:
+                sub_timeout = max(1.0, timeout / n_partitions).
     """
     if food_names is None:
         food_names = FOOD_NAMES_27
     t0 = time.perf_counter()
     parts = partitioner(farm_names, food_names)
+    n_parts = len(parts)
+
+    if mode == "hard":
+        # Hard constraints: LP relaxation is tight → tiny sub-problems solve fast.
+        # Cap at 10s so a single bad sub-problem can't block the whole run.
+        sub_timeout = min(timeout, 10.0)
+    else:  # "soft"
+        # Soft QUBO: distribute budget evenly; floor at 1s to avoid zero-timeout.
+        sub_timeout = max(1.0, timeout / n_parts) if n_parts > 0 else timeout
+
     total_obj = 0.0
     sub_times = []
     for part in parts:
@@ -810,8 +852,13 @@ def solve_gurobi_decomposed_B(farm_names, land, partitioner, food_names=None, ti
         if not fp:
             continue
         sub_bqm = _build_sub_bqm_B_from_partition(fp, land, food_names)
-        sm, ginfo = build_variant_b_gurobi(sub_bqm)
-        sm.setParam("TimeLimit", timeout)
+        if mode == "hard":
+            sm, ginfo = build_variant_b_gurobi(sub_bqm,
+                                               farm_periods=fp,
+                                               food_names_ordered=food_names)
+        else:
+            sm, ginfo = build_variant_b_gurobi(sub_bqm)  # no hard constraints
+        sm.setParam("TimeLimit", sub_timeout)
         st0 = time.perf_counter()
         sm.optimize()
         sub_times.append(time.perf_counter() - st0)
@@ -1067,7 +1114,7 @@ def _build_variant_a_bqm(sub_farms, food_names, land) -> BinaryQuadraticModel:
 # Main benchmark driver
 # ============================================================================
 
-FARM_SIZES = [5, 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+FARM_SIZES = [10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 PT_ICM_MAX_FARMS = 200  # PT-ICM is too slow beyond this with 27 crops × 3 periods
 
 DECOMPOSITIONS_A = {
@@ -1082,7 +1129,7 @@ DECOMPOSITIONS_B = {
 }
 
 
-def run_all(timeout: float = 3600.0):
+def run_all(timeout: float = 300.0, mode: str = "hard"):
     results = []
     food_names = FOOD_NAMES_27[:27]
 
@@ -1115,13 +1162,13 @@ def run_all(timeout: float = 3600.0):
             r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
             results.append(r)
 
-            if n_farms <= PT_ICM_MAX_FARMS:
-                LOG.info(f"[A] PT-ICM decomposed ({dname})")
-                r = solve_pticm_decomposed_A(farm_names, food_names, land, dfn, pt_kw)
-                r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
-                results.append(r)
-            else:
-                LOG.info(f"[A] PT-ICM decomposed ({dname}) SKIPPED (n_farms > {PT_ICM_MAX_FARMS})")
+            #if n_farms <= PT_ICM_MAX_FARMS:
+            #    LOG.info(f"[A] PT-ICM decomposed ({dname})")
+            #    r = solve_pticm_decomposed_A(farm_names, food_names, land, dfn, pt_kw)
+            #    r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
+            #    results.append(r)
+            #else:
+            #    LOG.info(f"[A] PT-ICM decomposed ({dname}) SKIPPED (n_farms > {PT_ICM_MAX_FARMS})")
 
         # --- Variant B (27 crops × 3 periods — much larger BQMs) ---
         VARIANT_B_MAX_FARMS = 2000  # SpatialTemporal(5) Gurobi too slow beyond this
@@ -1133,32 +1180,33 @@ def run_all(timeout: float = 3600.0):
                                 "variant": "B", "decomposition": dname,
                                 "n_farms": n_farms, "n_vars": n_vars_b, "status": "SKIPPED"})
         else:
-            # Skip Variant B full Gurobi for very large instances
-            if n_vars_b <= 200000:
+            # Skip Variant B full Gurobi beyond 100 farms (MIQP with diversity vars is memory-heavy)
+            if n_farms <= 100:
                 LOG.info("[B] Gurobi full")
                 r = solve_gurobi_full_B(farm_names, land, food_names=food_names, timeout=timeout)
                 r.update(variant="B", decomposition="none", n_farms=n_farms, n_vars=n_vars_b)
                 results.append(r)
             else:
-                LOG.info(f"[B] Gurobi full SKIPPED (n_vars={n_vars_b} > 200000)")
+                LOG.info(f"[B] Gurobi full SKIPPED (n_farms={n_farms} > 100)")
                 results.append({"solver": "Gurobi_full", "wall_time": 0, "objective": None,
                                 "variant": "B", "decomposition": "none",
                                 "n_farms": n_farms, "n_vars": n_vars_b, "status": "SKIPPED"})
 
             for dname, dfn in DECOMPOSITIONS_B.items():
-                LOG.info(f"[B] Gurobi decomposed ({dname})")
-                r = solve_gurobi_decomposed_B(farm_names, land, dfn, food_names=food_names, timeout=timeout)
+                LOG.info(f"[B] Gurobi decomposed ({dname}) [mode={mode}]")
+                r = solve_gurobi_decomposed_B(farm_names, land, dfn, food_names=food_names,
+                                              timeout=timeout, mode=mode)
                 r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
                 results.append(r)
 
-                if n_farms <= PT_ICM_MAX_FARMS:
-                    LOG.info(f"[B] PT-ICM decomposed ({dname})")
-                    r = solve_pticm_decomposed_B(farm_names, land, dfn, food_names=food_names,
-                                                  pt_kwargs=pt_kw)
-                    r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
-                    results.append(r)
-                else:
-                    LOG.info(f"[B] PT-ICM decomposed ({dname}) SKIPPED (n_farms > {PT_ICM_MAX_FARMS})")
+                #if n_farms <= PT_ICM_MAX_FARMS:
+                #    LOG.info(f"[B] PT-ICM decomposed ({dname})")
+                #    r = solve_pticm_decomposed_B(farm_names, land, dfn, food_names=food_names,
+                #                                  pt_kwargs=pt_kw)
+                #    r.update(variant="B", decomposition=dname, n_farms=n_farms, n_vars=n_vars_b)
+                #    results.append(r)
+                #else:
+                #    LOG.info(f"[B] PT-ICM decomposed ({dname}) SKIPPED (n_farms > {PT_ICM_MAX_FARMS})")
 
     return results
 
@@ -1166,15 +1214,23 @@ def run_all(timeout: float = 3600.0):
 if __name__ == "__main__":
     import argparse
     _parser = argparse.ArgumentParser(description="Solver comparison benchmark")
-    _parser.add_argument("--timeout", type=float, default=3600.0,
-                         help="Gurobi time limit per sub-problem in seconds (default: 3600)")
+    _parser.add_argument("--timeout", type=float, default=300.0,
+                         help="Gurobi time limit in seconds (default: 300)")
+    _parser.add_argument("--mode", choices=["hard", "soft"], default="hard",
+                         help=(
+                             "Sub-problem timeout strategy for decomposed Variant-B solvers. "
+                             "'hard': add hard one-hot constraints + cap each sub-problem at "
+                             "min(timeout, 10s). "
+                             "'soft': classic soft-penalty QUBO + distribute timeout evenly as "
+                             "timeout/n_partitions per sub-problem (default: hard)"
+                         ))
     _args = _parser.parse_args()
 
     out_dir = Path(__file__).parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    LOG.info(f"Gurobi timeout per sub-problem: {_args.timeout}s")
-    all_results = run_all(timeout=_args.timeout)
+    LOG.info(f"Gurobi timeout: {_args.timeout}s | decomposed-B mode: {_args.mode}")
+    all_results = run_all(timeout=_args.timeout, mode=_args.mode)
 
     # Serialize: convert any numpy types
     def _ser(obj):
