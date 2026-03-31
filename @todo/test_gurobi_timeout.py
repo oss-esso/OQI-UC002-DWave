@@ -34,7 +34,7 @@ print()
 
 # Configuration
 GUROBI_CONFIG = {
-    'timeout': 1200,  # 1200 seconds (20 minutes) HARD LIMIT
+    'timeout': 200,  # 1200 seconds (20 minutes) HARD LIMIT
     'mip_gap': 0.01,  # 1% - stop within 1% of optimum
     'mip_focus': 1,  # Find good feasible solutions quickly
     'improve_start_time': 30,  # Stop if no improvement for 30s
@@ -83,6 +83,7 @@ except ImportError:
     sys.exit(1)
 
 from data_loader_utils import load_food_data_as_dict
+from unified_benchmark.gurobi_solver import solve_gurobi_ground_truth
 
 print()
 print("Configuration:")
@@ -151,20 +152,31 @@ def load_scenario_data(scenario: Dict) -> Dict:
     return data
 
 def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
-    """Solve with Gurobi and track timeout behavior + extract full solution."""
+    """Solve with Gurobi and track timeout behavior + extract full solution.
+
+    Delegates model building to solve_gurobi_ground_truth (vectorized addMVar +
+    sparse Q matrix) instead of the old Python-loop builder, which was O(n²)
+    for the spatial quadratic terms and hung at n≥100 with 27 foods.
+    """
     print(f"\n{'='*70}")
     print(f"Testing: {scenario['name']}")
     print(f"Size: {scenario['n_farms']} farms × {scenario['n_foods']} foods = {scenario['n_vars']} vars")
     print(f"{'='*70}")
-    
+
+    n_farms   = scenario['n_farms']
+    n_foods   = scenario['n_foods']
+    n_periods = scenario['n_periods']
+    farm_names = data['farm_names']
+    food_names = data['food_names'][:n_foods]
+
     result = {
         'metadata': {
             'benchmark_type': 'GUROBI_TIMEOUT_TEST',
             'solver': 'gurobi',
             'scenario': scenario['name'],
-            'n_farms': scenario['n_farms'],
-            'n_foods': scenario['n_foods'],
-            'n_periods': scenario['n_periods'],
+            'n_farms': n_farms,
+            'n_foods': n_foods,
+            'n_periods': n_periods,
             'timestamp': datetime.now().isoformat()
         },
         'result': {
@@ -191,9 +203,9 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
             'notes': 'Classical Gurobi solve - no decomposition used'
         },
         'benchmark_info': {
-            'n_farms': scenario['n_farms'],
-            'n_foods': scenario['n_foods'],
-            'n_periods': scenario['n_periods'],
+            'n_farms': n_farms,
+            'n_foods': n_foods,
+            'n_periods': n_periods,
             'total_land': sum(data['land_availability'].values()) if 'land_availability' in data else 0.0,
             'timeout': config['timeout'],
             'mip_gap_target': config['mip_gap'],
@@ -204,269 +216,96 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
     start_time = time.time()
     
     try:
-        model = gp.Model("rotation_test")
-        model.setParam('OutputFlag', 1)
-        model.setParam('TimeLimit', config['timeout'])
-        model.setParam('MIPGap', config['mip_gap'])
-        model.setParam('MIPFocus', config['mip_focus'])
-        model.setParam('ImproveStartTime', config['improve_start_time'])
-        model.setParam('Threads', 0)  # Use all cores - MATCH hierarchical test
-        model.setParam('Presolve', 2)  # Aggressive presolve - MATCH hierarchical test
-        model.setParam('Cuts', 2)  # Aggressive cuts - MATCH hierarchical test
-        
-        n_farms = scenario['n_farms']
-        n_foods = scenario['n_foods']
-        n_periods = scenario['n_periods']
-        
-        farm_names = data['farm_names']
-        food_names = data['food_names'][:n_foods]
-        land_availability = data['land_availability']
-        food_benefits = data['food_benefits']
-        total_area = data['total_area']
-        
-        # CRITICAL: Add problem complexity parameters (from statistical test)
-        rotation_gamma = 0.2
-        one_hot_penalty = 3.0
-        diversity_bonus = 0.15
-        k_neighbors = 4
-        frustration_ratio = 0.7
-        negative_strength = -0.8
-        
-        # Create rotation synergy matrix (makes problem MIQP, not MIP)
-        rng = np.random.RandomState(42)
-        R = np.zeros((n_foods, n_foods))
-        for i in range(n_foods):
-            for j in range(n_foods):
-                if i == j:
-                    R[i, j] = negative_strength * 1.5  # Same crop = negative
-                elif rng.random() < frustration_ratio:
-                    R[i, j] = rng.uniform(negative_strength * 1.2, negative_strength * 0.3)
-                else:
-                    R[i, j] = rng.uniform(0.02, 0.20)
-        
-        # Create spatial neighbor graph
-        side = int(np.ceil(np.sqrt(n_farms)))
-        positions = {}
-        for i, farm in enumerate(farm_names):
-            row, col = i // side, i % side
-            positions[farm] = (row, col)
-        
-        neighbor_edges = []
-        for f1_idx, f1 in enumerate(farm_names):
-            distances = []
-            for f2_idx, f2 in enumerate(farm_names):
-                if f1 != f2:
-                    dist = np.sqrt((positions[f1][0] - positions[f2][0])**2 + 
-                                 (positions[f1][1] - positions[f2][1])**2)
-                    distances.append((dist, f2_idx, f2))
-            distances.sort()
-            for _, f2_idx, f2 in distances[:k_neighbors]:
-                # Check if EITHER direction already exists (prevent double-counting)
-                if (f1_idx, f2_idx) not in neighbor_edges and (f2_idx, f1_idx) not in neighbor_edges:
-                    neighbor_edges.append((f1_idx, f2_idx))
-        
-        # Variables
-        Y = {}
-        for i, farm in enumerate(farm_names):
-            for j, food in enumerate(food_names):
-                for t in range(1, n_periods + 1):
-                    Y[(i, j, t)] = model.addVar(vtype=GRB.BINARY, name=f"Y_f{i}_c{j}_t{t}")
-        
-        # Objective: maximize benefit + synergies - penalties (MIQP formulation)
-        obj = 0
-        
-        # Part 1: Base benefit (linear)
-        for i, farm in enumerate(farm_names):
-            farm_area = land_availability[farm]
-            for j, food in enumerate(food_names):
-                benefit = food_benefits[food]
-                for t in range(1, n_periods + 1):
-                    obj += (benefit * farm_area * Y[(i, j, t)]) / total_area
-        
-        # Part 2: Rotation synergies (QUADRATIC - makes it hard!)
-        for i in range(n_farms):
-            farm_area = land_availability[farm_names[i]]
-            for t in range(2, n_periods + 1):
-                for j1 in range(n_foods):
-                    for j2 in range(n_foods):
-                        synergy = R[j1, j2]
-                        if abs(synergy) > 1e-6:
-                            obj += (rotation_gamma * synergy * farm_area * 
-                                   Y[(i, j1, t-1)] * Y[(i, j2, t)]) / total_area
-        
-        # Part 3: Spatial interactions (QUADRATIC)
-        spatial_gamma = rotation_gamma * 0.5
-        for (f1_idx, f2_idx) in neighbor_edges:
-            for t in range(1, n_periods + 1):
-                for j1 in range(n_foods):
-                    for j2 in range(n_foods):
-                        spatial_synergy = R[j1, j2] * 0.3
-                        if abs(spatial_synergy) > 1e-6:
-                            obj += (spatial_gamma * spatial_synergy * 
-                                   Y[(f1_idx, j1, t)] * Y[(f2_idx, j2, t)]) / total_area
-        
-        # Part 4: Soft one-hot penalty (QUADRATIC)
-        for i in range(n_farms):
-            for t in range(1, n_periods + 1):
-                crop_count = gp.quicksum(Y[(i, j, t)] for j in range(n_foods))
-                obj -= one_hot_penalty * (crop_count - 1) * (crop_count - 1)
-        
-        # Part 5: Diversity bonus (linear)
-        for i in range(n_farms):
-            for j in range(n_foods):
-                crop_used = gp.quicksum(Y[(i, j, t)] for t in range(1, n_periods + 1))
-                obj += diversity_bonus * crop_used
-        
-        model.setObjective(obj, GRB.MAXIMIZE)
-        
-        # Constraints: Soft one-hot (allow 1-2 crops per farm per period)
-        for i in range(n_farms):
-            for t in range(1, n_periods + 1):
-                model.addConstr(
-                    gp.quicksum(Y[(i, j, t)] for j in range(n_foods)) <= 2,
-                    name=f"max_crops_f{i}_t{t}"
-                )
-                model.addConstr(
-                    gp.quicksum(Y[(i, j, t)] for j in range(n_foods)) >= 1,
-                    name=f"min_crops_f{i}_t{t}"
-                )
-        
-        for i in range(n_farms):
-            for j in range(n_foods):
-                for t in range(1, n_periods):
-                    model.addConstr(
-                        Y[(i, j, t)] + Y[(i, j, t + 1)] <= 1,
-                        name=f"rotation_f{i}_c{j}_t{t}"
-                    )
-        
-        print(f"Model: {model.NumVars} vars, {model.NumConstrs} constraints")
-        print("Solving...")
-        
-        # Solve
-        model.optimize()
-        
-        runtime = time.time() - start_time
+        scenario_data = {
+            "farm_names": farm_names,
+            "food_names": food_names,
+            "land_availability": data['land_availability'],
+            "food_benefits": data['food_benefits'],
+            "total_area": data['total_area'],
+            "n_farms": n_farms,
+            "n_foods": n_foods,
+            "n_periods": n_periods,
+            "scenario_name": scenario['name'],
+        }
+
+        entry = solve_gurobi_ground_truth(
+            scenario_data,
+            timeout=config['timeout'],
+            mip_gap=config['mip_gap'],
+            verbose=True,
+        )
+
+        runtime = entry.timing.total_wall_time
         result['result']['solve_time'] = runtime
-        
-        # Analyze stopping reason
-        if model.Status == GRB.OPTIMAL:
-            result['result']['status'] = 'optimal'
-            result['result']['stopped_reason'] = 'optimal_found'
-            result['result']['objective_value'] = model.ObjVal
-            result['result']['mip_gap'] = 0.0
-            result['result']['success'] = True
-        elif model.Status == GRB.TIME_LIMIT:
-            result['result']['status'] = 'timeout'
+
+        # Map status
+        result['result']['status'] = entry.status
+        result['result']['objective_value'] = entry.objective_miqp
+        result['result']['mip_gap'] = entry.mip_gap
+        result['result']['success'] = (
+            entry.status in ('optimal', 'timeout', 'feasible')
+            and entry.objective_miqp is not None
+        )
+
+        if entry.status == 'timeout':
             result['result']['hit_timeout'] = True
-            result['result']['stopped_reason'] = 'timeout_3600s'
-            if model.SolCount > 0:
-                result['result']['objective_value'] = model.ObjVal
-                result['result']['mip_gap'] = model.MIPGap * 100
-                result['result']['success'] = True
-        elif model.SolCount > 0:
-            result['result']['status'] = 'feasible'
-            result['result']['objective_value'] = model.ObjVal
-            result['result']['mip_gap'] = model.MIPGap * 100
-            result['result']['success'] = True
-            # Check if stopped due to ImproveStartTime
+            result['result']['stopped_reason'] = f"timeout_{int(config['timeout'])}s"
+        elif entry.status == 'optimal':
+            result['result']['stopped_reason'] = 'optimal_found'
+        elif entry.status == 'feasible':
             if runtime < config['timeout'] - 5:
                 result['result']['hit_improve_limit'] = True
                 result['result']['stopped_reason'] = 'no_improvement_30s'
             else:
                 result['result']['stopped_reason'] = 'mip_gap_reached'
         else:
-            result['result']['status'] = 'no_solution'
-            result['result']['stopped_reason'] = 'infeasible'
-            result['result']['success'] = False
-        
-        # ================================================================
-        # EXTRACT SOLUTION (binary variables and areas)
-        # ================================================================
-        if model.SolCount > 0:
-            print("\nExtracting solution...")
-            
-            # Extract binary decision variables
-            for i, farm in enumerate(farm_names):
-                farm_area = land_availability[farm]
-                for j, food in enumerate(food_names):
-                    for t in range(1, n_periods + 1):
-                        var = Y[(i, j, t)]
-                        val = var.X  # Binary value (0 or 1)
-                        
-                        var_name = f"{farm}_{food}_t{t}"
-                        result['result']['solution_selections'][var_name] = float(val)
-                        
-                        # Calculate area allocation (binary × farm_area)
-                        area = val * farm_area
-                        result['result']['solution_areas'][var_name] = float(area)
-            
-            # Calculate total covered area
+            result['result']['stopped_reason'] = 'infeasible_or_error'
+
+        # Extract solution from entry.solution = {(f_idx, c_idx, t_1based): 1}
+        if entry.solution:
+            land_availability = data['land_availability']
+            for (f_idx, c_idx, t), _ in entry.solution.items():
+                farm = farm_names[f_idx]
+                food = food_names[c_idx]
+                var_name = f"{farm}_{food}_t{t}"
+                result['result']['solution_selections'][var_name] = 1.0
+                result['result']['solution_areas'][var_name] = float(land_availability.get(farm, 1.0))
             result['result']['total_covered_area'] = sum(result['result']['solution_areas'].values())
-            
-            # ================================================================
-            # VALIDATE SOLUTION
-            # ================================================================
-            print("Validating solution...")
-            violations = []
-            
-            # Check 1: One-hot constraint (1-2 crops per farm per period)
-            for i, farm in enumerate(farm_names):
-                for t in range(1, n_periods + 1):
-                    crops_selected = sum(
-                        result['result']['solution_selections'][f"{farm}_{food}_t{t}"]
-                        for food in food_names
-                    )
-                    if crops_selected < 1 or crops_selected > 2:
-                        violations.append({
-                            'type': 'one_hot_violation',
-                            'farm': farm,
-                            'period': t,
-                            'crops_selected': crops_selected,
-                            'expected': '1-2 crops'
-                        })
-            
-            # Check 2: Rotation constraint (no same crop consecutive periods)
-            for i, farm in enumerate(farm_names):
-                for j, food in enumerate(food_names):
-                    for t in range(1, n_periods):
-                        val_t = result['result']['solution_selections'][f"{farm}_{food}_t{t}"]
-                        val_t1 = result['result']['solution_selections'][f"{farm}_{food}_t{t+1}"]
-                        if val_t > 0.5 and val_t1 > 0.5:  # Both selected
-                            violations.append({
-                                'type': 'rotation_violation',
-                                'farm': farm,
-                                'food': food,
-                                'periods': f"t{t} and t{t+1}",
-                                'message': 'Same crop in consecutive periods'
-                            })
-            
+
+        # Validation from entry.constraint_violations
+        if entry.constraint_violations is not None:
+            n_viols = entry.constraint_violations.total_violations
             result['result']['validation'] = {
-                'is_valid': len(violations) == 0,
-                'n_violations': len(violations),
-                'violations': violations[:10],  # Limit to first 10
-                'summary': f"{'Valid' if len(violations) == 0 else 'Invalid'}: {len(violations)} violations found"
+                'is_valid': entry.feasible,
+                'n_violations': n_viols,
+                'violations': [],
+                'summary': f"{'Valid' if entry.feasible else 'Invalid'}: {n_viols} violations found"
             }
-            
-            print(f"  Solution: {len(result['result']['solution_selections'])} variables extracted")
-            print(f"  Total area: {result['result']['total_covered_area']:.2f} ha")
-            print(f"  Validation: {result['result']['validation']['summary']}")
-        
-        # Display results
+        else:
+            result['result']['validation'] = {
+                'is_valid': True, 'n_violations': 0, 'violations': [],
+                'summary': 'Valid: no constraint check performed'
+            }
+
         print(f"\n{'='*70}")
         print(f"RESULTS: {scenario['name']}")
         print(f"{'='*70}")
         print(f"Status:         {result['result']['status']}")
         print(f"Stopped reason: {result['result']['stopped_reason']}")
-        print(f"Runtime:        {runtime:.2f}s / {config['timeout']}s")
+        print(f"Runtime:        {runtime:.2f}s / {config['timeout']}s  "
+              f"(build {entry.timing.model_build_time:.3f}s + solve {entry.timing.solve_time:.3f}s)")
         print(f"Objective:      {result['result']['objective_value']}")
-        print(f"MIP Gap:        {result['result']['mip_gap']:.2f}%" if result['result']['mip_gap'] else "MIP Gap:        N/A")
-        print(f"Hit timeout:    {'YES ⚠️' if result['result']['hit_timeout'] else 'NO'}")
-        if model.SolCount > 0:
+        if result['result']['mip_gap'] is not None:
+            print(f"MIP Gap:        {result['result']['mip_gap']:.2f}%")
+        else:
+            print("MIP Gap:        N/A")
+        print(f"Hit timeout:    {'YES \u26a0\ufe0f' if result['result']['hit_timeout'] else 'NO'}")
+        if entry.solution:
             print(f"Variables:      {len(result['result']['solution_selections'])} extracted")
             print(f"Total area:     {result['result']['total_covered_area']:.2f} ha")
             print(f"Validation:     {result['result']['validation']['summary']}")
         print(f"{'='*70}")
-        
+
     except Exception as e:
         print(f"ERROR: {e}")
         result['result']['status'] = 'error'
