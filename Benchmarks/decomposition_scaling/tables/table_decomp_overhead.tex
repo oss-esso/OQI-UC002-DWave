@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Decomposition overhead in seconds for selected methods and farm sizes.}
+\label{tab:decomp_overhead}
+\begin{tabular}{llrrrrrr}
+\toprule
+    \textbf{Var.} & \textbf{Method} & \textbf{10} & \textbf{50} & \textbf{200} & \textbf{1000} & \textbf{5000} & \textbf{10000} \\ \midrule
+    A & PlotBased & 0.0001 & 0.0001 & 0.0006 & 0.0033 & — & — \\
+    A & Multilevel\,(5) & 0.0000 & 0.0001 & 0.0009 & 0.0984 & — & — \\
+    A & HybridGrid\,(5,9) & 0.0013 & 0.0001 & 0.0008 & 0.0028 & — & — \\
+    B & Clique\,(farm-by-farm) & 0.0001 & 0.0023 & 0.0055 & 0.0077 & — & — \\
+    B & SpatialTemporal\,(5) & 0.0001 & 0.0006 & 0.0014 & 0.0452 & — & — \\
+\bottomrule
+\end{tabular}
+
+    \smallskip\noindent{\footnotesize Times are for the partitioning step only, excluding solver time.}
+\end{table}

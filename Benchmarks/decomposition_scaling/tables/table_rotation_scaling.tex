@@ -1,0 +1,32 @@
+\begin{table}[htbp]
+\centering
+\caption{Rotation scenario Gurobi results at three timeout budgets.}
+\label{tab:rotation_scaling}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+    \textbf{Scenario} & \textbf{Farms} & \textbf{Vars} & \textbf{Obj (200s)} & \textbf{Obj (1200s)} & \textbf{Obj (60s)} & \textbf{Gap (200s)} & \textbf{Gap (1200s)} & \textbf{Gap (60s)} \\ \midrule
+    rotation\_micro\_25 & 5 & 90 & 6.00 & 6.17 & 5.67 & 15.9\% & 0.0\% & 168.6\% \\
+    rotation\_small\_50 & 10 & 180 & 8.23 & 8.69 & 7.81 & 61.7\% & 2.6\% & 887.0\% \\
+    rotation\_15farms\_6foods & 15 & 270 & 9.46 & 9.68 & 9.56 & 82.7\% & 3.3\% & — \\
+    rotation\_medium\_100 & 20 & 360 & 12.51 & 12.78 & 11.46 & 90.0\% & 2.5\% & — \\
+    rotation\_25farms\_6foods & 25 & 450 & 13.45 & 13.45 & 13.67 & 89.6\% & 5.6\% & — \\
+    rotation\_large\_200 & 40 & 720 & 21.56 & 21.57 & 25.29 & 97.0\% & 2.1\% & — \\
+    rotation\_50farms\_6foods & 50 & 900 & 26.89 & 26.92 & 24.72 & 98.5\% & 2.2\% & — \\
+    rotation\_75farms\_6foods & 75 & 1350 & 40.36 & 40.37 & 36.00 & 98.3\% & 2.2\% & — \\
+    rotation\_100farms\_6foods & 100 & 1800 & 53.84 & 53.80 & 47.23 & 99.2\% & — & — \\
+    rotation\_25farms\_27foods & 25 & 2025 & 10.99 & 11.68 & 15.43 & 0.0\% & 2.6\% & 15.5\% \\
+    rotation\_150farms\_6foods & 150 & 2700 & 80.54 & 80.69 & — & 99.3\% & — & — \\
+    rotation\_50farms\_27foods & 50 & 4050 & 21.94 & 23.36 & 26.66 & 0.0\% & 2.6\% & 10.3\% \\
+    rotation\_75farms\_27foods & 75 & 6075 & 33.39 & 35.06 & — & 0.0\% & 3.7\% & — \\
+    rotation\_100farms\_27foods & 100 & 8100 & 44.53 & 46.74 & 49.09 & 0.0\% & 3.0\% & 6.6\% \\
+    rotation\_150farms\_27foods & 150 & 12150 & 66.50 & 70.12 & — & 0.0\% & 2.6\% & — \\
+    rotation\_200farms\_27foods & 200 & 16200 & 88.94 & — & 92.67 & 0.0\% & — & 5.7\% \\
+    rotation\_250farms\_27foods & 250 & 20250 & 111.83 & — & — & 0.0\% & — & — \\
+    rotation\_350farms\_27foods & 350 & 28350 & 154.25 & — & — & 0.0\% & — & — \\
+    rotation\_500farms\_27foods & 500 & 40500 & 219.70 & — & — & — & — & — \\
+    rotation\_1000farms\_27foods & 1000 & 81000 & 437.97 & — & — & — & — & — \\
+\bottomrule
+\end{tabular}
+
+    \smallskip\noindent{\footnotesize Gaps $>100$\,\% indicate the solver found only a weak lower bound.}
+\end{table}

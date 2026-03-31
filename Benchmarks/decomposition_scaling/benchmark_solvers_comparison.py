@@ -1242,10 +1242,14 @@ if __name__ == "__main__":
             return obj.tolist()
         raise TypeError(f"Not serializable: {type(obj)}")
 
-    out_file = out_dir / "solver_comparison_results.json"
-    with open(out_file, "w") as f:
-        json.dump(all_results, f, indent=2, default=_ser)
-    LOG.info(f"Results written to {out_file}")
+    # Mode-specific filename so hard and soft runs do not overwrite each other.
+    # Also write the mode-agnostic default for backward compatibility.
+    out_file = out_dir / f"solver_comparison_results_{_args.mode}.json"
+    out_file_default = out_dir / "solver_comparison_results.json"
+    for dest in (out_file, out_file_default):
+        with open(dest, "w") as f:
+            json.dump(all_results, f, indent=2, default=_ser)
+    LOG.info(f"Results written to {out_file} (and {out_file_default})")
 
     # Print summary table
     print(f"\n{'Variant':>3s} {'Solver':>22s} {'Decomp':>18s} {'Farms':>6s} "
