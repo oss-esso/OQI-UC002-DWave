@@ -208,6 +208,9 @@ def _finalize(ax, xlabel, ylabel, title, log_x=True, log_y=True, loc="upper left
 def _save(fig, fname):
     out = OUT_DIR / fname
     fig.savefig(out)
+    # Also save PNG for easy viewing
+    png = out.with_suffix(".png")
+    fig.savefig(png, format="png")
     plt.close(fig)
     print(f"  -> {fname}")
 
@@ -282,6 +285,164 @@ def fig_A_quality_ratio(data):
               "Variant A — Solution Quality Ratio vs Full Solver",
               log_x=True, log_y=False, loc="best")
     _save(fig, "fig_A_quality_ratio.pdf")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Figure 3b: Variant A – raw vs healed objective (decomposed methods)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def fig_A_healed_objective(data):
+    """Show raw (infeasible) vs healed (warm-started feasible) objective."""
+    full_obj = {}
+    raw_series = defaultdict(lambda: ([], []))
+    healed_series = defaultdict(lambda: ([], []))
+
+    for r in data:
+        if r["variant"] != "A":
+            continue
+        if r["decomposition"] == "none":
+            if r.get("objective") is not None:
+                full_obj[r["n_farms"]] = abs(r["objective"])
+            continue
+        key = _solver_key(r)
+        n = r["n_farms"]
+        raw = r.get("objective")
+        healed = r.get("healed_objective")
+        if raw is not None:
+            raw_series[key][0].append(n)
+            raw_series[key][1].append(abs(raw))
+        if healed is not None:
+            healed_series[key][0].append(n)
+            healed_series[key][1].append(abs(healed))
+
+    if not healed_series:
+        print("  SKIP fig_A_healed_objective (no healed data)")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Left: absolute objective comparison
+    ax = axes[0]
+    # Plot full solver as reference
+    if full_obj:
+        xs = sorted(full_obj.keys())
+        ys = [full_obj[x] for x in xs]
+        ax.plot(xs, ys, color="#e41a1c", marker="o", ls="-", lw=2.0,
+                markersize=5, label="Gurobi full", zorder=10)
+
+    for key in sorted(raw_series):
+        sty = _style(key)
+        sty["alpha"] = 0.4
+        sty["linestyle"] = ":"
+        pairs = sorted(zip(*raw_series[key]))
+        ax.plot([p[0] for p in pairs], [p[1] for p in pairs],
+                label=f"{_display_label(key)} (raw)", **sty)
+
+    for key in sorted(healed_series):
+        sty = _style(key)
+        pairs = sorted(zip(*healed_series[key]))
+        ax.plot([p[0] for p in pairs], [p[1] for p in pairs],
+                label=f"{_display_label(key)} (healed)", **sty)
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Number of farms")
+    ax.set_ylabel("Objective value")
+    ax.set_title("Raw vs Healed Objective")
+    ax.legend(loc="upper left", fontsize=7, framealpha=0.9)
+    ax.grid(True, which="both", alpha=0.3)
+
+    # Right: healed / full ratio
+    ax = axes[1]
+    for key in sorted(healed_series):
+        xs, ys = healed_series[key]
+        ratios = [y / full_obj[x] if x in full_obj and full_obj[x] > 0 else None
+                  for x, y in zip(xs, ys)]
+        _plot_series(ax, xs, ratios, key)
+    ax.axhline(1.0, color="red", ls=":", lw=1.5, label="Parity (1.0)")
+    ax.set_xscale("log")
+    ax.set_xlabel("Number of farms")
+    ax.set_ylabel("Healed / Full ratio")
+    ax.set_title("Healed Objective as Fraction of Full Solver")
+    ax.legend(loc="best", fontsize=7, framealpha=0.9)
+    ax.grid(True, which="both", alpha=0.3)
+
+    fig.tight_layout()
+    _save(fig, "fig_A_healed_objective.pdf")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Figure 3c: Variant A – constraint violations (decomposed methods)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def fig_A_violations(data):
+    """Show constraint violation counts per decomposition method."""
+    series_total = defaultdict(lambda: ([], []))
+    series_by_type: dict[str, dict[str, list]] = {}  # key -> {viol_type -> (xs, ys)}
+
+    for r in data:
+        if r["variant"] != "A" or r["decomposition"] == "none":
+            continue
+        vc = r.get("violation_counts")
+        if vc is None:
+            continue
+        key = _solver_key(r)
+        n = r["n_farms"]
+        total = r.get("violations", sum(vc.values()))
+        series_total[key][0].append(n)
+        series_total[key][1].append(total)
+
+        if key not in series_by_type:
+            series_by_type[key] = defaultdict(lambda: ([], []))
+        for vtype, cnt in vc.items():
+            series_by_type[key][vtype][0].append(n)
+            series_by_type[key][vtype][1].append(cnt)
+
+    if not series_total:
+        print("  SKIP fig_A_violations (no violation data)")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Left: total violations per method
+    ax = axes[0]
+    for key in sorted(series_total):
+        _plot_series(ax, *series_total[key], key)
+    ax.set_xscale("log")
+    ax.set_xlabel("Number of farms")
+    ax.set_ylabel("Total constraint violations")
+    ax.set_title("Variant A — Constraint Violations vs Scale")
+    ax.legend(loc="upper left", fontsize=7, framealpha=0.9)
+    ax.grid(True, which="both", alpha=0.3)
+
+    # Right: violation breakdown for HybridGrid (or worst method)
+    ax = axes[1]
+    worst_key = max(series_total.keys(),
+                    key=lambda k: max(series_total[k][1]) if series_total[k][1] else 0)
+    vtype_colors = {
+        "one_crop": "#e41a1c",
+        "min_planting_area": "#377eb8",
+        "max_percentage": "#4daf4a",
+        "food_group_min": "#984ea3",
+        "food_group_max": "#ff7f00",
+    }
+    if worst_key in series_by_type:
+        for vtype in sorted(series_by_type[worst_key]):
+            xs, ys = series_by_type[worst_key][vtype]
+            if sum(ys) == 0:
+                continue
+            c = vtype_colors.get(vtype, "#555555")
+            pairs = sorted(zip(xs, ys))
+            ax.plot([p[0] for p in pairs], [p[1] for p in pairs],
+                    marker="o", label=vtype, color=c, markersize=4)
+    ax.set_xscale("log")
+    ax.set_xlabel("Number of farms")
+    ax.set_ylabel("Violation count")
+    ax.set_title(f"Violation Breakdown — {_display_label(worst_key)}")
+    ax.legend(loc="upper left", fontsize=7, framealpha=0.9)
+    ax.grid(True, which="both", alpha=0.3)
+
+    fig.tight_layout()
+    _save(fig, "fig_A_violations.pdf")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -587,11 +748,11 @@ def main():
 
     # Rotation data – three timeout budgets
     runs_200s_unified  = load_gurobi_unified(
-        HERE / "benchmark_20260329_105633.json", "200s (unified)")
+        HERE / "gurobi", "200s (unified)")
     runs_1200s_timeout = load_gurobi_timeout_test(
         TIMEOUT_DIR / "gurobi_timeout_test_20260329_163901.json", "1200s")
     runs_200s_timeout  = load_gurobi_timeout_test(
-        TIMEOUT_DIR / "gurobi_timeout_test_20260331_141105.json", "200s")
+        TIMEOUT_DIR / "gurobi_timeout_test_20260401_154909.json", "200s")
     runs_60s           = load_gurobi_baseline_60s()
 
     # Merge 200s sources — prefer the timeout test (20 scenarios) over the unified (13)
@@ -602,6 +763,8 @@ def main():
     fig_A_solve_time(solver_data)
     fig_A_objective(solver_data)
     fig_A_quality_ratio(solver_data)
+    fig_A_healed_objective(solver_data)
+    fig_A_violations(solver_data)
     fig_B_solve_time(solver_data)
     fig_B_objective(solver_data)
     if decomp_data:

@@ -83,7 +83,7 @@ try:
             )
         FOOD_GROUPS = _fg0
         FOOD_GROUP_CONSTRAINTS = _PARAMS.get('food_group_constraints', {
-            g: {'min_foods': 2, 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in _fg0.items()
         })
         MIN_PLANTING_AREA = _PARAMS.get('minimum_planting_area', {
@@ -97,7 +97,7 @@ except Exception:
     FOOD_BENEFITS = {c: np.random.default_rng(42).random() for c in FOOD_NAMES_27}
     FOOD_GROUPS = {"GroupA": FOOD_NAMES_27[:9], "GroupB": FOOD_NAMES_27[9:18],
                    "GroupC": FOOD_NAMES_27[18:27]}
-    FOOD_GROUP_CONSTRAINTS = {g: {'min_foods': 2, 'max_foods': len(v)}
+    FOOD_GROUP_CONSTRAINTS = {g: {'min_foods': 1, 'max_foods': len(v)}
                               for g, v in FOOD_GROUPS.items()}
     MIN_PLANTING_AREA = {c: 0.01 for c in FOOD_NAMES_27}
     MAX_PERCENTAGE_PER_CROP = {c: 0.4 for c in FOOD_NAMES_27}
@@ -209,7 +209,7 @@ def build_variant_a_gurobi(farm_names: List[str], food_names: List[str],
         if not valid:
             continue
         gc = FOOD_GROUP_CONSTRAINTS.get(gname, {})
-        min_f = gc.get('min_foods', 2)
+        min_f = gc.get('min_foods', 1)
         max_f = gc.get('max_foods', len(valid))
         m.addConstr(gp.quicksum(U[c] for c in valid) >= min_f,
                     name=f"fg_min_{gname}")
@@ -759,12 +759,129 @@ def _extract_sub_farms_foods(part: Set[str], farm_names: List[str],
     return sf, sc if sc else food_names  # fallback to all crops if none extracted
 
 
+def _check_global_violations_A(
+    assignments: dict[str, str],
+    farm_names: list[str],
+    food_names: list[str],
+    land: dict[str, float],
+) -> dict:
+    """Check merged decomposed solution against full-problem constraints.
+
+    Args:
+        assignments: mapping farm -> crop (only assigned farms).
+
+    Returns:
+        Dict with violation counts and healed objective.
+    """
+    total_area = sum(land.values())
+    plot_area = total_area / len(farm_names) if farm_names else 1.0
+
+    # Which crops are used globally?
+    crop_counts: dict[str, int] = {}
+    for crop in assignments.values():
+        crop_counts[crop] = crop_counts.get(crop, 0) + 1
+    used_crops = set(crop_counts.keys())
+
+    violations: dict[str, list[str]] = {
+        "one_crop": [],          # farms with != 1 crop  (should be 0 for Gurobi subs)
+        "min_planting_area": [],  # crops violating MIN_PLANTING_AREA
+        "max_percentage": [],     # crops violating MAX_PERCENTAGE_PER_CROP
+        "food_group_min": [],     # food groups below min_foods diversity
+        "food_group_max": [],     # food groups above max_foods diversity
+    }
+
+    # --- one-crop-per-farm (always satisfied by sub-Gurobi, but check unassigned) ---
+    unassigned = [f for f in farm_names if f not in assignments]
+    violations["one_crop"] = unassigned
+
+    # --- min planting area ---
+    for c in used_crops:
+        min_area = MIN_PLANTING_AREA.get(c, 0.0)
+        if min_area > 0:
+            min_plots = math.ceil(min_area / plot_area)
+            if crop_counts[c] < min_plots:
+                violations["min_planting_area"].append(
+                    f"{c}: {crop_counts[c]} plots < {min_plots} required"
+                )
+
+    # --- max percentage per crop ---
+    for c in used_crops:
+        max_pct = MAX_PERCENTAGE_PER_CROP.get(c, 0.4)
+        max_plots = math.floor(max_pct * total_area / plot_area)
+        if crop_counts[c] > max_plots:
+            violations["max_percentage"].append(
+                f"{c}: {crop_counts[c]} plots > {max_plots} allowed"
+            )
+
+    # --- food group diversity ---
+    for gname, gcrops in FOOD_GROUPS.items():
+        valid = [c for c in gcrops if c in food_names]
+        if not valid:
+            continue
+        gc = FOOD_GROUP_CONSTRAINTS.get(gname, {})
+        min_f = gc.get("min_foods", 1)
+        max_f = gc.get("max_foods", len(valid))
+        n_used = sum(1 for c in valid if c in used_crops)
+        if n_used < min_f:
+            violations["food_group_min"].append(
+                f"{gname}: {n_used} < {min_f} required"
+            )
+        if n_used > max_f:
+            violations["food_group_max"].append(
+                f"{gname}: {n_used} > {max_f} allowed"
+            )
+
+    total_violations = sum(len(v) for v in violations.values())
+
+    # --- compute raw (infeasible) objective ---
+    raw_obj = 0.0
+    for f, c in assignments.items():
+        area_f = land.get(f, 1.0)
+        raw_obj += FOOD_BENEFITS.get(c, 0.5) * area_f / total_area
+
+    # --- compute healed objective ---
+    # Re-solve the full model to get the true feasible objective when starting
+    # from the decomposed assignment (warm-start).  This is the "healed" value.
+    try:
+        m, minfo = build_variant_a_gurobi(farm_names, food_names, land)
+        # Warm-start from decomposed solution
+        Y = minfo["Y"]
+        U = minfo["U"]
+        for f in farm_names:
+            for c in food_names:
+                Y[f, c].Start = 1.0 if assignments.get(f) == c else 0.0
+        for c in food_names:
+            U[c].Start = 1.0 if c in used_crops else 0.0
+        m.setParam("TimeLimit", 30.0)  # short timeout — warm-start should converge fast
+        m.optimize()
+        if m.Status in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
+            healed_obj = m.ObjVal
+        else:
+            healed_obj = None
+    except Exception:
+        healed_obj = None
+
+    return {
+        "violations": violations,
+        "violation_counts": {k: len(v) for k, v in violations.items()},
+        "total_violations": total_violations,
+        "raw_objective": raw_obj,
+        "healed_objective": healed_obj,
+        "n_assigned": len(assignments),
+        "n_unassigned": len(unassigned),
+        "n_unique_crops": len(used_crops),
+        "crop_distribution": dict(sorted(crop_counts.items(), key=lambda x: -x[1])),
+    }
+
+
 def solve_gurobi_decomposed_A(farm_names, food_names, land, partitioner, timeout=300):
-    """Solve Variant-A: Gurobi per sub-problem + merge."""
+    """Solve Variant-A: Gurobi per sub-problem + merge + check global violations."""
     parts = partitioner(farm_names, food_names)
     total_obj = 0.0
     t0 = time.perf_counter()
     sub_times = []
+    assignments: dict[str, str] = {}  # farm -> crop
+
     for part in parts:
         sub_farms, sub_foods = _extract_sub_farms_foods(part, farm_names, food_names)
         if not sub_farms:
@@ -776,10 +893,39 @@ def solve_gurobi_decomposed_A(farm_names, food_names, land, partitioner, timeout
         sub_times.append(time.perf_counter() - st0)
         if sm.Status in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
             total_obj += sm.ObjVal
-    wall = time.perf_counter() - t0
-    return {"solver": "Gurobi_decomposed", "wall_time": wall,
-            "objective": total_obj, "n_partitions": len(parts),
-            "sub_times": sub_times}
+            # Extract variable assignments
+            Y = sinfo["Y"]
+            for f in sub_farms:
+                for c in sub_foods:
+                    if Y[f, c].X > 0.5:
+                        assignments[f] = c
+
+    wall_solve = time.perf_counter() - t0
+
+    # Check merged solution against full constraints
+    check = _check_global_violations_A(assignments, farm_names, food_names, land)
+    wall = time.perf_counter() - t0  # includes healing time
+
+    return {
+        "solver": "Gurobi_decomposed",
+        "wall_time": wall_solve,
+        "objective": total_obj,
+        "healed_objective": check["healed_objective"],
+        "violations": check["total_violations"],
+        "violation_counts": check["violation_counts"],
+        "violation_rate_pct": (
+            check["total_violations"]
+            / max(1, len(farm_names) + len(FOOD_GROUPS))
+            * 100
+        ),
+        "n_assigned": check["n_assigned"],
+        "n_unassigned": check["n_unassigned"],
+        "n_unique_crops": check["n_unique_crops"],
+        "crop_distribution": check["crop_distribution"],
+        "n_partitions": len(parts),
+        "sub_times": sub_times,
+        "heal_wall_time": wall - wall_solve,
+    }
 
 
 def _build_scenario_data(farm_names: List[str], land: Dict[str, float],
@@ -1120,6 +1266,7 @@ PT_ICM_MAX_FARMS = 200  # PT-ICM is too slow beyond this with 27 crops × 3 peri
 DECOMPOSITIONS_A = {
     "PlotBased": _partition_plot_based_A,
     "Multilevel(5)": lambda fn, cn: _partition_multilevel_A(fn, cn, 5),
+    "Multilevel(10)": lambda fn, cn: _partition_multilevel_A(fn, cn, 10),
     "HybridGrid(5,9)": lambda fn, cn: _partition_hybrid_grid_A(fn, cn, 5, 9),
 }
 

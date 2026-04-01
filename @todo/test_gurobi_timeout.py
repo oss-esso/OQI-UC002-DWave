@@ -77,9 +77,9 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 try:
     import gurobipy as gp
     from gurobipy import GRB
-    print("✓ Gurobi available")
+    print("[OK] Gurobi available")
 except ImportError:
-    print("✗ Gurobi not available")
+    print("[FAIL] Gurobi not available")
     sys.exit(1)
 
 from data_loader_utils import load_food_data_as_dict
@@ -299,7 +299,7 @@ def solve_gurobi_test(data: Dict, scenario: Dict, config: Dict) -> Dict:
             print(f"MIP Gap:        {result['result']['mip_gap']:.2f}%")
         else:
             print("MIP Gap:        N/A")
-        print(f"Hit timeout:    {'YES \u26a0\ufe0f' if result['result']['hit_timeout'] else 'NO'}")
+        print(f"Hit timeout:    {'YES [!]' if result['result']['hit_timeout'] else 'NO'}")
         if entry.solution:
             print(f"Variables:      {len(result['result']['solution_selections'])} extracted")
             print(f"Total area:     {result['result']['total_covered_area']:.2f} ha")
@@ -333,12 +333,12 @@ timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 json_file = OUTPUT_DIR / f'gurobi_timeout_test_{timestamp}.json'
 with open(json_file, 'w') as f:
     json.dump(all_results, f, indent=2)
-print(f"\n✓ Results saved to: {json_file}")
+print(f"\n[OK] Results saved to: {json_file}")
 
 df = pd.DataFrame(all_results)
 csv_file = OUTPUT_DIR / f'gurobi_timeout_test_{timestamp}.csv'
 df.to_csv(csv_file, index=False)
-print(f"✓ CSV saved to: {csv_file}")
+print(f"[OK] CSV saved to: {csv_file}")
 
 # Summary
 print("\n" + "="*80)
@@ -359,10 +359,10 @@ print(f"\nTimeout hits: {timeout_count}/{len(all_results)} ({timeout_count/len(a
 print(f"ImproveStartTime stops: {improve_stop_count}/{len(all_results)} ({improve_stop_count/len(all_results)*100:.0f}%)")
 
 if timeout_count == len(all_results):
-    print("\n✓ PASS: All scenarios hit timeout as expected!")
+    print("\n[PASS] All scenarios hit timeout as expected!")
 elif timeout_count > 0:
-    print(f"\n⚠️  PARTIAL: {timeout_count} scenarios hit timeout, {len(all_results)-timeout_count} finished early")
+    print(f"\n[PARTIAL] {timeout_count} scenarios hit timeout, {len(all_results)-timeout_count} finished early")
 else:
-    print("\n✗ FAIL: No scenarios hit timeout - something is wrong!")
+    print("\n[FAIL] No scenarios hit timeout - something is wrong!")
 
-print("\n✓ Test complete!")
+print("\n[OK] Test complete!")

@@ -181,7 +181,7 @@ def _load_30farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -308,7 +308,7 @@ def _load_60farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -434,7 +434,7 @@ def _load_90farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], D
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -554,7 +554,7 @@ def _load_250farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -672,7 +672,7 @@ def _load_350farms_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]], 
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -788,7 +788,7 @@ def _load_1000farms_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, flo
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -898,7 +898,7 @@ def _load_500farms_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, floa
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -1008,7 +1008,7 @@ def _load_2000farms_full_food_data() -> Tuple[List[str], Dict[str, Dict[str, flo
         'max_percentage_per_crop': {food: 0.4 for food in foods},
         'social_benefit': {farm: 0.2 for farm in farms},
         'food_group_constraints': {
-            g: {'min_foods': max(1, min(2, len(lst))), 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {
@@ -1611,7 +1611,7 @@ def _load_full_family_food_data() -> Tuple[List[str], Dict[str, Dict[str, float]
             farm: 0.2 for farm in farms
         },
         'food_group_constraints': {
-            g: {'min_foods': 2, 'max_foods': len(lst)}
+            g: {'min_foods': 1, 'max_foods': len(lst)}
             for g, lst in food_groups.items()
         },
         'weights': {

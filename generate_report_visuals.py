@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import matplotlib
 
 matplotlib.use("Agg")
@@ -49,6 +50,25 @@ ALL_METHODS: list[str] = [
     "cqm_first_PlotBased",
     "coordinated",
     "decomposition_HybridGrid(5,9)_QPU",
+]
+
+# ── Methods with data across all scales 10–1000 ───────────────────────────────
+# PlotBased, Multilevel(5), Louvain, Spectral(10) only cover 10–100.
+# These four span the full [10, 15, 25, 50, 100, 200, 500, 1000] range.
+FULL_SPAN_METHODS: list[str] = [
+    "decomposition_Multilevel(10)_QPU",
+    "cqm_first_PlotBased",
+    "coordinated",
+    "decomposition_HybridGrid(5,9)_QPU",
+]
+
+# ── Gurobi-decomposed methods shown in all 4 panels for full-span results ─────
+# Keys match GUROBI_DECOMP_COLORS and the solver_comparison_results decomposition field.
+FULL_SPAN_GUROBI_DECOMP_METHODS: list[str] = [
+    "HybridGrid(5,9)",
+    "Multilevel(10)",
+    "Multilevel(5)",
+    "PlotBased",
 ]
 
 METHOD_DISPLAY: dict[str, str] = {
@@ -159,6 +179,367 @@ def load_study2() -> tuple[dict[tuple[int, str], dict], dict[int, dict]]:
     return method_data, ground_truth_data
 
 
+# ── Gurobi decomposed line colours (match plot_benchmark_results.py palette) ───────
+GUROBI_DECOMP_COLORS: dict[str, str] = {
+    "PlotBased":      "#377eb8",
+    "Multilevel(5)":  "#4daf4a",
+    "Multilevel(10)": "#a65628",
+    "HybridGrid(5,9)": "#984ea3",
+}
+
+# ── Gurobi full baseline loader (Study 2 classical reference) ───────────────
+
+def _load_solver_comparison() -> list[dict]:
+    """Load solver comparison JSON (hard preferred)."""
+    decomp_dir = HERE / "Benchmarks" / "decomposition_scaling"
+    for fname in (
+        "solver_comparison_results_hard.json",
+        "solver_comparison_results_soft.json",
+        "solver_comparison_results.json",
+    ):
+        path = decomp_dir / fname
+        if path.exists():
+            print(f"  Loading solver comparison from {fname}")
+            return load_json(path)
+    print("  WARNING: solver_comparison_results not found")
+    return []
+
+
+def load_gurobi_full_a(data: list[dict] | None = None) -> dict[int, dict]:
+    """
+    Return {n_farms: {"wall_time": float, "objective": float}} for Gurobi_full
+    Variant-A entries (same source used by plot_benchmark_results.py).
+    Pass pre-loaded data to avoid re-reading the file.
+    """
+    if data is None:
+        data = _load_solver_comparison()
+    result: dict[int, dict] = {}
+    for r in data:
+        if r.get("variant") != "A" or r.get("decomposition", "none") != "none":
+            continue
+        n = r["n_farms"]
+        wt = safe_float(r.get("wall_time"))
+        obj = safe_float(r.get("objective"))
+        if wt is not None or obj is not None:
+            result[n] = {"wall_time": wt, "objective": obj}
+    print(f"  Gurobi full A scales: {sorted(result)}")
+    return result
+
+
+def load_gurobi_decompositions_a(data: list[dict] | None = None) -> dict[str, dict[int, dict]]:
+    """
+    Return {decomp_name: {n_farms: {"wall_time": float, "objective": float, "healed_objective": float|None}}}
+    for all Gurobi_decomposed Variant-A entries.
+    """
+    if data is None:
+        data = _load_solver_comparison()
+    result: dict[str, dict[int, dict]] = {}
+    for r in data:
+        if r.get("variant") != "A" or r.get("decomposition", "none") == "none":
+            continue
+        dname = r["decomposition"]
+        n = r["n_farms"]
+        wt = safe_float(r.get("wall_time"))
+        obj = safe_float(r.get("objective"))
+        healed = safe_float(r.get("healed_objective"))
+        result.setdefault(dname, {})[n] = {"wall_time": wt, "objective": obj, "healed_objective": healed}
+    print(f"  Gurobi decomposed A methods: {sorted(result)}")
+    return result
+
+
+# ── Benefit matrix ─────────────────────────────────────────────────────────────
+
+def load_benefit_matrix() -> dict[str, float]:
+    """
+    Return {crop_name: benefit_coefficient} from rotation_crop_matrix.csv.
+
+    The CSV rows each have a constant value across all columns (the per-crop
+    benefit coefficient b_c used in the objective: max Z = (1/T) Σ b_c A_{f,c}).
+    We extract it as the first non-index column value of each row.
+    """
+    csv_path = HERE / "rotation_data" / "rotation_crop_matrix.csv"
+    if not csv_path.exists():
+        print("  WARNING: rotation_crop_matrix.csv not found — using hardcoded benefits")
+        return _hardcoded_benefits()
+    df = pd.read_csv(csv_path, index_col=0)
+    # Each row has a constant benefit value; take the mean of the row
+    benefits = df.mean(axis=1).to_dict()
+    return benefits
+
+
+def _hardcoded_benefits() -> dict[str, float]:
+    """Fallback hardcoded benefit values from the Indonesia rotation scenario."""
+    fruits = ["Mango", "Papaya", "Orange", "Banana", "Guava",
+              "Watermelon", "Apple", "Avocado", "Durian"]
+    plant_proteins = ["Tofu", "Tempeh", "Peanuts", "Chickpeas"]
+    vegetables = ["Pumpkin", "Spinach", "Tomatoes", "Long bean",
+                  "Cabbage", "Eggplant", "Cucumber"]
+    starchy = ["Corn", "Potato"]
+    animal = ["Egg", "Beef", "Lamb", "Pork", "Chicken"]
+    b: dict[str, float] = {}
+    for c in fruits:
+        b[c] = 0.039
+    for c in plant_proteins:
+        b[c] = 0.192
+    for c in vegetables:
+        b[c] = 0.118
+    for c in starchy:
+        b[c] = 0.000
+    for c in animal:
+        b[c] = -0.073
+    return b
+
+
+# ── Study 1 healed objective computation ───────────────────────────────────────
+
+def compute_healed_obj_study1(
+    entries: list[dict],
+    benefit_matrix: dict[str, float],
+) -> dict[str, dict[int, float]]:
+    """
+    Compute healed objectives for Study 1 CQM and BQM solvers.
+
+    Violations are exclusively ``at_most_one_per_plot`` (2 crops assigned where
+    ≤1 is required). For each violating patch, the min-benefit crop is removed.
+
+    Returns {solver_label: {n_units: healed_objective}}, where solver_label is
+    one of ``"cqm"`` / ``"bqm"``.
+    """
+    result: dict[str, dict[int, float]] = {"cqm": {}, "bqm": {}}
+
+    for e in entries:
+        n: int = e["n_units"]
+        s = e["solvers"]
+
+        for sk, label in (("dwave_cqm", "cqm"), ("dwave_bqm", "bqm")):
+            sol = s.get(sk) or {}
+            obj = safe_float(sol.get("objective_value"))
+            if obj is None:
+                continue
+            val = sol.get("validation") or {}
+            viols = int(val.get("n_violations", 0))
+            if viols == 0:
+                result[label][n] = obj
+                continue
+
+            # Extract violating patch names from violation messages:
+            # "Plot PatchN: 2.000 crops assigned (should be <= 1)"
+            import re
+            viol_patches: list[str] = []
+            for msg in (val.get("violations") or []):
+                m = re.match(r"Plot (\S+):", msg)
+                if m:
+                    viol_patches.append(m.group(1))
+
+            if not viol_patches:
+                result[label][n] = obj
+                continue
+
+            # Parse solution_plantations: {"Y_{patch}_{crop}": 0|1}
+            sp: dict[str, float] = sol.get("solution_plantations") or {}
+            total_area = safe_float(sol.get("total_area")) or (n * 10.0)
+            area_per_patch = total_area / n
+
+            gain = 0.0
+            for patch in viol_patches:
+                prefix = f"Y_{patch}_"
+                # Find crops assigned to this patch (value ≥0.5)
+                assigned: dict[str, float] = {
+                    key[len(prefix):]: v
+                    for key, v in sp.items()
+                    if key.startswith(prefix) and float(v or 0) >= 0.5
+                }
+                if len(assigned) < 2:
+                    continue
+                # Contribution = b_c * area_per_patch / total_area
+                contribs = {
+                    crop: benefit_matrix.get(crop, 0.0) * area_per_patch / total_area
+                    for crop in assigned
+                }
+                gain += min(contribs.values())
+
+            result[label][n] = obj - gain
+
+    return result
+
+
+# ── Analytical healed objective for QPU methods ────────────────────────────────
+
+def compute_healed_obj_qpu(
+    method_data: dict[tuple[int, str], dict],
+    benefit_matrix: dict[str, float],
+) -> dict[tuple[int, str], float]:
+    """
+    Compute analytical healed_obj for each QPU (n, method) pair with violations.
+
+    healed_obj = obj_with_viols - benefit_gained_for_violation
+
+    Gain depends on violation type:
+    - one_crop_per_farm: for each violating farm (actual=k≥2 crops), the extra
+      benefit gained equals the contribution of the *minimum-benefit* crop assignment
+      on that farm.  We recover the assigned crops from ``solution.allocations``.
+      If allocation data is absent, we fall back to: gain = 0 (conservative).
+    - food_group_constraints: the solver skipped planting a starchy-staple crop
+      (b_c≈0) and planted a higher-benefit crop instead.  To repair, we swap the
+      *minimum-benefit* currently-assigned farm to a starchy staple.  Gain =
+      b_min_assigned / n_active_farms (uniform-area assumption).
+      Because starchy staples have b=0, gain ≥ 0 unless the min-assigned crop is
+      also 0/negative, in which case gain ≤ 0 (repair would not hurt the objective).
+
+    Falls back to obj (gain=0) for any case where data is insufficient.
+    """
+    healed: dict[tuple[int, str], float] = {}
+
+    for (n, mkey), entry in method_data.items():
+        obj = safe_float(entry.get("objective"))
+        if obj is None:
+            continue
+        viols = int(entry.get("violations", 0))
+        if viols == 0:
+            healed[(n, mkey)] = obj
+            continue
+
+        vd = entry.get("violation_details") or {}
+        one_crop_details = (vd.get("one_crop_per_farm") or {}).get("details", [])
+        food_grp_details = (vd.get("food_group_constraints") or {}).get("details", [])
+
+        total_area = safe_float(
+            (entry.get("metadata") or {}).get("total_area")
+        )
+        if total_area is None or total_area <= 0.0:
+            # Estimate: n farms × 10 ha each
+            total_area = n * 10.0
+
+        gain = 0.0
+
+        # ── one_crop_per_farm violations ───────────────────────────────────────
+        if one_crop_details:
+            sol = entry.get("solution") or {}
+            allocations: dict[str, float] = sol.get("allocations") or {}
+            y_dict: dict[str, dict] = sol.get("Y") or {}
+
+            for viol_farm_info in one_crop_details:
+                farm = viol_farm_info.get("farm", "")
+                # Find all crops assigned to this farm from allocations
+                farm_allocs = {
+                    alloc_key.split("_", 1)[1]: area
+                    for alloc_key, area in allocations.items()
+                    if alloc_key.startswith(farm + "_")
+                }
+                if not farm_allocs:
+                    # Fall back to Y matrix
+                    farm_y = y_dict.get(farm, {})
+                    farm_allocs = {
+                        crop: total_area / n
+                        for crop, v in farm_y.items() if int(v) == 1
+                    }
+                if len(farm_allocs) < 2:
+                    continue  # Cannot compute gain without at least 2 crops
+
+                # Contribution per crop = b_c * area / total_area
+                contribs = {
+                    crop: benefit_matrix.get(crop, 0.0) * area / total_area
+                    for crop, area in farm_allocs.items()
+                }
+                # Remove the min-benefit crop from the solution (benefit gained = its contribution)
+                min_contrib = min(contribs.values())
+                gain += min_contrib  # may be negative if crop has negative benefit
+
+        # ── food_group_constraints violations ─────────────────────────────────
+        if food_grp_details:
+            # Reconstruct all farm-crop assignments to find the min-benefit farm
+            assigned_crops: dict[str, list[str]] = {}  # farm -> [crops]
+
+            sol = entry.get("solution") or {}
+            allocations: dict[str, float] = sol.get("allocations") or {}
+            y_dict: dict[str, dict] = sol.get("Y") or {}
+
+            if allocations:
+                for alloc_key in allocations:
+                    parts = alloc_key.split("_", 1)
+                    if len(parts) == 2:
+                        f, c = parts
+                        assigned_crops.setdefault(f, []).append(c)
+            elif y_dict:
+                for farm, crop_vals in y_dict.items():
+                    crops = [c for c, v in crop_vals.items() if int(v) == 1]
+                    if crops:
+                        assigned_crops[farm] = crops
+            else:
+                # Try to reconstruct from partition_results
+                for pr in entry.get("partition_results") or []:
+                    variables = pr.get("variables") or {}
+                    if isinstance(variables, dict):
+                        for var_name, val in variables.items():
+                            if int(val or 0) != 1:
+                                continue
+                            # Variable names like "Y[PatchN][CropName]" or "Patch1_Corn"
+                            parts = var_name.replace("[", "_").replace("]", "").split("_")
+                            if len(parts) >= 2:
+                                f, c = parts[0], "_".join(parts[1:])
+                                assigned_crops.setdefault(f, []).append(c)
+
+            # For each food_group violation (min=1, actual=0): one farm must switch
+            # to a crop from the violated group. Compute the minimum benefit we'd lose.
+            for fg_viol in food_grp_details:
+                n_viols_needed = max(
+                    0,
+                    int(fg_viol.get("min", 1)) - int(fg_viol.get("actual", 0))
+                )
+                if n_viols_needed == 0:
+                    continue
+
+                if assigned_crops:
+                    # Find farms not already covering the violated group
+                    # Compute per-farm min benefit (to find cheapest farm to swap)
+                    farm_benefits = []
+                    for farm, crops in assigned_crops.items():
+                        if len(crops) == 1:
+                            farm_b = benefit_matrix.get(crops[0], 0.0) * (total_area / n) / total_area
+                        else:
+                            farm_b = sum(
+                                benefit_matrix.get(c, 0.0) * (total_area / n / len(crops)) / total_area
+                                for c in crops
+                            )
+                        farm_benefits.append(farm_b)
+                    farm_benefits.sort()
+                    # Gain = cost of swapping the n_viols_needed cheapest farms to starchy (b=0)
+                    for i in range(min(n_viols_needed, len(farm_benefits))):
+                        gain += farm_benefits[i]  # b_current - b_starchy = b_current - 0
+                else:
+                    # No assignment data: conservative estimate (uniform benefit)
+                    # avg_benefit = obj / n_active_farms ≈ obj / n
+                    gain += (obj / n) * n_viols_needed
+
+        healed[(n, mkey)] = obj - gain
+
+    return healed
+
+
+# ── Gurobi decomposed violations ──────────────────────────────────────────────
+
+def load_gurobi_decomp_violations(data: list[dict] | None = None) -> dict[str, dict[int, int]]:
+    """
+    Return {decomp_name: {n_farms: violation_count}} for Gurobi-decomposed Variant-A.
+    Only covers PlotBased, Multilevel(5), Multilevel(10), HybridGrid(5,9).
+    """
+    if data is None:
+        data = _load_solver_comparison()
+    result: dict[str, dict[int, int]] = {}
+    for r in data:
+        if r.get("variant") != "A" or r.get("decomposition", "none") == "none":
+            continue
+        dname = r["decomposition"]
+        if dname not in GUROBI_DECOMP_COLORS:
+            continue
+        n = r["n_farms"]
+        v = r.get("violations")
+        if v is not None:
+            result.setdefault(dname, {})[n] = int(v)
+    print(f"  Gurobi decomposed violations loaded: {sorted(result)}")
+    return result
+
+
 # ── Figure 1: Study 1 — Hybrid Solver Comparison ──────────────────────────────
 
 def _collect_study1_series(
@@ -190,7 +571,11 @@ def _collect_study1_series(
         gq = s.get("gurobi_qubo", {})
         gq_ok = gq.get("success", False) and gq.get("status", "").lower() != "error"
         gqubo_times.append(safe_float(gq.get("solve_time")) if gq_ok else None)
-        gqubo_objs.append(safe_float(gq.get("objective_value")) if gq_ok else None)
+        gq_obj = safe_float(gq.get("objective_value")) if gq_ok else None
+        # Treat obj=0 as "no meaningful solution" (QUBO penalty dominates)
+        if gq_obj is not None and gq_obj <= 0.0:
+            gq_obj = None
+        gqubo_objs.append(gq_obj)
 
         bqm = s.get("dwave_bqm", {})
         bqm_t = safe_float(bqm.get("hybrid_time") or bqm.get("solve_time"))
@@ -229,15 +614,33 @@ def _add_line(
         )
 
 
-def plot_study1(entries: list[dict]) -> None:
-    """Create Figure 1: 1×2 hybrid solver comparison."""
+def plot_study1(
+    entries: list[dict],
+    gurobi_full_a: dict[int, dict],
+    healed_study1: dict[str, dict[int, float]] | None = None,
+) -> None:
+    """
+    Create Figure 1: 1×2 hybrid solver comparison.
+    The Gurobi line uses gurobi_full_a (from solver_comparison_results_hard.json)
+    so it matches fig_A_solver_time.pdf / fig_A_solver_quality.pdf.
+    D-Wave results still come from the Study 1 comprehensive benchmark.
+    X-axis clipped at 1000 to match QPU data range.
+    If healed_study1 is provided, dotted lines are overlaid for CQM and BQM.
+    """
+    MAX_N = 1000
     print("\nPlotting Figure 1: Study 1 — Hybrid Solver Comparison")
     series = _collect_study1_series(entries)
+
+    # Build Gurobi series from the solver comparison data (canonical source),
+    # clipped to MAX_N so we don't extend beyond the D-Wave data range.
+    gt_farms = sorted(n for n in gurobi_full_a if n <= MAX_N)
+    gt_times = [gurobi_full_a[n]["wall_time"] for n in gt_farms]
+    gt_objs  = [gurobi_full_a[n]["objective"] for n in gt_farms]
 
     fig, (ax_t, ax_q) = plt.subplots(1, 2, figsize=(12, 5))
 
     # Subplot 1: Runtime
-    _add_line(ax_t, *series["gurobi_time"], "Gurobi", "#1f77b4", "o")
+    _add_line(ax_t, gt_farms, gt_times, "Gurobi", "#e41a1c", "o")  # canonical Gurobi
     _add_line(ax_t, *series["cqm_time"], "D-Wave CQM (Hybrid)", "#ff7f0e", "s")
     _add_line(ax_t, *series["gqubo_time"], "Gurobi QUBO", "#2ca02c", "^", "--")
     _add_line(ax_t, *series["bqm_time"], "D-Wave BQM (Hybrid)", "#d62728", "D")
@@ -249,12 +652,28 @@ def plot_study1(entries: list[dict]) -> None:
     ax_t.legend(fontsize=9)
     ax_t.grid(True, which="both", alpha=0.4)
 
-    # Subplot 2: Solution quality
-    _add_line(ax_q, *series["gurobi_obj"], "Gurobi", "#1f77b4", "o")
+    # Subplot 2: Solution quality (log-y)
+    _add_line(ax_q, gt_farms, gt_objs, "Gurobi", "#e41a1c", "o")  # canonical Gurobi
     _add_line(ax_q, *series["cqm_obj"], "D-Wave CQM (Hybrid)*", "#ff7f0e", "s")
     _add_line(ax_q, *series["gqubo_obj"], "Gurobi QUBO", "#2ca02c", "^", "--")
     _add_line(ax_q, *series["bqm_obj"], "D-Wave BQM (Hybrid)", "#d62728", "D")
+
+    # Healed dotted lines for CQM and BQM where violations occur
+    if healed_study1:
+        n_units = series["cqm_obj"][0]  # same x-axis for all
+        for label, raw_series_key, color, marker, display in (
+            ("cqm", "cqm_obj", "#ff7f0e", "s", "D-Wave CQM (healed)"),
+            ("bqm", "bqm_obj", "#d62728", "D", "D-Wave BQM (healed)"),
+        ):
+            h_map = healed_study1.get(label, {})
+            raw_ys = dict(zip(*series[raw_series_key]))
+            xs_h = [n for n in n_units if n in h_map and n in raw_ys
+                    and abs(h_map[n] - raw_ys[n]) > 1e-9]
+            ys_h = [h_map[n] for n in xs_h]
+            if xs_h:
+                _add_line(ax_q, xs_h, ys_h, display, color, marker, ":")
     ax_q.set_xscale("log")
+    ax_q.set_yscale("log")
     ax_q.set_xlabel("Number of Patches (n)", fontsize=11)
     ax_q.set_ylabel("Objective Value (Benefit)", fontsize=11)
     ax_q.set_title("Solution Quality (Benefit)", fontsize=12)
@@ -306,8 +725,20 @@ def _fill_2x2_panels(
     ground_truth_data: dict[int, dict],
     scales: list[int],
     methods: list[str],
+    gurobi_decomp_data: dict[str, dict[int, dict]] | None = None,
+    healed_obj: dict[tuple[int, str], float] | None = None,
+    gurobi_decomp_violations: dict[str, dict[int, int]] | None = None,
 ) -> None:
-    """Populate a (2,2) axes array with time, quality, gap, and violations panels."""
+    """
+    Populate a (2,2) axes array with time, quality, gap, and violations panels.
+
+    gurobi_decomp_data: {decomp_name: {n_farms: {"wall_time", "objective"}}}
+        If provided, overlaid as dashed lines in time and quality panels.
+    healed_obj: {(n_farms, method_key): healed_objective}
+        If provided, plotted as dotted lines in the quality panel alongside raw objectives.
+    gurobi_decomp_violations: {decomp_name: {n_farms: violation_count}}
+        If provided, stacked behind QPU violation bars in the violations panel.
+    """
     ax_time = axes[0, 0]
     ax_qual = axes[0, 1]
     ax_gap = axes[1, 0]
@@ -352,11 +783,27 @@ def _fill_2x2_panels(
             ax_time.plot(xs, ys, color=color, marker=marker, label=disp,
                          linewidth=1.5, markersize=6)
 
-        # Quality
+        # Quality (raw, solid)
         xs_o, ys_o = _method_xs_ys(mkey, scales, method_data, "objective")
         if xs_o:
             ax_qual.plot(xs_o, ys_o, color=color, marker=marker, label=disp,
                          linewidth=1.5, markersize=6)
+
+        # Quality (healed, dotted) — only when there are violations
+        if healed_obj:
+            xs_h: list[int] = []
+            ys_h: list[float] = []
+            for n in sorted_scales:
+                hv = healed_obj.get((n, mkey))
+                raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
+                viols = int((method_data.get((n, mkey)) or {}).get("violations", 0))
+                if hv is not None and viols > 0 and raw is not None and abs(hv - raw) > 1e-9:
+                    xs_h.append(n)
+                    ys_h.append(hv)
+            if xs_h:
+                ax_qual.plot(xs_h, ys_h, color=color, marker=marker,
+                             linestyle=":", linewidth=1.2, markersize=5,
+                             label=f"{disp} (healed)")
 
         # Optimality gap
         xs_g: list[int] = []
@@ -375,6 +822,28 @@ def _fill_2x2_panels(
         if xs_g:
             ax_gap.plot(xs_g, ys_g, color=color, marker=marker, label=disp,
                         linewidth=1.5, markersize=6)
+
+    # ── Gurobi-decomposed gap lines (dashed) in panel 3 ───────────────────────
+    if gurobi_decomp_data:
+        for dname in FULL_SPAN_GUROBI_DECOMP_METHODS:
+            farm_map = gurobi_decomp_data.get(dname)
+            if not farm_map:
+                continue
+            color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
+            xs_gd: list[int] = []
+            ys_gd: list[float] = []
+            for n in sorted_scales:
+                gt = ground_truth_data.get(n)
+                gd_obj = safe_float((farm_map.get(n) or {}).get("objective"))
+                gt_obj = safe_float(gt.get("objective")) if gt else None
+                if gd_obj is None or gt_obj is None or gt_obj == 0.0:
+                    continue
+                xs_gd.append(n)
+                ys_gd.append((gt_obj - gd_obj) / gt_obj * 100.0)
+            if xs_gd:
+                ax_gap.plot(xs_gd, ys_gd, color=color, marker="s",
+                            linestyle="--", linewidth=1.5, markersize=5,
+                            label=f"Gurobi [{dname}]*", alpha=0.85)
 
     # ── Violations bar chart ───────────────────────────────────────────────────
     data_scales = [
@@ -405,11 +874,63 @@ def _fill_2x2_panels(
         ax_viols.legend(fontsize=7, ncol=2)
         ax_viols.grid(True, axis="y", alpha=0.4)
 
+    # ── Gurobi-decomposed violation bars (hatched, same x-positions) ──────────
+    if gurobi_decomp_violations and data_scales:
+        gd_methods = [m for m in FULL_SPAN_GUROBI_DECOMP_METHODS if m in gurobi_decomp_violations]
+        n_gd = len(gd_methods)
+        gd_bar_w = 0.8 / max(n_gd, 1)
+        for j, dname in enumerate(gd_methods):
+            color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
+            farm_map = gurobi_decomp_violations[dname]
+            bar_vals = [farm_map.get(n, 0) for n in data_scales]
+            offset = (j - n_gd / 2 + 0.5) * gd_bar_w
+            ax_viols.bar(
+                x_pos + offset, bar_vals, gd_bar_w * 0.9,
+                color=color, label=f"Gurobi [{dname}]*",
+                alpha=0.55, hatch="//",
+            )
+        # Re-draw legend after adding new bars
+        ax_viols.legend(fontsize=6, ncol=2)
+    # ── Gurobi-decomposed overlay lines (dashed, clipped to scales range) ──────
+    if gurobi_decomp_data:
+        max_scale = max(sorted_scales)
+        for dname in FULL_SPAN_GUROBI_DECOMP_METHODS:
+            farm_map = gurobi_decomp_data.get(dname)
+            if not farm_map:
+                continue
+            color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
+            marker = "s"
+            xs_t = sorted(n for n in farm_map
+                          if n <= max_scale and farm_map[n].get("wall_time") is not None)
+            ys_t = [farm_map[n]["wall_time"] for n in xs_t]
+            xs_o = sorted(n for n in farm_map
+                          if n <= max_scale and farm_map[n].get("objective") is not None)
+            ys_o = [farm_map[n]["objective"] for n in xs_o]
+            if xs_t:
+                ax_time.plot(xs_t, ys_t, color=color, marker=marker,
+                             linestyle="--", linewidth=1.5, markersize=5,
+                             label=f"Gurobi [{dname}]*", alpha=0.85)
+            if xs_o:
+                ax_qual.plot(xs_o, ys_o, color=color, marker=marker,
+                             linestyle="--", linewidth=1.5, markersize=5,
+                             label=f"Gurobi [{dname}]*", alpha=0.85)
+            # Healed dotted line (only where healed differs from raw)
+            xs_h = sorted(n for n in farm_map
+                          if n <= max_scale
+                          and farm_map[n].get("healed_objective") is not None
+                          and farm_map[n].get("objective") is not None
+                          and abs(farm_map[n]["healed_objective"] - farm_map[n]["objective"]) > 1e-9)
+            ys_h = [farm_map[n]["healed_objective"] for n in xs_h]
+            if xs_h:
+                ax_qual.plot(xs_h, ys_h, color=color, marker=marker,
+                             linestyle=":", linewidth=1.2, markersize=4,
+                             label=f"Gurobi [{dname}] (healed)*", alpha=0.85)
     # ── Common axis formatting ─────────────────────────────────────────────────
     ax_time.set_yscale("log")
     ax_time.set_ylabel("Wall Time (s)", fontsize=10)
     ax_time.set_title("Solve Time", fontsize=11)
 
+    ax_qual.set_yscale("log")
     ax_qual.set_ylabel("Objective Value (Benefit)", fontsize=10)
     ax_qual.set_title("Solution Quality", fontsize=11)
 
@@ -426,39 +947,30 @@ def _fill_2x2_panels(
 def plot_study2(
     method_data: dict[tuple[int, str], dict],
     ground_truth_data: dict[int, dict],
+    gurobi_decomp_data: dict[str, dict[int, dict]] | None = None,
+    healed_obj: dict[tuple[int, str], float] | None = None,
+    gurobi_decomp_violations: dict[str, dict[int, int]] | None = None,
 ) -> None:
-    """Create and save Figures 2a (small), 2b (large), 2c (comprehensive)."""
-    print("\nPlotting Figure 2: QPU Decomposition")
+    """Create and save Figure 2: QPU comprehensive benchmark (full-span methods only)."""
+    print("\nPlotting Figure 2: QPU Decomposition (comprehensive, full-span methods)")
 
-    small_scales = [10, 15, 25, 50, 100]
-    large_scales = [200, 500, 1000]
-    all_scales = small_scales + large_scales
+    all_scales = [10, 15, 25, 50, 100, 200, 500, 1000]
 
-    large_methods = [
-        "decomposition_Multilevel(10)_QPU",
-        "cqm_first_PlotBased",
-        "coordinated",
-        "decomposition_HybridGrid(5,9)_QPU",
-    ]
-
-    configs: list[tuple[str, list[int], list[str], str]] = [
-        ("qpu_benchmark_small_scale", small_scales, ALL_METHODS,
-         "Small Scale (10–100 Farms)"),
-        ("qpu_benchmark_large_scale", large_scales, large_methods,
-         "Large Scale (200–1000 Farms)"),
-        ("qpu_benchmark_comprehensive", all_scales, ALL_METHODS,
-         "Comprehensive (10–1000 Farms)"),
-    ]
-
-    for stem, scales, methods, title in configs:
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-        fig.suptitle(f"QPU Decomposition Benchmark — {title}", fontsize=13, y=1.01)
-        _fill_2x2_panels(axes, method_data, ground_truth_data, scales, methods)
-        fig.tight_layout()
-        out = PLOT_DIR / f"{stem}.pdf"
-        fig.savefig(out, dpi=300, bbox_inches="tight")
-        plt.close(fig)
-        print(f"  Saved: {out}")
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig.suptitle("QPU Decomposition Benchmark — Comprehensive (10–1000 Farms)",
+                 fontsize=13, y=1.01)
+    _fill_2x2_panels(
+        axes, method_data, ground_truth_data,
+        all_scales, FULL_SPAN_METHODS,
+        gurobi_decomp_data=gurobi_decomp_data,
+        healed_obj=healed_obj,
+        gurobi_decomp_violations=gurobi_decomp_violations,
+    )
+    fig.tight_layout()
+    out = PLOT_DIR / "qpu_benchmark_comprehensive.pdf"
+    fig.savefig(out, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {out}")
 
 
 # ── LaTeX table utilities ─────────────────────────────────────────────────────
@@ -627,19 +1139,27 @@ def _study2_timing_table(
 
 # ── LaTeX Table 4: Study 2 Violations ────────────────────────────────────────
 
-def _study2_violations_table(method_data: dict[tuple[int, str], dict]) -> str:
+def _study2_violations_table(
+    method_data: dict[tuple[int, str], dict],
+    healed_obj: dict[tuple[int, str], float] | None = None,
+    gurobi_decomp_violations: dict[str, dict[int, int]] | None = None,
+) -> str:
     scales = sorted({n for (n, _) in method_data})
+    has_healed = healed_obj is not None
+    col_spec = r"llrrrr" if has_healed else r"llrrr"
+    header_extra = r" & \textbf{Healed Obj}" if has_healed else ""
     lines = [
         r"\begin{table}[htbp]",
         r"\centering",
         r"\caption{QPU Decomposition Constraint Violations (Study 2)}",
         r"\label{tab:study2_violations}",
         r"\adjustbox{max width=\textwidth}{",
-        r"\begin{tabular}{llrrr}",
+        rf"\begin{{tabular}}{{{col_spec}}}",
         r"\toprule",
         (
             r"\textbf{Method} & \textbf{Farms} & \textbf{Total Viols} & "
-            r"\textbf{One-Crop Viols} & \textbf{Food-Group Viols} \\"
+            r"\textbf{One-Crop Viols} & \textbf{Food-Group Viols}"
+            + header_extra + r" \\"
         ),
         r"\midrule",
     ]
@@ -654,16 +1174,50 @@ def _study2_violations_table(method_data: dict[tuple[int, str], dict]) -> str:
             vd = entry.get("violation_details") or {}
             one_crop = int((vd.get("one_crop_per_farm") or {}).get("violations", 0))
             food_grp = int((vd.get("food_group_constraints") or {}).get("violations", 0))
-            lines.append(_row(
+            cells = [
                 disp if rows_added == 0 else "",
                 str(n),
                 str(total_v),
                 str(one_crop),
                 str(food_grp),
-            ))
+            ]
+            if has_healed:
+                hv = healed_obj.get((n, mkey))  # type: ignore[union-attr]
+                cells.append(_fmt(hv, 4))
+            lines.append(_row(*cells))
             rows_added += 1
         if rows_added > 0:
             lines.append(r"\midrule")
+    # ── Gurobi decomposed section ──────────────────────────────────────────────
+    if gurobi_decomp_violations:
+        lines.append(r"\midrule")
+        lines.append(
+            r"\multicolumn{5}{ l }{\textit{Gurobi Decomposed (Variant-A, stricter formulation)*}} \\"
+        )
+        lines.append(r"\midrule")
+        gd_scales = sorted(
+            {n for vm in gurobi_decomp_violations.values() for n in vm}
+        )
+        for dname in sorted(gurobi_decomp_violations):
+            farm_map = gurobi_decomp_violations[dname]
+            rows_added = 0
+            for n in gd_scales:
+                v = farm_map.get(n)
+                if v is None:
+                    continue
+                cells = [
+                    dname if rows_added == 0 else "",
+                    str(n),
+                    str(v),
+                    r"---",
+                    r"---",
+                ]
+                if has_healed:
+                    cells.append(r"---")
+                lines.append(_row(*cells))
+                rows_added += 1
+            if rows_added > 0:
+                lines.append(r"\midrule")
     while lines and lines[-1].strip() == r"\midrule":
         lines.pop()
     lines += [r"\bottomrule", r"\end{tabular}", r"}", r"\end{table}"]
@@ -676,6 +1230,8 @@ def write_tables(
     entries: list[dict],
     method_data: dict[tuple[int, str], dict],
     ground_truth_data: dict[int, dict],
+    healed_obj: dict[tuple[int, str], float] | None = None,
+    gurobi_decomp_violations: dict[str, dict[int, int]] | None = None,
 ) -> None:
     print("\nGenerating LaTeX tables")
     TABLE_DIR.mkdir(parents=True, exist_ok=True)
@@ -690,7 +1246,7 @@ def write_tables(
         "",
         _study2_timing_table(method_data, ground_truth_data),
         "",
-        _study2_violations_table(method_data),
+        _study2_violations_table(method_data, healed_obj, gurobi_decomp_violations),
     ]
     out.write_text("\n".join(sections), encoding="utf-8")
     print(f"  Saved: {out}")
@@ -712,14 +1268,41 @@ def main() -> None:
           f"{[e['n_units'] for e in study1_entries]}")
 
     print("\n[2/3] Loading Study 2 QPU data ...")
-    method_data, ground_truth_data = load_study2()
+    method_data, qpu_ground_truth = load_study2()
     print(f"  {len(method_data)} (n_farms, method) data points loaded")
-    print(f"  Ground truth available at farms: {sorted(ground_truth_data)}")
+    print(f"  QPU benchmark GT at farms: {sorted(qpu_ground_truth)}")
+    solver_comparison = _load_solver_comparison()
+    gurobi_full_a = load_gurobi_full_a(solver_comparison)
+    print(f"  Gurobi full A (solver comparison) at farms: {sorted(gurobi_full_a)}")
+    gurobi_decomp_data = load_gurobi_decompositions_a(solver_comparison)
+    print(f"  Gurobi decomposed methods loaded: {sorted(gurobi_decomp_data)}")
+    gurobi_decomp_viols = load_gurobi_decomp_violations(solver_comparison)
+    print(f"  Loading benefit matrix ...")
+    benefit_matrix = load_benefit_matrix()
+    print(f"  {len(benefit_matrix)} crops in benefit matrix")
+    healed_obj = compute_healed_obj_qpu(method_data, benefit_matrix)
+    print(f"  Healed objectives computed for {len(healed_obj)} (n, method) pairs")
+    healed_study1 = compute_healed_obj_study1(study1_entries, benefit_matrix)
+    print(f"  Study 1 healed objectives: "
+          f"cqm={sorted(healed_study1['cqm'])} bqm={sorted(healed_study1['bqm'])}")
 
     print("\n[3/3] Generating figures and tables ...")
-    plot_study1(study1_entries)
-    plot_study2(method_data, ground_truth_data)
-    write_tables(study1_entries, method_data, ground_truth_data)
+    # Study 1: Gurobi line from solver comparison (canonical, matches fig_A plots)
+    plot_study1(study1_entries, gurobi_full_a, healed_study1=healed_study1)
+    # Study 2: GT from QPU benchmark (same formulation as QPU methods);
+    #          Gurobi decomposed overlay from solver comparison (stricter formulation,
+    #          labelled with * to flag different constraint set).
+    plot_study2(
+        method_data, qpu_ground_truth,
+        gurobi_decomp_data=gurobi_decomp_data,
+        healed_obj=healed_obj,
+        gurobi_decomp_violations=gurobi_decomp_viols,
+    )
+    write_tables(
+        study1_entries, method_data, qpu_ground_truth,
+        healed_obj=healed_obj,
+        gurobi_decomp_violations=gurobi_decomp_viols,
+    )
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 64)
@@ -727,8 +1310,6 @@ def main() -> None:
     print("=" * 64)
     pdfs = [
         "study1_hybrid_performance.pdf",
-        "qpu_benchmark_small_scale.pdf",
-        "qpu_benchmark_large_scale.pdf",
         "qpu_benchmark_comprehensive.pdf",
     ]
     for name in pdfs:
