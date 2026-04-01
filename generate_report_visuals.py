@@ -107,12 +107,40 @@ METHOD_MARKERS: dict[str, str] = {
 }
 
 # ── Matplotlib style ───────────────────────────────────────────────────────────
-for _style in ("seaborn-v0_8-whitegrid", "seaborn-whitegrid", "ggplot"):
-    try:
-        plt.style.use(_style)
-        break
-    except OSError:
-        continue
+matplotlib.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "axes.edgecolor": "black",
+    "axes.linewidth": 1.2,
+    "axes.spines.top": True,
+    "axes.spines.right": True,
+    "axes.facecolor": "white",
+    "figure.facecolor": "white",
+    "axes.labelcolor": "black",
+    "text.color": "black",
+    "xtick.direction": "in",
+    "ytick.direction": "in",
+    "xtick.major.size": 5.0,
+    "ytick.major.size": 5.0,
+    "xtick.minor.size": 3.0,
+    "ytick.minor.size": 3.0,
+    "xtick.minor.visible": True,
+    "ytick.minor.visible": True,
+    "xtick.color": "black",
+    "ytick.color": "black",
+    "xtick.labelcolor": "black",
+    "ytick.labelcolor": "black",
+    "grid.color": "#757575FF",
+    "grid.linewidth": 0.8,
+    "grid.alpha": 0.55,
+    "axes.grid": True,
+    "axes.grid.which": "major",
+    "axes.titlesize": 14,
+    "axes.labelsize": 11,
+    "figure.titlesize": 15,
+    "legend.fontsize": 9,
+})
 
 
 # ── Generic helpers ────────────────────────────────────────────────────────────
@@ -299,12 +327,22 @@ def compute_healed_obj_study1(
     """
     Compute healed objectives for Study 1 CQM and BQM solvers.
 
-    Violations are exclusively ``at_most_one_per_plot`` (2 crops assigned where
-    ≤1 is required). For each violating patch, the min-benefit crop is removed.
+    CQM/BQM solutions massively over-assign crops: at n=1000, CQM assigns
+    ~17,000 crops to 1,000 patches instead of 1 per patch.  The reported
+    ``validation.n_violations`` only catches a small subset.
 
-    Returns {solver_label: {n_units: healed_objective}}, where solver_label is
-    one of ``"cqm"`` / ``"bqm"``.
+    Correct healing: recompute the objective from solution_plantations,
+    keeping **only the highest-benefit crop per patch** (using actual patch
+    areas from ``land_data``).
+
+    Objective formula: Z = (1/T) * sum_f [ b_{best_f} * L_f ]
+    where T = total area, L_f = area of patch f, b_{best_f} = benefit of
+    the single best crop assigned to patch f.
+
+    Returns {solver_label: {n_units: healed_objective}}.
     """
+    import re
+
     result: dict[str, dict[int, float]] = {"cqm": {}, "bqm": {}}
 
     for e in entries:
@@ -316,49 +354,32 @@ def compute_healed_obj_study1(
             obj = safe_float(sol.get("objective_value"))
             if obj is None:
                 continue
-            val = sol.get("validation") or {}
-            viols = int(val.get("n_violations", 0))
-            if viols == 0:
-                result[label][n] = obj
-                continue
 
-            # Extract violating patch names from violation messages:
-            # "Plot PatchN: 2.000 crops assigned (should be <= 1)"
-            import re
-            viol_patches: list[str] = []
-            for msg in (val.get("violations") or []):
-                m = re.match(r"Plot (\S+):", msg)
-                if m:
-                    viol_patches.append(m.group(1))
-
-            if not viol_patches:
-                result[label][n] = obj
-                continue
-
-            # Parse solution_plantations: {"Y_{patch}_{crop}": 0|1}
             sp: dict[str, float] = sol.get("solution_plantations") or {}
+            if not sp:
+                result[label][n] = obj
+                continue
+
             total_area = safe_float(sol.get("total_area")) or (n * 10.0)
-            area_per_patch = total_area / n
+            land_data: dict[str, float] = sol.get("land_data") or {}
 
-            gain = 0.0
-            for patch in viol_patches:
-                prefix = f"Y_{patch}_"
-                # Find crops assigned to this patch (value ≥0.5)
-                assigned: dict[str, float] = {
-                    key[len(prefix):]: v
-                    for key, v in sp.items()
-                    if key.startswith(prefix) and float(v or 0) >= 0.5
-                }
-                if len(assigned) < 2:
+            # Parse Y_{patch}_{crop} -> per-patch crop list
+            patch_crops: dict[str, list[str]] = {}
+            for key, val in sp.items():
+                if float(val or 0) < 0.5:
                     continue
-                # Contribution = b_c * area_per_patch / total_area
-                contribs = {
-                    crop: benefit_matrix.get(crop, 0.0) * area_per_patch / total_area
-                    for crop in assigned
-                }
-                gain += min(contribs.values())
+                m = re.match(r"Y_([^_]+)_(.+)", key)
+                if m:
+                    patch_crops.setdefault(m.group(1), []).append(m.group(2))
 
-            result[label][n] = obj - gain
+            # Recompute objective keeping only the best crop per patch
+            healed = 0.0
+            for patch, crops in patch_crops.items():
+                patch_area = float(land_data.get(patch, total_area / n))
+                best_benefit = max(benefit_matrix.get(c, 0.0) for c in crops)
+                healed += best_benefit * patch_area / total_area
+
+            result[label][n] = healed
 
     return result
 
@@ -372,21 +393,13 @@ def compute_healed_obj_qpu(
     """
     Compute analytical healed_obj for each QPU (n, method) pair with violations.
 
-    healed_obj = obj_with_viols - benefit_gained_for_violation
+    healed_obj = recomputed from Y matrix keeping only the best crop per farm.
 
-    Gain depends on violation type:
-    - one_crop_per_farm: for each violating farm (actual=k≥2 crops), the extra
-      benefit gained equals the contribution of the *minimum-benefit* crop assignment
-      on that farm.  We recover the assigned crops from ``solution.allocations``.
-      If allocation data is absent, we fall back to: gain = 0 (conservative).
-    - food_group_constraints: the solver skipped planting a starchy-staple crop
-      (b_c≈0) and planted a higher-benefit crop instead.  To repair, we swap the
-      *minimum-benefit* currently-assigned farm to a starchy staple.  Gain =
-      b_min_assigned / n_active_farms (uniform-area assumption).
-      Because starchy staples have b=0, gain ≥ 0 unless the min-assigned crop is
-      also 0/negative, in which case gain ≤ 0 (repair would not hurt the objective).
-
-    Falls back to obj (gain=0) for any case where data is insufficient.
+    QPU solutions use solution.Y = {farm: {crop: 0/1}}.  Violations are small
+    (typically 1–6 farms with 2 crops vs the massive over-assignment seen in
+    Study 1).  We recompute uniformly: keep best crop per farm, sum
+    b_best * patch_area / total_area with uniform areas (total_area / n).
+    total_area comes from entry.metadata.total_area (100.0 for all QPU runs).
     """
     healed: dict[tuple[int, str], float] = {}
 
@@ -394,124 +407,31 @@ def compute_healed_obj_qpu(
         obj = safe_float(entry.get("objective"))
         if obj is None:
             continue
-        viols = int(entry.get("violations", 0))
-        if viols == 0:
+
+        sol = entry.get("solution") or {}
+        y_dict: dict[str, dict] = sol.get("Y") or {}
+
+        if not y_dict:
             healed[(n, mkey)] = obj
             continue
-
-        vd = entry.get("violation_details") or {}
-        one_crop_details = (vd.get("one_crop_per_farm") or {}).get("details", [])
-        food_grp_details = (vd.get("food_group_constraints") or {}).get("details", [])
 
         total_area = safe_float(
             (entry.get("metadata") or {}).get("total_area")
         )
         if total_area is None or total_area <= 0.0:
-            # Estimate: n farms × 10 ha each
             total_area = n * 10.0
+        patch_area = total_area / n
 
-        gain = 0.0
+        # Recompute: keep best crop per farm
+        healed_val = 0.0
+        for farm, crop_vals in y_dict.items():
+            assigned = [c for c, v in crop_vals.items() if int(v or 0) == 1]
+            if not assigned:
+                continue
+            best_b = max(benefit_matrix.get(c, 0.0) for c in assigned)
+            healed_val += best_b * patch_area / total_area
 
-        # ── one_crop_per_farm violations ───────────────────────────────────────
-        if one_crop_details:
-            sol = entry.get("solution") or {}
-            allocations: dict[str, float] = sol.get("allocations") or {}
-            y_dict: dict[str, dict] = sol.get("Y") or {}
-
-            for viol_farm_info in one_crop_details:
-                farm = viol_farm_info.get("farm", "")
-                # Find all crops assigned to this farm from allocations
-                farm_allocs = {
-                    alloc_key.split("_", 1)[1]: area
-                    for alloc_key, area in allocations.items()
-                    if alloc_key.startswith(farm + "_")
-                }
-                if not farm_allocs:
-                    # Fall back to Y matrix
-                    farm_y = y_dict.get(farm, {})
-                    farm_allocs = {
-                        crop: total_area / n
-                        for crop, v in farm_y.items() if int(v) == 1
-                    }
-                if len(farm_allocs) < 2:
-                    continue  # Cannot compute gain without at least 2 crops
-
-                # Contribution per crop = b_c * area / total_area
-                contribs = {
-                    crop: benefit_matrix.get(crop, 0.0) * area / total_area
-                    for crop, area in farm_allocs.items()
-                }
-                # Remove the min-benefit crop from the solution (benefit gained = its contribution)
-                min_contrib = min(contribs.values())
-                gain += min_contrib  # may be negative if crop has negative benefit
-
-        # ── food_group_constraints violations ─────────────────────────────────
-        if food_grp_details:
-            # Reconstruct all farm-crop assignments to find the min-benefit farm
-            assigned_crops: dict[str, list[str]] = {}  # farm -> [crops]
-
-            sol = entry.get("solution") or {}
-            allocations: dict[str, float] = sol.get("allocations") or {}
-            y_dict: dict[str, dict] = sol.get("Y") or {}
-
-            if allocations:
-                for alloc_key in allocations:
-                    parts = alloc_key.split("_", 1)
-                    if len(parts) == 2:
-                        f, c = parts
-                        assigned_crops.setdefault(f, []).append(c)
-            elif y_dict:
-                for farm, crop_vals in y_dict.items():
-                    crops = [c for c, v in crop_vals.items() if int(v) == 1]
-                    if crops:
-                        assigned_crops[farm] = crops
-            else:
-                # Try to reconstruct from partition_results
-                for pr in entry.get("partition_results") or []:
-                    variables = pr.get("variables") or {}
-                    if isinstance(variables, dict):
-                        for var_name, val in variables.items():
-                            if int(val or 0) != 1:
-                                continue
-                            # Variable names like "Y[PatchN][CropName]" or "Patch1_Corn"
-                            parts = var_name.replace("[", "_").replace("]", "").split("_")
-                            if len(parts) >= 2:
-                                f, c = parts[0], "_".join(parts[1:])
-                                assigned_crops.setdefault(f, []).append(c)
-
-            # For each food_group violation (min=1, actual=0): one farm must switch
-            # to a crop from the violated group. Compute the minimum benefit we'd lose.
-            for fg_viol in food_grp_details:
-                n_viols_needed = max(
-                    0,
-                    int(fg_viol.get("min", 1)) - int(fg_viol.get("actual", 0))
-                )
-                if n_viols_needed == 0:
-                    continue
-
-                if assigned_crops:
-                    # Find farms not already covering the violated group
-                    # Compute per-farm min benefit (to find cheapest farm to swap)
-                    farm_benefits = []
-                    for farm, crops in assigned_crops.items():
-                        if len(crops) == 1:
-                            farm_b = benefit_matrix.get(crops[0], 0.0) * (total_area / n) / total_area
-                        else:
-                            farm_b = sum(
-                                benefit_matrix.get(c, 0.0) * (total_area / n / len(crops)) / total_area
-                                for c in crops
-                            )
-                        farm_benefits.append(farm_b)
-                    farm_benefits.sort()
-                    # Gain = cost of swapping the n_viols_needed cheapest farms to starchy (b=0)
-                    for i in range(min(n_viols_needed, len(farm_benefits))):
-                        gain += farm_benefits[i]  # b_current - b_starchy = b_current - 0
-                else:
-                    # No assignment data: conservative estimate (uniform benefit)
-                    # avg_benefit = obj / n_active_farms ≈ obj / n
-                    gain += (obj / n) * n_viols_needed
-
-        healed[(n, mkey)] = obj - gain
+        healed[(n, mkey)] = healed_val
 
     return healed
 
@@ -572,9 +492,8 @@ def _collect_study1_series(
         gq_ok = gq.get("success", False) and gq.get("status", "").lower() != "error"
         gqubo_times.append(safe_float(gq.get("solve_time")) if gq_ok else None)
         gq_obj = safe_float(gq.get("objective_value")) if gq_ok else None
-        # Treat obj=0 as "no meaningful solution" (QUBO penalty dominates)
-        if gq_obj is not None and gq_obj <= 0.0:
-            gq_obj = None
+        # Keep obj=0 in the series; log-scale will simply not render 0, but we
+        # annotate those points explicitly in the plot so they are visible.
         gqubo_objs.append(gq_obj)
 
         bqm = s.get("dwave_bqm", {})
@@ -614,6 +533,18 @@ def _add_line(
         )
 
 
+def _print_series_table(name: str, xs: list[int], ys: list[float | None]) -> None:
+    """Print a simple table of x and y values for debugging plotted lines."""
+    try:
+        import pandas as _pd
+    except Exception:
+        print(f"Series '{name}': (no pandas) {list(zip(xs, ys))}")
+        return
+    df = _pd.DataFrame({"x": xs, "y": ys})
+    print(f"\n--- Series: {name} ---")
+    print(df.to_string(index=False))
+
+
 def plot_study1(
     entries: list[dict],
     gurobi_full_a: dict[int, dict],
@@ -636,54 +567,149 @@ def plot_study1(
     gt_farms = sorted(n for n in gurobi_full_a if n <= MAX_N)
     gt_times = [gurobi_full_a[n]["wall_time"] for n in gt_farms]
     gt_objs  = [gurobi_full_a[n]["objective"] for n in gt_farms]
+    gt_obj_map: dict[int, float] = dict(zip(gt_farms, gt_objs))
 
-    fig, (ax_t, ax_q) = plt.subplots(1, 2, figsize=(12, 5))
+    fig, (ax_t, ax_g) = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Subplot 1: Runtime
-    _add_line(ax_t, gt_farms, gt_times, "Gurobi", "#e41a1c", "o")  # canonical Gurobi
+    # ── Panel 1: Runtime ─────────────────────────────────────────────────────
+    _print_series_table("Gurobi_time", gt_farms, gt_times)
+    for key in ("cqm_time", "gqubo_time", "bqm_time"):
+        xs_s, ys_s = series.get(key, ([], []))
+        _print_series_table(key, xs_s, ys_s)
+
+    _add_line(ax_t, gt_farms, gt_times, "Gurobi", "#e41a1c", "o")
     _add_line(ax_t, *series["cqm_time"], "D-Wave CQM (Hybrid)", "#ff7f0e", "s")
     _add_line(ax_t, *series["gqubo_time"], "Gurobi QUBO", "#2ca02c", "^", "--")
     _add_line(ax_t, *series["bqm_time"], "D-Wave BQM (Hybrid)", "#d62728", "D")
     ax_t.set_xscale("log")
     ax_t.set_yscale("log")
-    ax_t.set_xlabel("Number of Patches (n)", fontsize=11)
-    ax_t.set_ylabel("Solve Time (s)", fontsize=11)
-    ax_t.set_title("Solver Runtime Scaling", fontsize=12)
-    ax_t.legend(fontsize=9)
-    ax_t.grid(True, which="both", alpha=0.4)
+    ax_t.set_xlabel("Number of Patches (n)")
+    ax_t.set_ylabel("Solve Time (s)")
+    ax_t.set_title("Solver Runtime Scaling")
+    ax_t.legend()
+    ax_t.grid(True, which="both", color="lightgray", linewidth=0.5)
 
-    # Subplot 2: Solution quality (log-y)
-    _add_line(ax_q, gt_farms, gt_objs, "Gurobi", "#e41a1c", "o")  # canonical Gurobi
-    _add_line(ax_q, *series["cqm_obj"], "D-Wave CQM (Hybrid)*", "#ff7f0e", "s")
-    _add_line(ax_q, *series["gqubo_obj"], "Gurobi QUBO", "#2ca02c", "^", "--")
-    _add_line(ax_q, *series["bqm_obj"], "D-Wave BQM (Hybrid)", "#d62728", "D")
+    # ── Panel 2: Solution quality (COMMENTED OUT) ────────────────────────────────────
+    # _print_series_table("Gurobi_obj", gt_farms, gt_objs)
+    # for key in ("cqm_obj", "gqubo_obj", "bqm_obj"):
+    #     xs_s, ys_s = series.get(key, ([], []))
+    #     _print_series_table(key, xs_s, ys_s)
+    #
+    # _add_line(ax_q, gt_farms, gt_objs, "Gurobi", "#e41a1c", "o")
+    # _add_line(ax_q, *series["cqm_obj"], "D-Wave CQM (Hybrid)*", "#ff7f0e", "s")
+    # _add_line(ax_q, *series["bqm_obj"], "D-Wave BQM (Hybrid)*", "#d62728", "D")
+    #
+    # gqubo_ns, gqubo_os = series["gqubo_obj"]
+    # gqubo_pos_ns = [x for x, y in zip(gqubo_ns, gqubo_os) if y is not None and y > 0.0]
+    # gqubo_pos_ys = [y for y in gqubo_os if y is not None and y > 0.0]
+    # gqubo_zero_ns = [x for x, y in zip(gqubo_ns, gqubo_os) if y is not None and y == 0.0]
+    # if gqubo_pos_ns:
+    #     _add_line(ax_q, gqubo_pos_ns, gqubo_pos_ys, "Gurobi QUBO", "#2ca02c", "^", "--")
+    # for nz in gqubo_zero_ns:
+    #     ax_q.axvline(nz, color="#2ca02c", linestyle=":", linewidth=0.8, alpha=0.6)
+    #     ax_q.annotate(
+    #         f"QUBO=0\n(n={nz})",
+    #         xy=(nz, 0.04), xycoords=("data", "axes fraction"),
+    #         color="#2ca02c", fontsize=7, ha="center", va="bottom", style="italic",
+    #     )
+    #
+    # if healed_study1:
+    #     n_units_list = series["cqm_obj"][0]
+    #     for label, raw_series_key, color, marker, display in (
+    #         ("cqm", "cqm_obj", "#ff7f0e", "s", "D-Wave CQM (healed)"),
+    #         ("bqm", "bqm_obj", "#d62728", "D", "D-Wave BQM (healed)"),
+    #     ):
+    #         h_map = healed_study1.get(label, {})
+    #         raw_ys_map = {n: y for n, y in zip(*series[raw_series_key]) if y is not None}
+    #         xs_h = [
+    #             n for n in n_units_list
+    #             if n in h_map and n in raw_ys_map
+    #             and abs(h_map[n] - raw_ys_map[n]) > 1e-9
+    #         ]
+    #         ys_h = [h_map[n] for n in xs_h]
+    #         print(f"\n--- Healed {label} debug ---")
+    #         for n in n_units_list:
+    #             raw_v = raw_ys_map.get(n)
+    #             heal_v = h_map.get(n)
+    #             diff = (heal_v - raw_v) if (heal_v is not None and raw_v is not None) else None
+    #             print(f"  n={n:5d}  raw={raw_v}  healed={heal_v}  diff={diff}  plotted={'YES' if n in xs_h else 'no'}")
+    #         if xs_h:
+    #             ax_q.plot(
+    #                 xs_h, ys_h,
+    #                 color=color, marker=marker, linestyle="--",
+    #                 linewidth=2.2, markersize=9,
+    #                 markerfacecolor="white", markeredgecolor=color, markeredgewidth=1.8,
+    #                 label=display, zorder=5,
+    #             )
+    # ax_q.annotate(
+    #     "* CQM/BQM status = Infeasible at n=10--25",
+    #     xy=(0.02, 0.02), xycoords="axes fraction",
+    #     fontsize=8, color="#888", style="italic",
+    # )
+    # ax_q.set_xscale("log")
+    # ax_q.set_yscale("log")
+    # ax_q.set_xlabel("Number of Patches (n)")
+    # ax_q.set_ylabel("Objective Value (Benefit)")
+    # ax_q.set_title("Solution Quality (Benefit)")
+    # ax_q.legend()
+    # ax_q.grid(True, which="both", color="lightgray", linewidth=0.5)
 
-    # Healed dotted lines for CQM and BQM where violations occur
+    # ── Panel 3: Absolute gap |solver_obj - gurobi_obj|  (log-log) ────────────
+    all_ns = series["cqm_obj"][0]
+    gqubo_ns, gqubo_os = series["gqubo_obj"]  # full series including zero-obj points
+
+    def _absgap_series(
+        ns: list[int], ys: list[float | None], gt_map: dict[int, float],
+    ) -> tuple[list[int], list[float]]:
+        xs_g: list[int] = []
+        ys_g: list[float] = []
+        for n, y in zip(ns, ys):
+            if y is None:
+                continue
+            gt = gt_map.get(n)
+            if gt is None:
+                continue
+            xs_g.append(n)
+            ys_g.append(abs(y - gt))
+        return xs_g, ys_g
+
+    cqm_gx, cqm_gy = _absgap_series(*series["cqm_obj"], gt_obj_map)
+    bqm_gx, bqm_gy = _absgap_series(*series["bqm_obj"], gt_obj_map)
+    gqubo_gx, gqubo_gy = _absgap_series(gqubo_ns, gqubo_os, gt_obj_map)
+
+    _add_line(ax_g, cqm_gx, cqm_gy, "D-Wave CQM (Hybrid)*", "#ff7f0e", "s")
+    _add_line(ax_g, bqm_gx, bqm_gy, "D-Wave BQM (Hybrid)*", "#d62728", "D")
+    if gqubo_gx:
+        _add_line(ax_g, gqubo_gx, gqubo_gy, "Gurobi QUBO", "#2ca02c", "^", "--")
+
+    # Healed absolute gaps
     if healed_study1:
-        n_units = series["cqm_obj"][0]  # same x-axis for all
-        for label, raw_series_key, color, marker, display in (
-            ("cqm", "cqm_obj", "#ff7f0e", "s", "D-Wave CQM (healed)"),
-            ("bqm", "bqm_obj", "#d62728", "D", "D-Wave BQM (healed)"),
+        for label, color, marker, display in (
+            ("cqm", "#ff7f0e", "s", "D-Wave CQM (healed)"),
+            ("bqm", "#d62728", "D", "D-Wave BQM (healed)"),
         ):
             h_map = healed_study1.get(label, {})
-            raw_ys = dict(zip(*series[raw_series_key]))
-            xs_h = [n for n in n_units if n in h_map and n in raw_ys
-                    and abs(h_map[n] - raw_ys[n]) > 1e-9]
-            ys_h = [h_map[n] for n in xs_h]
-            if xs_h:
-                _add_line(ax_q, xs_h, ys_h, display, color, marker, ":")
-    ax_q.set_xscale("log")
-    ax_q.set_yscale("log")
-    ax_q.set_xlabel("Number of Patches (n)", fontsize=11)
-    ax_q.set_ylabel("Objective Value (Benefit)", fontsize=11)
-    ax_q.set_title("Solution Quality (Benefit)", fontsize=12)
-    ax_q.legend(fontsize=9)
-    ax_q.grid(True, which="both", alpha=0.4)
-    ax_q.annotate(
-        "* CQM status = Infeasible at all scales",
-        xy=(0.02, 0.02), xycoords="axes fraction",
-        fontsize=8, color="#ff7f0e", style="italic",
-    )
+            xs_h2 = [n for n in all_ns if n in h_map and n in gt_obj_map]
+            ys_h2 = [abs(h_map[n] - gt_obj_map[n]) for n in xs_h2]
+            if xs_h2:
+                ax_g.plot(
+                    xs_h2, ys_h2,
+                    color=color, marker=marker, linestyle="--",
+                    linewidth=2.2, markersize=9,
+                    markerfacecolor="white", markeredgecolor=color, markeredgewidth=1.8,
+                    label=display, zorder=5,
+                )
+
+    ax_g.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
+                  zorder=1, label="Gurobi optimum (gap=0)")
+    ax_g.set_xscale("log")
+    ax_g.set_yscale("symlog", linthresh=1e-4)
+    ax_g.set_ylim(0, 100)
+    ax_g.set_xlabel("Number of Patches (n)")
+    ax_g.set_ylabel(r"$|$Objective $-$ Gurobi$|$")
+    ax_g.set_title("Absolute Solution Gap vs Gurobi")
+    ax_g.legend(fontsize=8)
+    ax_g.grid(True, which="both", color="lightgray", linewidth=0.5)
 
     fig.tight_layout()
     out = PLOT_DIR / "study1_hybrid_performance.pdf"
@@ -719,7 +745,7 @@ def _method_xs_ys(
     return xs, ys
 
 
-def _fill_2x2_panels(
+def _fill_1x2_panels(
     axes: np.ndarray,
     method_data: dict[tuple[int, str], dict],
     ground_truth_data: dict[int, dict],
@@ -727,28 +753,22 @@ def _fill_2x2_panels(
     methods: list[str],
     gurobi_decomp_data: dict[str, dict[int, dict]] | None = None,
     healed_obj: dict[tuple[int, str], float] | None = None,
-    gurobi_decomp_violations: dict[str, dict[int, int]] | None = None,
 ) -> None:
     """
-    Populate a (2,2) axes array with time, quality, gap, and violations panels.
+    Populate a (3,) axes array with:
+      [0] Solve time (log-log)
+      [1] Solution quality / objective value (log-log)
+      [2] Absolute gap |objective - GT| (log-log)
 
-    gurobi_decomp_data: {decomp_name: {n_farms: {"wall_time", "objective"}}}
-        If provided, overlaid as dashed lines in time and quality panels.
-    healed_obj: {(n_farms, method_key): healed_objective}
-        If provided, plotted as dotted lines in the quality panel alongside raw objectives.
-    gurobi_decomp_violations: {decomp_name: {n_farms: violation_count}}
-        If provided, stacked behind QPU violation bars in the violations panel.
+    gurobi_decomp_data overlaid as dashed lines in time and quality panels.
+    healed_obj plotted as dotted hollow-marker lines in quality and gap panels.
     """
-    ax_time = axes[0, 0]
-    ax_qual = axes[0, 1]
-    ax_gap = axes[1, 0]
-    ax_viols = axes[1, 1]
-
+    ax_time, ax_gap = axes[0], axes[1]
     sorted_scales = sorted(scales)
 
-    # ── Ground-truth reference line ────────────────────────────────────────────
+    # ── Ground-truth reference ────────────────────────────────────────────────
     gt_time_pts: list[tuple[int, float]] = []
-    gt_obj_pts: list[tuple[int, float]] = []
+    gt_obj_map: dict[int, float] = {}
     for n in sorted_scales:
         gt = ground_truth_data.get(n)
         if gt is None:
@@ -758,140 +778,90 @@ def _fill_2x2_panels(
         if t is not None:
             gt_time_pts.append((n, t))
         if o is not None:
-            gt_obj_pts.append((n, o))
+            gt_obj_map[n] = o
 
-    def _gt_line(ax: plt.Axes, pts: list[tuple[int, float]]) -> None:
-        if pts:
-            ax.plot(
-                [p[0] for p in pts], [p[1] for p in pts],
-                color=METHOD_COLORS["ground_truth"], marker="D",
-                linestyle="-", label="Gurobi (GT)", linewidth=2, markersize=7, zorder=10,
-            )
+    if gt_time_pts:
+        ax_time.plot(
+            [p[0] for p in gt_time_pts], [p[1] for p in gt_time_pts],
+            color=METHOD_COLORS["ground_truth"], marker="D",
+            linestyle="-", label="Gurobi (GT)", linewidth=2, markersize=7, zorder=10,
+        )
+    if gt_obj_map:
+        pass  # Quality panel removed
+        # ax_qual.plot(
+        #     sorted(gt_obj_map), [gt_obj_map[n] for n in sorted(gt_obj_map)],
+        #     color=METHOD_COLORS["ground_truth"], marker="D",
+        #     linestyle="-", label="Gurobi (GT)", linewidth=2, markersize=7, zorder=10,
+        # )
 
-    _gt_line(ax_time, gt_time_pts)
-    _gt_line(ax_qual, gt_obj_pts)
-
-    # ── Method lines ───────────────────────────────────────────────────────────
+    # ── QPU method lines ──────────────────────────────────────────────────────
     for mkey in methods:
         disp = METHOD_DISPLAY.get(mkey, mkey)
         color = METHOD_COLORS.get(disp, "#333333")
         marker = METHOD_MARKERS.get(disp, "o")
 
-        # Time
-        xs, ys = _method_xs_ys(mkey, scales, method_data, "wall_time")
-        if xs:
-            ax_time.plot(xs, ys, color=color, marker=marker, label=disp,
+        xs_t, ys_t = _method_xs_ys(mkey, scales, method_data, "wall_time")
+        _print_series_table(f"{disp} time", xs_t, ys_t)
+        if xs_t:
+            ax_time.plot(xs_t, ys_t, color=color, marker=marker, label=disp,
                          linewidth=1.5, markersize=6)
 
-        # Quality (raw, solid)
         xs_o, ys_o = _method_xs_ys(mkey, scales, method_data, "objective")
-        if xs_o:
-            ax_qual.plot(xs_o, ys_o, color=color, marker=marker, label=disp,
-                         linewidth=1.5, markersize=6)
+        # _print_series_table(f"{disp} objective", xs_o, ys_o)
+        # if xs_o:
+        #     ax_qual.plot(xs_o, ys_o, color=color, marker=marker, label=disp,
+        #                  linewidth=1.5, markersize=6)
+    #
+    # Healed quality overlay
+    # if healed_obj:
+    #     xs_h: list[int] = []
+    #     ys_h: list[float] = []
+    #     for n in sorted_scales:
+    #         hv = healed_obj.get((n, mkey))
+    #         raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
+    #         viols = int((method_data.get((n, mkey)) or {}).get("violations", 0))
+    #         if hv is not None and viols > 0 and raw is not None and abs(hv - raw) > 1e-9:
+    #             xs_h.append(n)
+    #             ys_h.append(hv)
+    #     if xs_h:
+    #         ax_qual.plot(xs_h, ys_h, color=color, marker=marker,
+    #                      linestyle=":", linewidth=1.2, markersize=5,
+    #                      markerfacecolor="white", markeredgecolor=color,
+    #                      label=f"{disp} (healed)")
 
-        # Quality (healed, dotted) — only when there are violations
-        if healed_obj:
-            xs_h: list[int] = []
-            ys_h: list[float] = []
-            for n in sorted_scales:
-                hv = healed_obj.get((n, mkey))
-                raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
-                viols = int((method_data.get((n, mkey)) or {}).get("violations", 0))
-                if hv is not None and viols > 0 and raw is not None and abs(hv - raw) > 1e-9:
-                    xs_h.append(n)
-                    ys_h.append(hv)
-            if xs_h:
-                ax_qual.plot(xs_h, ys_h, color=color, marker=marker,
-                             linestyle=":", linewidth=1.2, markersize=5,
-                             label=f"{disp} (healed)")
-
-        # Optimality gap
+        # Absolute gap (raw)
         xs_g: list[int] = []
         ys_g: list[float] = []
-        for n in sorted_scales:
-            entry = method_data.get((n, mkey))
-            gt = ground_truth_data.get(n)
-            if entry is None or gt is None:
-                continue
-            m_obj = safe_float(entry.get("objective"))
-            gt_obj = safe_float(gt.get("objective"))
-            if m_obj is None or gt_obj is None or gt_obj == 0.0:
-                continue
-            xs_g.append(n)
-            ys_g.append((gt_obj - m_obj) / gt_obj * 100.0)
+        for n, y in zip(xs_o, ys_o):
+            gt_o = gt_obj_map.get(n)
+            if gt_o is not None:
+                xs_g.append(n)
+                ys_g.append(abs(y - gt_o))
+        _print_series_table(f"{disp} gap", xs_g, ys_g)
         if xs_g:
             ax_gap.plot(xs_g, ys_g, color=color, marker=marker, label=disp,
                         linewidth=1.5, markersize=6)
 
-    # ── Gurobi-decomposed gap lines (dashed) in panel 3 ───────────────────────
-    if gurobi_decomp_data:
-        for dname in FULL_SPAN_GUROBI_DECOMP_METHODS:
-            farm_map = gurobi_decomp_data.get(dname)
-            if not farm_map:
-                continue
-            color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
-            xs_gd: list[int] = []
-            ys_gd: list[float] = []
+        # Absolute gap (healed)
+        if healed_obj:
+            xs_gh: list[int] = []
+            ys_gh: list[float] = []
             for n in sorted_scales:
-                gt = ground_truth_data.get(n)
-                gd_obj = safe_float((farm_map.get(n) or {}).get("objective"))
-                gt_obj = safe_float(gt.get("objective")) if gt else None
-                if gd_obj is None or gt_obj is None or gt_obj == 0.0:
-                    continue
-                xs_gd.append(n)
-                ys_gd.append((gt_obj - gd_obj) / gt_obj * 100.0)
-            if xs_gd:
-                ax_gap.plot(xs_gd, ys_gd, color=color, marker="s",
-                            linestyle="--", linewidth=1.5, markersize=5,
-                            label=f"Gurobi [{dname}]*", alpha=0.85)
+                hv = healed_obj.get((n, mkey))
+                viols = int((method_data.get((n, mkey)) or {}).get("violations", 0))
+                gt_o = gt_obj_map.get(n)
+                if hv is not None and viols > 0 and gt_o is not None:
+                    raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
+                    if raw is not None and abs(hv - raw) > 1e-9:
+                        xs_gh.append(n)
+                        ys_gh.append(abs(hv - gt_o))
+            if xs_gh:
+                ax_gap.plot(xs_gh, ys_gh, color=color, marker=marker,
+                            linestyle=":", linewidth=1.2, markersize=5,
+                            markerfacecolor="white", markeredgecolor=color,
+                            label=f"{disp} (healed)")
 
-    # ── Violations bar chart ───────────────────────────────────────────────────
-    data_scales = [
-        n for n in sorted_scales
-        if any(method_data.get((n, m)) is not None for m in methods)
-    ]
-    if data_scales:
-        n_m = len(methods)
-        bar_w = 0.8 / max(n_m, 1)
-        x_pos = np.arange(len(data_scales))
-        for i, mkey in enumerate(methods):
-            disp = METHOD_DISPLAY.get(mkey, mkey)
-            color = METHOD_COLORS.get(disp, "#333333")
-            bar_vals = [
-                int((method_data.get((n, mkey)) or {}).get("violations", 0))
-                for n in data_scales
-            ]
-            offset = (i - n_m / 2 + 0.5) * bar_w
-            ax_viols.bar(
-                x_pos + offset, bar_vals, bar_w * 0.9,
-                color=color, label=disp, alpha=0.85,
-            )
-        ax_viols.set_xticks(x_pos)
-        ax_viols.set_xticklabels([str(n) for n in data_scales], rotation=30, ha="right")
-        ax_viols.set_xlabel("Number of Farms", fontsize=10)
-        ax_viols.set_ylabel("Constraint Violations", fontsize=10)
-        ax_viols.set_title("Constraint Violations by Method and Scale", fontsize=11)
-        ax_viols.legend(fontsize=7, ncol=2)
-        ax_viols.grid(True, axis="y", alpha=0.4)
-
-    # ── Gurobi-decomposed violation bars (hatched, same x-positions) ──────────
-    if gurobi_decomp_violations and data_scales:
-        gd_methods = [m for m in FULL_SPAN_GUROBI_DECOMP_METHODS if m in gurobi_decomp_violations]
-        n_gd = len(gd_methods)
-        gd_bar_w = 0.8 / max(n_gd, 1)
-        for j, dname in enumerate(gd_methods):
-            color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
-            farm_map = gurobi_decomp_violations[dname]
-            bar_vals = [farm_map.get(n, 0) for n in data_scales]
-            offset = (j - n_gd / 2 + 0.5) * gd_bar_w
-            ax_viols.bar(
-                x_pos + offset, bar_vals, gd_bar_w * 0.9,
-                color=color, label=f"Gurobi [{dname}]*",
-                alpha=0.55, hatch="//",
-            )
-        # Re-draw legend after adding new bars
-        ax_viols.legend(fontsize=6, ncol=2)
-    # ── Gurobi-decomposed overlay lines (dashed, clipped to scales range) ──────
+    # ── Gurobi-decomposed overlay lines ───────────────────────────────────────
     if gurobi_decomp_data:
         max_scale = max(sorted_scales)
         for dname in FULL_SPAN_GUROBI_DECOMP_METHODS:
@@ -899,49 +869,79 @@ def _fill_2x2_panels(
             if not farm_map:
                 continue
             color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
-            marker = "s"
-            xs_t = sorted(n for n in farm_map
-                          if n <= max_scale and farm_map[n].get("wall_time") is not None)
-            ys_t = [farm_map[n]["wall_time"] for n in xs_t]
-            xs_o = sorted(n for n in farm_map
-                          if n <= max_scale and farm_map[n].get("objective") is not None)
-            ys_o = [farm_map[n]["objective"] for n in xs_o]
-            if xs_t:
-                ax_time.plot(xs_t, ys_t, color=color, marker=marker,
+
+            xs_t2 = sorted(n for n in farm_map
+                           if n <= max_scale and farm_map[n].get("wall_time") is not None)
+            ys_t2 = [farm_map[n]["wall_time"] for n in xs_t2]
+            if xs_t2:
+                ax_time.plot(xs_t2, ys_t2, color=color, marker="s",
                              linestyle="--", linewidth=1.5, markersize=5,
                              label=f"Gurobi [{dname}]*", alpha=0.85)
-            if xs_o:
-                ax_qual.plot(xs_o, ys_o, color=color, marker=marker,
-                             linestyle="--", linewidth=1.5, markersize=5,
-                             label=f"Gurobi [{dname}]*", alpha=0.85)
-            # Healed dotted line (only where healed differs from raw)
-            xs_h = sorted(n for n in farm_map
-                          if n <= max_scale
-                          and farm_map[n].get("healed_objective") is not None
-                          and farm_map[n].get("objective") is not None
-                          and abs(farm_map[n]["healed_objective"] - farm_map[n]["objective"]) > 1e-9)
-            ys_h = [farm_map[n]["healed_objective"] for n in xs_h]
-            if xs_h:
-                ax_qual.plot(xs_h, ys_h, color=color, marker=marker,
-                             linestyle=":", linewidth=1.2, markersize=4,
-                             label=f"Gurobi [{dname}] (healed)*", alpha=0.85)
+
+            xs_o2 = sorted(n for n in farm_map
+                           if n <= max_scale and farm_map[n].get("objective") is not None)
+            # ys_o2 = [farm_map[n]["objective"] for n in xs_o2]
+            # if xs_o2:
+            #     ax_qual.plot(xs_o2, ys_o2, color=color, marker="s",
+            #                  linestyle="--", linewidth=1.5, markersize=5,
+            #                  label=f"Gurobi [{dname}]*", alpha=0.85)
+            #
+            #     Healed quality
+            xs_h2 = sorted(n for n in farm_map
+                           if n <= max_scale
+                           and farm_map[n].get("healed_objective") is not None
+                           and farm_map[n].get("objective") is not None
+                           and abs(farm_map[n]["healed_objective"] - farm_map[n]["objective"]) > 1e-9)
+            # if xs_h2:
+            #     ax_qual.plot(xs_h2, [farm_map[n]["healed_objective"] for n in xs_h2],
+            #                  color=color, marker="s", linestyle=":", linewidth=1.2,
+            #                  markersize=4, markerfacecolor="white", markeredgecolor=color,
+            #                  label=f"Gurobi [{dname}] (healed)*", alpha=0.85)
+
+            # Absolute gap (raw)
+            xs_ag = [n for n in xs_o2 if gt_obj_map.get(n) is not None]
+            ys_ag = [abs(farm_map[n]["objective"] - gt_obj_map[n]) for n in xs_ag]
+            if xs_ag:
+                ax_gap.plot(xs_ag, ys_ag, color=color, marker="s",
+                            linestyle="--", linewidth=1.5, markersize=5,
+                            label=f"Gurobi [{dname}]*", alpha=0.85)
+
+            # Absolute gap (healed)
+            xs_agh = [n for n in xs_h2 if gt_obj_map.get(n) is not None]
+            ys_agh = [abs(farm_map[n]["healed_objective"] - gt_obj_map[n]) for n in xs_agh]
+            if xs_agh:
+                ax_gap.plot(xs_agh, ys_agh, color=color, marker="s",
+                            linestyle=":", linewidth=1.2, markersize=4,
+                            markerfacecolor="white", markeredgecolor=color,
+                            label=f"Gurobi [{dname}] (healed)*", alpha=0.85)
+
     # ── Common axis formatting ─────────────────────────────────────────────────
     ax_time.set_yscale("log")
-    ax_time.set_ylabel("Wall Time (s)", fontsize=10)
-    ax_time.set_title("Solve Time", fontsize=11)
+    ax_time.set_ylabel("Wall Time (s)")
+    ax_time.set_title("Solve Time")
+    ax_time.set_ylim(0.00001, None)
 
-    ax_qual.set_yscale("log")
-    ax_qual.set_ylabel("Objective Value (Benefit)", fontsize=10)
-    ax_qual.set_title("Solution Quality", fontsize=11)
+    # ax_qual.set_yscale("log")
+    # ax_qual.set_ylabel("Objective Value (Benefit)")
+    # ax_qual.set_title("Solution Quality")
+    # ax_time.set_ylim(0.0001, None)
 
-    ax_gap.set_ylabel("Optimality Gap (%)", fontsize=10)
-    ax_gap.set_title("Optimality Gap vs. Gurobi", fontsize=11)
+    ax_gap.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
+                   zorder=1, label="Gurobi optimum (gap=0)")
+    ax_gap.set_yscale("symlog", linthresh=1e-4)
+    ax_gap.set_ylim(0, 1)
+    ax_gap.set_ylabel(r"$|$Objective $-$ Gurobi GT$|$")
+    ax_gap.set_title("Absolute Solution Gap vs Gurobi")
 
-    for ax in (ax_time, ax_qual, ax_gap):
+    for ax in (ax_time,):
         ax.set_xscale("log")
-        ax.set_xlabel("Number of Farms", fontsize=10)
-        ax.legend(fontsize=7, ncol=2)
-        ax.grid(True, which="both", alpha=0.4)
+        ax.set_xlabel("Number of Farms")
+        ax.legend(fontsize=7, ncol=2, loc="lower right")
+        ax.grid(True, which="both", color="lightgray", linewidth=0.5)
+    ax_gap.set_xscale("log")
+    ax_gap.set_xlabel("Number of Farms")
+    ax_gap.legend(fontsize=7, ncol=2, loc="best")
+    ax_gap.grid(True, which="both", color="lightgray", linewidth=0.5)
 
 
 def plot_study2(
@@ -956,15 +956,13 @@ def plot_study2(
 
     all_scales = [10, 15, 25, 50, 100, 200, 500, 1000]
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle("QPU Decomposition Benchmark — Comprehensive (10–1000 Farms)",
-                 fontsize=13, y=1.01)
-    _fill_2x2_panels(
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("QPU Decomposition Benchmark --- Comprehensive (10--1000 Farms)")
+    _fill_1x2_panels(
         axes, method_data, ground_truth_data,
         all_scales, FULL_SPAN_METHODS,
         gurobi_decomp_data=gurobi_decomp_data,
         healed_obj=healed_obj,
-        gurobi_decomp_violations=gurobi_decomp_violations,
     )
     fig.tight_layout()
     out = PLOT_DIR / "qpu_benchmark_comprehensive.pdf"
