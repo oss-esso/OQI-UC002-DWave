@@ -1,0 +1,5 @@
+- The healing pparagraph should only talk about the Binary Plot (BP) for,mualtion, so index f should not exist (only p)
+- The tables with the violations still have the old violation count (the new healed objecitves are 'healing' many more violations than when the tables were created)
+- for the comprehensive benchmark we want 9 lines (gurobi GT, qpu multilevel, qpu hybridgrid, qpu cqmfirst and qpu coordinated, gurobi multilevel, gurobi hybridgrid, gurobi cqmfirst and gurobi coordinated)
+in the objective value we want these 9 and for all the ones that aren't gurobi GT we should also have the healed counterpart (so 1+8+8healed)
+to do so find the scirpt that is running the benchmark, edit it so that it is also solving gurobi cqmfirst gurobi multilevel and gurobi coordinated, run it, pull the data, add them to generate_report_visuals and to the comprehensive benchamrk pltos so we have everything

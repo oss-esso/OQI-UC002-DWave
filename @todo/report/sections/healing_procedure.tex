@@ -5,109 +5,106 @@
 \subsection{Post-Hoc Feasibility Repair and Healed Objective}
 \label{sec:healing}
 
-Several solvers — D-Wave BQM, D-Wave CQM, and the Gurobi decomposed variants —
-return solutions that are \emph{infeasible} with respect to one or more
-constraints.
+Several solvers---D-Wave BQM, D-Wave CQM, and the Gurobi decomposed
+variants---return solutions that are \emph{infeasible} with respect to one or
+more constraints of the Binary Plot (BP) formulation.
 To provide a meaningful quality comparison on a common, feasible baseline, we
 apply a greedy, \emph{one-shot} repair procedure per solution and report the
 resulting \emph{healed objective} alongside (or in place of) the raw objective.
-The healed objective is always $\leq$ the raw objective, so it is a
-\emph{lower-bound} on the true feasible value the solver would have obtained had
-it found a feasible solution.
+The healed objective is always $\leq$ the raw objective, so it provides a
+\emph{lower-bound} on the feasible value the solver would have obtained had it
+returned a feasible solution.
 
 % -----------------------------------------------------------------------
 \subsubsection{Violation Types}
 \label{sec:healing:violtypes}
 
-\paragraph{Study~1 (patch benchmark, BQM/CQM).}
-The patch-level QUBO/CQM formulation enforces an \emph{at-most-one-crop-per-patch}
-constraint.
+\paragraph{Study~1 (hybrid benchmark).}
+The QUBO/CQM formulation of the BP model enforces an
+\emph{at-most-one-crop-per-patch} constraint
+($\sum_c Y_{p,c} \leq 1$ for each patch $p$).
 All observed violations are of this single type: the solver assigns two crops
 $c_1, c_2$ to the same patch $p$ (both indicator variables $Y_{p,c_1}$ and
 $Y_{p,c_2}$ are set to 1).
 
-\paragraph{Study~2 and Gurobi decomposed (farm benchmark).}
-Two constraint types are violated:
+\paragraph{Study~2 and Gurobi decomposed (QPU decomposition benchmark).}
+Two constraint types are violated in the decomposed formulation:
 \begin{enumerate}
-  \item \textbf{One-crop-per-farm} ($\sum_c Y_{f,c} \leq 1$): analogous to the
-        patch case — multiple crops are assigned to a single farm.
-  \item \textbf{Food-group coverage} ($\sum_{f} Y_{f,c} \geq 1$ for each food
-        group): at least one farm must be assigned to a representative crop of a
-        specified food group; the solver fails to satisfy one or more of these
-        coverage requirements.
+  \item \textbf{One-crop-per-patch} ($\sum_c Y_{p,c} \leq 1$): identical to
+        Study~1---the decomposition assigns multiple crops to a single patch.
+  \item \textbf{Food-group coverage} ($\sum_{p \in \mathcal{P}} Y_{p,c} \geq 1$
+        for each food group $g$): at least one patch must be assigned a
+        representative crop of each food group; the decomposed solver fails to
+        satisfy one or more of these global coverage constraints.
 \end{enumerate}
 
 % -----------------------------------------------------------------------
-\subsubsection{Repair for One-Crop-per-Patch/Farm Violations}
+\subsubsection{Repair for One-Crop-per-Patch Violations}
 \label{sec:healing:onecrop}
 
-Let $n$ denote the total number of patches (farms), $A_{\text{tot}}$ the total
-cultivable area, and $A_p = A_{\text{tot}} / n$ the uniform area per patch
-(farm).
-Define the normalised per-crop contribution on a violating patch/farm as
+Let $n$ denote the total number of patches, $A_{\text{tot}}$ the total
+cultivable area, and $A_p$ the area of patch $p$.
+Define the normalised contribution of crop $c$ on patch $p$ as
 \begin{equation}
   \delta_{p,c} \;=\; b_c \cdot \frac{A_p}{A_{\text{tot}}} ,
   \label{eq:patch_contrib}
 \end{equation}
-where $b_c \geq 0$ is the benefit coefficient of crop $c$ (from the
-rotation-benefit matrix).
+where $b_c \geq 0$ is the benefit coefficient of crop $c$.
 
-For each violating patch/farm $p$ with assigned crops $\mathcal{C}_p$
+For each violating patch $p$ with assigned crops $\mathcal{C}_p$
 ($|\mathcal{C}_p| \geq 2$), we \textbf{remove the minimum-benefit crop}:
 \begin{equation}
   \text{gain}_p \;=\; \min_{c\,\in\,\mathcal{C}_p}\; \delta_{p,c} .
   \label{eq:onecrop_gain}
 \end{equation}
-The healed objective is then
+The healed objective after repairing the set $\mathcal{V}$ of violating patches is
 \begin{equation}
-  \tilde{f} \;=\; f_{\text{raw}} - \sum_{p \in \mathcal{V}} \text{gain}_p ,
+  \tilde{f} \;=\; f_{\text{raw}} - \sum_{p \in \mathcal{V}} \text{gain}_p .
   \label{eq:healed_onecrop}
 \end{equation}
-where $\mathcal{V}$ is the set of violating patches/farms.
 This repair is exact: removing one crop from patch $p$ leaves exactly one
 assigned crop, fully restoring feasibility for that patch.
 
-For the \textbf{Gurobi decomposed} variants,
-$\tilde{f}$ is pre-computed by the benchmark script and stored as
-\texttt{healed\_objective} in
-\texttt{solver\_comparison\_results\_hard.json}.  The repair is performed
-analytically during the benchmark run using the same procedure above.
+For the \textbf{Gurobi decomposed} variants, $\tilde{f}$ is pre-computed during
+the benchmark run and stored as \texttt{healed\_objective} in
+\texttt{solver\_comparison\_results\_hard.json}.
 
-For the \textbf{D-Wave BQM/CQM} (Study~1), the repair is applied
-post-hoc from the stored \texttt{solution\_plantations} dictionary
-$\{Y_{p,c}\}$ by identifying $\mathcal{C}_p = \{c : Y_{p,c} \geq 0.5\}$ for
-each violating patch and applying \cref{eq:healed_onecrop}.
+For the \textbf{D-Wave BQM/CQM} (Study~1), the repair is applied post-hoc from
+the stored $\{Y_{p,c}\}$ dictionary by identifying
+$\mathcal{C}_p = \{c : Y_{p,c} \geq 0.5\}$ for each violating patch and
+applying \cref{eq:healed_onecrop}.
 
 % -----------------------------------------------------------------------
 \subsubsection{Repair for Food-Group Coverage Violations}
 \label{sec:healing:foodgroup}
 
-A food-group constraint of the form
-$\sum_{f} Y_{f,g} \geq g_{\min}$
-is violated when the number of farms planting a crop from group $g$ falls short
-by $\Delta_g = g_{\min} - \sum_f Y_{f,g} > 0$ farms.
+A food-group coverage constraint
+$\sum_{p \in \mathcal{P}} Y_{p,c} \geq g_{\min}$
+is violated when the number of patches assigned to crops of group~$g$
+falls short by $\Delta_g = g_{\min} - \sum_{p} Y_{p,g} > 0$ patches.
 
-The repair swaps $\Delta_g$ existing farm assignments to a representative crop
-of group $g$.  We assume the representative crop has benefit $b_g \approx 0$
-(starchy-staple crops, which constitute the majority of violated food groups),
-so the swap cost equals the full contribution of the farm that is re-assigned.
-We choose the \textbf{minimum-benefit farm} to swap, minimising the objective
-loss:
+The repair reassigns $\Delta_g$ existing patch assignments to a representative
+crop of group $g$.  Assuming the representative crop has benefit $b_g \approx 0$
+(starchy-staple crops constitute the majority of violated groups), the swap cost
+equals the full contribution of the re-assigned patch.
+We choose the \textbf{minimum-benefit patch} to minimise the objective loss:
 \begin{equation}
   \text{gain}_g \;=\; \Delta_g \cdot
-    \min_{f\,\in\,\mathcal{F}_{\text{active}}} \;
-    \sum_{c\,\in\,\mathcal{C}_f} b_c \cdot \frac{A_f}{A_{\text{tot}}} ,
+    \min_{p\,\in\,\mathcal{P}_{\text{active}}} \;
+    b_{c(p)} \cdot \frac{A_p}{A_{\text{tot}}} ,
   \label{eq:foodgroup_gain}
 \end{equation}
-where $\mathcal{F}_{\text{active}}$ is the set of farms not already assigned to
-group $g$.
+where $\mathcal{P}_{\text{active}}$ is the set of patches not already assigned
+to group $g$, and $c(p)$ is the crop assigned to patch $p$.
 The total healed objective when both violation types are present is
 \begin{equation}
   \tilde{f} \;=\; f_{\text{raw}}
     - \sum_{p\,\in\,\mathcal{V}} \text{gain}_p
-    - \sum_{g\,\in\,\mathcal{G}} \text{gain}_g .
+    - \sum_{g\,\in\,\mathcal{G}_{\text{viol}}} \text{gain}_g ,
   \label{eq:healed_full}
 \end{equation}
+where $\mathcal{G}_{\text{viol}}$ denotes the set of food groups with coverage
+violations ($\Delta_g > 0$).
 
 % -----------------------------------------------------------------------
 \subsubsection{Interpretation}

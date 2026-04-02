@@ -839,27 +839,49 @@ def _check_global_violations_A(
         area_f = land.get(f, 1.0)
         raw_obj += FOOD_BENEFITS.get(c, 0.5) * area_f / total_area
 
-    # --- compute healed objective ---
-    # Re-solve the full model to get the true feasible objective when starting
-    # from the decomposed assignment (warm-start).  This is the "healed" value.
-    try:
-        m, minfo = build_variant_a_gurobi(farm_names, food_names, land)
-        # Warm-start from decomposed solution
-        Y = minfo["Y"]
-        U = minfo["U"]
-        for f in farm_names:
-            for c in food_names:
-                Y[f, c].Start = 1.0 if assignments.get(f) == c else 0.0
-        for c in food_names:
-            U[c].Start = 1.0 if c in used_crops else 0.0
-        m.setParam("TimeLimit", 30.0)  # short timeout — warm-start should converge fast
-        m.optimize()
-        if m.Status in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
-            healed_obj = m.ObjVal
-        else:
-            healed_obj = None
-    except Exception:
-        healed_obj = None
+    # --- analytical healed objective per healing_procedure.tex ---
+    # For each violation type, subtract the minimum-benefit contribution lost
+    # by repairing that violation (lower-bound / pessimistic estimate).
+    healed_obj = raw_obj
+
+    # One-crop violations: not expected from Gurobi sub-problems (each farm
+    # already has <= 1 crop), but included for completeness.  For any farm p
+    # with > 1 crop, remove the minimum-benefit crop (gain = delta_{p,c_min}).
+    farm_to_crops: dict[str, list[str]] = {}
+    for f, c in assignments.items():
+        farm_to_crops.setdefault(f, []).append(c)
+    for f, crops in farm_to_crops.items():
+        if len(crops) > 1:
+            area_f = land.get(f, 1.0)
+            min_contrib = min(FOOD_BENEFITS.get(c, 0.5) * area_f / total_area for c in crops)
+            healed_obj -= min_contrib
+
+    # Food-group coverage violations: swap the Δ_g minimum-benefit active
+    # farms (not already contributing to group g) to a representative crop of
+    # group g (assumed ~zero benefit, starchy-staple representative).
+    # gain_g = Δ_g × min_{f ∈ F_active_not_in_g}(b_{c_f} × A_f / A_total)
+    for gname, gcrops in FOOD_GROUPS.items():
+        valid = [c for c in gcrops if c in food_names]
+        if not valid:
+            continue
+        gc = FOOD_GROUP_CONSTRAINTS.get(gname, {})
+        min_f = gc.get("min_foods", 1)
+        n_used = sum(1 for c in valid if c in used_crops)
+        delta_g = max(0, min_f - n_used)
+        if delta_g == 0:
+            continue
+        active_not_in_group = [
+            (f, c) for f, c in assignments.items() if c not in valid
+        ]
+        if not active_not_in_group:
+            continue
+        contributions = sorted(
+            FOOD_BENEFITS.get(c, 0.5) * land.get(f, 1.0) / total_area
+            for f, c in active_not_in_group
+        )
+        healed_obj -= sum(contributions[:delta_g])
+
+    healed_obj = max(0.0, healed_obj)
 
     return {
         "violations": violations,
@@ -1257,6 +1279,167 @@ def _build_variant_a_bqm(sub_farms, food_names, land) -> BinaryQuadraticModel:
 
 
 # ============================================================================
+# CQM-First and Coordinated Gurobi decomposed solvers
+# ============================================================================
+
+def _solve_u_master(
+    farm_names: List[str],
+    food_names: List[str],
+    land: Dict[str, float],
+    timeout: float = 30.0,
+) -> List[str]:
+    """Solve U-master (food-group diversity) with Gurobi.
+    Returns the list of selected foods (U[c]=1).
+    """
+    m = gp.Model("U_Master")
+    m.setParam("OutputFlag", 0)
+    m.setParam("TimeLimit", timeout)
+    U = {c: m.addVar(vtype=GRB.BINARY, name=f"U_{c}") for c in food_names}
+    for gname, gcrops in FOOD_GROUPS.items():
+        valid = [c for c in gcrops if c in food_names]
+        if not valid:
+            continue
+        gc = FOOD_GROUP_CONSTRAINTS.get(gname, {})
+        min_f = gc.get("min_foods", 1)
+        max_f = gc.get("max_foods", len(valid))
+        m.addConstr(gp.quicksum(U[c] for c in valid) >= min_f)
+        if max_f < len(valid):
+            m.addConstr(gp.quicksum(U[c] for c in valid) <= max_f)
+    m.setObjective(
+        gp.quicksum(FOOD_BENEFITS.get(c, 0.5) * U[c] for c in food_names),
+        GRB.MAXIMIZE,
+    )
+    m.optimize()
+    if m.SolCount > 0:
+        return [c for c in food_names if U[c].X > 0.5]
+    return list(food_names)
+
+
+def solve_gurobi_cqm_first_A(
+    farm_names: List[str],
+    food_names: List[str],
+    land: Dict[str, float],
+    timeout: float = 300.0,
+) -> Dict:
+    """Gurobi CQM-First: U master (food groups) then per-farm greedy Y with
+    max_plots tracking across farms (matching QPU cqm_first_PlotBased structure).
+    """
+    total_area = sum(land.values())
+    plot_area = total_area / len(farm_names) if farm_names else 1.0
+    t0 = time.perf_counter()
+
+    selected_foods = _solve_u_master(
+        farm_names, food_names, land,
+        timeout=min(timeout * 0.1, 30.0),
+    )
+
+    # Per-crop max plot budget
+    max_plots_map = {
+        c: math.floor(MAX_PERCENTAGE_PER_CROP.get(c, 0.4) * total_area / plot_area)
+        for c in food_names
+    }
+    food_count: Dict[str, int] = {c: 0 for c in food_names}
+
+    assignments: Dict[str, str] = {}
+    total_obj = 0.0
+    sub_times: List[float] = []
+
+    for f in farm_names:
+        t_sub = time.perf_counter()
+        area_f = land.get(f, 1.0)
+        available = [
+            c for c in selected_foods
+            if food_count.get(c, 0) < max_plots_map.get(c, len(farm_names))
+        ]
+        if not available:
+            available = selected_foods or food_names
+        best_c = max(available, key=lambda c: FOOD_BENEFITS.get(c, 0.5))
+        assignments[f] = best_c
+        food_count[best_c] = food_count.get(best_c, 0) + 1
+        total_obj += FOOD_BENEFITS.get(best_c, 0.5) * area_f / total_area
+        sub_times.append(time.perf_counter() - t_sub)
+
+    wall = time.perf_counter() - t0
+    check = _check_global_violations_A(assignments, farm_names, food_names, land)
+    return {
+        "solver": "Gurobi_decomposed",
+        "decomposition": "CQMFirst",
+        "wall_time": wall,
+        "objective": total_obj,
+        "healed_objective": check["healed_objective"],
+        "violations": check["total_violations"],
+        "violation_counts": check["violation_counts"],
+        "violation_rate_pct": (
+            check["total_violations"]
+            / max(1, len(farm_names) + len(FOOD_GROUPS))
+            * 100
+        ),
+        "n_assigned": check["n_assigned"],
+        "n_unassigned": check["n_unassigned"],
+        "n_unique_crops": check["n_unique_crops"],
+        "crop_distribution": check["crop_distribution"],
+        "n_partitions": len(farm_names) + 1,
+        "sub_times": sub_times,
+        "heal_wall_time": 0.0,
+    }
+
+
+def solve_gurobi_coordinated_A(
+    farm_names: List[str],
+    food_names: List[str],
+    land: Dict[str, float],
+    timeout: float = 300.0,
+) -> Dict:
+    """Gurobi Coordinated: U master (food groups) then per-farm greedy Y
+    without cross-farm max_plots tracking (matching QPU coordinated structure).
+    """
+    total_area = sum(land.values())
+    t0 = time.perf_counter()
+
+    selected_foods = _solve_u_master(
+        farm_names, food_names, land,
+        timeout=min(timeout * 0.1, 30.0),
+    )
+    avail = selected_foods or food_names
+
+    assignments: Dict[str, str] = {}
+    total_obj = 0.0
+    sub_times: List[float] = []
+
+    for f in farm_names:
+        t_sub = time.perf_counter()
+        area_f = land.get(f, 1.0)
+        best_c = max(avail, key=lambda c: FOOD_BENEFITS.get(c, 0.5))
+        assignments[f] = best_c
+        total_obj += FOOD_BENEFITS.get(best_c, 0.5) * area_f / total_area
+        sub_times.append(time.perf_counter() - t_sub)
+
+    wall = time.perf_counter() - t0
+    check = _check_global_violations_A(assignments, farm_names, food_names, land)
+    return {
+        "solver": "Gurobi_decomposed",
+        "decomposition": "Coordinated",
+        "wall_time": wall,
+        "objective": total_obj,
+        "healed_objective": check["healed_objective"],
+        "violations": check["total_violations"],
+        "violation_counts": check["violation_counts"],
+        "violation_rate_pct": (
+            check["total_violations"]
+            / max(1, len(farm_names) + len(FOOD_GROUPS))
+            * 100
+        ),
+        "n_assigned": check["n_assigned"],
+        "n_unassigned": check["n_unassigned"],
+        "n_unique_crops": check["n_unique_crops"],
+        "crop_distribution": check["crop_distribution"],
+        "n_partitions": len(farm_names) + 1,
+        "sub_times": sub_times,
+        "heal_wall_time": 0.0,
+    }
+
+
+# ============================================================================
 # Main benchmark driver
 # ============================================================================
 
@@ -1308,6 +1491,16 @@ def run_all(timeout: float = 300.0, mode: str = "hard"):
             r = solve_gurobi_decomposed_A(farm_names, food_names, land, dfn, timeout=timeout)
             r.update(variant="A", decomposition=dname, n_farms=n_farms, n_vars=n_vars_a)
             results.append(r)
+
+        LOG.info("[A] Gurobi CQM-First")
+        r = solve_gurobi_cqm_first_A(farm_names, food_names, land, timeout=timeout)
+        r.update(variant="A", n_farms=n_farms, n_vars=n_vars_a)
+        results.append(r)
+
+        LOG.info("[A] Gurobi Coordinated")
+        r = solve_gurobi_coordinated_A(farm_names, food_names, land, timeout=timeout)
+        r.update(variant="A", n_farms=n_farms, n_vars=n_vars_a)
+        results.append(r)
 
             #if n_farms <= PT_ICM_MAX_FARMS:
             #    LOG.info(f"[A] PT-ICM decomposed ({dname})")

@@ -49,7 +49,7 @@ ALL_METHODS: list[str] = [
     "decomposition_Spectral(10)_QPU",
     "cqm_first_PlotBased",
     "coordinated",
-    "decomposition_HybridGrid(5,9)_QPU",
+    #"decomposition_HybridGrid(5,9)_QPU",
 ]
 
 # ── Methods with data across all scales 10–1000 ───────────────────────────────
@@ -59,16 +59,17 @@ FULL_SPAN_METHODS: list[str] = [
     "decomposition_Multilevel(10)_QPU",
     "cqm_first_PlotBased",
     "coordinated",
-    "decomposition_HybridGrid(5,9)_QPU",
+    #"decomposition_HybridGrid(5,9)_QPU",
 ]
 
 # ── Gurobi-decomposed methods shown in all 4 panels for full-span results ─────
 # Keys match GUROBI_DECOMP_COLORS and the solver_comparison_results decomposition field.
+# HybridGrid is last so its healed markers render on top (other healed lines coincide).
 FULL_SPAN_GUROBI_DECOMP_METHODS: list[str] = [
-    "HybridGrid(5,9)",
     "Multilevel(10)",
-    "Multilevel(5)",
-    "PlotBased",
+    "CQMFirst",
+    "Coordinated",
+    #"HybridGrid(5,9)",
 ]
 
 METHOD_DISPLAY: dict[str, str] = {
@@ -79,7 +80,7 @@ METHOD_DISPLAY: dict[str, str] = {
     "decomposition_Spectral(10)_QPU": "Spectral(10)",
     "cqm_first_PlotBased": "CQM-First",
     "coordinated": "Coordinated",
-    "decomposition_HybridGrid(5,9)_QPU": "HybridGrid(5,9)",
+    #"decomposition_HybridGrid(5,9)_QPU": "HybridGrid(5,9)",
 }
 
 METHOD_COLORS: dict[str, str] = {
@@ -213,6 +214,37 @@ GUROBI_DECOMP_COLORS: dict[str, str] = {
     "Multilevel(5)":  "#4daf4a",
     "Multilevel(10)": "#a65628",
     "HybridGrid(5,9)": "#984ea3",
+    "CQMFirst":       "#17becf",
+    "Coordinated":    "#7f7f7f",
+}
+
+GUROBI_DECOMP_DISPLAY: dict[str, str] = {
+    "PlotBased":      "Gurobi [PlotBased]*",
+    "Multilevel(5)":  "Gurobi [Multilevel(5)]*",
+    "Multilevel(10)": "Gurobi [Multilevel(10)]*",
+    "HybridGrid(5,9)": "Gurobi [HybridGrid(5,9)]*",
+    "CQMFirst":       "Gurobi [CQMFirst]*",
+    "Coordinated":    "Gurobi [Coordinated]*",
+}
+
+# Distinct markers so overlapping Gurobi decomposed lines remain visible
+GUROBI_DECOMP_MARKERS: dict[str, str] = {
+    "PlotBased":      "s",
+    "Multilevel(5)":  "^",
+    "Multilevel(10)": "^",
+    "HybridGrid(5,9)": "p",
+    "CQMFirst":       "v",
+    "Coordinated":    "D",
+}
+
+# Linestyles for raw gap overlay (dashed variants keep them visually grouped)
+GUROBI_DECOMP_LINESTYLES: dict[str, str] = {
+    "PlotBased":      "--",
+    "Multilevel(5)":  "--",
+    "Multilevel(10)": "-.",
+    "HybridGrid(5,9)": "--",
+    "CQMFirst":       "--",
+    "Coordinated":    (0, (3, 1, 1, 1)),  # densely dashdotted
 }
 
 # ── Gurobi full baseline loader (Study 2 classical reference) ───────────────
@@ -441,7 +473,6 @@ def compute_healed_obj_qpu(
 def load_gurobi_decomp_violations(data: list[dict] | None = None) -> dict[str, dict[int, int]]:
     """
     Return {decomp_name: {n_farms: violation_count}} for Gurobi-decomposed Variant-A.
-    Only covers PlotBased, Multilevel(5), Multilevel(10), HybridGrid(5,9).
     """
     if data is None:
         data = _load_solver_comparison()
@@ -704,7 +735,7 @@ def plot_study1(
                   zorder=1, label="Gurobi optimum (gap=0)")
     ax_g.set_xscale("log")
     ax_g.set_yscale("symlog", linthresh=1e-4)
-    ax_g.set_ylim(0, 100)
+    ax_g.set_ylim(-0.0001, 100)
     ax_g.set_xlabel("Number of Patches (n)")
     ax_g.set_ylabel(r"$|$Objective $-$ Gurobi$|$")
     ax_g.set_title("Absolute Solution Gap vs Gurobi")
@@ -784,7 +815,7 @@ def _fill_1x2_panels(
         ax_time.plot(
             [p[0] for p in gt_time_pts], [p[1] for p in gt_time_pts],
             color=METHOD_COLORS["ground_truth"], marker="D",
-            linestyle="-", label="Gurobi (GT)", linewidth=2, markersize=7, zorder=10,
+            linestyle="-", label="Gurobi (Full)", linewidth=2, markersize=7, zorder=10,
         )
     if gt_obj_map:
         pass  # Quality panel removed
@@ -842,19 +873,24 @@ def _fill_1x2_panels(
             ax_gap.plot(xs_g, ys_g, color=color, marker=marker, label=disp,
                         linewidth=1.5, markersize=6)
 
-        # Absolute gap (healed)
+        # Absolute gap (healed) — use healed value when violations>0, else raw
         if healed_obj:
             xs_gh: list[int] = []
             ys_gh: list[float] = []
             for n in sorted_scales:
                 hv = healed_obj.get((n, mkey))
+                raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
                 viols = int((method_data.get((n, mkey)) or {}).get("violations", 0))
                 gt_o = gt_obj_map.get(n)
-                if hv is not None and viols > 0 and gt_o is not None:
-                    raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
-                    if raw is not None and abs(hv - raw) > 1e-9:
-                        xs_gh.append(n)
-                        ys_gh.append(abs(hv - gt_o))
+                if gt_o is None or raw is None:
+                    continue
+                # Use healed if violations exist and healing changed the value; else fall back to raw
+                if hv is not None and viols > 0 and abs(hv - raw) > 1e-9:
+                    val = hv
+                else:
+                    val = raw
+                xs_gh.append(n)
+                ys_gh.append(abs(val - gt_o))
             if xs_gh:
                 ax_gap.plot(xs_gh, ys_gh, color=color, marker=marker,
                             linestyle=":", linewidth=1.2, markersize=5,
@@ -869,51 +905,46 @@ def _fill_1x2_panels(
             if not farm_map:
                 continue
             color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
+            disp_label = GUROBI_DECOMP_DISPLAY.get(dname, f"Gurobi [{dname}]*")
+            marker = GUROBI_DECOMP_MARKERS.get(dname, "s")
+            linestyle = GUROBI_DECOMP_LINESTYLES.get(dname, "--")
 
             xs_t2 = sorted(n for n in farm_map
                            if n <= max_scale and farm_map[n].get("wall_time") is not None)
             ys_t2 = [farm_map[n]["wall_time"] for n in xs_t2]
             if xs_t2:
-                ax_time.plot(xs_t2, ys_t2, color=color, marker="s",
-                             linestyle="--", linewidth=1.5, markersize=5,
-                             label=f"Gurobi [{dname}]*", alpha=0.85)
+                ax_time.plot(xs_t2, ys_t2, color=color, marker=marker,
+                             linestyle=linestyle, linewidth=1.5, markersize=5,
+                             label=disp_label, alpha=0.85)
 
             xs_o2 = sorted(n for n in farm_map
                            if n <= max_scale and farm_map[n].get("objective") is not None)
-            # ys_o2 = [farm_map[n]["objective"] for n in xs_o2]
-            # if xs_o2:
-            #     ax_qual.plot(xs_o2, ys_o2, color=color, marker="s",
-            #                  linestyle="--", linewidth=1.5, markersize=5,
-            #                  label=f"Gurobi [{dname}]*", alpha=0.85)
-            #
-            #     Healed quality
-            xs_h2 = sorted(n for n in farm_map
-                           if n <= max_scale
-                           and farm_map[n].get("healed_objective") is not None
-                           and farm_map[n].get("objective") is not None
-                           and abs(farm_map[n]["healed_objective"] - farm_map[n]["objective"]) > 1e-9)
-            # if xs_h2:
-            #     ax_qual.plot(xs_h2, [farm_map[n]["healed_objective"] for n in xs_h2],
-            #                  color=color, marker="s", linestyle=":", linewidth=1.2,
-            #                  markersize=4, markerfacecolor="white", markeredgecolor=color,
-            #                  label=f"Gurobi [{dname}] (healed)*", alpha=0.85)
 
             # Absolute gap (raw)
             xs_ag = [n for n in xs_o2 if gt_obj_map.get(n) is not None]
             ys_ag = [abs(farm_map[n]["objective"] - gt_obj_map[n]) for n in xs_ag]
             if xs_ag:
-                ax_gap.plot(xs_ag, ys_ag, color=color, marker="s",
-                            linestyle="--", linewidth=1.5, markersize=5,
-                            label=f"Gurobi [{dname}]*", alpha=0.85)
+                ax_gap.plot(xs_ag, ys_ag, color=color, marker=marker,
+                            linestyle=linestyle, linewidth=1.5, markersize=5,
+                            label=disp_label, alpha=0.85)
 
-            # Absolute gap (healed)
-            xs_agh = [n for n in xs_h2 if gt_obj_map.get(n) is not None]
-            ys_agh = [abs(farm_map[n]["healed_objective"] - gt_obj_map[n]) for n in xs_agh]
+            # Absolute gap (healed) — use healed when it differs from raw, else raw
+            xs_agh: list[int] = []
+            ys_agh: list[float] = []
+            for n in xs_o2:
+                gt_o = gt_obj_map.get(n)
+                if gt_o is None:
+                    continue
+                raw = farm_map[n]["objective"]
+                hv = farm_map[n].get("healed_objective")
+                val = hv if (hv is not None and abs(hv - raw) > 1e-9) else raw
+                xs_agh.append(n)
+                ys_agh.append(abs(val - gt_o))
             if xs_agh:
-                ax_gap.plot(xs_agh, ys_agh, color=color, marker="s",
+                ax_gap.plot(xs_agh, ys_agh, color=color, marker=marker,
                             linestyle=":", linewidth=1.2, markersize=4,
                             markerfacecolor="white", markeredgecolor=color,
-                            label=f"Gurobi [{dname}] (healed)*", alpha=0.85)
+                            label=f"{disp_label} (healed)", alpha=0.85)
 
     # ── Common axis formatting ─────────────────────────────────────────────────
     ax_time.set_yscale("log")
@@ -929,17 +960,17 @@ def _fill_1x2_panels(
     ax_gap.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
                    zorder=1, label="Gurobi optimum (gap=0)")
     ax_gap.set_yscale("symlog", linthresh=1e-4)
-    ax_gap.set_ylim(0, 1)
+    ax_gap.set_ylim(-0.0001, 1)
     ax_gap.set_ylabel(r"$|$Objective $-$ Gurobi GT$|$")
     ax_gap.set_title("Absolute Solution Gap vs Gurobi")
 
     for ax in (ax_time,):
         ax.set_xscale("log")
-        ax.set_xlabel("Number of Farms")
+        ax.set_xlabel("Number of Patches")
         ax.legend(fontsize=7, ncol=2, loc="lower right")
         ax.grid(True, which="both", color="lightgray", linewidth=0.5)
     ax_gap.set_xscale("log")
-    ax_gap.set_xlabel("Number of Farms")
+    ax_gap.set_xlabel("Number of Patches")
     ax_gap.legend(fontsize=7, ncol=2, loc="best")
     ax_gap.grid(True, which="both", color="lightgray", linewidth=0.5)
 
@@ -957,7 +988,7 @@ def plot_study2(
     all_scales = [10, 15, 25, 50, 100, 200, 500, 1000]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("QPU Decomposition Benchmark --- Comprehensive (10--1000 Farms)")
+    fig.suptitle("QPU Decomposition Benchmark --- Comprehensive (10--1000 Patches)")
     _fill_1x2_panels(
         axes, method_data, ground_truth_data,
         all_scales, FULL_SPAN_METHODS,
@@ -1155,7 +1186,7 @@ def _study2_violations_table(
         rf"\begin{{tabular}}{{{col_spec}}}",
         r"\toprule",
         (
-            r"\textbf{Method} & \textbf{Farms} & \textbf{Total Viols} & "
+            r"\textbf{Method} & \textbf{Patches} & \textbf{Total Viols} & "
             r"\textbf{One-Crop Viols} & \textbf{Food-Group Viols}"
             + header_extra + r" \\"
         ),
