@@ -84,7 +84,7 @@ METHOD_DISPLAY: dict[str, str] = {
 }
 
 METHOD_COLORS: dict[str, str] = {
-    "ground_truth": "#2ca02c",
+    "ground_truth": "#e41a1c",
     "PlotBased": "#9467bd",
     "Multilevel(5)": "#e377c2",
     "Multilevel(10)": "#8c564b",
@@ -165,6 +165,30 @@ def get_violations(validation: dict | None) -> int:
     if not validation:
         return 0
     return int(validation.get("n_violations", 0))
+
+
+def count_actual_1hot_violations(sol_dict: dict) -> int:
+    """Count Plots with >1 crop assigned (Y>0.5) from solution_plantations.
+
+    The validator counters are unreliable at larger scales; this function
+    directly inspects the solution to find actual one-hot violations.
+    Key format: Y_PatchX_CropName (split on '_' with maxsplit=2).
+    """
+    sp = sol_dict.get("solution_plantations", {})
+    if not sp:
+        return 0
+    patch_counts: dict[str, int] = {}
+    for key, val in sp.items():
+        parts = key.split("_", 2)
+        if len(parts) < 2:
+            continue
+        patch = parts[1]
+        try:
+            if float(val) > 0.5:
+                patch_counts[patch] = patch_counts.get(patch, 0) + 1
+        except (TypeError, ValueError):
+            pass
+    return sum(1 for cnt in patch_counts.values() if cnt > 1)
 
 
 # ── Study 1 data loader ────────────────────────────────────────────────────────
@@ -360,7 +384,7 @@ def compute_healed_obj_study1(
     Compute healed objectives for Study 1 CQM and BQM solvers.
 
     CQM/BQM solutions massively over-assign crops: at n=1000, CQM assigns
-    ~17,000 crops to 1,000 patches instead of 1 per patch.  The reported
+    ~17,000 crops to 1,000 Plots instead of 1 per patch.  The reported
     ``validation.n_violations`` only catches a small subset.
 
     Correct healing: recompute the objective from solution_plantations,
@@ -560,7 +584,7 @@ def _add_line(
         ax.plot(
             px, py,
             color=color, marker=marker, linestyle=linestyle,
-            label=label, linewidth=1.8, markersize=7,
+            label=label, linewidth=1.2, markersize=6,
         )
 
 
@@ -600,7 +624,7 @@ def plot_study1(
     gt_objs  = [gurobi_full_a[n]["objective"] for n in gt_farms]
     gt_obj_map: dict[int, float] = dict(zip(gt_farms, gt_objs))
 
-    fig, (ax_t, ax_g) = plt.subplots(1, 2, figsize=(12, 5))
+    fig, (ax_t, ax_v) = plt.subplots(1, 2, figsize=(12, 5))
 
     # ── Panel 1: Runtime ─────────────────────────────────────────────────────
     _print_series_table("Gurobi_time", gt_farms, gt_times)
@@ -610,14 +634,13 @@ def plot_study1(
 
     _add_line(ax_t, gt_farms, gt_times, "Gurobi", "#e41a1c", "o")
     _add_line(ax_t, *series["cqm_time"], "D-Wave CQM (Hybrid)", "#ff7f0e", "s")
-    _add_line(ax_t, *series["gqubo_time"], "Gurobi QUBO", "#2ca02c", "^", "--")
-    _add_line(ax_t, *series["bqm_time"], "D-Wave BQM (Hybrid)", "#d62728", "D")
+    _add_line(ax_t, *series["gqubo_time"], "Gurobi BQM", "#e41a1c", "^", "--")
+    _add_line(ax_t, *series["bqm_time"], "D-Wave BQM (Hybrid)", "#3bd627", "D")
     ax_t.set_xscale("log")
     ax_t.set_yscale("log")
-    ax_t.set_xlabel("Number of Patches (n)")
+    ax_t.set_xlabel("Number of Plots")
     ax_t.set_ylabel("Solve Time (s)")
     ax_t.set_title("Solver Runtime Scaling")
-    ax_t.legend()
     ax_t.grid(True, which="both", color="lightgray", linewidth=0.5)
 
     # ── Panel 2: Solution quality (COMMENTED OUT) ────────────────────────────────────
@@ -679,7 +702,7 @@ def plot_study1(
     # )
     # ax_q.set_xscale("log")
     # ax_q.set_yscale("log")
-    # ax_q.set_xlabel("Number of Patches (n)")
+    # ax_q.set_xlabel("Number of Plots (n)")
     # ax_q.set_ylabel("Objective Value (Benefit)")
     # ax_q.set_title("Solution Quality (Benefit)")
     # ax_q.legend()
@@ -708,10 +731,10 @@ def plot_study1(
     bqm_gx, bqm_gy = _absgap_series(*series["bqm_obj"], gt_obj_map)
     gqubo_gx, gqubo_gy = _absgap_series(gqubo_ns, gqubo_os, gt_obj_map)
 
-    _add_line(ax_g, cqm_gx, cqm_gy, "D-Wave CQM (Hybrid)*", "#ff7f0e", "s")
-    _add_line(ax_g, bqm_gx, bqm_gy, "D-Wave BQM (Hybrid)*", "#d62728", "D")
-    if gqubo_gx:
-        _add_line(ax_g, gqubo_gx, gqubo_gy, "Gurobi QUBO", "#2ca02c", "^", "--")
+    #_add_line(ax_g, cqm_gx, cqm_gy, "D-Wave CQM (Hybrid)*", "#ff7f0e", "s")
+    #_add_line(ax_g, bqm_gx, bqm_gy, "D-Wave BQM (Hybrid)*", "#d62728", "D")
+    #if gqubo_gx:
+    #    _add_line(ax_g, gqubo_gx, gqubo_gy, "Gurobi QUBO", "#2ca02c", "^", "--")
 
     # Healed absolute gaps
     if healed_study1:
@@ -722,27 +745,108 @@ def plot_study1(
             h_map = healed_study1.get(label, {})
             xs_h2 = [n for n in all_ns if n in h_map and n in gt_obj_map]
             ys_h2 = [abs(h_map[n] - gt_obj_map[n]) for n in xs_h2]
-            if xs_h2:
-                ax_g.plot(
-                    xs_h2, ys_h2,
+            #if xs_h2:
+            #    ax_g.plot(
+            #        xs_h2, ys_h2,
+            #        color=color, marker=marker, linestyle="--",
+            #        linewidth=2.2, markersize=9,
+            #        markerfacecolor="white", markeredgecolor=color, markeredgewidth=1.8,
+            #        label=display, zorder=5,
+            #    )
+
+    #ax_g.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
+    #              zorder=1, label="Gurobi optimum (gap=0)")
+    #ax_g.set_xscale("log")
+    #ax_g.set_yscale("symlog", linthresh=1e-4)
+    #ax_g.set_ylim(-0.0001, 100)
+    #ax_g.set_xlabel("Number of Plots (n)")
+    #ax_g.set_ylabel(r"$|$Objective $-$ Gurobi$|$")
+    #ax_g.set_title("Absolute Solution Gap vs Gurobi")
+    #ax_g.legend(fontsize=8)
+    #ax_g.grid(True, which="both", color="lightgray", linewidth=0.5)
+
+    # ── Panel 3: Gap + Violations overlay ─────────────────────────────────────
+    # Duplicate gap lines on left y-axis, violation bars on right y-axis
+    _add_line(ax_v, cqm_gx, cqm_gy, "D-Wave CQM (Hybrid)", "#ff7f0e", "s")
+    _add_line(ax_v, bqm_gx, bqm_gy, "D-Wave BQM (Hybrid)", "#3bd627", "D")
+    if gqubo_gx:
+        _add_line(ax_v, gqubo_gx, gqubo_gy, "Gurobi BQM", "#e41a1c", "^", "--")
+    if healed_study1:
+        for label, color, marker, display in (
+            ("cqm", "#ff7f0e", "s", "D-Wave CQM (healed)"),
+            ("bqm", "#3bd627", "D", "D-Wave BQM (healed)"),
+        ):
+            h_map = healed_study1.get(label, {})
+            xs_h3 = [n for n in all_ns if n in h_map and n in gt_obj_map]
+            ys_h3 = [abs(h_map[n] - gt_obj_map[n]) for n in xs_h3]
+            if xs_h3:
+                ax_v.plot(
+                    xs_h3, ys_h3,
                     color=color, marker=marker, linestyle="--",
-                    linewidth=2.2, markersize=9,
-                    markerfacecolor="white", markeredgecolor=color, markeredgewidth=1.8,
+                    linewidth=1.0, markersize=7,
+                    markerfacecolor=color, markeredgecolor="black", markeredgewidth=1.0,
                     label=display, zorder=5,
                 )
+    ax_v.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
+                 zorder=1, label="Gurobi optimum (gap=0)")
+    ax_v.set_xscale("log")
+    ax_v.set_yscale("symlog", linthresh=1e-4)
+    ax_v.set_ylim(-0.0001, 100)
+    ax_v.set_xlabel("Number of Plots")
+    ax_v.set_ylabel(r"$|$Objective $-$ Gurobi$|$")
+    ax_v.set_title("Solution Gap + Constraint Violations")
 
-    ax_g.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
-                  zorder=1, label="Gurobi optimum (gap=0)")
-    ax_g.set_xscale("log")
-    ax_g.set_yscale("symlog", linthresh=1e-4)
-    ax_g.set_ylim(-0.0001, 100)
-    ax_g.set_xlabel("Number of Patches (n)")
-    ax_g.set_ylabel(r"$|$Objective $-$ Gurobi$|$")
-    ax_g.set_title("Absolute Solution Gap vs Gurobi")
-    ax_g.legend(fontsize=8)
-    ax_g.grid(True, which="both", color="lightgray", linewidth=0.5)
+    # Violation count bars (1-hot constraint) on secondary y-axis.
+    ax_v2 = ax_v.twinx()
+    bar_solver_info = [
+        ("dwave_bqm", "D-Wave BQM viol.", "#3bd627"),  # tallest — draw first
+        ("dwave_cqm", "D-Wave CQM viol.", "#ff7f0e"),
+    ]
+    for sk, bar_label, color in bar_solver_info:
+        viol_xs: list[float] = []
+        viol_ys: list[float] = []
+        for e in entries:
+            n = e["n_units"]
+            if n > MAX_N:
+                continue
+            sol = e["solvers"].get(sk) or {}
+            # Compute actual one-hot violations from solution_plantations.
+            # Validator counters are unreliable at n>=50 (report 0 despite
+            # large objective inflation), so we count directly.
+            onehot = count_actual_1hot_violations(sol)
+            viol_xs.append(n)
+            viol_ys.append(onehot)
+        if any(y > 1e-9 for y in viol_ys):
+            _s1_sf = 1.35 ** 0.5
+            _s1_lefts = [x / _s1_sf for x in viol_xs]
+            _s1_widths = [x * _s1_sf - x / _s1_sf for x in viol_xs]
+            ax_v2.bar(
+                _s1_lefts, viol_ys, width=_s1_widths, align="edge",
+                color=color, alpha=0.50, label=bar_label, zorder=2,
+                edgecolor="none",
+            )
+    ax_v2.set_ylabel("Constraint Violations", color="#555555")
+    ax_v2.tick_params(axis="y", labelcolor="#555555")
+    ax_v2.set_ylim(0, None)
+    ax_v.grid(True, which="both", color="lightgray", linewidth=0.5)
 
-    fig.tight_layout()
+    # Collect all handles/labels from every axis (including twins) and place
+    # a single shared legend below both panels.
+    all_handles: list = []
+    all_labels: list[str] = []
+    seen_labels: set[str] = set()
+    for axx in fig.get_axes():
+        for h, lbl in zip(*axx.get_legend_handles_labels()):
+            if lbl not in seen_labels:
+                all_handles.append(h)
+                all_labels.append(lbl)
+                seen_labels.add(lbl)
+    fig.legend(
+        all_handles, all_labels,
+        loc="lower center", bbox_to_anchor=(0.5, 0),
+        ncol=4, fontsize=8, frameon=True, framealpha=0.9,
+    )
+    fig.tight_layout(rect=[0, 0.18, 1, 1])
     out = PLOT_DIR / "study1_hybrid_performance.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -784,17 +888,22 @@ def _fill_1x2_panels(
     methods: list[str],
     gurobi_decomp_data: dict[str, dict[int, dict]] | None = None,
     healed_obj: dict[tuple[int, str], float] | None = None,
+    ax_viol: plt.Axes | None = None,
+    gurobi_decomp_violations: dict[str, dict[int, int]] | None = None,
 ) -> None:
     """
-    Populate a (3,) axes array with:
+    Populate a (2,) or (3,) axes array with:
       [0] Solve time (log-log)
-      [1] Solution quality / objective value (log-log)
-      [2] Absolute gap |objective - GT| (log-log)
+      [1] Absolute gap |objective - GT| (log-log)
+
+    If ax_viol is provided, populates a 3rd panel: gap lines + violation
+    histogram overlay on a secondary y-axis.
 
     gurobi_decomp_data overlaid as dashed lines in time and quality panels.
     healed_obj plotted as dotted hollow-marker lines in quality and gap panels.
     """
-    ax_time, ax_gap = axes[0], axes[1]
+    #ax_time, ax_gap = axes[0], axes[1]
+    ax_time = axes[0]
     sorted_scales = sorted(scales)
 
     # ── Ground-truth reference ────────────────────────────────────────────────
@@ -815,7 +924,7 @@ def _fill_1x2_panels(
         ax_time.plot(
             [p[0] for p in gt_time_pts], [p[1] for p in gt_time_pts],
             color=METHOD_COLORS["ground_truth"], marker="D",
-            linestyle="-", label="Gurobi (Full)", linewidth=2, markersize=7, zorder=10,
+            linestyle="-", label="Gurobi (Full)", linewidth=1.2, markersize=6, zorder=10,
         )
     if gt_obj_map:
         pass  # Quality panel removed
@@ -835,7 +944,7 @@ def _fill_1x2_panels(
         _print_series_table(f"{disp} time", xs_t, ys_t)
         if xs_t:
             ax_time.plot(xs_t, ys_t, color=color, marker=marker, label=disp,
-                         linewidth=1.5, markersize=6)
+                         linewidth=1.0, markersize=5)
 
         xs_o, ys_o = _method_xs_ys(mkey, scales, method_data, "objective")
         # _print_series_table(f"{disp} objective", xs_o, ys_o)
@@ -869,9 +978,9 @@ def _fill_1x2_panels(
                 xs_g.append(n)
                 ys_g.append(abs(y - gt_o))
         _print_series_table(f"{disp} gap", xs_g, ys_g)
-        if xs_g:
-            ax_gap.plot(xs_g, ys_g, color=color, marker=marker, label=disp,
-                        linewidth=1.5, markersize=6)
+        #if xs_g:
+        #    ax_gap.plot(xs_g, ys_g, color=color, marker=marker, label=disp,
+        #                linewidth=1.5, markersize=6)
 
         # Absolute gap (healed) — use healed value when violations>0, else raw
         if healed_obj:
@@ -891,11 +1000,11 @@ def _fill_1x2_panels(
                     val = raw
                 xs_gh.append(n)
                 ys_gh.append(abs(val - gt_o))
-            if xs_gh:
-                ax_gap.plot(xs_gh, ys_gh, color=color, marker=marker,
-                            linestyle=":", linewidth=1.2, markersize=5,
-                            markerfacecolor="white", markeredgecolor=color,
-                            label=f"{disp} (healed)")
+            #if xs_gh:
+            #    ax_gap.plot(xs_gh, ys_gh, color=color, marker=marker,
+            #                linestyle=":", linewidth=1.2, markersize=5,
+            #                markerfacecolor="white", markeredgecolor=color,
+            #                label=f"{disp} (healed)")
 
     # ── Gurobi-decomposed overlay lines ───────────────────────────────────────
     if gurobi_decomp_data:
@@ -914,7 +1023,7 @@ def _fill_1x2_panels(
             ys_t2 = [farm_map[n]["wall_time"] for n in xs_t2]
             if xs_t2:
                 ax_time.plot(xs_t2, ys_t2, color=color, marker=marker,
-                             linestyle=linestyle, linewidth=1.5, markersize=5,
+                             linestyle=linestyle, linewidth=1.0, markersize=4,
                              label=disp_label, alpha=0.85)
 
             xs_o2 = sorted(n for n in farm_map
@@ -923,10 +1032,10 @@ def _fill_1x2_panels(
             # Absolute gap (raw)
             xs_ag = [n for n in xs_o2 if gt_obj_map.get(n) is not None]
             ys_ag = [abs(farm_map[n]["objective"] - gt_obj_map[n]) for n in xs_ag]
-            if xs_ag:
-                ax_gap.plot(xs_ag, ys_ag, color=color, marker=marker,
-                            linestyle=linestyle, linewidth=1.5, markersize=5,
-                            label=disp_label, alpha=0.85)
+            #if xs_ag:
+            #    ax_gap.plot(xs_ag, ys_ag, color=color, marker=marker,
+            #                linestyle=linestyle, linewidth=1.5, markersize=5,
+            #                label=disp_label, alpha=0.85)
 
             # Absolute gap (healed) — use healed when it differs from raw, else raw
             xs_agh: list[int] = []
@@ -940,11 +1049,11 @@ def _fill_1x2_panels(
                 val = hv if (hv is not None and abs(hv - raw) > 1e-9) else raw
                 xs_agh.append(n)
                 ys_agh.append(abs(val - gt_o))
-            if xs_agh:
-                ax_gap.plot(xs_agh, ys_agh, color=color, marker=marker,
-                            linestyle=":", linewidth=1.2, markersize=4,
-                            markerfacecolor="white", markeredgecolor=color,
-                            label=f"{disp_label} (healed)", alpha=0.85)
+            #if xs_agh:
+                #ax_gap.plot(xs_agh, ys_agh, color=color, marker=marker,
+                #            linestyle=":", linewidth=1.2, markersize=4,
+                #            markerfacecolor="white", markeredgecolor=color,
+                #            label=f"{disp_label} (healed)", alpha=0.85)
 
     # ── Common axis formatting ─────────────────────────────────────────────────
     ax_time.set_yscale("log")
@@ -957,22 +1066,169 @@ def _fill_1x2_panels(
     # ax_qual.set_title("Solution Quality")
     # ax_time.set_ylim(0.0001, None)
 
-    ax_gap.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
-                   zorder=1, label="Gurobi optimum (gap=0)")
-    ax_gap.set_yscale("symlog", linthresh=1e-4)
-    ax_gap.set_ylim(-0.0001, 1)
-    ax_gap.set_ylabel(r"$|$Objective $-$ Gurobi GT$|$")
-    ax_gap.set_title("Absolute Solution Gap vs Gurobi")
+    #ax_gap.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
+    #               zorder=1, label="Gurobi optimum (gap=0)")
+    #ax_gap.set_yscale("symlog", linthresh=1e-4)
+    #ax_gap.set_ylim(-0.0001, 1)
+    #ax_gap.set_ylabel(r"$|$Objective $-$ Gurobi GT$|$")
+    #ax_gap.set_title("Absolute Solution Gap vs Gurobi")
 
     for ax in (ax_time,):
         ax.set_xscale("log")
-        ax.set_xlabel("Number of Patches")
-        ax.legend(fontsize=7, ncol=2, loc="lower right")
+        ax.set_xlabel("Number of Plots")
         ax.grid(True, which="both", color="lightgray", linewidth=0.5)
-    ax_gap.set_xscale("log")
-    ax_gap.set_xlabel("Number of Patches")
-    ax_gap.legend(fontsize=7, ncol=2, loc="best")
-    ax_gap.grid(True, which="both", color="lightgray", linewidth=0.5)
+    #ax_gap.set_xscale("log")
+    #ax_gap.set_xlabel("Number of Plots")
+    #ax_gap.legend(fontsize=7, ncol=2, loc="best")
+    #ax_gap.grid(True, which="both", color="lightgray", linewidth=0.5)
+
+    # ── Panel 3: Gap + Violations overlay (optional) ──────────────────────────
+    if ax_viol is not None:
+        # Duplicate all gap lines from panel 2
+        for mkey in methods:
+            disp = METHOD_DISPLAY.get(mkey, mkey)
+            color = METHOD_COLORS.get(disp, "#333333")
+            marker = METHOD_MARKERS.get(disp, "o")
+            xs_o, ys_o = _method_xs_ys(mkey, scales, method_data, "objective")
+            xs_g2: list[int] = []
+            ys_g2: list[float] = []
+            for n, y in zip(xs_o, ys_o):
+                gt_o = gt_obj_map.get(n)
+                if gt_o is not None:
+                    xs_g2.append(n)
+                    ys_g2.append(abs(y - gt_o))
+            if xs_g2:
+                ax_viol.plot(xs_g2, ys_g2, color=color, marker=marker, label=disp,
+                             linewidth=1.0, markersize=5)
+            # Healed gap
+            if healed_obj:
+                xs_gh2: list[int] = []
+                ys_gh2: list[float] = []
+                for n in sorted_scales:
+                    hv = healed_obj.get((n, mkey))
+                    raw = safe_float((method_data.get((n, mkey)) or {}).get("objective"))
+                    viols = int((method_data.get((n, mkey)) or {}).get("violations", 0))
+                    gt_o = gt_obj_map.get(n)
+                    if gt_o is None or raw is None:
+                        continue
+                    val = hv if (hv is not None and viols > 0 and abs(hv - raw) > 1e-9) else raw
+                    xs_gh2.append(n)
+                    ys_gh2.append(abs(val - gt_o))
+                if xs_gh2:
+                    ax_viol.plot(xs_gh2, ys_gh2, color=color, marker=marker,
+                                 linestyle=":", linewidth=0.9, markersize=5,
+                                 markerfacecolor=color, markeredgecolor="black",
+                                 markeredgewidth=1.0,
+                                 label=f"{disp} (healed)")
+
+        # Gurobi decomposed gap lines on panel 3
+        if gurobi_decomp_data:
+            max_scale = max(sorted_scales)
+            for dname in FULL_SPAN_GUROBI_DECOMP_METHODS:
+                farm_map = gurobi_decomp_data.get(dname)
+                if not farm_map:
+                    continue
+                color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
+                disp_label = GUROBI_DECOMP_DISPLAY.get(dname, f"Gurobi [{dname}]*")
+                marker = GUROBI_DECOMP_MARKERS.get(dname, "s")
+                linestyle = GUROBI_DECOMP_LINESTYLES.get(dname, "--")
+                xs_o3 = sorted(n for n in farm_map
+                               if n <= max_scale and farm_map[n].get("objective") is not None)
+                xs_ag3 = [n for n in xs_o3 if gt_obj_map.get(n) is not None]
+                ys_ag3 = [abs(farm_map[n]["objective"] - gt_obj_map[n]) for n in xs_ag3]
+                if xs_ag3:
+                    ax_viol.plot(xs_ag3, ys_ag3, color=color, marker=marker,
+                                 linestyle=linestyle, linewidth=1.0, markersize=4,
+                                 label=disp_label, alpha=0.85)
+                # Healed
+                xs_agh3: list[int] = []
+                ys_agh3: list[float] = []
+                for n in xs_o3:
+                    gt_o = gt_obj_map.get(n)
+                    if gt_o is None:
+                        continue
+                    raw = farm_map[n]["objective"]
+                    hv = farm_map[n].get("healed_objective")
+                    val = hv if (hv is not None and abs(hv - raw) > 1e-9) else raw
+                    xs_agh3.append(n)
+                    ys_agh3.append(abs(val - gt_o))
+                if xs_agh3:
+                    ax_viol.plot(xs_agh3, ys_agh3, color=color, marker=marker,
+                                 linestyle=":", linewidth=0.9, markersize=4,
+                                 markerfacecolor=color, markeredgecolor="black",
+                                 markeredgewidth=1.0,
+                                 label=f"{disp_label} (healed)", alpha=0.85)
+
+        ax_viol.axhline(0.0, color="black", linestyle="--", linewidth=1.2, alpha=0.6,
+                        zorder=1, label="Gurobi optimum (gap=0)")
+        ax_viol.set_xscale("log")
+        ax_viol.set_yscale("symlog", linthresh=1e-4)
+        ax_viol.set_ylim(-0.0001, 1)
+        ax_viol.set_xlim(left=sorted_scales[0] / 2.0)
+        ax_viol.set_xlabel("Number of Plots")
+        ax_viol.set_ylabel(r"$|$Objective $-$ Gurobi $|$")
+        ax_viol.set_title("Solution Gap + Constraint Violations")
+
+        # Violation bars - overlaid at same x; tallest drawn first so shorter sit on top
+        ax_v2 = ax_viol.twinx()
+        # Collect QPU method violation data
+        qpu_viol_data: list[tuple[str, str, list[float], list[int]]] = []
+        for mkey in methods:
+            disp = METHOD_DISPLAY.get(mkey, mkey)
+            color = METHOD_COLORS.get(disp, "#333333")
+            viol_xs: list[float] = []
+            viol_ys: list[int] = []
+            for n in sorted_scales:
+                entry = method_data.get((n, mkey))
+                v = int((entry or {}).get("violations", 0))
+                viol_xs.append(n)
+                viol_ys.append(v)
+            qpu_viol_data.append((f"{disp} viols", color, viol_xs, viol_ys))
+        # Bar half-width factor for log-symmetric placement: bar spans [x/sf, x*sf].
+        _bar_sf = 1.35 ** 0.5  # ≈ 1.162
+        def _log_bar(xs: list[float]) -> tuple[list[float], list[float]]:
+            return [x / _bar_sf for x in xs], [x * _bar_sf - x / _bar_sf for x in xs]
+
+        for bar_label, color, viol_xs, viol_ys in sorted(
+            qpu_viol_data, key=lambda t: -max(t[3]) if t[3] else 0
+        ):
+            if any(y > 0 for y in viol_ys):
+                _lefts, _widths = _log_bar(viol_xs)
+                ax_v2.bar(
+                    _lefts, viol_ys, width=_widths, align="edge",
+                    color=color, alpha=0.50, label=bar_label, zorder=2,
+                    edgecolor="none",
+                )
+        # Gurobi decomposed violations - hatched bars to distinguish from QPU
+        if gurobi_decomp_violations:
+            max_scale = max(sorted_scales)
+            gd_viol_data: list[tuple[str, str, list[float], list[int]]] = []
+            for dname in FULL_SPAN_GUROBI_DECOMP_METHODS:
+                viol_map = gurobi_decomp_violations.get(dname, {})
+                color = GUROBI_DECOMP_COLORS.get(dname, "#555555")
+                viol_xs2: list[float] = []
+                viol_ys2: list[int] = []
+                for n in sorted_scales:
+                    if n > max_scale:
+                        continue
+                    v = viol_map.get(n, 0)
+                    viol_xs2.append(n)
+                    viol_ys2.append(v)
+                gd_viol_data.append((f"Gurobi [{dname}]* viols", color, viol_xs2, viol_ys2))
+            for bar_label, color, viol_xs2, viol_ys2 in sorted(
+                gd_viol_data, key=lambda t: -max(t[3]) if t[3] else 0
+            ):
+                if any(y > 0 for y in viol_ys2):
+                    _lefts2, _widths2 = _log_bar(viol_xs2)
+                    ax_v2.bar(
+                        _lefts2, viol_ys2, width=_widths2, align="edge",
+                        facecolor=color, alpha=0.20, label=bar_label, zorder=2,
+                        edgecolor=color, linewidth=0.8, hatch="///",
+                    )
+        ax_v2.set_ylabel("Constraint Violations", color="#555555")
+        ax_v2.tick_params(axis="y", labelcolor="#555555")
+        ax_v2.set_ylim(0, None)
+        ax_viol.grid(True, which="both", color="lightgray", linewidth=0.5)
 
 
 def plot_study2(
@@ -985,17 +1241,35 @@ def plot_study2(
     """Create and save Figure 2: QPU comprehensive benchmark (full-span methods only)."""
     print("\nPlotting Figure 2: QPU Decomposition (comprehensive, full-span methods)")
 
-    all_scales = [10, 15, 25, 50, 100, 200, 500, 1000]
+    all_scales = [10, 25, 50, 100, 200, 500, 1000]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("QPU Decomposition Benchmark --- Comprehensive (10--1000 Patches)")
+    fig.suptitle("QPU Decomposition Benchmark --- Comprehensive (10--1000 Plots)")
     _fill_1x2_panels(
-        axes, method_data, ground_truth_data,
+        axes[:2], method_data, ground_truth_data,
         all_scales, FULL_SPAN_METHODS,
         gurobi_decomp_data=gurobi_decomp_data,
         healed_obj=healed_obj,
+        ax_viol=axes[1],
+        gurobi_decomp_violations=gurobi_decomp_violations,
     )
-    fig.tight_layout()
+    # Collect all handles/labels from every axis (including twins) and place
+    # a single shared legend below both panels.
+    all_handles: list = []
+    all_labels: list[str] = []
+    seen_labels: set[str] = set()
+    for axx in fig.get_axes():
+        for h, lbl in zip(*axx.get_legend_handles_labels()):
+            if lbl not in seen_labels:
+                all_handles.append(h)
+                all_labels.append(lbl)
+                seen_labels.add(lbl)
+    fig.legend(
+        all_handles, all_labels,
+        loc="lower center", bbox_to_anchor=(0.5, 0),
+        ncol=4, fontsize=8, frameon=True, framealpha=0.9,
+    )
+    fig.tight_layout(rect=[0, 0.18, 1, 1])
     out = PLOT_DIR / "qpu_benchmark_comprehensive.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -1032,7 +1306,7 @@ def _study1_timing_table(entries: list[dict]) -> str:
         r"\begin{tabular}{rrrrrrrrr}",
         r"\toprule",
         (
-            r"\textbf{Patches} & \textbf{Variables} & \textbf{Gurobi (s)} & "
+            r"\textbf{Plots} & \textbf{Variables} & \textbf{Gurobi (s)} & "
             r"\textbf{CQM Hybrid (s)} & \textbf{CQM QPU (ms)} & \textbf{CQM QPU\%} & "
             r"\textbf{QUBO Gurobi (s)} & \textbf{BQM Hybrid (s)} & \textbf{BQM QPU (ms)} \\"
         ),
@@ -1081,7 +1355,7 @@ def _study1_violations_table(entries: list[dict]) -> str:
         r"\begin{tabular}{rrrrrrr}",
         r"\toprule",
         (
-            r"\textbf{Patches} & \textbf{Gurobi Viols} & \textbf{CQM Viols} & "
+            r"\textbf{Plots} & \textbf{Gurobi Viols} & \textbf{CQM Viols} & "
             r"\textbf{CQM Feasible} & \textbf{QUBO Viols} & "
             r"\textbf{BQM Viols} & \textbf{BQM Feasible} \\"
         ),
@@ -1186,7 +1460,7 @@ def _study2_violations_table(
         rf"\begin{{tabular}}{{{col_spec}}}",
         r"\toprule",
         (
-            r"\textbf{Method} & \textbf{Patches} & \textbf{Total Viols} & "
+            r"\textbf{Method} & \textbf{Plots} & \textbf{Total Viols} & "
             r"\textbf{One-Crop Viols} & \textbf{Food-Group Viols}"
             + header_extra + r" \\"
         ),

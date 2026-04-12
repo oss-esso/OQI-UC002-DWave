@@ -3,11 +3,11 @@
 % The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage{cleveref}\usepackage{algorithm}
+\usepackage{cleveref}
+\usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -19,9 +19,7 @@
   T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
 
-\title{Food Production Optimization
-\thanks{Identify applicable funding agency here. If none, delete this.}
-}
+\title{Food Production Optimization}
 
 \author{\IEEEauthorblockN{1\textsuperscript{st} Given Name Surname}
 \IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
@@ -68,7 +66,7 @@ email address or ORCID}
 
 Food production is the process by which land, water, labor, and other inputs are coordinated to generate the nutrients that sustain human populations -- and optimizing it at scale is one of the defining resource allocation challenges of the coming decades, as rising demand, climate volatility, and sustainability constraints simultaneously tighten.
 
-We study a multi-objective crop allocation problem balancing nutritional value, environmental sustainability, and affordability for 27 distinct crops. We thereby evaluate the engineering and mathematical trade-offs of mapping large-scale structured tasks to quantum annealing hardware. The problem is modeled as a Binary Plot (BP) formulation: a grid of fixed-area plots, each assigned to exactly one crop, expressed as a Constrained Quadratic Model (CQM). We benchmark our approach against the classical Gurobi solver using problems with 10 to 1{,}000 land patches and run two experiments: (1) a comparative analysis utilizing D-Wave's hybrid solvers, and (2) an evaluation of pure Quantum Processing Unit (QPU) execution using custom decomposition algorithms. Our results demonstrate that migrating the discrete BP formulation to quantum hardware exposes severe classical embedding bottlenecks: although QPU execution time scales linearly, the classical preprocessing overhead required to embed densely connected penalty models constitutes 95--99\% of the total runtime. We conclude that for structured allocation tasks, overcoming this massive classical embedding bottleneck--rather than accelerating QPU computation--remains the primary frontier for realizing quantum utility.
+We study a multi-objective crop allocation problem balancing nutritional value, environmental sustainability, and affordability for 27 distinct crops. We thereby evaluate the engineering and mathematical trade-offs of mapping large-scale structured tasks to quantum annealing hardware. The problem is modeled as a Binary Plot (BP) formulation: a grid of fixed-area plots, each assigned to exactly one crop, expressed as a Constrained Quadratic Model (CQM). We benchmark our approach against the classical Gurobi solver using problems with 10 to 1{,}000 land patches and run two experiments: (1) a comparative analysis utilizing D-Wave's hybrid solvers, and (2) an evaluation of pure Quantum Processing Unit (QPU) execution using custom decomposition algorithms. Our results demonstrate that migrating the discrete BP formulation to quantum hardware exposes severe classical embedding bottlenecks: although QPU execution time scales linearly, the classical preprocessing overhead required to embed densely connected penalty models constitutes 76--86\% of the total runtime. We conclude that for structured allocation tasks, overcoming this classical embedding bottleneck---rather than accelerating QPU computation---remains the primary frontier for realizing quantum utility.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -84,13 +82,13 @@ When farmland is partitioned into discrete plots, each assigned to exactly one c
 
 Quantum annealing (QA) encodes combinatorial objectives as physical Ising energy landscapes, exploiting quantum tunneling to traverse barriers that trap classical heuristics~\cite{albash2018adiabatic, preskillQuantumComputingNISQ2018}.
 The approach has been applied to graph colouring~\cite{titiloye2011quantum}, scheduling~\cite{venturelli2015quantum}, and portfolio optimisation~\cite{venturelli2019reverse}, among others, and is reviewed comprehensively by Yarkoni et~al.~\cite{yarkoni2022quantum}.
-Mapping structured allocation problems onto current D-Wave hardware~\cite{dwave2020advantage, dwave2022pegasus}, however, exposes a fundamental engineering bottleneck: enforcing one-hot constraints via quadratic penalty terms~\cite{glover2018tutorial, lucasIsingFormulationsMany2014, lucas2014ising} introduces $O(|\mathcal{P}|\!\times\!|\mathcal{C}|^{2})$ couplings, producing Binary Quadratic Models (BQMs) too densely connected for the Pegasus topology~\cite{boothby2020next}.
-Classical minor-embedding algorithms must then map logical variables to chains of physical qubits~\cite{choi2008minor, choi2011minor, cai2014practical}, a step that incurs quadratic space overhead and polynomial time-to-solution penalties~\cite{prxquantum2040322, qute202300104, zbinden2020embedding}.
+Mapping structured allocation problems onto current D-Wave hardware~\cite{dwave2020advantage, dwave2022pegasus}, however, exposes a fundamental engineering bottleneck: enforcing one-hot constraints via quadratic penalty terms~\cite{glover2018tutorial, lucasIsingFormulationsMany2014} introduces $O(|\mathcal{P}|\!\times\!|\mathcal{C}|^{2})$ couplings, producing Binary Quadratic Models (BQMs) too densely connected for the Pegasus topology~\cite{boothby2020next}.
+Classical minor-embedding algorithms must then map logical variables to chains of physical qubits~\cite{choi2008minor, cai2014practical}, a step that incurs quadratic space overhead and polynomial time-to-solution penalties~\cite{prxquantum2040322, qute202300104, zbinden2020embedding}.
 Penalty encoding undermines the structured constraint information that classical branch-and-bound exploits~\cite{wolsey1998integer}, rendering solvers like Gurobi ineffective on the penalised form---yet QA's energy-minimisation paradigm is not similarly affected.
 
 This paper presents a systematic engineering study of the BP crop allocation problem on D-Wave Advantage hardware.
 We benchmark hybrid and direct-QPU workflows against Gurobi across 10--1{,}000-plot instances and evaluate eight decomposition strategies that partition large problems into QPU-compatible subproblems~\cite{bass2021optimizing, booth2017partitioning}.
-Our principal finding is that QPU annealing scales favourably and remains fast at every tested scale, while classical embedding accounts for 95--99\% of end-to-end runtime---establishing embedding, not sampling, as the binding bottleneck.
+Our principal finding is that QPU annealing scales favourably and remains fast at every tested scale, while classical embedding accounts for 76--86\% of end-to-end runtime---establishing embedding, not sampling, as the binding bottleneck.
 
 \section{Problem Formulation}
 \label{sec:formulation}
@@ -124,14 +122,14 @@ Our principal finding is that QPU annealing scales favourably and remains fast a
 \end{itemize}
 
 \textbf{Dataset.}
-We use GAIN agricultural data from Bangladesh and Indonesia covering 27~crops across 5~food groups (animal-source foods, fruits, legumes, starchy staples, vegetables).
+We use GAIN's agricultural data from Bangladesh and Indonesia covering 27~crops across 5~food groups (animal-source foods, fruits, legumes, starchy staples, vegetables).
 Each crop~$c$ receives a composite benefit score
 \begin{equation}
 B_c = w_{nv}v_{nv,c} + w_{nd}v_{nd,c} - w_{ei}v_{ei,c} + w_{af}v_{af,c} + w_{su}v_{su,c},
 \label{eq:benefit}
 \end{equation}
 integrating nutritional value, nutrient density, environmental impact (negatively weighted), affordability, and sustainability, with $\sum_i|w_i|{=}1$ ($w_{nv}{=}0.25$, $w_{nd}{=}0.20$, $w_{ei}{=}0.20$, $w_{af}{=}0.20$, $w_{su}{=}0.15$, arbitrarily chosen).
-% Plot areas~$L_p$ are sampled from a realistic skewed distribution: ${\sim}84\%$ under 2\,ha, consistent with global smallholder surveys~\cite{lowder2016number, lowder2021farms, fao2014farms, samberg2016subnational}.
+% Plot areas~$L_p$ are sampled from a realistic skewed distribution: ${\sim}84\%$ under 2\,ha, consistent with global smallholder surveys~\cite{lowder2016number, lowder2021plots, fao2014plots, samberg2016subnational}.
 
 \textbf{Binary Plot (BP) model.}
 Let $\mathcal{P}$ be the set of plots, $\mathcal{C}$ the set of crops, $\mathcal{G}$ the set of food groups, and $U_c\!\in\!\{0,1\}$ a global indicator for whether crop~$c$ is planted anywhere.
@@ -166,7 +164,7 @@ H_{\text{penalty}} = \lambda \sum_{p \in \mathcal{P}} \!\left(\sum_{c \in \mathc
 \end{equation}
 introducing $O(|\mathcal{P}|{\times}|\mathcal{C}|^{2})$ quadratic couplings.
 The full BQM energy is $E(\mathbf{x}){=}\sum_i h_i x_i + \sum_{i<j} J_{ij} x_i x_j$, with linear biases $h_{(p,c)}{=}{-}L_p B_c / A_{\text{total}}$ and couplings $J_{(p,c_1),(p,c_2)}{=}2\lambda$ for $c_1{\neq}c_2$.
-This QUBO form is mandatory for annealing but substantially increases problem density relative to the native CQM, degrading classical solver performance~\cite{glover2018tutorial, lucas2014ising, barahona1982computational}.
+This QUBO form is mandatory for annealing but substantially increases problem density relative to the native formulation, degrading classical solver performance~\cite{glover2018tutorial, lucasIsingFormulationsMany2014, barahona1982computational}.
 
 \section{Methodology}
 \label{sec:Methodology}
@@ -179,69 +177,71 @@ The Pegasus topology's native cliques of 15--20 qubits are central: 27-variable 
 For hybrid runs, LeapHybridCQMSolver and LeapHybridBQMSolver used default parameters.
 
 \textbf{Classical baseline.}
-Gurobi~12.0.1 on Intel Core~i7-12700H (14~cores, 16\,GB~RAM); 100\,s time limit; MIPGap~1\%; MIP Focus mode~1 (feasibility priority); multi-threading enabled~\cite{wolsey1998integer}.
+Gurobi~12.0.1 on Intel Core~i7-12700H (14~cores, 16\,GB~RAM); 300\,s time limit; MIPGap~1\%; MIP Focus mode~1 (feasibility priority); multi-threading enabled~\cite{wolsey1998integer}.
 Reported times are wall-clock values including all preprocessing.
 
 \textbf{Decomposition strategies.}
 Direct QPU embedding is infeasible above ${\sim}180$ variables due to Pegasus connectivity limits~\cite{zbinden2020embedding, boothby2020next, prxquantum2040322}.
-We therefore evaluate eight decomposition strategies (Table~\ref{tab:decomp_methods}) that partition large instances into QPU-compatible subproblems~\cite{bass2021optimizing, booth2017partitioning}, spanning a range of partitioning philosophies: multilevel graph coarsening~\cite{karypis1998fast, hendrickson1995multilevel}, Louvain community detection~\cite{blondel2008fast}, spectral clustering~\cite{vonluxburg2007tutorial, shi2000normalized}, plot-level decomposition, grid-based decomposition, and an iterative master-subproblem approach analogous to classical domain decomposition~\cite{toselli2005domain, geoffrion1972generalized}.
+We therefore evaluate eight decomposition strategies
+% (Table~\ref{tab:decomp_methods})
+that partition large instances into QPU-compatible subproblems~\cite{bass2021optimizing, booth2017partitioning}, spanning a range of partitioning philosophies: multilevel graph coarsening~\cite{karypis1998fast, hendrickson1995multilevel}, Louvain community detection~\cite{blondel2008fast}, spectral clustering~\cite{vonluxburg2007tutorial, shi2000normalized}, plot-level decomposition, grid-based decomposition, and an iterative master-subproblem approach analogous to classical domain decomposition~\cite{toselli2005domain, geoffrion1972generalized}.
 One variant---CQM-First PlotBased---partitions at the CQM constraint level before BQM conversion rather than after, which avoids penalty-term cross-contamination across partition boundaries~\cite{bian2020solving, date2019efficiently}.
-The Coordinated variant adds three rounds of iterative master-subproblem refinement to enforce boundary consistency between neighbouring subproblems.
 
-\begin{table}[t]
-\centering
-\caption{QPU decomposition strategies evaluated.}
-\label{tab:decomp_methods}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{lcc p{3.0cm}}
-\toprule
-\textbf{Method} & \textbf{Parts.} & \textbf{Vars/Part.} & \textbf{Key characteristic} \\
-\midrule
-Direct QPU        & 1       & Full         & Baseline; embedding-limited \\
-PlotBased         & $p{+}1$ & 27           & One subproblem per plot \\
-Multilevel(5)     & $p/5$   & ${\sim}135$  & Hierarchical coarsening \\
-Multilevel(10)    & $p/10$  & ${\sim}270$  & Coarser granularity \\
-Louvain           & Var.    & 20--150      & Community detection \\
-Spectral(10)      & 10      & $27f/10$     & Fixed partition count \\
-HybridGrid        & Grid    & $k_P{\times}k_C$ & 2D plot$\times$crop grid \\
-CQM-First         & $p{+}1$ & 27           & Partition before BQM convert \\
-Coordinated       & $p{+}1$ & 27           & Iterative master-subproblem \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
+
+% \begin{table}[t]
+% \centering
+% \caption{QPU decomposition strategies evaluated.}
+% \label{tab:decomp_methods}
+% \footnotesize
+% \setlength{\tabcolsep}{3pt}
+% \resizebox{\columnwidth}{!}{%
+% \begin{tabular}{lcc p{3.0cm}}
+% \toprule
+% \textbf{Method} & \textbf{Parts.} & \textbf{Vars/Part.} & \textbf{Key characteristic} \\
+% \midrule
+% Direct QPU        & 1       & Full         & Baseline; embedding-limited \\
+% PlotBased         & $p{+}1$ & 27           & One subproblem per plot \\
+% Multilevel(5)     & $p/5$   & ${\sim}135$  & Hierarchical coarsening \\
+% Multilevel(10)    & $p/10$  & ${\sim}270$  & Coarser granularity \\
+% Louvain           & Var.    & 20--150      & Community detection \\
+% Spectral(10)      & 10      & $27p/10$     & Fixed partition count \\\
+% HybridGrid        & Grid    & $k_P{\times}k_C$ & 2D plot$\times$crop grid \\
+% CQM-First         & $p{+}1$ & 27           & Partition before BQM convert \\
+% Coordinated       & $p{+}1$ & 27           & Iterative master-subproblem \\
+% \bottomrule
+% \end{tabular}
+% }
+% \end{table}
 
 \section{Results}
 \label{sec:Results}
-\subsection{CQM Submission Format vs.\ Penalty-Encoded QUBO}
+\subsection{CQM vs BQM Submission Format}
 
-When the BP problem is submitted to solvers via D-Wave's CQM format and constraints are explicit, Gurobi processes it efficiently: under 0.27\,s even at 1{,}000 plots (27{,}027 variables).
-Table~\ref{tab:gurobi_qubo} shows what happens when those same constraints are instead formulated via penalties.
-Gurobi QUBO consistently hits its 300\,s timeout at all scales from 10 to 1{,}000 (reporting nominal ``Optimal'' status with objective values that deteriorate sharply---from 0.284 at 10~patches to exactly 0.0 at 500 and 1{,}000 patches---indicating the solver cannot make meaningful progress on the penalised form).
+When the BP problem is submitted to Leap's HybridCQMSolver and constraints are explicit, Gurobi processes it efficiently: under 0.27\,s even at 1{,}000 plots (27{,}027 variables).
+Table~\ref{tab:gurobi_qubo} shows what happens when those same constraints are instead formulated via penalties (when the problem is submitted to the HybridBQMSolver).
+Gurobi consistently hits its 300\,s timeout at all scales from 10 to 1{,}000 (reporting nominal ``Optimal'' status with objective values that deteriorate sharply---from 0.284 at 10~patches to exactly 0.0 at 500 and 1{,}000 patches---indicating the solver cannot make meaningful progress on the penalised form).
 Meanwhile, Gurobi on the CQM formulation solves all instances in well under 4\,s, confirming that penalty encoding destroys the algebraic constraint structure that branch-and-bound exploits~\cite{wolsey1998integer, barahona1982computational}.
 
 
 \begin{table}[t]
 \centering
-\caption{Gurobi on BP: CQM submission format (explicit constraints) vs.\ penalty-encoded QUBO. QUBO consistently times out at 300\,s; at 500+ patches it returns $Z{=}0$, indicating no feasible crop allocation was found.}
+\caption{Gurobi on BP: CQM (explicit constraints) vs.\ penalty-encoded BQM. CQM finds $Z^\star$ at all scales in under 1\,s; BQM consistently times out at 300\,s and returns $Z{=}0$ above 500~patches.}
 \label{tab:gurobi_qubo}
 \setlength{\tabcolsep}{3.5pt}
 \footnotesize
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{rcccc}
+\begin{tabular}{rccccc}
 \toprule
-\textbf{Patches} & \textbf{Gurobi CQM (s)} & \textbf{Gurobi QUBO (s)} & \textbf{QUBO Obj.} & \textbf{Status} \\
+\textbf{Patches} & \textbf{CQM Time (s)} & \textbf{CQM Obj.\ ($Z^\star$)} & \textbf{BQM Time (s)} & \textbf{BQM Obj.} & \textbf{BQM Status} \\
 \midrule
-10    & 0.007 & 300.2 & 0.284 & Timeout \\
-15    & 0.007 & 301.5 & 0.305 & Timeout \\
-25    & 0.007 & 301.7 & 0.215 & Timeout \\
-50    & 0.011 & 301.4 & 0.238 & Timeout \\
-100   & 0.028 & 302.1 & 0.254 & Timeout \\
-200   & 0.048 & 302.8 & 0.018 & Timeout \\
-500   & 0.453 & 360.7 & 0.000 & Timeout \\
-1{,}000 & 0.266 & 769.2 & 0.000 & Timeout \\
+10    & 0.007 & 0.409 & 300.2 & 0.284 & Timeout \\
+15    & 0.007 & 0.413 & 301.5 & 0.305 & Timeout \\
+25    & 0.007 & 0.388 & 301.7 & 0.215 & Timeout \\
+50    & 0.011 & 0.242 & 301.4 & 0.238 & Timeout \\
+100   & 0.028 & 0.429 & 302.1 & 0.254 & Timeout \\
+200   & 0.048 & 0.430 & 302.8 & 0.018 & Timeout \\
+500   & 0.453 & 0.430 & 360.7 & 0.000 & Timeout \\
+1{,}000 & 0.266 & 0.430 & 769.2 & 0.000 & Timeout \\
 \bottomrule
 \end{tabular}
 }
@@ -250,42 +250,42 @@ Meanwhile, Gurobi on the CQM formulation solves all instances in well under 4\,s
 \subsection{Hybrid Solver Benchmark}
 \label{subsec:hybrid}
 
-Gurobi solves all BP instances optimally in under 4\,s across 10--10{,}000 plots, reaching an objective of $Z^{\star}{\approx}0.353$ at 1{,}000 plots in 0.27\,s (\cref{fig:hybrid_solver_performance}, left panel).
+
 Four solver profiles emerge:
 
 \begin{enumerate}[nosep]
-  \item \textbf{Gurobi (CQM):} Sub-second at small scales, scaling smoothly to 3.8\,s at 10{,}000 plots, producing provably optimal solutions at every scale.
-  \item \textbf{D-Wave CQM (Hybrid):} Near-constant ${\sim}$5.3\,s runtime up to 500~patches, increasing to 11.0\,s at 1{,}000~patches. QPU time constitutes only 0.3--1.3\% of wall-clock time. At small scales ($n{\leq}50$), the CQM solver returns solutions close to or matching the Gurobi optimum (gap ${\leq}0.004$ at $n{=}50$). However, at $n{\geq}200$, reported objectives jump to 3.2--3.8, which are \emph{infeasible}---they violate constraint structure and overcount benefit by assigning multiple crops to single patches. The raw CQM gap reaches $|3.76 - 0.35|{=}3.4$ at 1{,}000 patches.
-  \item \textbf{D-Wave BQM (Hybrid):} Runtime grows from 3.0\,s ($n{=}10$) to 344\,s ($n{=}1{,}000$)---over two orders of magnitude---since BQM handles the penalty-encoded QUBO form where Gurobi fails entirely. However, the BQM solver produces severe feasibility violations at small scales (9--11 one-hot violations at $n{=}10$--25) and dramatically inflated raw objectives at $n{\geq}100$ (up to 23.6 at $n{=}500$), indicating that it assigns multiple crops per patch and counts overlapping benefit contributions that a feasible solution cannot claim.
-  \item \textbf{Gurobi QUBO:} Consistently hits the 300\,s timeout. Returned objectives degrade from 0.284 ($n{=}10$) to 0.000 ($n{\geq}500$), confirming that penalty encoding renders classical branch-and-bound ineffective.
+  \item \textbf{Gurobi (CQM):}Gurobi solves all BP instances optimally across 10--1{,}000 plots, reaching an objective of $Z^{\star}{\approx}0.430$ at 1{,}000~plots in 0.27\,s (\cref{fig:hybrid_solver_performance}, left panel).
+  \item \textbf{D-Wave CQM (Hybrid):} Near-constant ${\sim}$5.3\,s runtime up to 500~patches, increasing to 11.0\,s at 1{,}000~patches. QPU time constitutes only 0.3--1.3\% of wall-clock time. The CQM solver returns infeasible solutions at \emph{every} tested scale: healed-objective analysis (see~\cref{sec:healing}) reveals objective inflation (raw $-$ healed) of 0.26--0.60 at $n{\leq}100$ and 3.1--3.6 at $n{\geq}200$, indicating systematic multi-crop over-assignment that the solver's own constraint validator fails to detect. The raw CQM gap reaches $|3.76 - 0.43|{\approx}3.3$ at 1{,}000~patches.
+  \item \textbf{D-Wave BQM (Hybrid):} Runtime grows from 3.0\,s ($n{=}10$) to 344\,s ($n{=}1{,}000$)---over two orders of magnitude---since BQM handles the penalty-encoded QUBO form where Gurobi fails entirely. The BQM solver also produces infeasible solutions at all scales: objective inflation grows from 0.04--0.31 at $n{\leq}25$ to 7.7 ($n{=}100$) and 22.5--23.4 ($n{\geq}500$), reflecting severe multi-crop over-assignment that escalates with problem size.
+  \item \textbf{Gurobi (BQM):} Consistently hits the 300\,s timeout. Returned objectives degrade from 0.284 ($n{=}10$) to 0.000 ($n{\geq}500$), confirming that penalty encoding renders classical branch-and-bound ineffective.
 \end{enumerate}
 
 \noindent \textbf{Feasibility and healed gaps.}
-Because the D-Wave solvers return infeasible solutions at several scales, raw objectives are not directly comparable to the Gurobi optimum.
-\Cref{fig:hybrid_solver_performance} (right panel) therefore reports the \emph{absolute solution gap} $|Z_{\text{solver}} - Z^{\star}|$ for both the raw solution and a post-hoc ``healed'' version, in which one-hot violations are repaired by removing the minimum-benefit duplicate crop assignment (see \cref{sec:healing}).
+Both D-Wave solvers return infeasible solutions at every tested scale, as revealed by healed-objective analysis (\cref{tab:study1_violations}).
+\Cref{tab:study1_violations} shows actual violation counts (patches with $Y_{p,c}{>}0.5$ for more than one crop, computed by post-processing).
+\Cref{fig:hybrid_solver_performance} (right panel) reports the \emph{absolute solution gap} $|Z_{\text{solver}} - Z^{\star}|$ for both the raw solution and a post-hoc ``healed'' version, in which multi-crop over-assignments are repaired by retaining only the highest-benefit crop per patch (see \cref{sec:healing}).
 The healed CQM gap is modest at small scales (e.g.\ $3.5{\times}10^{-3}$ at $n{=}50$) but grows to ${\sim}0.1$--$0.2$ at larger scales.
 The healed BQM gap remains above 0.1 across all scales.
-Gurobi QUBO maintains a consistent gap of ${\sim}0.05$--$0.33$ (with no constraint violations---its solutions are feasible, merely suboptimal).
+Gurobi BQM maintains a consistent gap of ${\sim}0.05$--$0.33$ (with no constraint violations---its solutions are feasible, merely suboptimal).
 
 \begin{table}[t]
 \centering
-\caption{D-Wave Hybrid CQM vs.\ Gurobi (selected scales).
-QPU time represents 0.3--1.3\% of CQM hybrid wall-clock time.
-Objectives marked with * are infeasible (constraint violations; see~\cref{tab:study1_violations}).
-}
+\caption{D-Wave hybrid solver performance (Study~1). Both CQM and BQM solvers return infeasible solutions (marked *) at every tested scale; see~\cref{tab:study1_violations}.}
 \label{tab:hybrid_cqm}
 \setlength{\tabcolsep}{3pt}
 \footnotesize
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{rccccc}
+\begin{tabular}{rcccccc}
 \toprule
-\textbf{Plots} & \textbf{Vars} & \textbf{Gurobi (s)} & \textbf{D-Wave (s)} & \textbf{QPU (ms)} & \textbf{D-Wave Obj.} \\
+& \multicolumn{3}{c}{\textbf{CQM Hybrid}} & \multicolumn{3}{c}{\textbf{BQM Hybrid}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{Plots} & \textbf{Time (s)} & \textbf{QPU (ms)} & \textbf{Obj.} & \textbf{Time (s)} & \textbf{QPU (ms)} & \textbf{Obj.} \\
 \midrule
-10      &    297   & 0.007 &  5.38 & 70 & 0.743* \\
-50      &  1{,}377 & 0.011 &  5.29 & 70 & 0.347 \\
-100     &  2{,}727 & 0.028 &  5.35 & 70 & 0.549* \\
-500     & 13{,}527 & 0.453 &  5.67 & 35 & 3.426* \\
-1{,}000 & 27{,}027 & 0.266 & 11.04 & 35 & 3.757* \\
+10      &  5.38 &  70 & 0.743* &    3.00 &   52 &  0.223* \\
+50      &  5.29 &  70 & 0.347* &    4.36 &  104 &  0.194* \\
+100     &  5.35 &  70 & 0.549* &   18.3  &  310 &  7.857* \\
+500     &  5.67 &  35 & 3.426* &  182    & 1{,}241 & 23.6*   \\
+1{,}000 & 11.04 &  35 & 3.757* &  344    &  672 & 22.7*   \\
 \bottomrule
 \end{tabular}
 }
@@ -295,47 +295,34 @@ Objectives marked with * are infeasible (constraint violations; see~\cref{tab:st
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{@todo/report/images/Plots/study1_hybrid_performance.pdf}
+\includegraphics[width=\textwidth]{images/study1_hybrid_performance.pdf}
 \caption{%
 \textbf{Study~1: Hybrid solver benchmark (10--1{,}000 patches).}
-\emph{Left panel (Solver Runtime Scaling):} Wall-clock solve time on log--log axes.
-Gurobi on the native CQM formulation (red circles) scales from 0.006\,s at $n{=}10$ to 3.8\,s at $n{=}10{,}000$, remaining the fastest solver at every scale.
-The D-Wave CQM hybrid solver (orange squares) maintains a near-constant ${\sim}$5\,s runtime up to $n{=}500$, increasing to 11\,s at $n{=}1{,}000$---dominated by classical orchestration, with actual QPU annealing constituting only 0.3--1.3\% of wall time.
-Gurobi on the penalty-encoded QUBO (green triangles, dashed)
-consistently hits its 300\,s timeout regardless of scale, confirming that penalty encoding destroys the branch-and-bound exploitable structure.
-The D-Wave BQM hybrid solver (red diamonds) handles the penalty-encoded form but exhibits steep scaling: 3.0\,s at $n{=}10$ to 344\,s at $n{=}1{,}000$.
-\emph{Right panel (Absolute Solution Gap vs Gurobi):} The absolute gap
-$|Z_{\text{solver}} - Z^{\star}_{\text{Gurobi}}|$ on a symmetric-log scale.
-Solid markers are raw objectives; open markers with dashed lines show healed (feasibility-repaired) objectives.
-The D-Wave CQM solver achieves gaps below $10^{-2}$ at $n{=}25$--$50$ (near-optimal after healing), but infeasible raw objectives at $n{\geq}200$ inflate the raw gap to 2.9--3.4.
-The D-Wave BQM solver exhibits a raw gap exceeding 10 at $n{\geq}200$ due to severe one-hot violations.
-Gurobi QUBO---despite timing out---produces feasible solutions with a moderate gap of 0.05--0.33, smaller than the major infeasibility-driven inflation of D-Wave solvers at large scales.
-A healed-objective analysis (\cref{sec:healing}) narrows the CQM gap to ${\sim}0.1$--$0.2$ at scale, but the BQM gap remains above 0.1 everywhere.
-Overall, Gurobi on the native CQM formulation dominates in both speed and solution quality.}
+\emph{Left (Runtime):} Gurobi CQM scales 0.006--3.8\,s; D-Wave CQM hybrid $\approx$5--11\,s (QPU $\leq$1.3\% of wall time); D-Wave BQM hybrid 3--344\,s; Gurobi BQM times out ($\geq$300\,s) at every scale.
+\emph{Right (Gap + Violations):} Lines show the absolute objective gap $|Z_{\text{solver}} - Z_{\text{Gurobi}}|$; dashed lines = healed values (\cref{sec:healing}). CQM gap below $10^{-2}$ at $n{=}25$--$50$ after healing; raw inflation 2.9--3.4 at $n{\geq}200$. Bars on the secondary axis (``Constraint Violations'') count patches with $Y_{p,c}{>}0.5$ for more than one crop (post-processed, not the built-in validator). Both D-Wave solvers accumulate violations at every scale: D-Wave BQM 9--11 at $n{\leq}25$, rising to 100 at $n{=}100$ and all $n$ patches at $n{\geq}200$; D-Wave CQM 2--12 at $n{\leq}50$, escalating similarly.
+Gurobi CQM dominates on all metrics.}
 \label{fig:hybrid_solver_performance}
 \end{figure*}
 
 % ── Study 1 Violation Table ───────────────────────────────────────────────────
 \begin{table}[t]
 \centering
-\caption{Hybrid solver constraint violations (Study~1).
-CQM produces 12 violations at $n{=}15$ and 2 at $n{=}25$; BQM produces 9--11 violations at $n{\leq}25$ (all one-crop-per-patch type).
-Both solvers become feasible at $n{\geq}50$.}
+\caption{Hybrid solver infeasibility (Study~1): objective inflation (raw $-$ healed) and actual one-hot violation count per solver. Violation counts are computed by post-processing: for each patch, we count crops with $Y_{p,c}{>}0.5$ and flag patches where this exceeds~1. The built-in validator counter is unreliable at $n{\geq}50$ (reports zero despite large inflation). All violations are one-hot type; no food-group violations occur in Study~1.}
 \label{tab:study1_violations}
 \footnotesize
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{rrrcrc}
+\begin{tabular}{rcccc}
 \toprule
-\textbf{Patches} & \textbf{CQM Viols} & \textbf{CQM Feasible} & \textbf{BQM Viols} & \textbf{BQM Feasible} \\
+\textbf{Patches} & \textbf{CQM Infl.} & \textbf{CQM act.} & \textbf{BQM Infl.} & \textbf{BQM act.} \\
 \midrule
-10    & 0  & Yes & 9  & No  \\
-15    & 12 & No  & 10 & No  \\
-25    & 2  & No  & 11 & No  \\
-50    & 0  & Yes & 0  & Yes \\
-100   & 0  & Yes & 0  & Yes \\
-200   & 0  & Yes & 0  & Yes \\
-500   & 0  & Yes & 0  & Yes \\
-1{,}000 & 0  & Yes & 0  & Yes \\
+10    & 0.60 &  7 &  0.12 &   9 \\
+15    & 0.44 & 12 &  0.04 &  10 \\
+25    & 0.31 &  2 &  0.31 &  11 \\
+50    & 0.26 & 10 &  0.18 &   2 \\
+100   & 0.43 & 18 &  7.70 & 100 \\
+200   & 3.06 & 200 & 10.93 & 200 \\
+500   & 3.23 & 500 & 23.40 & 500 \\
+1{,}000 & 3.56 & 1{,}000 & 22.51 & 1{,}000 \\
 \bottomrule
 \end{tabular}
 }
@@ -348,18 +335,18 @@ Both solvers become feasible at $n{\geq}50$.}
 Table~\ref{tab:qpu_scaling} isolates QPU annealing time from classical embedding time for Multilevel(10) decomposition.
 QPU time follows $T_{\text{QPU}} \approx k \cdot n_{\text{part}} \cdot t_{\text{anneal}}$, where $k{=}1$--$3$ coordination rounds, $n_{\text{part}}$ grows linearly with plot count, and $t_{\text{anneal}}{\approx}100$\,ms per partition including QPU access latency~\cite{pelofske2021parallel, marshall2019power}.
 QPU annealing therefore scales linearly and remains below 27\,s at 1{,}000~plots.
-Classical MinorMiner embedding grows from 10.2\,s to 1{,}309\,s over the same range, constituting \textbf{95--99\%} of total runtime at every scale.
-This is the central finding: \emph{classical embedding, not quantum sampling, is the binding bottleneck}.
+Classical MinorMiner embedding grows from 10.2\,s to 1{,}309\,s over the same range, constituting \textbf{76--86\%} of total runtime at every scale.
+
 
 \begin{table}[t]
 \centering
-\caption{QPU time vs.\ classical embedding time for Multilevel(10) decomposition. Embedding constitutes 76--80\% of total time; QPU remains 1.2--3.1\% across all scales.}
+\caption{QPU time vs.\ classical embedding time for Multilevel(10) decomposition. Embedding constitutes 76--86\% of total time; QPU remains 1.2--3.1\% across all scales.}
 \label{tab:qpu_scaling}
 \footnotesize
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{rrrrrr}
 \toprule
-\textbf{Farms} & \textbf{Total (s)} & \textbf{QPU (s)} & \textbf{Embed (s)} & \textbf{QPU\%} & \textbf{Embed\%} \\
+\textbf{Plots} & \textbf{Total (s)} & \textbf{QPU (s)} & \textbf{Embed (s)} & \textbf{QPU\%} & \textbf{Embed\%} \\
 \midrule
 10      &    13.5 &  0.42 &    10.2 &  3.1\% & 75.7\% \\
 50      &   128.6 &  1.51 &   110.2 &  1.2\% & 85.7\% \\
@@ -374,14 +361,12 @@ This is the central finding: \emph{classical embedding, not quantum sampling, is
 
 Table~\ref{tab:quality_1000} compares solution quality across all methods at the 1{,}000-farm scale.
 Direct QPU embedding fails entirely, confirming that decomposition is mandatory for practical problem sizes.
-Among the full-span methods, HybridGrid(5,9) achieves the best balance: a gap of 0.043 with zero constraint violations in 845\,s.
-Coordinated decomposition reaches the lowest raw gap (0.137) but accumulates 23 one-hot violations---and its healed objective drops to $-0.038$, indicating that the apparent objective advantage is substantially driven by infeasible multi-crop assignments.
-Multilevel(10), with a gap of 0.171 and zero violations at 1{,}000 farms, offers reliable decomposition quality albeit with larger objective loss.
-CQM-First shows variable performance: a gap of 0.171 at 1{,}000 farms with zero violations, but its healed objective of $-0.034$ reveals that at this scale the repaired solution is slightly worse than a trivial all-idle allocation.
+Among the tested methods, Multilevel(10) and CQM-First both achieve zero constraint violations with a gap of 0.171 at 1{,}000~plots; Multilevel(10) completes in 1{,}633\,s vs.\ 3{,}495\,s for CQM-First.
+Coordinated decomposition reaches a lower raw gap (0.137) but accumulates 23 one-hot violations---and its healed objective drops to $-0.038$, indicating that the apparent objective advantage is substantially driven by infeasible multi-crop assignments.
 
 \begin{table}[t]
 \centering
-\caption{Solution quality at the 1{,}000-farm scale. Gap = $|Z_{\text{method}} - Z^{\star}_{\text{Gurobi}}|$. ``(h)'' rows show healed objectives where violations exist. HybridGrid(5,9) achieves the smallest gap among violation-free QPU methods. Gurobi decomposed methods (marked *) use a stricter formulation; CQMFirst* has 3 food-group violations; all others incur 5.}
+\caption{Solution quality at the 1{,}000-farm scale. Gap = $|Z_{\text{method}} - Z^{\star}_{\text{Gurobi}}|$. ``(h)'' rows show healed objectives; for methods with zero violations healed $=$ raw. Gurobi decomposed methods are marked *; CQMFirst* has 3 food-group violations; Multilevel(10)* and Coordinated* each incur 5.}
 \label{tab:quality_1000}
 \footnotesize
 \resizebox{\columnwidth}{!}{%
@@ -391,14 +376,13 @@ CQM-First shows variable performance: a gap of 0.171 at 1{,}000 farms with zero 
 \midrule
 Gurobi GT (optimal)             & 0.429 & 0.000 &  0 &     0.3 \\
 \midrule
-HybridGrid(5,9) \emph{QPU}      & 0.386 & 0.043 &  0 &   845.4 \\
 Multilevel(10) \emph{QPU}       & 0.258 & 0.171 &  0 & 1{,}632.7 \\
+Multilevel(10) \emph{QPU} (h)   & 0.258 & 0.171 & — &           \\
 CQM-First \emph{QPU}            & 0.258 & 0.171 &  0 & 3{,}495.4 \\
+CQM-First \emph{QPU} (h)        & 0.258 & 0.171 & — &           \\
 Coordinated \emph{QPU}          & 0.293 & 0.137 & 23 & 3{,}058.0 \\
 Coordinated \emph{QPU} (h)      & $-$0.038 & 0.467 & — &         \\
 \midrule
-Gurobi [HybridGrid(5,9)]*       & 1.011 & 0.582 &  5 &     0.5 \\
-Gurobi [HybridGrid(5,9)]* (h)   & 0.428 & 0.001 & — &         \\
 Gurobi [Multilevel(10)]*        & 0.430 & 0.001 &  5 &     0.2 \\
 Gurobi [Multilevel(10)]* (h)    & 0.428 & 0.001 & — &         \\
 Gurobi [CQMFirst]*              & 0.353 & 0.076 &  3 &    $<$0.1 \\
@@ -412,40 +396,24 @@ Gurobi [Coordinated]* (h)       & 0.428 & 0.001 & — &         \\
 
 \noindent
 \textbf{Gurobi decomposed baselines.}
-To disentangle decomposition quality from QPU approximation, we also solve each decomposed subproblem exactly with Gurobi (marked * in tables and plots) for all four full-span decomposition strategies: HybridGrid(5,9), Multilevel(10), CQM-First, and Coordinated.
-These Gurobi decomposed variants use a stricter constraint formulation (Variant-A).
+To separate decomposition violations from QPU approximation, we also solve each decomposed subproblem exactly with Gurobi (marked * in tables and plots) for all decomposition strategies (Multilevel(10), CQM-First, and Coordinated shown in \cref{fig:qpu_comprehensive}).
+
 Multilevel(10)* and Coordinated* consistently incur exactly 5 food-group violations regardless of scale---a structural artefact of the decomposition breaking global coverage constraints.
-CQMFirst* incurs 3 food-group violations, and HybridGrid(5,9)* also incurs 5.
+CQMFirst* incurs 3 food-group violations.
 At the Multilevel and Coordinated granularity, Gurobi recovers near-optimal objectives within each subproblem (healed gap ${\sim}10^{-3}$), demonstrating that the decomposition itself preserves solution quality well.
 CQMFirst* achieves a lower raw objective (${\sim}0.353$ vs ${\sim}0.429$), reflecting that the U-master step pre-selects foods before patch assignment, producing a slightly different feasible solution.
-HybridGrid(5,9)* exhibits a larger raw objective ($1.011$) because its coarser grid partitioning produces solutions with inflated benefit from infeasible cross-boundary assignments; after healing, its gap drops to ${\sim}10^{-4}$.
 This comparison confirms that much of the gap in QPU results originates from the decomposition and embedding pipeline rather than from QPU sampling quality.
 
 \Cref{fig:qpu_comprehensive} presents the full comprehensive benchmark.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{@todo/report/images/Plots/qpu_benchmark_comprehensive.pdf}
+\includegraphics[width=\textwidth]{images/qpu_benchmark_comprehensive.pdf}
 \caption{%
-\textbf{Study~2: QPU decomposition benchmark---comprehensive view (10--1{,}000 farms).}
-All four full-span QPU methods are shown alongside their corresponding Gurobi decomposed baselines (dashed lines, marked~*): HybridGrid(5,9), Multilevel(10), CQM-First, and Coordinated.
-Gurobi decomposed baselines solve the same partitioned subproblems exactly to isolate QPU approximation error from decomposition quality loss.
-\emph{Left panel (Solve Time):} Wall-clock time on log--log axes.
-Gurobi on the full (undivided) problem (green diamonds) scales from 0.007\,s to 0.27\,s---three to four orders of magnitude faster than any decomposition workflow.
-HybridGrid(5,9) (blue pentagons) is the fastest QPU method, scaling from 17\,s to 845\,s, with actual QPU time comprising 6--15\% of wall time (the remainder being classical embedding at 18--28\% and orchestration overhead).
-Multilevel(10) (brown triangles) and CQM-First (cyan chevrons) scale more steeply (1{,}633\,s and 3{,}495\,s at $n{=}1{,}000$ respectively), with embedding dominating at 80+\% of runtime.
-Coordinated (grey Xs) tracks CQM-First closely (3{,}058\,s at $n{=}1{,}000$).
-All four Gurobi decomposed baselines (dashed lines) complete in $<$10\,s at every tested scale, confirming that decomposition overhead is negligible without embedding.
-\emph{Right panel (Absolute Solution Gap vs Gurobi):} The absolute objective gap
-$|Z - Z^{\star}|$ on a symmetric-log scale.
-HybridGrid(5,9) (blue, solid) maintains the tightest gap among QPU methods, ranging from 0.027 at $n{=}10$ to 0.043 at $n{=}1{,}000$, with zero constraint violations across all scales.
-Multilevel(10) (brown, solid) exhibits a gap of 0.09--0.17, increasing modestly with scale.
-CQM-First (cyan) shows inconsistent performance: gaps range from 0.007 to 0.17 depending on scale.
-Coordinated (grey) achieves raw gaps of 0.003--0.14 but incurs 1--23 one-hot violations; its healed gap (dotted grey) rises substantially at small scales, indicating that the apparent objective advantage largely reflects infeasible multi-crop assignments.
-Among the Gurobi decomposed baselines, Multilevel(10) and Coordinated* recover near-optimal objectives (gap ${\sim}10^{-3}$ after healing); HybridGrid(5,9)* shows a fixed raw gap of ${\sim}0.58$ (inflated by 5 persistent food-group violations; healed gap ${\sim}10^{-4}$); CQMFirst* incurs 3 food-group violations with a raw gap of ${\sim}0.076$ and healed gap ${\sim}0.077$.
-The dashed lines serve as a ceiling: the gap between a QPU method and its Gurobi decomposed counterpart isolates QPU-attributable approximation error.
-For HybridGrid(5,9), this QPU-attributable gap is 0.01--0.04; for Multilevel(10) it is 0.09--0.17.
-Overall, no QPU method matches the Gurobi optimum, but HybridGrid(5,9) consistently achieves $\leq$10\% relative gap with full feasibility.
+\textbf{Study~2: QPU decomposition benchmark (10--1{,}000 plots).}
+Three full-span QPU methods with Gurobi decomposed baselines (dashed, *): Multilevel(10), CQM-First, Coordinated.
+\emph{Left (Runtime):} Gurobi full-problem: 0.007--0.27\,s. Multilevel(10): 14--1{,}633\,s; CQM-First: 7--3{,}495\,s (embedding 80+\%). All Gurobi decomposed baselines complete in ${<}10$\,s.
+\emph{Right (Gap + Violations):} Lines show the absolute gap $|Z_{\text{solver}} - Z_{\text{Gurobi}}|$; dotted lines with black-edged markers = healed values. Bars on the secondary axis (``Constraint Violations'') count one-hot and food-group violations. Coordinated violations escalate 1$\to$23 across scales. Multilevel(10) and CQM-First maintain zero violations at all scales. Gurobi decomposed baselines (hatched bars) show 3--5 structural food-group violations at every scale; healed gap ${\sim}10^{-3}$.
 }
 \label{fig:qpu_comprehensive}
 \end{figure*}
@@ -455,9 +423,8 @@ Two violation patterns emerge: \emph{food-group violations} arise when partition
 
 \begin{table}[t]
 \centering
-\caption{Constraint violation summary by decomposition strategy (full-span methods).
-Coordinated is the only QPU method with one-hot violations, escalating to 23 at $n{=}1{,}000$ (38 total across all scales).
-HybridGrid(5,9) has a single food-group violation at $n{=}10$ only.}
+\caption{Constraint violation summary by decomposition strategy.
+Coordinated is the only QPU method with one-hot violations, escalating to 23 at $n{=}1{,}000$ (38 total across all scales).}
 \label{tab:violations}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -468,7 +435,6 @@ HybridGrid(5,9) has a single food-group violation at $n{=}10$ only.}
 \midrule
 CQM-First           & 0/8 (0\%)  &  0 & None & --- \\
 Louvain             & 1/5 (20\%) &  1 & Low  & Food group \\
-HybridGrid(5,9)     & 1/8 (12\%) &  1 & Low  & Food group \\
 Multilevel(10)      & 3/8 (38\%) &  3 & Med. & Food group \\
 Multilevel(5)       & 3/5 (60\%) &  4 & Med. & Food group \\
 PlotBased           & 2/5 (40\%) &  2 & Med. & Food group \\
@@ -480,45 +446,84 @@ Coordinated         & 6/8 (75\%) & 38 & High & One-hot \\
 \end{table}
 
 % ── Post-hoc feasibility repair ──────────────────────────────────────────────
-\input{@todo/report/sections/healing_procedure}
+% AUTO-GENERATED section — do not edit manually
+% Place inside the relevant results section, e.g.:
+%   \input{sections/healing_procedure}
+
+\subsection{Post-Hoc Feasibility Repair and Healed Objective}
+\label{sec:healing}
+
+Several solvers return solutions that violate BP constraints, producing an
+infeasible raw objective $Z_{\text{raw}}$. We apply a greedy one-shot repair
+and report the \emph{healed objective} $\tilde{Z} \leq Z_{\text{raw}}$ as a
+lower bound on the feasible quality attainable by that solver.
+
+\textbf{One-crop-per-patch violations} ($\sum_c Y_{p,c}>1$, both studies):
+for each violating patch $p$ with conflicting crops $\mathcal{C}_p$, retain
+only the highest-benefit crop and subtract the minimum-benefit contribution:
+\begin{equation}
+  \tilde{Z} = Z_{\text{raw}} - \sum_{p \in \mathcal{V}}\;
+    \min_{c\,\in\,\mathcal{C}_p} b_c \cdot \frac{A_p}{A_{\text{tot}}},
+  \label{eq:healed_onecrop}
+\end{equation}
+where $\mathcal{V}$ is the set of violating patches and $b_c$ is the benefit
+coefficient of crop $c$. Each repaired patch is left with exactly one crop.
+
+\textbf{Food-group coverage violations} (Study~2/Gurobi decomposed only):
+when group $g$ has no assigned patch ($\Delta_g > 0$ patches short), reassign
+the $\Delta_g$ minimum-benefit active patches to a representative crop of $g$:
+\begin{equation}
+  \tilde{Z} \mathrel{-}= \Delta_g\!\cdot\!
+    \min_{p\,\in\,\mathcal{P}_{\text{act}}} b_{c(p)} \cdot \frac{A_p}{A_{\text{tot}}},
+  \label{eq:healed_foodgroup}
+\end{equation}
+where $\mathcal{P}_{\text{act}}$ excludes patches already covering group $g$.
+A large gap $Z_{\text{raw}} - \tilde{Z}$ signals that the reported objective
+is substantially inflated by infeasible multi-crop assignments.
+In figures, raw objectives use solid lines; healed objectives use dotted lines
+of matching colour (omitted where the two coincide).
+
 
 \section{Discussion \& Conclusion}
 \label{sec:DiscussionConclusion}
 
-This paper reported two complementary experiments---a hybrid solver benchmark and a transparent QPU decomposition study---that characterise where computational effort concentrates when mapping a structured agricultural allocation problem onto quantum annealing hardware.
-Three engineering lessons emerge.
+This paper reported two complementary experiments---a hybrid solver benchmark and a decomposition study---that characterise where computational effort concentrates when mapping a structured agricultural allocation problem onto quantum annealing hardware.
+Three engineering tradeoffs emerge.
 
 \textbf{Penalty encoding breaks classical solvers but not D-Wave.}
-The BP formulation is tractable when submitted via D-Wave's CQM format, which preserves explicit constraints: Gurobi solves instances optimally in 0.007--0.27\,s across 10--1{,}000~plots, while D-Wave's CQM hybrid solver returns solutions in ${\sim}$5--11\,s.
-Converting those constraints into QUBO penalty terms---as required for direct QPU execution---renders Gurobi ineffective at every tested scale (300+\,s timeouts with objective degradation to $Z{=}0$ above 500~patches), whereas D-Wave's BQM hybrid solver still completes in 3--344\,s.
+The BP formulation is tractable by both classical and hybrid solvers when submitted explicit constraints: Gurobi solves instances optimally in 0.007--0.27\,s across 10--1{,}000~plots, while D-Wave's CQM hybrid solver returns solutions in ${\sim}$5--11\,s.
+Converting those constraints into QUBO penalty terms renders Gurobi ineffective at every tested scale (300+\,s timeouts with objective degradation to $Z{=}0$ above 500~patches), whereas D-Wave's BQM hybrid solver still completes in 3--344\,s.
 This is a structural consequence of destroying algebraic constraint information, not a solver deficiency~\cite{wolsey1998integer, barahona1982computational}.
 QA's energy-minimisation paradigm is unaffected, providing practical motivation for the quantum workflow even where decomposition is necessary.
 
-\textbf{Hybrid solvers are predominantly classical---and Gurobi still wins.}
-QPU time constitutes 0.3--1.3\% of D-Wave CQM wall-clock time and 1.7--3.5\% of BQM time; the remainder is classical orchestration~\cite{dwave:solver_properties_all}.
-More critically, the D-Wave solvers produce infeasible solutions at several scales: CQM violates one-hot constraints at $n{=}15$--25 and reports inflated objectives ($Z{>}3.0$) at $n{\geq}200$, while BQM produces 9--11 violations at small scales and $Z{>}22$ at $n{=}500$.
-After feasibility repair (healing), the CQM gap to Gurobi is ${\sim}0.1$--$0.2$, and BQM exceeds 0.1 everywhere.
-Gurobi on the native CQM formulation dominates on every metric---speed, optimality, and feasibility---underscoring that hybrid solvers, despite handling penalty encoding, do not yet offer a competitive advantage for this problem class.
+\textbf{Hybrid solvers are predominantly classical.}
+QPU time constitutes 0.3--1.3\% of D-Wave CQM wall-clock time and 0.2--2.4\% of BQM time; the remainder is classical orchestration~\cite{dwave:solver_properties_all}.
+More critically, both D-Wave solvers return infeasible solutions at \emph{every} tested scale: healed-objective analysis reveals CQM inflation of 0.26--3.6 and BQM inflation of 0.04--23.4 across all scales.
+After healing, the CQM gap to Gurobi is ${\sim}0.1$--$0.2$, and BQM exceeds 0.1 everywhere.
+Gurobi on the native formulation dominates on every metric---speed, optimality, and feasibility---underscoring that hybrid solvers, despite handling penalty encoding, do not yet offer a competitive advantage for this problem class.
+This, without knowledge on the classical hardware accessed by the hybrid solvers.
 
 \textbf{QPU annealing scales well; embedding does not.}
-Annealing time grows linearly with partition count and stays below 27\,s at 1{,}000~farms (1.6\% of total time for Multilevel(10)).
-Classical MinorMiner embedding grows from 10\,s to 1{,}309\,s over the same range, constituting 76--81\% of total runtime.
-Among the QPU decomposition strategies, HybridGrid(5,9) achieves the best quality--speed trade-off: absolute objective gap of 0.027--0.043 with zero violations across all scales above $n{=}10$, and the shortest wall times (17--845\,s).
-Multilevel(10) and CQM-First offer zero-violation solutions but with larger gaps (${\sim}$0.17);
+Annealing time grows linearly with partition count and stays below 27\,s at 1{,}000~plots (1.6\% of total time for Multilevel(10)).
+Classical MinorMiner embedding grows from 10\,s to 1{,}309\,s over the same range, constituting 76--86\% of total runtime.
+Among the QPU decomposition strategies, Multilevel(10) and CQM-First achieve zero violations with gaps of 0.09--0.17 across all scales, completing in 1{,}633\,s and 3{,}495\,s respectively at $n{=}1{,}000$.
 Coordinated reaches lower raw gaps but at the cost of escalating one-hot violations (23 at $n{=}1{,}000$), making its raw objectives unreliable.
 
-\textbf{Decomposition, not QPU, is the main quality bottleneck.}
-Solving decomposed subproblems exactly with Gurobi (decomposed baselines) recovers near-optimal objectives for most partition strategies---e.g.\ Multilevel(10) under Gurobi yields gap ${\sim}10^{-3}$ after healing, versus 0.171 under QPU.
-The QPU-attributable gap for HybridGrid(5,9) is only 0.01--0.04, indicating that the QPU samples are high-quality within each subproblem.
-The dominant quality loss therefore originates from decomposition boundary effects and global constraint propagation failure, not from QPU sampling noise.
+% \textbf{Decomposition, not QPU, is the main quality bottleneck.}
+% Solving decomposed subproblems exactly with Gurobi (decomposed baselines) recovers near-optimal objectives for most partition strategies---e.g.\ Multilevel(10) under Gurobi yields gap ${\sim}10^{-3}$ after healing, versus 0.171 under QPU.
+% The QPU-attributable gap for HybridGrid(5,9) is only 0.01--0.04, indicating that the QPU samples are high-quality within each subproblem.
+% The dominant quality loss therefore originates from decomposition boundary effects and global constraint propagation failure, not from QPU sampling noise.
 
-In conclusion, Gurobi operating on the native CQM formulation remains strictly superior on all axes---speed ($0.27$\,s vs.\ $845$\,s at best for QPU), optimality (exact solution vs.\ $4$--$40\%$ gap), and feasibility (zero violations vs.\ 0--23).
-The central engineering contribution of this study is the quantitative decomposition of the ``quantum advantage'' pathway: QPU annealing itself scales well and produces good subproblem solutions, but the classical embedding overhead constitutes 76--81\% of end-to-end runtime, and decomposition introduces 1--17\% objective loss even before accounting for QPU approximation.
+In conclusion, Gurobi operating on the native formulation remains strictly superior on all metrics---speed ($0.27$\,s vs.\ $1{,}633$\,s at best for QPU), optimality (exact solution vs.\ $2$--$40\%$ gap), and feasibility (zero violations vs.\ 0--23).
+The central engineering contribution of this study is the quantitative decomposition of the pipeline needed to solve the Food Optimization problem---at satisfactory scale for real world impact---with Quantum Annealing: QPU time itself scales well and produces good subproblem solutions, but the classical embedding overhead constitutes 76--86\% of end-to-end runtime, and decomposition introduces 1--17\% objective loss even before accounting for QPU approximation.
 The primary path to improved end-to-end performance therefore lies in the classical pipeline: higher-connectivity QPU topologies such as the forthcoming Zephyr architecture~\cite{boothby2021zephyr}, topology-aware embedding algorithms, larger native subproblem capacity, and parallelised multi-QPU execution~\cite{pelofske2021parallel}.
 With continued improvements in connectivity, embedding efficiency, and decomposition quality, our results provide a reproducible benchmark and methodology for practitioners evaluating quantum annealing in agricultural and broader structured resource allocation domains---supporting a credible path from proof-of-concept experiments to practical decision-support tools for regional agricultural planning.
 
+\section*{Acknowledgements}
+The authors thank the Open Quantum Institute for support and QuantumBasel for access to the D-Wave Leap cloud platform.
 
+\clearpage
 \bibliographystyle{IEEEtran}
-\bibliography{IEEEabrv,refs}
+\bibliography{IEEEabrv, refs}
 
 \end{document}
