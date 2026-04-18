@@ -3,11 +3,11 @@
 % The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage{cleveref}
-\usepackage{algorithm}
+\usepackage{cleveref}\usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -19,43 +19,63 @@
   T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
 
-\title{Food Production Optimization}
+\title{An Application of Quantum Annealing to Food Production Optimization
+% \thanks{Identify applicable funding agency here. If none, delete this.}
+}
 
-\author{\IEEEauthorblockN{1\textsuperscript{st} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\author{
+\IEEEauthorblockN{
+    Edoardo Spigarolo\IEEEauthorrefmark{1}\IEEEauthorrefmark{2}
+  }
+  \IEEEauthorblockA{
+    \IEEEauthorrefmark{1}\textit{Institute of Physics}\\
+    \textit{École Polytechnique Fédérale de Lausanne (EPFL)}\\
+    Lausanne, Switzerland\\
+    edoardo.spigarolo@epfl.ch
+  }
+  \IEEEauthorblockA{
+    \IEEEauthorrefmark{2}\textit{Information Technology Department}\\
+    \textit{European Organization for Nuclear Research (CERN)}\\
+    Geneva, Switzerland\\
+    edoardo.spigarolo@cern.ch
+  }
+
 \and
-\IEEEauthorblockN{2\textsuperscript{nd} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\IEEEauthorblockN{2\textsuperscript{nd} Dean Brand}
+\IEEEauthorblockA{\textit{NITheCS} \\
+\textit{Stellenbosch University}\\
+Stellenbosch, South Africa \\
+dean.brand@nithecs.ac.za}
 \and
-\IEEEauthorblockN{3\textsuperscript{rd} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\IEEEauthorblockN{3\textsuperscript{rd} Oliver Camp}
+\IEEEauthorblockA{\textit{Policy Engagement and Advocacy Support} \\
+\textit{Global Alliance for Improved Nutrition (GAIN)}\\
+London, United Kingdom \\
+ocamp@gainhealth.org}
 \and
-\IEEEauthorblockN{4\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\IEEEauthorblockN{4\textsuperscript{th} Flaminia Ortenzi}
+\IEEEauthorblockA{\textit{Independent Research Consultant} \\
+\textit{Global Alliance for Improved Nutrition (GAIN)}\\
+Geneva, Switzerland \\
+flamyortenzi@gmail.com}
+% \and
+% \IEEEauthorblockN{5\textsuperscript{th} Sowrya Kilaru}
+% \IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+% \textit{name of organization (of Aff.)}\\
+% City, Country \\
+% email address or ORCID}
 \and
-\IEEEauthorblockN{5\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\IEEEauthorblockN{5\textsuperscript{th} Francesco Petruccione}
+\IEEEauthorblockA{\textit{NITheCS} \\
+\textit{Stellenbosch University}\\
+Stellenbosch, South Africa \\
+francesco.petruccione@nithecs.ac.za}
 \and
-\IEEEauthorblockN{6\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\IEEEauthorblockN{6\textsuperscript{th} Vincenzo Savona}
+\IEEEauthorblockA{\textit{Institute of Physics} \\
+\textit{Ecole Polytechnique Fédérale de Lausanne (EPFL)}\\
+Lausanne, Switzerland \\
+vincenzo.savona@epfl.ch}
 }
 
 \maketitle
@@ -64,9 +84,7 @@ email address or ORCID}
 \begin{abstract}
 
 
-Food production is the process by which land, water, labor, and other inputs are coordinated to generate the nutrients that sustain human populations -- and optimizing it at scale is one of the defining resource allocation challenges of the coming decades, as rising demand, climate volatility, and sustainability constraints simultaneously tighten.
-
-We study a multi-objective crop allocation problem balancing nutritional value, environmental sustainability, and affordability for 27 distinct crops. We thereby evaluate the engineering and mathematical trade-offs of mapping large-scale structured tasks to quantum annealing hardware. The problem is modeled as a Binary Plot (BP) formulation: a grid of fixed-area plots, each assigned to exactly one crop, expressed as a Constrained Quadratic Model (CQM). We benchmark our approach against the classical Gurobi solver using problems with 10 to 1{,}000 land patches and run two experiments: (1) a comparative analysis utilizing D-Wave's hybrid solvers, and (2) an evaluation of pure Quantum Processing Unit (QPU) execution using custom decomposition algorithms. Our results demonstrate that migrating the discrete BP formulation to quantum hardware exposes severe classical embedding bottlenecks: although QPU execution time scales linearly, the classical preprocessing overhead required to embed densely connected penalty models constitutes 76--86\% of the total runtime. We conclude that for structured allocation tasks, overcoming this classical embedding bottleneck---rather than accelerating QPU computation---remains the primary frontier for realizing quantum utility.
+Food production is the process by which land, water, labor, and other inputs are coordinated to generate the nutrients that sustain human populations -- and optimizing it at scale is one of the defining resource allocation challenges of the coming decades, as rising demand, climate volatility, and sustainability constraints simultaneously tighten. We study a multi-objective crop allocation problem balancing nutritional value, environmental sustainability, and affordability for 27 distinct crops. We thereby evaluate the engineering and mathematical trade-offs of mapping large-scale structured tasks to quantum annealing hardware. The problem is modeled as a Binary Plot (BP) formulation: a grid of fixed-area plots, each assigned to exactly one crop, expressed as a Constrained Quadratic Model (CQM). We benchmark our approach against the classical Gurobi solver using problems with 10 to 1{,}000 land patches and run two experiments: (1) a comparative analysis utilizing D-Wave's hybrid solvers, and (2) an evaluation of pure Quantum Processing Unit (QPU) execution using custom decomposition algorithms. Our results demonstrate that migrating the discrete BP formulation to quantum hardware exposes severe classical embedding bottlenecks: although QPU execution time scales linearly, the classical preprocessing overhead required to embed densely connected penalty models constitutes 76--86\% of the total runtime. We conclude that for structured allocation tasks, overcoming this classical embedding bottleneck---rather than accelerating QPU computation---remains the primary frontier for realizing quantum utility.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -520,10 +538,10 @@ The primary path to improved end-to-end performance therefore lies in the classi
 With continued improvements in connectivity, embedding efficiency, and decomposition quality, our results provide a reproducible benchmark and methodology for practitioners evaluating quantum annealing in agricultural and broader structured resource allocation domains---supporting a credible path from proof-of-concept experiments to practical decision-support tools for regional agricultural planning.
 
 \section*{Acknowledgements}
-The authors thank the Open Quantum Institute for support and QuantumBasel for access to the D-Wave Leap cloud platform.
+This project was supported by the Open Quantum Institute (OQI), an initiative that is hosted by CERN, born at GESDA, supported by UBS. The authors thank QuantumBasel for access to the D-Wave Leap cloud platform. GAIN's contributions to this article were derived from work supported through the Nourishing Food Pathways programme, which is jointly funded by the German Federal Ministry for Economic Cooperation and Development; the Ministry of Foreign Affairs of the Netherlands; the European Union; the government of Canada through Global Affairs Canada; Irish Aid through the Development Cooperation and Africa Division (DCAD); and the Swiss Agency for Development and Cooperation (SDC) of the Federal Department of Foreign Affairs (FDFA). The findings, ideas, and conclusions contained presented here are those of the authors and do not necessarily reflect positions or policies of any of GAIN’s funding partners.
 
-\clearpage
 \bibliographystyle{IEEEtran}
 \bibliography{IEEEabrv, refs}
 
 \end{document}
+
