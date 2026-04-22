@@ -130,7 +130,7 @@ An enhanced formulation with 6 aggregated crop families, 3-period temporal horiz
     
     \item \textbf{Study 2.A: QPU Decomposition.} We develop and evaluate seven decomposition strategies (HybridGrid, PlotBased, Multilevel, Louvain, Spectral, Coordinated, CQM-First, PlotBased) on Variant A to address the issue with embedding large problems (more detail in \cref{appx:decomp}). This provides tunability of the solver parameters, contrary to the Hybrid Solvers.
     
-    \item \textbf{Study 2.B: Quantum \textit{Improvement} Demonstration.} Using Variant B, we show how a specific hybrid algorithm achieves a 3.80$\times$ higher benefit score, as seen in Eq. \ref{eq:benefit}, than Gurobi across 13 benchmark scenarios in substantially less time (when compared to an arbitrary timeout set to Gurobi). This formulation is included to investigate problem characteristics where quantum approaches might offer computational improvements.
+    \item \textbf{Study 2.B: Quantum \textit{Improvement} Demonstration.} Using Variant B, we test how a specific hybrid quantum-classical algorithm can yield better solution quality than Gurobi. This formulation is included to investigate problem characteristics where quantum approaches might offer computational improvements too.
     
 \end{enumerate}
 
@@ -170,7 +170,7 @@ Further explaination is contained in \cref{subs:data}
 The crop allocation formulation addresses the fundamental agricultural planning question: 
 
 \begin{quote}
-    \textit{Given a collection of land parcels, which crop should be assigned to each parcel to maximize overall benefit while satisfying dietary diversity and area constraints?}
+    \textit{Given a collection of land plots, which crop should be assigned to each plot to maximize overall benefit while satisfying dietary diversity and area constraints?}
 \end{quote} 
 
 
@@ -233,7 +233,7 @@ The BP formulation discretizes the land into fixed-size plots, each assigned to 
     \item $U_c \in \{0,1\}$: Binary variable indicating whether crop $c$ is selected on at least one plot
 \end{itemize}
 
-Note the critical difference: in BP, $Y_{p,c}$ represents a \emph{complete assignment} of plot $p$ to crop $c$, not merely an indicator. Each plot has fixed area $L_p$ (typically equal across plots in a uniform grid).
+Note the critical difference: in BP, $Y_{p,c}$ represents a \emph{complete assignment} of plot $p$ to crop $c$, not merely an indicator. Each plot has fixed area $L_p$ (typically equal across plots in a uniform grid), as opposed to planting on a fraction of a farm -- where fractions are not necessarily equal in size.
 
 \subparagraph{Objective Function}
 
@@ -381,15 +381,15 @@ The choice between formulations depends on the solution method: classical MILP s
 
 % \textbf{(R1) No Consecutive Repetition:}
 % \begin{equation}
-% Y_{p,c,t} + Y_{f,c,t+1} \leq 1 \quad \forall f \in \mathcal{F}, c \in \mathcal{C}, t \in \{1,2\}
+% Y_{p,c,t} + Y_{p,c,t+1} \leq 1 \quad \forall f \in \mathcal{F}, c \in \mathcal{C}, t \in \{1,2\}
 % \end{equation}
 
 % \textbf{(R2) Rotation Synergy Bonuses:} Add quadratic objective terms for beneficial rotations (e.g., legumes followed by corn):
 % \begin{equation}
-% Z_{rotation} = \sum_{f,t} \sum_{(c_1,c_2) \in \text{Synergies}} \beta_{c_1,c_2} \cdot Y_{f,c_1,t} \cdot Y_{f,c_2,t+1}
+% Z_{rotation} = \sum_{f,t} \sum_{(c_1,c_2) \in \text{Synergies}} \beta_{c,c'} \cdot Y_{f,c_1,t} \cdot Y_{f,c_2,t+1}
 % \end{equation}
 
-% where $\beta_{c_1,c_2} > 0$ quantifies the agronomic benefit of planting crop $c_2$ after $c_1$.
+% where $\beta_{c,c'} > 0$ quantifies the agronomic benefit of planting crop $c_2$ after $c_1$.
 
 
 \subsubsection{Problem Variant B: Hierarchical Multi-Period Rotation}
@@ -397,30 +397,37 @@ The choice between formulations depends on the solution method: classical MILP s
 
 \paragraph{Description and Problem Structure}
 
+\textbf{Nomenclature}
+\begin{itemize}
+    \item Multi-period rotation: rotation of the crop planted in the plot after a certain amount of time, needed to make the soil recover its nutrients
+    \item Rotation synergies: if the aforementioned crop rotation is done in the correct order we can improve our food production
+    \item Spatial interactions: planting the same crop in adjacent plots, effectively creating a huge monoculture plot, increases the speed at which pests spread
+\end{itemize}
+
 Variant B extends the single-period allocation problem to a multi-period rotation planning model with 6 aggregated crop families, a 3-period temporal horizon, quadratic rotation synergies, and spatial interactions. This formulation is designed to introduce components not considered in Variant A that may challenge classical solvers, particularly the quadratic temporal and spatial interaction terms that create a densely connected optimization landscape.
 
 \textbf{Methodological Note}
 It is important to acknowledge that no consensus exists in the literature regarding how rotation effects should be mathematically modeled. Our review revealed substantial heterogeneity in formulation. Given this heterogeneity, our formulation should be viewed as \emph{one plausible instantiation} of rotation planning rather than a definitive model.
 
 \begin{itemize}
-    \item \textbf{Yield multipliers vs. additive penalties:} Some models apply rotation effects as multiplicative yield factors (e.g., $Y_{\text{actual}} = Y_{\text{base}} \cdot (1 + r_{c,c'})$), while others use additive objective penalties as we do here \cite{cai2011dynamic, haneveld2005crop}.
+    \item \textbf{Yield multipliers vs. additive penalties:} Some models apply rotation effects as multiplicative factors on the decision variables (e.g., $Q_{\text{actual}} = Q_{\text{base}} \cdot (1 + r_{c,c'})$ where $r_{c,c'}$ is a factor due to the change between crops $c$ and $c'$ during a rotation), while others use additive objective penalties as we do here \cref{eq:temporal benefit}\cite{cai2011dynamic, haneveld2005crop}.
     
     \item \textbf{Exponential vs. linear response:} Process-based crop models like APSIM use exponential growth functions where rotation effects compound over time \cite{keating2003overview}, whereas optimization models typically linearize these effects for tractability \cite{liang2023designing}.
     
     \item \textbf{Magnitude quantification:} Meta-analyses report rotation benefits ranging from 16-23\% yield increase \cite{mudare2025crop, zhao2022global}, but individual studies vary widely depending on region, crop pair, and measurement methodology. Preissel et al.\ \cite{preissel2015magnitude} found legume pre-crop benefits of 0.5-1.6 t/ha for subsequent cereals, while Kirkegaard and Ryan \cite{kirkegaard2014magnitude} documented persistent effects spanning 2-3 growing seasons.
     
-    \item \textbf{Spatial interaction treatment:} Traditional approaches impose hard constraints forbidding same-family crops on adjacent plots \cite{ballot2023first}, while ecological studies question whether spatial concentration actually worsens pest impacts or not \cite{karp2018crop, root1973organization}. Our soft penalty approach bridges these conflicting findings.
+    \item \textbf{Spatial interaction treatment:} Traditional approaches impose hard constraints forbidding same-family crops on adjacent plots \cite{ballot2023first}, while ecological studies question whether spatial concentration actually worsens pest impacts or not \cite{karp2018crop, root1973organization}. We use a soft penalty approach (see \cref{eq:synergy}) to place ourselves in between.
     
-    \item \textbf{Constraint structure:} Some models enforce rotation through explicit temporal constraints ($Y_{p,c,t} + Y_{f,c,t+1} \leq 1$), others through objective function penalties, and still others through eligibility sets that pre-filter valid crop sequences \cite{haneveld2005crop}.
+    \item \textbf{Constraint structure:} Some models enforce rotation through explicit temporal constraints (enforcing some specific type of sequence like 'legume, vegetable, fruit'), others through objective function penalties, and still others through eligibility sets that pre-filter valid crop sequences \cite{haneveld2005crop}.
 \end{itemize}
 
 
 The objective function combines five components: (1) a \textbf{base benefit} term representing intrinsic crop value weighted by farm area; (2) a \textbf{temporal synergy} term modeling crop rotation effects on the same farm over consecutive periods; (3) a \textbf{spatial synergy} term modeling cross-farm interactions between neighboring plots in the same period; (4) a \textbf{one-hot penalty} enforcing single-crop assignment per farm-period; and (5) a \textbf{diversity bonus} rewarding crop variety across the planning horizon.
 
 \subparagraph{Temporal Rotation Effects}
-The temporal synergy term captures agronomic interactions through a rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$:
+The temporal synergy term captures agronomic interactions through a rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$ that encodes the benefit increase/decrease for each crop pair sequence:
 \begin{itemize}
-    \item \textbf{Monoculture penalty} ($c_1 = c_2$): Continuous cultivation depletes specific nutrients and builds up soil pathogens.
+    \item \textbf{Monoculture penalty} ($c = c'$): Continuous cultivation depletes specific nutrients and builds up soil pathogens.
     \item \textbf{Disease carryover}: Pathogens persist in soil when crops from the same botanical family are grown in succession (e.g., tomato $\to$ potato with late blight).
     \item \textbf{Allelopathy}: Some plants chemically inhibit others through root exudates or decomposing residues.
     \item \textbf{Beneficial rotations}: Nitrogen-fixing legumes improve soil fertility for subsequent grain crops through biological nitrogen fixation.
@@ -433,24 +440,18 @@ The spatial synergy term models cross-farm ecological interactions on a grid whe
     \item \textbf{Negative effects:} Pest and disease spread across farm boundaries, resource competition (water, light).
 \end{itemize}
 
-We use a dampened spatial compatibility matrix $S = 0.3 \cdot R$ with coupling strength $\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$, reflecting that spatial effects between farms are typically weaker than within-farm temporal rotations.
 
-\subparagraph{Key Design Principles}
-\begin{enumerate}
-    \item \textbf{Unified synergy matrix:} Both temporal and spatial terms use variants of the same $R$ matrix, ensuring consistency in modeling agronomic interactions across scales.
-    \item \textbf{Scale hierarchy:} The relationship $\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$ reflects weaker inter-farm effects.
-    \item \textbf{Dampening factor:} The $0.3$ multiplier accounts for reduced interaction strength across farm boundaries.
-    \item \textbf{Normalization:} Both terms use $A_{\text{total}}$ normalization for scale-invariant optimization.
-\end{enumerate}
+
+
 
 \paragraph{Calibration of Model Parameters}
 
 The rotation synergy matrix $R$ and spatial interaction terms require careful calibration to balance agronomic realism with computational tractability. We ground our parameter choices in empirical agricultural research and established optimization modeling practices.
 
 \textbf{Rotation Synergy Effects.}
-Our rotation benefits are calibrated to match empirical findings from large-scale meta-analyses. Recent synthesis of 3,663 paired field-trial observations across six continents shows that crop rotations increase subsequent crop yields by 16-23\% on average compared to monoculture, with legume pre-crops providing the largest benefits \cite{mudare2025crop}. We model these effects through positive entries in $R_{c,c'}$ for beneficial crop sequences, drawn from $\text{Unif}(0.02, 0.25)$.
+Our rotation benefits are calibrated to match empirical findings from large-scale meta-analyses. Recent synthesis of 3,663 paired field-trial observations across six continents shows that crop rotations increase subsequent crop yields by 16-23\% on average compared to monoculture, with legume pre-crops providing the largest benefits \cite{mudare2025crop}. We model these effects through positive entries in $R_{c,c'}$ for beneficial crop sequences, drawn from $\text{Unif}(0.02, 0.20)$.
 
-For monoculture penalties, we set $R_{c,c} = -\beta \cdot 1.5$ where $\beta \in [-0.8, -1.5]$, yielding effective penalties in the range $[-1.2, -2.25]$. With our rotation weight $\gamma = 0.2$, this produces an objective penalty of approximately 24\% for continuous monoculture, consistent with documented economic disadvantages \cite{preissel2015magnitude, reckling2018grain}.
+For monoculture penalties, we set $R_{c,c} = -\beta \cdot 1.5$ with the fixed default $\beta = -0.8$, yielding an effective monoculture penalty of $-1.2$. With rotation weight $\gamma_{\text{rot}} = 0.2$, this produces an objective penalty of approximately 24\% for continuous monoculture, consistent with documented economic disadvantages \cite{preissel2015magnitude, reckling2018grain}.
 
 \textbf{Spatial Adjacency Calibration.}
 Traditional rotation planning imposes hard constraints forbidding same-family crops on adjacent plots \cite{ballot2023first}, based on the resource concentration hypothesis \cite{root1973organization}. However, recent large-scale empirical studies found that pest severity is often independent of field size \cite{karp2018crop}. Our soft penalty approach ($0.5 \times 0.3 = 0.15$ of temporal effects) bridges this conflicting evidence while enabling calibration through tunable parameters.
@@ -458,35 +459,14 @@ Traditional rotation planning imposes hard constraints forbidding same-family cr
 \textbf{Temporal Horizon.}
 Our three-period planning horizon ($T = 3$) captures the primary rotation cycle for most cropping systems (e.g., corn-soybean-wheat) while remaining computationally tractable \cite{haneveld2005crop}.
 
-\textbf{Parameter Validation.}
-Table~\ref{tab:parameters} summarizes our model parameters alongside their literature-supported ranges.
-
-\begin{table}[h]
-\centering
-\caption{Model parameters and literature validation}
-\label{tab:parameters}
-\begin{tabular}{lccc}
-\hline
-\textbf{Parameter} & \textbf{Our Value} & \textbf{Literature Range} & \textbf{Source} \\
-\hline
-Rotation weight $\gamma$ & 0.2 & 0.1-0.3 & \cite{preissel2015magnitude} \\
-Monoculture penalty & 24\% & 15-30\% & \cite{kirkegaard2014magnitude} \\
-Legume benefit & 16-25\% & 16-23\% & \cite{mudare2025crop} \\
-Spatial dampening & 0.15 & 0.1-0.2 & This work \\
-Frustration ratio & 0.70-0.88 & 0.50-0.80 & \cite{lucas2014ising} \\
-Planning horizon $T$ & 3 years & 2-5 years & \cite{haneveld2005crop} \\
-\hline
-\end{tabular}
-\end{table}
-
-Importantly, our formulation uses a \emph{linear} objective contribution for rotation effects, not an exponential yield multiplier. This follows standard practice in agricultural optimization models \cite{cai2011dynamic}: a rotation penalty of $-1.2$ reduces the objective contribution by $0.2 \times 1.2 = 24\%$, not by $\exp(-1.2) \approx 70\%$ as would occur in exponential crop growth models \cite{keating2003overview}.
+Our formulation uses a \emph{linear} objective contribution for rotation effects, not an exponential yield multiplier \cite{cai2011dynamic}: a monoculture diagonal value of $-1.2$, scaled by $\gamma_{\text{rot}}=0.2$, contributes $-0.24$ to the objective per unit area in consecutive periods — approximately a 24\% penalty relative to the base benefit, consistent with documented economic disadvantages of continuous monoculture \cite{preissel2015magnitude, kirkegaard2014magnitude}.
 
 
 \paragraph{Decision Variables}
 Let $Y_{p,c,t}$ be a binary variable:
 \[
     Y_{p,c,t} = \begin{cases} 
-    1 & \text{if crop } c \in C \text{ is planted on farm } p \in \mathcal{P} \text{ in period } t \in T \\
+    1 & \text{if crop } c \in C \text{ is planted on plot } p \in \mathcal{P} \text{ in period } t \in T \\
     0 & \text{otherwise}
     \end{cases}
 \]
@@ -495,44 +475,51 @@ Let $Y_{p,c,t}$ be a binary variable:
 
 The objective is to maximize the total normalized benefit:
 \begin{equation}
-\text{maximize} \quad \left( \text{Benefit} + \text{Temporal} + \text{Spatial} - \text{Penalty} + \text{Diversity} \right)
+\text{maximize} \quad \left( \text{Benefit} + \text{Temporal} + \text{Spatial} - \text{Penalty} \right)
 \end{equation}
 
 \subparagraph{Base Benefit (Linear)}
 \begin{equation}
 \text{Benefit} = \sum_{p \in \mathcal{P}} \sum_{c \in C} \sum_{t \in T} \frac{B_c \cdot L_p}{A_{\text{total}}} \cdot Y_{p,c,t}
+\label{eq:temporal benefit}
 \end{equation}
 
 \subparagraph{Temporal Synergy (Quadratic)}
 \begin{equation}
-\text{Temporal} = \gamma_{\text{rot}} \sum_{p \in \mathcal{P}} \sum_{t=2}^{T} \sum_{c_1 \in C} \sum_{c_2 \in C} \frac{L_p}{A_{\text{total}}} \cdot R_{c_1,c_2} \cdot Y_{p,c_1,t-1} \cdot Y_{p,c_2,t}
+\text{Temporal} = \gamma_{\text{rot}} \sum_{p \in \mathcal{P}} \sum_{t=2}^{T} \sum_{c \in C} \sum_{c' \in C} \frac{L_p}{A_{\text{total}}} \cdot R_{c,c'} \cdot Y_{p,c,t-1} \cdot Y_{p,c',t}
+\label{eq:synergy}
 \end{equation}
 
-The rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$ is defined as:
+The rotation matrix $R \in \mathbb{R}^{|C| \times |C|}$ is constructed entry-by-entry with a fixed random seed as:
 \begin{equation}
-R_{c_1,c_2} = \begin{cases}
--\beta \cdot 1.5 & \text{if } c_1 = c_2 \text{ (monoculture penalty)} \\
-\text{Unif}(\beta \cdot 1.2, \beta \cdot 0.3) & \text{with prob. } p_{\text{frust}} \text{ (disease/competition)} \\
-\text{Unif}(0.02, 0.20) & \text{otherwise (beneficial rotation)}
+R_{c,c'} = \begin{cases}
+\beta \cdot 1.5 & \text{if } c = c' \text{ (monoculture diagonal)} \\
+\text{Unif}(1.2\,\beta,\; 0.3\,\beta) & \text{with prob. } p_{\text{comp}} \text{ (disease/competition)} \\
+\text{Unif}(0.02, 0.20) & \text{with prob. } 1-p_{\text{comp}} \text{ (beneficial rotation)}
 \end{cases}
+\label{eq:R_matrix}
 \end{equation}
+where $\beta = -0.8$ and $p_{\text{comp}} = 0.70$. Substituting these values gives: $R_{c,c} = -1.2$, disease/competition entries $\sim \text{Unif}(-0.96, -0.24)$ (negative, since $\beta < 0$), and beneficial entries $\sim \text{Unif}(0.02, 0.20)$ (positive).
 
 \subparagraph{Spatial Synergy (Quadratic)}
 \begin{equation}
-\text{Spatial} = \gamma_{\text{spat}} \sum_{(p_1, p_2) \in \mathcal{E}} \sum_{t \in T} \sum_{c_1 \in C} \sum_{c_2 \in C} \frac{S_{c_1,c_2}}{A_{\text{total}}} \cdot Y_{p_1,c_1,t} \cdot Y_{p_2,c_2,t}
+\text{Spatial} = \gamma_{\text{spat}} \sum_{(p_1, p_2) \in \mathcal{E}} \sum_{t \in T} \sum_{c \in C} \sum_{c' \in C} \frac{S_{c,c'}}{A_{\text{total}}} \cdot Y_{p_1,c,t} \cdot Y_{p_2,c',t}
 \end{equation}
-where $\mathcal{E}$ is the edge set of the $k$-nearest neighbor graph and $S_{c_1,c_2} = 0.3 \cdot R_{c_1,c_2}$.
+where $\mathcal{E}$ is the edge set of the $k$-nearest neighbor graph and $S_{c,c'} = 0.3 \cdot R_{c,c'}$.
 
 \subparagraph{One-Hot Penalty (Quadratic)}
 \begin{equation}
 \text{Penalty} = \lambda_{oh} \sum_{p \in \mathcal{P}} \sum_{t \in T} \left( \left(\sum_{c \in C} Y_{p,c,t}\right) -1 \right)^2
 \end{equation}
 
-\subparagraph{Diversity Bonus (Linear)}
+This soft penalty term penalizes assignments of more or fewer than one crop per plot-period. In the full MIQP (Gurobi), the hard constraints $1 \le \sum_{c} Y_{p,c,t} \le 2$ are additionally enforced as explicit linear inequalities. Rotation violations (same crop in consecutive periods) are checked diagnostically post-solve and are not added as hard constraints in the MIQP.
+
+\subparagraph{Hard Assignment Bounds (Linear)}
+In the solved MIQP, plot-period assignment feasibility is enforced by explicit linear constraints:
 \begin{equation}
-\text{Diversity} = \lambda_{div} \sum_{p \in \mathcal{P}} \sum_{c \in C} \mathbb{I}\left(\sum_{t \in T} Y_{p,c,t} > 0\right)
+1 \le \sum_{c \in C} Y_{p,c,t} \le 2 \qquad \forall p \in \mathcal{P},\; t \in T
 \end{equation}
-where $\mathbb{I}(\cdot)$ is the indicator function (linearized in Gurobi).
+
 
 \paragraph{Model Parameters}
 
@@ -546,15 +533,36 @@ Table~\ref{tab:variant_b_params} summarizes the key parameters used in the Varia
 \toprule
 \textbf{Parameter} & \textbf{Description} \\
 \midrule
-$\beta \in [-0.8, -1.5]$ & Negative synergy strength for disease/competition effects \\
-$p_{\text{frust}} \in [0.70, 0.88]$ & Frustration ratio (proportion of negative edges in $R$) \\
-$\gamma_{\text{rot}}$ & Temporal rotation coupling strength (default: 0.2) \\
-$\gamma_{\text{spat}} = 0.5\gamma_{\text{rot}}$ & Spatial coupling strength (weaker than temporal) \\
-$\lambda_{oh}$ & One-hot penalty coefficient \\
-$\lambda_{div}$ & Diversity bonus coefficient \\
+$\beta = -0.8$ & Negative synergy strength \\
+$p_{\text{comp}} = 0.70$ & Frustration ratio (proportion of negative off-diagonal entries in $R$) \\
+$\gamma_{\text{rot}} = 0.2$ & Temporal rotation coupling strength \\
+$\gamma_{\text{spat}} = 0.1 = 0.5\gamma_{\text{rot}}$ & Spatial coupling strength (half of temporal) \\
+$\lambda_{oh} = 3.0$ & One-hot penalty coefficient \\
+$k = 4$ & Spatial neighbors per plot (grid-based $k$-NN) \\
+$T = 3$ & Number of rotation periods \\
+$|\mathcal{C}| = 27$ & Number of crops (27-food scenario) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\paragraph{Parameter Values:}
+
+\begin{itemize}
+    \item $\gamma_{\text{rot}} = 0.2$. Temporal rotation effects are weighted at 20\% of the base benefit scale. This is strong enough to differentiate good from poor crop sequences without dominating the base yield signal. The value is within the 0.1--0.3 range reported in rotation-planning literature \cite{preissel2015magnitude}.
+
+    \item $\gamma_{\text{spat}} = 0.1 = 0.5\,\gamma_{\text{rot}}$. Spatial interactions between neighboring plots are set at half the temporal coupling strength. This reflects the empirical observation that within-plot temporal effects (soil chemistry, pathogen buildup) are typically stronger than across-fence effects \cite{karp2018crop}.
+
+    \item $S_{c,c'} = 0.3 \cdot R_{c,c'}$. The spatial synergy matrix is the rotation matrix dampened by 0.3. Combined with $\gamma_{\text{spat}} = 0.1$, the effective spatial coupling per unit area is $0.1 \times 0.3 = 0.03$ of the rotation matrix magnitude — approximately 15\% of the within-plot temporal effect.
+
+    \item $\beta = -0.8$, $p_{\text{comp}} = 0.70$. The rotation matrix is predominantly negative: 70\% of off-diagonal entries are disease/competition penalties drawn from $\text{Unif}(-0.96, -0.24)$, and the diagonal (monoculture) entries are fixed at $-1.2$. Only 30\% of off-diagonal pairs are positive synergies. This creates a frustrated optimization landscape analogous to spin-glass problems \cite{lucas2014ising}, testing the solver's ability to navigate conflicting objectives.
+
+    \item $\lambda_{oh} = 3.0$. The one-hot penalty must dominate the $O(1)$ magnitude of benefit and rotation terms to disfavor allocating more than one crop per plot-period. A value of 3.0 is approximately $3\times$ the maximum achievable objective benefit per plot-period, ensuring the penalty is effective without making the landscape numerically unstable.
+
+
+    \item $k = 4$. Each plot interacts with its 4 nearest neighbors on a synthetic integer grid. This number gives a locally connected but not fully connected spatial graph, keeping the MIQP tractable while modeling ecologically meaningful neighbor effects.
+
+    \item $T = 3$. Three periods is the minimum horizon that captures two consecutive-period rotation transitions (periods 1--2 and 2--3). Classical rotation cycles (e.g., corn--soybean--wheat) are also 3-year, making this the natural choice \cite{haneveld2005crop}. Longer horizons increase problem size quadratically in the temporal terms.
+\end{itemize}
 
 \paragraph{Constraints}
 
@@ -599,7 +607,7 @@ Diversity Bonus & Objective & Rewards planting variety of crops across the plann
 \paragraph{Constraint Implementation Notes}
 
 \begin{itemize}
-    \item \textbf{Soft constraints} (Min/Max Crops Per Slot) allow minor violations with penalty, providing flexibility for the optimizer to find good solutions in the frustrated landscape.
+    \item \textbf{Soft constraints} (Min/Max Crops Per Slot) allow minor violations with penalty, providing flexibility for the optimizer to find good solutions in the optimization landscape.
     \item \textbf{Objective terms} are incorporated directly into the optimization objective rather than as separate constraints. For QUBO conversion, these naturally contribute to the quadratic form without requiring penalty transformation.
 \end{itemize}
 
@@ -629,7 +637,7 @@ Maximum Problem Variables & $\sim$5,000 (depending on connectivity) \\
 \end{tabular}
 \end{table}
 
-The Pegasus topology is critical to our decomposition strategies. Unlike earlier Chimera-based systems, Pegasus provides significantly improved connectivity through a novel crossing architecture. Each qubit connects to 15 neighbors on average, enabling \textbf{native cliques} of 15 to 20 fully connected qubits that can represent logical variables without chain overhead. This property is exploited in our PlotBased and Coordinated decomposition methods, where farm-level subproblems (27 crops per farm $=$ 27 variables) embed with minimal chain breaking.
+The Pegasus topology is critical to our decomposition strategies. Unlike earlier Chimera-based systems, Pegasus provides significantly improved connectivity through a novel crossing architecture. Each qubit connects to 15 neighbors on average, enabling \textbf{native cliques} of 15 to 20 fully connected qubits that can represent logical variables without chain overhead. This property is exploited in our PlotBased and Coordinated decomposition methods, where plot-level subproblems (27 crops per plot $=$ 27 variables) embed with minimal chain breaking.
 
 \subsubsection{QPU Configuration Parameters}
 
@@ -644,7 +652,7 @@ For all experiments that made direct calls to the QPU, we employed the following
 For all experiments with the Hybrid Solvers we employed the standard configuration with no \texttt{time\_limit}.
 
 \paragraph{Chain Break Analysis and Mitigation}
-We observed chain break rates consistently below 2\% across all problem instances, indicating that the auto-scaled chain strength was effective. This result is significant for several reasons. Chain breaks occur when physical qubits within a chain (representing a single logical variable) disagree in their final state, directly compromising solution validity and causing information loss during quantum annealing~\cite{Cho08}. Published benchmarks on embedding quality report chain break rates of 5--15\% for moderately dense optimization problems~\cite{cai2014practical, zbinden2020embedding}, with rates exceeding 10\% typically indicating severe degradation of solution quality to near-random performance~\cite{VAL16}. Our sub-2\% rate places our embeddings in the high-fidelity regime, comparable to simple tree-like problem structures despite working with constrained quadratic optimization. This performance stems from three factors: (1)~effective automatic chain strength tuning at 1.2--1.8$\times$ maximum quadratic coefficient, balancing thermal stability against objective landscape preservation; (2)~Pegasus topology advantages with native clique sizes of 15--20 qubits and average qubit degree of 15~\cite{BBRR20}, enabling our 27-variable farm subproblems to achieve average chain lengths $\leq 1.2$ (most logical variables require only 1--2 physical qubits); and (3)~strategic problem decomposition creating sparse subproblems naturally compatible with hardware connectivity. The chain break probability for a $k$-qubit chain with single-qubit error rate $\varepsilon$ scales as $1-(1-\varepsilon)^k$; for $\varepsilon \approx 1.5\%$ and $k=1.2$, this predicts $\sim$1.8\% chain breaks, matching our empirical observations. Post-processing via greedy descent repair~\cite{CMR14} required less than 100ms per 100-sample batch, adding negligible overhead (<1\% of QPU time) while recovering $>$95\% of the energy quality that would be achieved with perfect chains. This low chain break rate validates that genuine quantum tunneling effects drive our observed performance rather than classical post-processing artifacts, and ensures that QPU time scales linearly ($O(f)$) with problem size rather than being dominated by error correction overhead~\cite{prxquantum2040322}. 
+We observed chain break rates consistently below 2\% across all problem instances, indicating that the auto-scaled chain strength was effective. This result is significant for several reasons. Chain breaks occur when physical qubits within a chain (representing a single logical variable) disagree in their final state, directly compromising solution validity and causing information loss during quantum annealing~\cite{Cho08}. Published benchmarks on embedding quality report chain break rates of 5--15\% for moderately dense optimization problems~\cite{cai2014practical, zbinden2020embedding}, with rates exceeding 10\% typically indicating severe degradation of solution quality to near-random performance~\cite{VAL16}. Our sub-2\% rate places our embeddings in the high-fidelity regime, comparable to simple tree-like problem structures despite working with constrained quadratic optimization. This performance stems from three factors: (1)~effective automatic chain strength tuning at 1.2--1.8$\times$ maximum quadratic coefficient, balancing thermal stability against objective landscape preservation; (2)~Pegasus topology advantages with native clique sizes of 15--20 qubits and average qubit degree of 15~\cite{BBRR20}, enabling our 27-variable plot subproblems to achieve average chain lengths $\leq 1.2$ (most logical variables require only 1--2 physical qubits); and (3)~strategic problem decomposition creating sparse subproblems naturally compatible with hardware connectivity. The chain break probability for a $k$-qubit chain with single-qubit error rate $\varepsilon$ scales as $1-(1-\varepsilon)^k$; for $\varepsilon \approx 1.5\%$ and $k=1.2$, this predicts $\sim$1.8\% chain breaks, matching our empirical observations. Post-processing via greedy descent repair~\cite{CMR14} required less than 100ms per 100-sample batch, adding negligible overhead (<1\% of QPU time) while recovering $>$95\% of the energy quality that would be achieved with perfect chains. This low chain break rate validates that genuine quantum tunneling effects drive our observed performance rather than classical post-processing artifacts, and ensures that QPU time scales linearly ($O(f)$) with problem size rather than being dominated by error correction overhead~\cite{prxquantum2040322}. 
 
 For coordinated decomposition methods requiring boundary consistency, we employed 3 rounds of iterative refinement (add more explaination) between subproblems.
 
@@ -680,8 +688,8 @@ To establish rigorous classical baselines, we employed Gurobi 12.0.1, widely reg
 % \textbf{Test Configuration 1: Plot-Level Allocation (Variant A)}
 % \begin{itemize}
 %     \item \textbf{Scales:} 10, 15, 25, 50, 100, 200, 1,000 plots
-%     \item \textbf{Binary Variables:} $n = |\mathcal{F}| \times |\mathcal{C}| = 27f$ (e.g., 27,000 for 1,000 farms)
-%     \item \textbf{Constraints:} One crop per farm, food group diversity (5 groups with min/max bounds), area capacity
+%     \item \textbf{Binary Variables:} $n = |\mathcal{F}| \times |\mathcal{C}| = 27f$ (e.g., 27,000 for 1,000 plots)
+%     \item \textbf{Constraints:} One crop per plot, food group diversity (5 groups with min/max bounds), area capacity
 % \end{itemize}
 
 % \textbf{Test Configuration 2: Multi-Period Rotation (Variant B)}
@@ -716,7 +724,7 @@ h_{(f,c)} = -\frac{L_p \cdot B_c}{A_{\text{total}}}
 
 \textbf{Quadratic couplings} (from plot assignment constraint):
 \begin{equation}
-J_{(p,c_1),(p,c_2)} = 2\lambda_{\text{oh}} \quad \forall c_1 \neq c_2
+J_{(p,c),(p,c')} = 2\lambda_{\text{oh}} \quad \forall c \neq c'
 \end{equation}
 
 The plot assignment constraint $\sum_{c \in \mathcal{C}} Y_{f,c} \leq 1$ becomes the penalty $P(Y) = \lambda_{\text{oh}} \left(\sum_{c} Y_{f,c} -1\right)^2$, which expands to introduce the quadratic couplings above.
@@ -734,12 +742,12 @@ h_{(p,c,t)} = -\frac{B_c \cdot L_p}{A_{\text{total}}} + 2\lambda_{\text{oh}}
 
 \textbf{Quadratic couplings}:
 \begin{align}
-J_{(p,c_1,t),(p,c_2,t+1)} &= -\gamma_{\text{rot}} \cdot \frac{R_{c_1,c_2} \cdot L_p}{A_{\text{total}}} && \text{(from Temporal)} \\
-J_{(p_1,c_1,t),(p_2,c_2,t)} &= -\gamma_{\text{spat}} \cdot \frac{S_{c_1,c_2}}{A_{\text{total}}} && \text{(from Spatial, } (p_1,p_2) \in \mathcal{E} \text{)} \\
-J_{(p,c_1,t),(p,c_2,t)} &= 2\lambda_{\text{oh}} && \text{(from Penalty, } c_1 \neq c_2 \text{)}
+J_{(p,c,t),(p,c',t+1)} &= -\gamma_{\text{rot}} \cdot \frac{R_{c,c'} \cdot L_p}{A_{\text{total}}} && \text{(from Temporal)} \\
+J_{(p_1,c,t),(p_2,c',t)} &= -\gamma_{\text{spat}} \cdot \frac{S_{c,c'}}{A_{\text{total}}} && \text{(from Spatial, } (p_1,p_2) \in \mathcal{E} \text{)} \\
+J_{(p,c,t),(p,c',t)} &= 2\lambda_{\text{oh}} && \text{(from Penalty, } c \neq c' \text{)}
 \end{align}
 
-\textbf{Problem size:} $n = |F| \cdot |C| \cdot |T|$ variables. For a typical instance (5 farms, 6 crop families, 3 periods): $n = 90$ variables with approximately 765 quadratic terms.
+\textbf{Problem size:} $n = |F| \cdot |C| \cdot |T|$ variables. For a typical instance (5 plots, 6 crop families, 3 periods): $n = 90$ variables with approximately 765 quadratic terms.
 
 
 
@@ -755,7 +763,7 @@ Recent studies establish clear thresholds beyond which direct embedding becomes 
 \textbf{Direct Embedding Limitations:}
 The embedding of fully connected graphs incurs a quadratic space overhead and thus a significant overhead in the time to solution~\cite{prxquantum2040322,qute202300104}. For Pegasus topology, while algorithms like Clique-Based MinorMiner can embed cliques up to approximately 185 nodes, standard MinorMiner fails to embed even medium-density graphs on 175-180 nodes~\cite{zbinden2020embedding,qute202300104}. For a Pegasus graph with 100\% yield, the largest embeddable complete graph is $K_{150}$ with chain length of 14~\cite{boothby2020next}, though typical QPUs achieve only $\sim$95\% yield, further reducing embeddable problem sizes.
 
-Zbinden et al.~\cite{zbinden2020embedding} systematically evaluated embedding algorithms across different problem densities, finding that direct embedding success rates drop dramatically for graphs with edge densities exceeding 0.2 and node counts above 180. Our farm-level problems with 150+ variables and high connectivity (representing constraints between multiple parcels, crops, and time periods) fall well outside this direct embedding success range.
+Zbinden et al.~\cite{zbinden2020embedding} systematically evaluated embedding algorithms across different problem densities, finding that direct embedding success rates drop dramatically for graphs with edge densities exceeding 0.2 and node counts above 180. Our plot-level problems with 150+ variables and high connectivity (representing constraints between multiple plots, crops, and time periods) fall well outside this direct embedding success range.
 
 \textbf{Time-to-Solution Overhead:}
 Large-scale quantum Monte Carlo simulations suggest that embedding schemes impose a polynomial time-to-solution overhead~\cite{prxquantum2040322}, with large penalty terms tending to affect quantum annealing hardware performance, though weak constraints risk chain breaks that lose logical information~\cite{choi2008minor}. This fundamental trade-off between constraint strength and solution quality further motivates decomposition approaches that reduce problem complexity.
@@ -823,18 +831,17 @@ Weights are normalized such that $\sum_i |w_i| = 1.0$. For this study, we used $
 
 
 
-\subsubsection{Crop Family Aggregation}
+% \subsubsection{Crop Family Aggregation}
 
-To manage problem complexity while preserving agronomic diversity, we aggregate the 27 individual food crops into 6 crop families in Study III (Variant B). This aggregation is implemented directly within the rotation scenario loader rather than as a separate preprocessing function, reducing the number of variables by a factor of 4.5 (from $F \times 27 \times 3$ to $F \times 6 \times 3$) while maintaining meaningful distinctions between crop types from a rotation planning perspective. The aggregation maps Legumes to include beans, lentils, chickpeas, peas, and soybeans; Grains to encompass rice, wheat, maize, barley, and oats; Vegetables to cover tomatoes, cabbage, peppers, spinach, and broccoli; Root Vegetables to include potatoes, carrots, cassava, sweet potatoes, and beets; Fruits to contain bananas, oranges, mangoes, apples, and grapes; and Proteins/Other to capture nuts, seeds, herbs, and spices.
+% To manage problem complexity while preserving agronomic diversity, we aggregate the 27 individual food crops into 6 crop families in Study III (Variant B). This aggregation is implemented directly within the rotation scenario loader rather than as a separate preprocessing function, reducing the number of variables by a factor of 4.5 (from $F \times 27 \times 3$ to $F \times 6 \times 3$) while maintaining meaningful distinctions between crop types from a rotation planning perspective. The aggregation maps Legumes to include beans, lentils, chickpeas, peas, and soybeans; Grains to encompass rice, wheat, maize, barley, and oats; Vegetables to cover tomatoes, cabbage, peppers, spinach, and broccoli; Root Vegetables to include potatoes, carrots, cassava, sweet potatoes, and beets; Fruits to contain bananas, oranges, mangoes, apples, and grapes; and Proteins/Other to capture nuts, seeds, herbs, and spices.
 
 
 This aggregation scheme is agronomically meaningful because rotation synergies typically operate at the family level. For example, all legumes fix nitrogen regardless of species, and all brassicas (a vegetable subfamily) are susceptible to similar pests. The benefit score for each family is computed as the weighted average of its constituent crops' scores, preserving the relative ranking of food value categories.
 
-\subsubsection{Farm Size Distribution and Spatial Layout}
-The farm areas $L_p$ are sampled from a realistic size distribution based on global agricultural survey data. In the Global South, farm sizes follow a highly skewed distribution: approximately 84\% of farms are smaller than 2 hectares, operating only 12\% of total agricultural land \cite{lowder2016number, lowder2021farms}. Among these, farms smaller than 1 hectare constitute about 72\% of all holdings \cite{fao2014farms}. In contrast, farms larger than 20 hectares represent less than 10\% of holdings but occupy the majority of agricultural land, with the largest 1\% of farms controlling over 70\% of global farmland \cite{lowder2021farms}. Our sampling procedure captures this heterogeneity, ensuring that problem instances reflect the diversity of real-world farming landscapes observed in regions such as Sub-Saharan Africa, South Asia, and Latin America \cite{samberg2016subnational}.
+\subsubsection{Plot Size Distribution and Spatial Layout}
+The plot areas $L_p$ are sampled from a realistic size distribution based on global agricultural survey data. In the Global South, plot sizes follow a highly skewed distribution: approximately 84\% of plots are smaller than 2 hectares, operating only 12\% of total agricultural land \cite{lowder2016number, lowder2021farms}. Among these, plots smaller than 1 hectare constitute about 72\% of all holdings \cite{fao2014farms}. In contrast, plots larger than 20 hectares represent less than 10\% of holdings but occupy the majority of agricultural land, with the largest 1\% of plots controlling over 70\% of global farmland \cite{lowder2021farms}. Our sampling procedure captures this heterogeneity, ensuring that problem instances reflect the diversity of real-world farming landscapes observed in regions such as Sub-Saharan Africa, South Asia, and Latin America \cite{samberg2016subnational}.
 
-Farms are assigned spatial coordinates on a 2D grid, and the neighbor graph is constructed by connecting each farm to its 4 nearest neighbors using Euclidean distance. This spatial structure is essential for modeling realistic agricultural interactions such as pest dispersal \cite{garzon2022methodological}, pollination services \cite{ponisio2015spatial, rahimi2021estimating}, and shared infrastructure. The k-nearest neighbor graph construction approach is widely used in spatial agricultural modeling \cite{zhang2024efficient, finley2006forest} and captures essential properties of agricultural landscapes, including local clustering and limited long-range connections \cite{cranmer2012landscape}. The resulting neighbor graph has topological properties similar to real agricultural landscapes, where spatial proximity determines ecological interactions and resource sharing patterns \cite{moreira2018plant, chacon2015landscape}.
-
+Plots are assigned spatial coordinates on a 2D grid, and the neighbor graph is constructed by connecting each plot to its 4 nearest neighbors using Euclidean distance. This spatial structure is essential for modeling realistic agricultural interactions such as pest dispersal \cite{garzon2022methodological}, pollination services \cite{ponisio2015spatial, rahimi2021estimating}, and shared infrastructure. The k-nearest neighbor graph construction approach is widely used in spatial agricultural modeling \cite{zhang2024efficient, finley2006forest} and captures essential properties of agricultural landscapes, including local clustering and limited long-range connections \cite{cranmer2012landscape}. The resulting neighbor graph has topological properties similar to real agricultural landscapes, where spatial proximity determines ecological interactions and resource sharing patterns \cite{moreira2018plant, chacon2015landscape}.
 
 
 \newpage
@@ -860,9 +867,9 @@ This section presents comprehensive benchmark results organized into three compl
 The crop allocation problem admits two fundamentally different formulations with distinct computational characteristics:
 
 \begin{itemize}
-    \item \textbf{Farm-level MILP (continuous $A_{fc}$):} Uses continuous allocation fractions $A_{fc} \in [0,1]$ representing the proportion of farm $f$ allocated to crop $c$, with binary indicators $U_c$ for crop selection. This formulation has approximately $54 \times |\mathcal{F}|$ variables (27 continuous $A_{fc}$ + 27 binary $Y_{fc}$ per farm, plus global $U_c$ indicators).
+    \item \textbf{Plot-level MILP (continuous $A_{fc}$):} Uses continuous allocation fractions $A_{fc} \in [0,1]$ representing the proportion of plot $f$ allocated to crop $c$, with binary indicators $U_c$ for crop selection. This formulation has approximately $54 \times |\mathcal{F}|$ variables (27 continuous $A_{fc}$ + 27 binary $Y_{fc}$ per plot, plus global $U_c$ indicators).
     
-    \item \textbf{Binary Plot (BP):} Discretizes each farm into fixed-area plots, each assigned to exactly one crop via binary variables $Y_{p,c} \in \{0,1\}$. This formulation has $27 \times |\mathcal{P}|$ binary variables where $|\mathcal{P}|$ is the number of plots.
+    \item \textbf{Binary Plot (BP):} Discretizes each plot into fixed-area plots, each assigned to exactly one crop via binary variables $Y_{p,c} \in \{0,1\}$. This formulation has $27 \times |\mathcal{P}|$ binary variables where $|\mathcal{P}|$ is the number of plots.
 \end{itemize}
 
 Before going into the three studies we benchmark both formulations under two solver configurations to see where variable count becomes an issue for Gurobi:
@@ -873,7 +880,7 @@ Before going into the three studies we benchmark both formulations under two sol
 
 \begin{table}[H]
 \centering
-\caption{Gurobi solving time: Farm-level MILP vs Binary Plot (BP) formulation}
+\caption{Gurobi solving time: Plot-level MILP vs Binary Plot (BP) formulation}
 \label{tab:gurobi_formulation_comparison}
 \small
 \begin{adjustbox}{width=\textwidth}
@@ -881,58 +888,58 @@ Before going into the three studies we benchmark both formulations under two sol
 \toprule
 \textbf{Plots} & \textbf{Variables} & \textbf{Formulation} & \textbf{Mode} & \textbf{Solve Time} & \textbf{Status} \\
 \midrule
-3 & 189 & MILP (Farm w/Afc) & without proof & 0.01s & optimal \\
-3 & 189 & MILP (Farm w/Afc) & with proof & 0.00s & optimal \\
+3 & 189 & MILP (Plot w/Afc) & without proof & 0.01s & optimal \\
+3 & 189 & MILP (Plot w/Afc) & with proof & 0.00s & optimal \\
 3 & 108 & BP (Binary Plot) & without proof & 0.01s & infeasible \\
 3 & 108 & BP (Binary Plot) & with proof & 0.01s & infeasible \\
 \midrule
-11 & 621 & MILP (Farm w/Afc) & without proof & 0.01s & optimal \\
-11 & 621 & MILP (Farm w/Afc) & with proof & 0.09s & optimal \\
+11 & 621 & MILP (Plot w/Afc) & without proof & 0.01s & optimal \\
+11 & 621 & MILP (Plot w/Afc) & with proof & 0.09s & optimal \\
 11 & 324 & BP (Binary Plot) & without proof & 0.01s & optimal \\
 11 & 324 & BP (Binary Plot) & with proof & 0.00s & optimal \\
 \midrule
-36 & 1,971 & MILP (Farm w/Afc) & without proof & 0.02s & optimal \\
-36 & 1,971 & MILP (Farm w/Afc) & with proof & 0.00s & optimal \\
+36 & 1,971 & MILP (Plot w/Afc) & without proof & 0.02s & optimal \\
+36 & 1,971 & MILP (Plot w/Afc) & with proof & 0.00s & optimal \\
 36 & 999 & BP (Binary Plot) & without proof & 0.01s & optimal \\
 36 & 999 & BP (Binary Plot) & with proof & 0.02s & optimal \\
 \midrule
-116 & 6,291 & MILP (Farm w/Afc) & without proof & 0.01s & optimal \\
-116 & 6,291 & MILP (Farm w/Afc) & with proof & 0.01s & optimal \\
+116 & 6,291 & MILP (Plot w/Afc) & without proof & 0.01s & optimal \\
+116 & 6,291 & MILP (Plot w/Afc) & with proof & 0.01s & optimal \\
 116 & 3,159 & BP (Binary Plot) & without proof & 0.02s & optimal \\
 116 & 3,159 & BP (Binary Plot) & with proof & 0.02s & optimal \\
 \midrule
-369 & 19,953 & MILP (Farm w/Afc) & without proof & 0.03s & optimal \\
-369 & 19,953 & MILP (Farm w/Afc) & with proof & 0.03s & optimal \\
+369 & 19,953 & MILP (Plot w/Afc) & without proof & 0.03s & optimal \\
+369 & 19,953 & MILP (Plot w/Afc) & with proof & 0.03s & optimal \\
 369 & 9,990 & BP (Binary Plot) & without proof & 0.04s & optimal \\
 369 & 9,990 & BP (Binary Plot) & with proof & 0.05s & optimal \\
 \midrule
-1,170 & 63,207 & MILP (Farm w/Afc) & without proof & 0.10s & optimal \\
-1,170 & 63,207 & MILP (Farm w/Afc) & with proof & 0.10s & optimal \\
+1,170 & 63,207 & MILP (Plot w/Afc) & without proof & 0.10s & optimal \\
+1,170 & 63,207 & MILP (Plot w/Afc) & with proof & 0.10s & optimal \\
 1,170 & 31,617 & BP (Binary Plot) & without proof & 0.16s & optimal \\
 1,170 & 31,617 & BP (Binary Plot) & with proof & 0.16s & optimal \\
 \midrule
-3,703 & 199,989 & MILP (Farm w/Afc) & without proof & 0.34s & optimal \\
-3,703 & 199,989 & MILP (Farm w/Afc) & with proof & 0.33s & optimal \\
+3,703 & 199,989 & MILP (Plot w/Afc) & without proof & 0.34s & optimal \\
+3,703 & 199,989 & MILP (Plot w/Afc) & with proof & 0.33s & optimal \\
 3,703 & 100,008 & BP (Binary Plot) & without proof & 0.40s & optimal \\
 3,703 & 100,008 & BP (Binary Plot) & with proof & 0.33s & optimal \\
 \midrule
-11,711 & 632,421 & MILP (Farm w/Afc) & without proof & 1.54s & optimal \\
-11,711 & 632,421 & MILP (Farm w/Afc) & with proof & 1.49s & optimal \\
+11,711 & 632,421 & MILP (Plot w/Afc) & without proof & 1.54s & optimal \\
+11,711 & 632,421 & MILP (Plot w/Afc) & with proof & 1.49s & optimal \\
 11,711 & 316,224 & BP (Binary Plot) & without proof & 2.00s & optimal \\
 11,711 & 316,224 & BP (Binary Plot) & with proof & 1.79s & optimal \\
 \midrule
-37,036 & 1,999,971 & MILP (Farm w/Afc) & without proof & 3.53s & optimal \\
-37,036 & 1,999,971 & MILP (Farm w/Afc) & with proof & 3.42s & optimal \\
+37,036 & 1,999,971 & MILP (Plot w/Afc) & without proof & 3.53s & optimal \\
+37,036 & 1,999,971 & MILP (Plot w/Afc) & with proof & 3.42s & optimal \\
 37,036 & 999,999 & BP (Binary Plot) & without proof & 13.55s & optimal \\
 37,036 & 999,999 & BP (Binary Plot) & with proof & 7.15s & optimal \\
 \midrule
-74,073 & 3,999,969 & MILP (Farm w/Afc) & without proof & 8.36s & optimal \\
-74,073 & 3,999,969 & MILP (Farm w/Afc) & with proof & 8.65s & optimal \\
+74,073 & 3,999,969 & MILP (Plot w/Afc) & without proof & 8.36s & optimal \\
+74,073 & 3,999,969 & MILP (Plot w/Afc) & with proof & 8.65s & optimal \\
 74,073 & 1,999,998 & BP (Binary Plot) & without proof & 376.45s & optimal \\
 74,073 & 1,999,998 & BP (Binary Plot) & with proof & 264.66s & optimal \\
 \midrule
-148,147 & 7,999,965 & MILP (Farm w/Afc) & without proof & 14.17s & optimal \\
-148,147 & 7,999,965 & MILP (Farm w/Afc) & with proof & 14.57s & optimal \\
+148,147 & 7,999,965 & MILP (Plot w/Afc) & without proof & 14.17s & optimal \\
+148,147 & 7,999,965 & MILP (Plot w/Afc) & with proof & 14.57s & optimal \\
 148,147 & 3,999,996 & BP (Binary Plot) & without proof &  --  & error \\
 148,147 & 3,999,996 & BP (Binary Plot) & with proof &  --  & error \\
 \bottomrule
@@ -952,7 +959,7 @@ Before going into the three studies we benchmark both formulations under two sol
     \item \textbf{Infeasibility at small scales:} The BP formulation is infeasible at 3 plots because the discrete plot structure cannot satisfy minimum area constraints that the continuous MILP formulation handles naturally.
 \end{enumerate}
 
-The farm-level MILP formulation benefits from Gurobi's aggressive presolve, which eliminates most binary variables through LP relaxation (the continuous $A_{fc}$ variables dominate the solve). The binary plot formulation faces exponential worst-case complexity due to the combinatorial explosion of discrete choices. This fundamental complexity barrier explains why QUBO-converted problems become computationally prohibitive at scale, motivating our investigation of quantum annealing approaches.
+The plot-level MILP formulation benefits from Gurobi's aggressive presolve, which eliminates most binary variables through LP relaxation (the continuous $A_{fc}$ variables dominate the solve). The binary plot formulation faces exponential worst-case complexity due to the combinatorial explosion of discrete choices. This fundamental complexity barrier explains why QUBO-converted problems become computationally prohibitive at scale, motivating our investigation of quantum annealing approaches.
 
 
 
@@ -964,7 +971,7 @@ The farm-level MILP formulation benefits from Gurobi's aggressive presolve, whic
 We conducted extensive benchmarking of D-Wave's hybrid solvers (LeapHybridCQMSolver, LeapHybridBQMSolver) against classical Gurobi optimization baseline.
 
 % \begin{enumerate}
-%     \item \textbf{Farm-Level Configuration:} Large-scale allocation testing CQM formulations
+%     \item \textbf{Plot-Level Configuration:} Large-scale allocation testing CQM formulations
 %     \item \textbf{Plot-Level Configuration:} Medium-scale allocation testing both CQM and BQM/QUBO formulations
 % \end{enumerate}
 
@@ -1035,7 +1042,7 @@ QPU access remains a small fraction of wall time, indicating that hybrid runtime
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{images/study1_hybrid_performance.pdf}
-\caption{Study~1.A hybrid benchmark (10--1{,}000 plots). Left: runtime scaling for Gurobi CQM, D-Wave CQM hybrid, Gurobi BQM/QUBO, and D-Wave BQM hybrid. Right: absolute objective gap to Gurobi with healed-gap overlays and constraint-violation bars. Healed gaps are computed after repairing one-crop-per-patch violations.}
+\caption{Study~1.A hybrid benchmark (10--1{,}000 plots). Left: runtime scaling for Gurobi CQM, D-Wave CQM hybrid, Gurobi BQM/QUBO, and D-Wave BQM hybrid. Right: absolute objective gap to Gurobi with healed-gap overlays and constraint-violation bars. Healed gaps are computed after repairing one-crop-per-plot violations.}
 \label{fig:hybrid_solver_performance}
 \end{figure}
 
@@ -1068,7 +1075,7 @@ We initially screened a broad set of decomposition strategies (details in \cref{
 \midrule
 Direct QPU & No decomposition & 1 & Full problem & Baseline; embedding-limited \\
 
-PlotBased & Farm-level decomposition & $f + 1$ & 27 vars & One partition per farm + master \\
+PlotBased & Plot-level decomposition & $f + 1$ & 27 vars & One partition per plot + master \\
 
 Multilevel(5) & Hierarchical graph coarsening & $f/5$ & $\sim$135 vars & Medium granularity \\
 
@@ -1080,7 +1087,7 @@ Spectral(10) & Spectral graph clustering & 10 & $27f/10$ vars & Fixed partition 
 
 CQM-First PlotBased & CQM partitioning $\to$ BQM & $f + 1$ & 27 vars & Hybrid classical-quantum \\
 
-HybridGrid & 2D farm-crop grid & $\lceil f/k_F \rceil \times \lceil c/k_C \rceil + 1$ & $k_F \times k_C$ & Grid structure; consistent small size \\
+HybridGrid & 2D plot-crop grid & $\lceil f/k_F \rceil \times \lceil c/k_C \rceil + 1$ & $k_F \times k_C$ & Grid structure; consistent small size \\
 
 Coordinated & Master-subproblem iteration & $f + 1$ & 27 vars & Iterative coordination \\
 \bottomrule
@@ -1090,23 +1097,23 @@ Coordinated & Master-subproblem iteration & $f + 1$ & 27 vars & Iterative coordi
 
 \subsubsection{Small-Scale Benchmark Results}
 
-Figure~\ref{fig:qpu_benchmark_small} presents the performance of decomposition methods on problems with 10 to 100 farms. Due to QPU budget constraints, we evaluated all eight methods at this scale to identify the most efficient candidates before proceeding to large-scale testing.
+Figure~\ref{fig:qpu_benchmark_small} presents the performance of decomposition methods on problems with 10 to 100 plots. Due to QPU budget constraints, we evaluated all eight methods at this scale to identify the most efficient candidates before proceeding to large-scale testing.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{images/Plots/qpu_benchmark_small_scale.pdf}
-\caption{QPU decomposition benchmark for small-scale problems (10--100 farms). (Top left) Solve time comparison on log scale: Gurobi (orange) serves as optimal baseline; QPU methods include PlotBased (purple), Multilevel(5) (magenta), Multilevel(10) (olive), Louvain (amber), Spectral(10) (burnt orange), and HybridGrid (turquoise). (Top right) Solution quality (objective value) on log scale with Gurobi consistently achieving optimal solutions. (Bottom left) Optimality gap percentage relative to Gurobi with reference lines at 0\% (optimal) and 10\% acceptable gap; most methods achieve gaps under 40\%. (Bottom right) Constraint violations by method and problem size, confirming that PlotBased, Multilevel, and Louvain maintain zero violations while Coordinated method introduces minor violations at scale.}
+\caption{QPU decomposition benchmark for small-scale problems (10--100 plots). (Top left) Solve time comparison on log scale: Gurobi (orange) serves as optimal baseline; QPU methods include PlotBased (purple), Multilevel(5) (magenta), Multilevel(10) (olive), Louvain (amber), Spectral(10) (burnt orange), and HybridGrid (turquoise). (Top right) Solution quality (objective value) on log scale with Gurobi consistently achieving optimal solutions. (Bottom left) Optimality gap percentage relative to Gurobi with reference lines at 0\% (optimal) and 10\% acceptable gap; most methods achieve gaps under 40\%. (Bottom right) Constraint violations by method and problem size, confirming that PlotBased, Multilevel, and Louvain maintain zero violations while Coordinated method introduces minor violations at scale.}
 \label{fig:qpu_benchmark_small}
 \end{figure}
 
 \subsubsection{Large-Scale Benchmark Results}
 
-Figure~\ref{fig:qpu_benchmark_large} extends the analysis to problems with 200 to 1,000 farms, where decomposition becomes essential. Based on small-scale performance, we selected only the most efficient methods (Multilevel(10), CQM-First PlotBased, Coordinated, and HybridGrid variants) for large-scale evaluation to avoid exhausting our QPU budget on inefficient approaches.
+Figure~\ref{fig:qpu_benchmark_large} extends the analysis to problems with 200 to 1,000 plots, where decomposition becomes essential. Based on small-scale performance, we selected only the most efficient methods (Multilevel(10), CQM-First PlotBased, Coordinated, and HybridGrid variants) for large-scale evaluation to avoid exhausting our QPU budget on inefficient approaches.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{images/Plots/qpu_benchmark_large_scale.pdf}
-\caption{QPU decomposition benchmark for large-scale problems (200--1,000 farms). The updated interpretation emphasizes full-span methods and separates raw objective quality from feasibility-aware quality using healed diagnostics. Coordinated attains lower raw gap but accumulates one-hot violations; Multilevel(10) and CQM-First remain more stable in feasibility terms.}
+\caption{QPU decomposition benchmark for large-scale problems (200--1,000 plots). The updated interpretation emphasizes full-span methods and separates raw objective quality from feasibility-aware quality using healed diagnostics. Coordinated attains lower raw gap but accumulates one-hot violations; Multilevel(10) and CQM-First remain more stable in feasibility terms.}
 \label{fig:qpu_benchmark_large}
 \end{figure}
 
@@ -1117,7 +1124,7 @@ Figure~\ref{fig:qpu_benchmark_comprehensive} provides a unified view across all 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{images/Plots/qpu_benchmark_comprehensive.pdf}
-\caption{Comprehensive QPU decomposition benchmark spanning all problem scales (10--1,000 farms). The updated comparison includes feasibility-aware interpretation (healed gaps) and Gurobi-decomposed references to separate decomposition-induced effects from QPU sampling effects.}
+\caption{Comprehensive QPU decomposition benchmark spanning all problem scales (10--1,000 plots). The updated comparison includes feasibility-aware interpretation (healed gaps) and Gurobi-decomposed references to separate decomposition-induced effects from QPU sampling effects.}
 \label{fig:qpu_benchmark_comprehensive}
 \end{figure}
 
@@ -1148,7 +1155,7 @@ where $k$ is the number of coordination rounds (typically 1 to 3), $n_{\text{par
 \label{tab:qpu_time_scaling}
 \begin{tabular}{rccccc}
 \toprule
-\textbf{Farms} & \textbf{Partitions} & \textbf{QPU (s)} & \textbf{Embedding (s)} & \textbf{Total (s)} & \textbf{QPU\%} \\
+\textbf{Plots} & \textbf{Partitions} & \textbf{QPU (s)} & \textbf{Embedding (s)} & \textbf{Total (s)} & \textbf{QPU\%} \\
 \midrule
 10 & 2 & 0.42 & 10.2 & 13.5 & 3.1\% \\
 50 & 7 & 1.51 & 110.2 & 128.6 & 1.2\% \\
@@ -1160,16 +1167,16 @@ where $k$ is the number of coordination rounds (typically 1 to 3), $n_{\text{par
 \end{tabular}
 \end{table}
 
-QPU time remains under 30 seconds even for 1,000-farm problems. The bottleneck is \textit{classical embedding}, which in the updated benchmark accounts for roughly 76--86\% of total runtime at large scales. This confirms that QPU sampling scales favorably while embedding remains the dominant engineering bottleneck.
+QPU time remains under 30 seconds even for 1,000-plot problems. The bottleneck is \textit{classical embedding}, which in the updated benchmark accounts for roughly 76--86\% of total runtime at large scales. This confirms that QPU sampling scales favorably while embedding remains the dominant engineering bottleneck.
 
 \item \textbf{Coordinated gives lower raw gap; Multilevel(10) and CQM-First remain more feasibility-robust.}
 
-At 1,000 farms (Table~\ref{tab:quality_1000farms}), Coordinated achieves a lower raw gap but accumulates one-hot violations. Multilevel(10) and CQM-First remain zero-violation at this scale in QPU runs and are therefore more stable in healed comparisons.
+At 1,000 plots (Table~\ref{tab:quality_1000plots}), Coordinated achieves a lower raw gap but accumulates one-hot violations. Multilevel(10) and CQM-First remain zero-violation at this scale in QPU runs and are therefore more stable in healed comparisons.
 
 \begin{table}[H]
 \centering
-\caption{Solution quality at 1,000-farm scale (updated). ``(h)'' rows indicate healed objective values.}
-\label{tab:quality_1000farms}
+\caption{Solution quality at 1,000-plot scale (updated). ``(h)'' rows indicate healed objective values.}
+\label{tab:quality_1000plots}
 \small
 \begin{tabular}{lcccc}
 \toprule
@@ -1232,7 +1239,7 @@ Coordinated & 6/8 (75\%) & 38 & High & One-hot \\
 \paragraph{Violation Types Observed:}
 \begin{itemize}
     \item \textbf{Food Group Violations:} Missing required food groups (e.g., ``Starchy staples'') due to partition boundaries preventing global constraint satisfaction. Typically 1 violation per affected entry.
-    \item \textbf{One-Hot Violations:} Farm assigned multiple crops or no crops due to coordination failures between partitions. Primarily observed in Coordinated method (23 violations at 1,000 farms).
+    \item \textbf{One-Hot Violations:} Plot assigned multiple crops or no crops due to coordination failures between partitions. Primarily observed in Coordinated method (23 violations at 1,000 plots).
 \end{itemize}
 
 \paragraph{Violation Healing Analysis}
@@ -1257,8 +1264,8 @@ This section presents benchmark results comparing D-Wave Advantage QPU performan
 % \begin{itemize}
 %     \item \textbf{Device:} D-Wave Advantage\_system4.1
 %     \item \textbf{Topology:} Pegasus (5,760 qubits, 15-way connectivity)
-%     \item \textbf{Method:} Hierarchical decomposition with farm clustering
-%     \item \textbf{Cluster size:} 9 farms per cluster (optimized for embedding)
+%     \item \textbf{Method:} Hierarchical decomposition with plot clustering
+%     \item \textbf{Cluster size:} 9 plots per cluster (optimized for embedding)
 %     \item \textbf{Samples per call:} 100 reads
 %     \item \textbf{Chain strength:} Auto-scaled (1.2 to 1.8$\times$ max coefficient)
 % \end{itemize}
@@ -1288,13 +1295,13 @@ Figure~\ref{fig:comprehensive_scaling} presents the unified scaling behavior acr
     \centering
     \begin{minipage}{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_farms.pdf}
+        \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_plots.pdf}
     \end{minipage}\hfill
     \begin{minipage}{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_vars.pdf}
     \end{minipage}
-    \caption{Solution quality scaling: QPU Hierarchical (solid lines) versus Gurobi 300\,s timeout (dotted lines) objective values, separated by formulation type (6-Food and 27-Food Aggregated). \textit{Left:} Scaling by number of farms; QPU benefit diverges increasingly from Gurobi as farm count grows, while Gurobi objective grows slowly due to timeout-limited exploration. \textit{Right:} The same data plotted against total decision variables; 6-Food and 27-Food (Agg.) traces overlap in variable range because the two formulations reach similar variable counts via different combinations of farm and crop-per-farm. The exception at 90 variables (\texttt{rotation\_micro\_25}) is the sole scenario where Gurobi finds the global optimum ($0.79\times$ ratio).}
+    \caption{Solution quality scaling: QPU Hierarchical (solid lines) versus Gurobi 300\,s timeout (dotted lines) objective values, separated by formulation type (6-Food and 27-Food Aggregated). \textit{Left:} Scaling by number of plots; QPU benefit diverges increasingly from Gurobi as plot count grows, while Gurobi objective grows slowly due to timeout-limited exploration. \textit{Right:} The same data plotted against total decision variables; 6-Food and 27-Food (Agg.) traces overlap in variable range because the two formulations reach similar variable counts via different combinations of plot and crop-per-plot. The exception at 90 variables (\texttt{rotation\_micro\_25}) is the sole scenario where Gurobi finds the global optimum ($0.79\times$ ratio).}
     \label{fig:comprehensive_scaling}
 \end{figure}
 
@@ -1310,17 +1317,17 @@ Figure~\ref{fig:comprehensive_scaling} presents the unified scaling behavior acr
 \midrule
 rotation\_micro\_25 & 90 & 6.17 & 4.86 & $-$1.31 & 0.79$\times$ & 1 \\
 rotation\_small\_50 & 180 & 8.69 & 21.79 & $+$13.10 & 2.51$\times$ & 7 \\
-rotation\_15farms\_6foods & 270 & 9.68 & 26.22 & $+$16.54 & 2.71$\times$ & 10 \\
+rotation\_15plots\_6foods & 270 & 9.68 & 26.22 & $+$16.54 & 2.71$\times$ & 10 \\
 rotation\_medium\_100 & 360 & 12.78 & 39.24 & $+$26.46 & 3.07$\times$ & 13 \\
-rotation\_25farms\_6foods & 450 & 13.45 & 52.67 & $+$39.22 & 3.92$\times$ & 17 \\
-rotation\_50farms\_6foods & 900 & 26.92 & 109.67 & $+$82.75 & 4.07$\times$ & 34 \\
+rotation\_25plots\_6foods & 450 & 13.45 & 52.67 & $+$39.22 & 3.92$\times$ & 17 \\
+rotation\_50plots\_6foods & 900 & 26.92 & 109.67 & $+$82.75 & 4.07$\times$ & 34 \\
 rotation\_large\_200 & 720 & 21.57 & 94.64 & $+$73.07 & 4.39$\times$ & 32 \\
-rotation\_75farms\_6foods & 1,350 & 40.37 & 161.44 & $+$121.07 & 4.00$\times$ & 54 \\
-rotation\_100farms\_6foods & 1,800 & 53.77 & 229.14 & $+$175.38 & 4.26$\times$ & 79 \\
-rotation\_25farms\_27foods & 2,025 & 11.68 & 57.60 & $+$45.93 & 4.93$\times$ & 16 \\
-rotation\_50farms\_27foods & 4,050 & 23.36 & 102.61 & $+$79.26 & 4.39$\times$ & 32 \\
-rotation\_100farms\_27foods & 8,100 & 46.68 & 235.11 & $+$188.43 & 5.04$\times$ & 74 \\
-rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & $+$407.08 & 5.35$\times$ & 157 \\
+rotation\_75plots\_6foods & 1,350 & 40.37 & 161.44 & $+$121.07 & 4.00$\times$ & 54 \\
+rotation\_100plots\_6foods & 1,800 & 53.77 & 229.14 & $+$175.38 & 4.26$\times$ & 79 \\
+rotation\_25plots\_27foods & 2,025 & 11.68 & 57.60 & $+$45.93 & 4.93$\times$ & 16 \\
+rotation\_50plots\_27foods & 4,050 & 23.36 & 102.61 & $+$79.26 & 4.39$\times$ & 32 \\
+rotation\_100plots\_27foods & 8,100 & 46.68 & 235.11 & $+$188.43 & 5.04$\times$ & 74 \\
+rotation\_200plots\_27foods & 16,200 & 93.52 & 500.59 & $+$407.08 & 5.35$\times$ & 157 \\
 \midrule
 \textbf{Average} & N/A & \textbf{28.36} & \textbf{125.81} & \textbf{$+$97.46} & \textbf{3.80$\times$} & \textbf{40.5} \\
 \bottomrule
@@ -1334,7 +1341,7 @@ rotation\_200farms\_27foods & 16,200 & 93.52 & 500.59 & $+$407.08 & 5.35$\times$
 
 \item \textbf{Updated timeout verification reveals strong formulation asymmetry.}
 
-In the latest timeout verification sweep (20 scenarios, 200~s cap), Gurobi times out on 11/20 scenarios overall. Timeout behavior is highly formulation-dependent: 6-Food times out on 10/10 scenarios, whereas 27-Food aggregated solves to optimality on 9/10 scenarios, with only the 1,000-farm case timing out.
+In the latest timeout verification sweep (20 scenarios, 200~s cap), Gurobi times out on 11/20 scenarios overall. Timeout behavior is highly formulation-dependent: 6-Food times out on 10/10 scenarios, whereas 27-Food aggregated solves to optimality on 9/10 scenarios, with only the 1,000-plot case timing out.
 
 \subsubsection{Formulation-Specific Analysis}
 
@@ -1350,28 +1357,28 @@ Figure~\ref{fig:split_analysis} presents a detailed split analysis comparing the
 \paragraph{Why 6-Food Shows Higher Solve Times per Variable}
 \label{sec:formulation_timing}
 
-A counterintuitive result in Figure~\ref{fig:split_analysis} is that 6-Food exhibits \emph{higher} solve time per variable (0.78~ms/var) than 27-Food (Agg.) (0.18~ms/var). This occurs because the hierarchical decomposition creates clusters based on \emph{farms}, not variables. At the same variable count:
+A counterintuitive result in Figure~\ref{fig:split_analysis} is that 6-Food exhibits \emph{higher} solve time per variable (0.78~ms/var) than 27-Food (Agg.) (0.18~ms/var). This occurs because the hierarchical decomposition creates clusters based on \emph{plots}, not variables. At the same variable count:
 \begin{itemize}
-    \item \textbf{6-Food:} 111 farms $\rightarrow$ 12 clusters $\rightarrow$ $\sim$100s total time
-    \item \textbf{27-Food (Agg.):} 25 farms $\rightarrow$ 3 clusters $\rightarrow$ $\sim$30s total time
+    \item \textbf{6-Food:} 111 plots $\rightarrow$ 12 clusters $\rightarrow$ $\sim$100s total time
+    \item \textbf{27-Food (Agg.):} 25 plots $\rightarrow$ 3 clusters $\rightarrow$ $\sim$30s total time
 \end{itemize}
 
-Since 6-Food has fewer crops per farm (18 vars/farm) than 27-Food (Agg.) (81 vars/farm), it requires \textbf{4.5$\times$ more farms} to reach the same variable count, resulting in 4.5$\times$ more clusters and thus $\sim$4$\times$ higher solve time. The pure QPU access time per cluster is nearly identical ($\sim$0.12s); the difference comes entirely from classical embedding overhead that scales with cluster count. See Section~\ref{sub:clusterbased} for the mathematical details of the cluster-based decomposition.
+Since 6-Food has fewer crops per plot (18 vars/plot) than 27-Food (Agg.) (81 vars/plot), it requires \textbf{4.5$\times$ more plots} to reach the same variable count, resulting in 4.5$\times$ more clusters and thus $\sim$4$\times$ higher solve time. The pure QPU access time per cluster is nearly identical ($\sim$0.12s); the difference comes entirely from classical embedding overhead that scales with cluster count. See Section~\ref{sub:clusterbased} for the mathematical details of the cluster-based decomposition.
 
 \paragraph{Why 6-Food Also Shows Higher Gurobi Objective and Solve Time}
 
-The same farm-count effect explains why \emph{Gurobi} also shows higher objective values and longer solve times for 6-Food compared to 27-Food (Agg.) at similar variable counts.
+The same plot-count effect explains why \emph{Gurobi} also shows higher objective values and longer solve times for 6-Food compared to 27-Food (Agg.) at similar variable counts.
 
-\textbf{Higher objective values:} The objective function sums benefit across all farms. At similar variable counts, 6-Food has 4.5$\times$ more farms, so the total benefit is naturally higher:
+\textbf{Higher objective values:} The objective function sums benefit across all plots. At similar variable counts, 6-Food has 4.5$\times$ more plots, so the total benefit is naturally higher:
 \begin{itemize}
-    \item \textbf{6-Food (1,800 vars):} 100 farms $\times$ 0.54 avg benefit/farm $=$ 53.77 total
-    \item \textbf{27-Food (Agg.) (2,025 vars):} 25 farms $\times$ 0.47 avg benefit/farm $=$ 11.68 total
+    \item \textbf{6-Food (1,800 vars):} 100 plots $\times$ 0.54 avg benefit/plot $=$ 53.77 total
+    \item \textbf{27-Food (Agg.) (2,025 vars):} 25 plots $\times$ 0.47 avg benefit/plot $=$ 11.68 total
 \end{itemize}
-The per-farm average is actually slightly \emph{lower} for 6-Food; the higher total is purely due to farm count.
+The per-plot average is actually slightly \emph{lower} for 6-Food; the higher total is purely due to plot count.
 
 \textbf{Longer Gurobi solve time:} The 6-Food formulation creates a \emph{harder} optimization problem for Gurobi due to denser constraint structure:
 \begin{enumerate}
-    \item \textbf{More farm-level constraints:} At 1,800 vars, 6-Food has 100 farms $\times$ 3 periods $=$ 300 one-hot constraints, versus 25 farms $\times$ 3 $=$ 75 for 27-Food (Agg.) at 2,025 vars.
+    \item \textbf{More plot-level constraints:} At 1,800 vars, 6-Food has 100 plots $\times$ 3 periods $=$ 300 one-hot constraints, versus 25 plots $\times$ 3 $=$ 75 for 27-Food (Agg.) at 2,025 vars.
     \item \textbf{Denser rotation conflict graph:} With only 6 crop families, each family represents 1/6 of choices, creating tighter coupling in the rotation penalty matrix. With 27 foods, each crop is 1/27 of choices, yielding a sparser conflict structure.
     \item \textbf{Exponentially worse MILP gaps:} As shown in Table~\ref{tab:gurobi_struggles}, 6-Food (large) reaches MILP gaps of 176,411\%, compared to 319--379\% for 27-Food (Agg.), indicating Gurobi's branch-and-bound struggles far more with 6-Food's constraint density.
 \end{enumerate}
@@ -1383,7 +1390,7 @@ The per-farm average is actually slightly \emph{lower} for 6-Food; the higher to
 % \begin{figure}[H]
 % \centering
 % \includegraphics[width=\textwidth]{images/Plots/quantum_advantage_objective_gap_analysis.pdf}
-% \caption{Objective gap analysis across all scenarios. (Top left) Absolute objective comparison bars on log scale: Gurobi (green) versus QPU Hierarchical (blue). (Top center) Objective ratio (QPU/Gurobi) per scenario with color coding -- green for ratio $<$2$\times$, orange for 2--5$\times$, red for $>$5$\times$ -- with reference lines at 1$\times$, 2$\times$, and 5$\times$. (Top right) Correlation scatter between Gurobi MILP gap and QPU-Gurobi gap on log-log scale, demonstrating that problems where Gurobi struggles (high MILP gap) correlate with larger QPU gaps. (Bottom left) 6-Food formulation: objective scaling by number of farms. (Bottom center) 27-Food (Agg.) formulation: objective scaling by number of farms. (Bottom right) Summary statistics table with metrics by formulation including scenario count, variable range, average gaps, timeout rates, and solve times.}
+% \caption{Objective gap analysis across all scenarios. (Top left) Absolute objective comparison bars on log scale: Gurobi (green) versus QPU Hierarchical (blue). (Top center) Objective ratio (QPU/Gurobi) per scenario with color coding -- green for ratio $<$2$\times$, orange for 2--5$\times$, red for $>$5$\times$ -- with reference lines at 1$\times$, 2$\times$, and 5$\times$. (Top right) Correlation scatter between Gurobi MILP gap and QPU-Gurobi gap on log-log scale, demonstrating that problems where Gurobi struggles (high MILP gap) correlate with larger QPU gaps. (Bottom left) 6-Food formulation: objective scaling by number of plots. (Bottom center) 27-Food (Agg.) formulation: objective scaling by number of plots. (Bottom right) Summary statistics table with metrics by formulation including scenario count, variable range, average gaps, timeout rates, and solve times.}
 % \label{fig:objective_gap_analysis}
 % \end{figure}
 
@@ -1415,7 +1422,7 @@ The updated timeout reruns indicate two simultaneous regimes: (i) monolithic Gur
 The QPU solutions have constraint violations (average 21.9\% violation rate), but these violations are a \textit{beneficial trade-off}:
 
 \begin{itemize}
-    \item \textbf{Nature of violations:} One-hot constraint failures where some farm-periods have no crop assigned (24.2\% violation rate)
+    \item \textbf{Nature of violations:} One-hot constraint failures where some plot-periods have no crop assigned (24.2\% violation rate)
     \item \textbf{Practical impact:} Minor; some fields left fallow, easily corrected in post-processing
     \item \textbf{Benefit:} Allows QPU to explore solution space beyond Gurobi's strict feasibility constraints
     \item \textbf{Net result:} 3.80$\times$ higher total agricultural benefit despite violations
@@ -1442,9 +1449,9 @@ Figure~\ref{fig:violation_impact} and Table~\ref{tab:violation_impact} present t
 \toprule
 \textbf{Metric} & \textbf{Value} & \textbf{Interpretation} \\
 \midrule
-Total farm-period slots & 2,175 & Across all 13 scenarios \\
+Total plot-period slots & 2,175 & Across all 13 scenarios \\
 Slots with violations & 526 & No crop assigned \\
-Overall violation rate & 24.2\% & Farm-periods without allocation \\
+Overall violation rate & 24.2\% & Plot-periods without allocation \\
 \midrule
 Avg Gurobi benefit & 28.36 & Strictly feasible \\
 Avg QPU benefit & 125.81 & With violations \\
@@ -1497,18 +1504,176 @@ Pure QPU time totals only 10.88 seconds across all 13 scenarios (Table~\ref{tab:
     \centering
     \begin{minipage}{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_farms.pdf}
+        \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_plots.pdf}
     \end{minipage}\hfill
     \begin{minipage}{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_vars.pdf}
     \end{minipage}
-    \caption{QPU solve time breakdown on log scale. \textit{Solid lines:} QPU total wall time (embedding + classical overhead + quantum access). \textit{Dashed lines:} pure QPU access time only. \textit{Dotted lines:} Gurobi solve time (near-flat at 300\,s timeout for 11 of 13 scenarios). \textit{Left:} Scaling by number of farms. \textit{Right:} Scaling by number of decision variables. The gap between solid and dashed curves represents classical embedding and coordination overhead, which accounts for 97--99\% of total QPU wall time across all scenarios. The 6-Food formulation (blue) incurs higher wall time per variable than 27-Food (Agg.) (orange) because it requires $\sim$4.5$\times$ more farm clusters at the same variable count (Section~\ref{sec:formulation_timing}). Pure QPU access time (dashed) remains below 1\,s per call regardless of scale.}
+    \caption{QPU solve time breakdown on log scale. \textit{Solid lines:} QPU total wall time (embedding + classical overhead + quantum access). \textit{Dashed lines:} pure QPU access time only. \textit{Dotted lines:} Gurobi solve time (near-flat at 300\,s timeout for 11 of 13 scenarios). \textit{Left:} Scaling by number of plots. \textit{Right:} Scaling by number of decision variables. The gap between solid and dashed curves represents classical embedding and coordination overhead, which accounts for 97--99\% of total QPU wall time across all scenarios. The 6-Food formulation (blue) incurs higher wall time per variable than 27-Food (Agg.) (orange) because it requires $\sim$4.5$\times$ more plot clusters at the same variable count (Section~\ref{sec:formulation_timing}). Pure QPU access time (dashed) remains below 1\,s per call regardless of scale.}
     \label{fig:scaling_qpu_timing}
 \end{figure}
 
 \end{enumerate}
 
+
+\subsubsection{Study 2.B Three-Group Comparison: Gurobi Full vs.\ QPU vs.\ Gurobi Decomposed}
+\label{subsec:study2b_three_group}
+
+This subsection extends the Study~2.B analysis by introducing a third comparison group:
+Gurobi with explicit plot-level \emph{decomposition} (Clique and SpatialTemporal-5 strategies
+from Section~\ref{subsec:decomp_b}).  The resulting three-group comparison enables a complete
+picture of the efficiency-quality trade-off spectrum for the 27-crop rotation problem.
+
+\paragraph{Track A (27-crop formulation, canonical Variant~B).}
+Figure~\ref{fig:study2b_time_a} shows wall-clock time versus plot count for all three groups
+on the 27-crop formulation.  The time axis is directly comparable across all groups and
+independent of the QUBO versus MIQP objective scale difference noted earlier.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_time_track_a.pdf}
+    \caption{Study 2.B Track A --- Wall-clock solve-time scaling for the 27-crop rotation
+      (Variant~B).  \textbf{Red solid}: Gurobi full (monolithic MIQP, now extended to 2\,000 plots).
+      \textbf{Orange diamonds}: QPU hierarchical pipeline (D-Wave Advantage, including embedding
+      and sampling overhead).  \textbf{Blue/green dashed}: Gurobi decomposed (Clique and
+      SpatialTemporal-5 strategies).  Points at the 600\,s level indicate timeout.}
+    \label{fig:study2b_time_a}
+\end{figure}
+
+Key observations from Track~A:
+\begin{itemize}
+    \item Gurobi full times out ($\ge600$\,s) for $\ge 500$ plots (40\,500 variables);
+      with the extended budget, $n{=}200$ plots now solves to optimality in 328\,s
+      (though rotation-constraint violations remain --- see Table~\ref{tab:study2b_three_group}).
+    \item QPU wall time grows approximately linearly with plot count and lies
+      \emph{between} Gurobi full (slower) and Gurobi decomposed (faster) for
+      $\ge 50$ plots.
+    \item Gurobi decomposed is the fastest solver at every tested scale:
+      Clique reaches $n{=}2\,000$ plots in under 140\,s; SpatialTemporal-5 in under 280\,s.
+\end{itemize}
+
+Figure~\ref{fig:study2b_qual_a} presents the solution quality comparison.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_quality_track_a.pdf}
+    \caption{Study 2.B Track A --- Solution quality (27-crop).
+      \emph{Left:} Absolute MIQP objective for Gurobi full versus decomposed on the
+      same random-grid scenario (directly comparable).  Decomposed Clique and
+      SpatialTemporal-5 track the full-problem solution closely for small plots
+      but diverge at larger scales due to ignored inter-partition couplings.
+      \emph{Right:} Quality ratio relative to Gurobi full.  Values below~1 indicate
+      the decomposed solver returns a lower MIQP objective.  The QPU ratio ($\dagger$)
+      uses different objective scales and should be interpreted as a relative trend
+      indicator, not an absolute quality comparison.}
+    \label{fig:study2b_qual_a}
+\end{figure}
+
+\paragraph{Track B (6-food + 27-crop, both formulations).}
+Figure~\ref{fig:study2b_time_b} extends the time comparison to include the 6-food
+formulation alongside the 27-crop results.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_time_track_b.pdf}
+    \caption{Study 2.B Track B --- Wall-clock time for both 6-food and 27-crop Variant~B.
+      Gurobi full 6-food (red dotted) times out consistently from 50 plots
+      onward ($\ge900$ variables).  Gurobi full 27-crop (red solid) remains solvable
+      up to 200 plots before timing out.  QPU 6-food (orange dotted) and 27-crop (orange solid)
+      show similar linear scaling, with 6-food marginally faster due to smaller cluster count
+      per plot.  Gurobi decomposed 27-crop (blue/green dashed) remains sub-second throughout.}
+    \label{fig:study2b_time_b}
+\end{figure}
+
+Figure~\ref{fig:study2b_qual_b} compares solution quality across both formulations.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_quality_track_b.pdf}
+    \caption{Study 2.B Track B --- Solution quality for 6-food and 27-crop formulations.
+      \emph{Left:} Absolute Gurobi full objectives showing linear scaling with plot count
+      for both formulations; 27-crop objectives are larger in absolute value because the
+      formulation has more crops per period.
+      \emph{Right:} QPU benefit divided by matched Gurobi MIQP objective per formulation
+      ($\dagger$\,different normalizations across formulations; ratio $>$1 does not imply
+      QPU outperforms Gurobi on the same scale).}
+    \label{fig:study2b_qual_b}
+\end{figure}
+
+Figure~\ref{fig:study2b_decomposed_abs} places all three groups on a common log-log scale
+for absolute MIQP objectives, making the divergence at large plot counts directly visible.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_quality_decomposed_abs.pdf}
+    \caption{Study 2.B --- Absolute MIQP objective for Gurobi full, Clique, and
+      SpatialTemporal-5 on 27-crop Variant~B (log--log scale).  Gurobi full objectives
+      scale linearly with plot count (sum-over-plots structure).  Clique stays nearly
+      constant because each plot is solved independently; SpatialTemporal-5 diverges
+      at large scales as inter-plot couplings dominate.  All values are MIQP objectives
+      and are directly comparable.}
+    \label{fig:study2b_decomposed_abs}
+\end{figure}
+
+Figure~\ref{fig:study2b_healed_violations} provides a comprehensive dual-panel view
+combining solve-time scaling with the gap from the Gurobi full reference and rotation-violation
+counts.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_healed_violations.pdf}
+    \caption{Study 2.B --- Comprehensive quality and violation overview (dual panel).
+      \emph{Left:} Wall-clock solve time (log--log) for all four series (Gurobi full,
+      Clique, SpatialTemporal-5, QPU hierarchical 27-crop).
+      \emph{Right:} Absolute gap between each solver's MIQP objective and the
+      Gurobi full reference (solid lines, primary $y$-axis, log scale); dashed lines
+      show healed objectives where available.  Bar chart (secondary $y$-axis, right):
+      rotation-violation counts for Gurobi full.  Gurobi always satisfies one-hot
+      constraints as hard LP rows ($\texttt{one\_hot\_violations}=0$), so
+      healed\,$=$\,raw throughout; the non-zero bars reflect rotation-penalty terms that
+      are only softly enforced in the MIQP and accumulate under the timeout pressure.}
+    \label{fig:study2b_healed_violations}
+\end{figure}
+
+\paragraph{Three-group summary.}
+Table~\ref{tab:study2b_three_group} summarizes the three-group comparison for the 27-crop
+formulation, covering all plot sizes where at least two groups have data.
+
+\begin{table}[H]
+\centering
+\caption{Study 2.B three-group summary (27-crop, Variant~B, 600\,s timeout).
+  ``TO'' = time-out (solver hit budget without proving optimality).
+  ``opt/IF'' = Gurobi declared optimal but rotation-constraint penalties (soft in MIQP) are still violated;
+  one-hot constraints are always satisfied as hard LP rows.
+  ``TO/IF'' = timed out with rotation violations present.
+  Gurobi decomposed: Clique values from \texttt{solver\_comparison\_results\_hard.json}.
+  QPU values include QUBO violation penalties and are not directly comparable to Gurobi MIQP.}
+\label{tab:study2b_three_group}
+\small
+\begin{tabular}{rrrrrrrr}
+\toprule
+\textbf{Plots} & \textbf{Vars} &
+\multicolumn{2}{c}{\textbf{Gurobi full (27-crop)}} &
+\multicolumn{2}{c}{\textbf{QPU hierarchical†}} &
+\multicolumn{2}{c}{\textbf{Gurobi decomp.\ (Clique)}} \\
+& & \textbf{Time (s)} & \textbf{MIQP obj.} &
+  \textbf{Time (s)} & \textbf{obj.} &
+  \textbf{Time (s)} & \textbf{obj.} \\
+\midrule
+  10 &     810 &  42.0          &  5.54 &   --  &   --   &  2.7 & 1.14 \\
+  25 &  2\,025 & 600.5 (TO)     & 12.29 &  29.9 &  57.60 & 12.7 & 1.14 \\
+  50 &  4\,050 &  25.3          & 23.49 &  59.3 & 102.61 & 14.9 & 1.14 \\
+ 100 &  8\,100 &  59.6 (opt/IF) & 43.63 & 177.6 & 235.11 & 22.6 & 1.14 \\
+ 200 & 16\,200 & 328.3 (opt/IF) & 86.60 & 323.2 & 500.59 & 12.0 & 0.63 \\
+ 500 & 40\,500 & 601.6 (TO/IF)  & 216.42 & -- & -- & 30.7 & 0.63 \\
+1000 & 81\,000 & 602.5 (TO/IF)  & 434.28 & -- & -- & 60.5 & 0.63 \\
+2000 & 162\,000 & 605.1 (TO/IF) & 866.26 & -- & -- & 135.6 & 0.63 \\
+\bottomrule
+\multicolumn{8}{l}{\footnotesize †QPU objectives include QUBO violation penalties; not directly comparable to Gurobi MIQP objective.} \\
+\multicolumn{8}{l}{\footnotesize Gurobi decomposed Clique/ST results available in \texttt{fig\_study2b\_time\_track\_a.pdf}.} \\
+\end{tabular}
+\end{table}
 
 \subsection{Summary of Results}
 
@@ -1565,9 +1730,9 @@ Study 1.A.B demonstrated that the LeapHybridBQMSolver (Table~\ref{tab:study1_ful
 
 \subsubsection{Study 2.A: QPU Decomposition -- Transparent Scaling}
 
-Study 2.A (Section~\ref{subsec:qpu_decomposition}) addressed the black-box limitation by developing transparent decomposition strategies. The central finding is that \textbf{QPU annealing time scales linearly} with problem size: $T_{\text{QPU}} = O(f)$. As shown in Table~\ref{tab:qpu_time_scaling}, QPU time remains under 30~seconds even at 1,000~farms, while classical embedding consumes roughly 76--86\% of total runtime.
+Study 2.A (Section~\ref{subsec:qpu_decomposition}) addressed the black-box limitation by developing transparent decomposition strategies. The central finding is that \textbf{QPU annealing time scales linearly} with problem size: $T_{\text{QPU}} = O(f)$. As shown in Table~\ref{tab:qpu_time_scaling}, QPU time remains under 30~seconds even at 1,000~plots, while classical embedding consumes roughly 76--86\% of total runtime.
 
-The solution quality comparison at 1,000~farms (Table~\ref{tab:quality_1000farms}) reveals a quality-feasibility-diversity trade-off across decomposition strategies. Coordinated decomposition achieves the best objective (31.8\% gap) but introduces 23~constraint violations. Multilevel(10) achieves 39.9\% gap with zero violations and uses all 27~crops -- maximum diversity. By contrast, Gurobi allocates 99.6\% of land to spinach, satisfying diversity constraints minimally.
+The solution quality comparison at 1,000~plots (Table~\ref{tab:quality_1000plots}) reveals a quality-feasibility-diversity trade-off across decomposition strategies. Coordinated decomposition achieves the best objective (31.8\% gap) but introduces 23~constraint violations. Multilevel(10) achieves 39.9\% gap with zero violations and uses all 27~crops -- maximum diversity. By contrast, Gurobi allocates 99.6\% of land to spinach, satisfying diversity constraints minimally.
 
 The violation healing analysis (Section~\ref{subsec:qpu_decomposition}) shows that a meaningful part of apparent raw advantage in some methods is violation-driven. Methods such as CQM-First maintain zero violations across full-span runs, while Coordinated's violations grow with scale. The comprehensive benchmark results (Figures~\ref{fig:qpu_benchmark_small},~\ref{fig:qpu_benchmark_large}, and~\ref{fig:qpu_benchmark_comprehensive}) indicate that Multilevel(10) and CQM-First provide the most stable feasibility-aware trade-off across scales.
 
@@ -1577,7 +1742,7 @@ Study 2.B (Section~\ref{subsec:quantum_advantage}) remains the exploratory setti
 
 The updated timeout verification indicates a mixed hardness landscape rather than a single uniform regime. Under the 200~s sweep, Gurobi times out on all tested 6-Food scenarios, while most 27-Food aggregated scenarios are solved to optimality except the largest case.
 
-The timing analysis (Table~\ref{tab:timing_comparison}) confirms that the embedding bottleneck pattern observed in Study 2.A persists in Study 2.B: QPU time totals only 10.88~seconds across all 13~scenarios (1.1\% of wall time), scaling linearly at $T = 0.78 \cdot N_{\text{vars}} + 51$\,ms. Classical embedding and coordination consume the remaining 99\% of runtime. The formulation-specific analysis (Figure~\ref{fig:split_analysis}) further reveals that this overhead scales with \textit{farm count} rather than variable count.
+The timing analysis (Table~\ref{tab:timing_comparison}) confirms that the embedding bottleneck pattern observed in Study 2.A persists in Study 2.B: QPU time totals only 10.88~seconds across all 13~scenarios (1.1\% of wall time), scaling linearly at $T = 0.78 \cdot N_{\text{vars}} + 51$\,ms. Classical embedding and coordination consume the remaining 99\% of runtime. The formulation-specific analysis (Figure~\ref{fig:split_analysis}) further reveals that this overhead scales with \textit{plot count} rather than variable count.
 
 \subsubsection{Cross-Study Conclusions}
 
@@ -1588,7 +1753,7 @@ Three patterns emerge consistently across all studies:
 
     \item \textbf{Classical embedding is the dominant bottleneck.} In Study 1.A, QPU time is a small fraction of hybrid wall-clock time. In Study 2.A, embedding consumes roughly 76--86\% of total time at scale (Table~\ref{tab:qpu_time_scaling}). In Study 2.B, pure QPU time remains a minor share of wall-clock runtime (Table~\ref{tab:timing_comparison}). The QPU scaling ($O(f)$, linear) is already favorable; the bottleneck is the classical embedding step, which grows as $\sim O(f^{1.5})$~\cite{zbinden2020embedding}.
 
-    \item \textbf{Decomposition methods produce practically valuable solutions.} Quantum decomposition yields diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach, Table~\ref{tab:quality_1000farms}). A sensitivity analysis over 10,000~random weight configurations confirms that this monoculture outcome is a robust property of the benefit score structure rather than an artefact of a single weight vector (Appendix~\ref{app:sensitivity}). For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}. Where constraint violations occur (Study 2.A: Table~\ref{tab:violation_by_strategy}; Study 2.B: Table~\ref{tab:violation_impact}), their nature -- fields left temporarily fallow -- is easily corrected in post-processing and may even be agronomically desirable~\cite{dury2012cropping, hobbs2008conservation}.
+    \item \textbf{Decomposition methods produce practically valuable solutions.} Quantum decomposition yields diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach, Table~\ref{tab:quality_1000plots}). A sensitivity analysis over 10,000~random weight configurations confirms that this monoculture outcome is a robust property of the benefit score structure rather than an artefact of a single weight vector (Appendix~\ref{app:sensitivity}). For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}. Where constraint violations occur (Study 2.A: Table~\ref{tab:violation_by_strategy}; Study 2.B: Table~\ref{tab:violation_impact}), their nature -- fields left temporarily fallow -- is easily corrected in post-processing and may even be agronomically desirable~\cite{dury2012cropping, hobbs2008conservation}.
 \end{enumerate}
 
 % -----------------------------------------------------------------------------
@@ -1604,7 +1769,7 @@ Three patterns emerge consistently across all studies:
 
 The D-Wave Advantage system operates as a noisy intermediate-scale quantum (NISQ) device~\cite{preskillQuantumComputingNISQ2018, boothby2020next}, subject to thermal fluctuations, control errors, and inter-qubit coupling imperfections. The primary hardware artifact in our experiments was \textbf{chain breaks}: when a logical variable requires multiple physical qubits (a chain), thermal noise can cause disagreement among chained qubits~\cite{choi2008minor}.
 
-Our decomposition strategy was explicitly designed to minimize this effect. Farm-level subproblems (27~variables) achieve chain lengths $\leq 1.2$ on the Pegasus topology~\cite{boothby2020next}, and native clique embeddings (15--20 qubits fully connected) exhibited zero chain breaks. Across all experiments, the chain break rate remained below 2\%, with auto-scaled chain strength (1.2--1.8$\times$ the maximum quadratic coefficient) proving consistently effective~\cite{venturelli2015quantum}. Automatic postprocessing via greedy descent~\cite{cai2014practical} adds negligible time ($<$100\,ms per sample) and repairs any remaining chain break artifacts.
+Our decomposition strategy was explicitly designed to minimize this effect. Plot-level subproblems (27~variables) achieve chain lengths $\leq 1.2$ on the Pegasus topology~\cite{boothby2020next}, and native clique embeddings (15--20 qubits fully connected) exhibited zero chain breaks. Across all experiments, the chain break rate remained below 2\%, with auto-scaled chain strength (1.2--1.8$\times$ the maximum quadratic coefficient) proving consistently effective~\cite{venturelli2015quantum}. Automatic postprocessing via greedy descent~\cite{cai2014practical} adds negligible time ($<$100\,ms per sample) and repairs any remaining chain break artifacts.
 
 The observable effect of noise was sample variance: the 100~samples per QPU call exhibited a distribution of objective values rather than converging to a single solution. This is expected behavior for quantum annealing -- the sampler explores a neighborhood around the minimum-energy state -- and is addressed by selecting the best sample from each batch. For future work, adaptive annealing schedules~\cite{marshall2019power, king2022coherent} and reverse annealing~\cite{venturelli2019reverse} -- starting from a classical initial solution and refining via quantum fluctuations -- could improve sampling of low-energy states in the frustrated rotation landscape.
 
@@ -1614,23 +1779,23 @@ The single most important finding across all three studies is that \textbf{class
 
 Embedding complexity depends on problem connectivity and QPU topology~\cite{choi2008minor, zbinden2020embedding}. Our decomposition strategies explicitly control this trade-off:
 \begin{itemize}
-    \item \textbf{PlotBased:} Sparse per-farm subproblems (27 variables) $\to$ embedding in $<$0.5\,s per partition
+    \item \textbf{PlotBased:} Sparse per-plot subproblems (27 variables) $\to$ embedding in $<$0.5\,s per partition
     \item \textbf{Multilevel(10):} Medium subproblems ($\sim$270 variables) $\to$ embedding in 5--30\,s per partition
-    \item \textbf{Direct QPU:} Full problem (27,027 variables) $\to$ embedding failure (Table~\ref{tab:quality_1000farms})
+    \item \textbf{Direct QPU:} Full problem (27,027 variables) $\to$ embedding failure (Table~\ref{tab:quality_1000plots})
 \end{itemize}
 
 This hierarchy establishes a design principle: decomposition strategies should create subproblems that match hardware capabilities. For the current Pegasus topology, targeting 20--50 variable partitions with sparse connectivity ensures fast, reliable embedding. Any hardware improvement that reduces embedding overhead -- whether through higher connectivity, larger native cliques, or dedicated embedding co-processors~\cite{boothby2021zephyr} -- would have an outsized impact on end-to-end performance.
 
-If embedding overhead were eliminated entirely, the 1,000-farm problem would complete in the tens-of-seconds regime rather than the current decomposition wall time. This acceleration would place QPU workflows much closer to classical runtimes on Variant~A while substantially improving practical competitiveness on difficult Variant~B timeout regimes.
+If embedding overhead were eliminated entirely, the 1,000-plot problem would complete in the tens-of-seconds regime rather than the current decomposition wall time. This acceleration would place QPU workflows much closer to classical runtimes on Variant~A while substantially improving practical competitiveness on difficult Variant~B timeout regimes.
 
 \subsubsection{Impact of Higher Qubit Connectivity}
 
-The most directly relevant hardware improvement for our application is \textbf{increased qubit connectivity}. The current D-Wave Advantage system uses the Pegasus topology with degree-15 connectivity, supporting native cliques of 15--20 qubits~\cite{boothby2020next}. Our farm-level subproblems (27~variables for 27-Food, 18~variables for 6-Food) can embed within or near these native cliques, but larger subproblems (e.g., the 270-variable partitions in Multilevel(10)) require chains and multi-second embedding searches~\cite{cai2014practical}.
+The most directly relevant hardware improvement for our application is \textbf{increased qubit connectivity}. The current D-Wave Advantage system uses the Pegasus topology with degree-15 connectivity, supporting native cliques of 15--20 qubits~\cite{boothby2020next}. Our plot-level subproblems (27~variables for 27-Food, 18~variables for 6-Food) can embed within or near these native cliques, but larger subproblems (e.g., the 270-variable partitions in Multilevel(10)) require chains and multi-second embedding searches~\cite{cai2014practical}.
 
 D-Wave's next-generation \textbf{Zephyr topology} offers degree-20+ connectivity, supporting native cliques of approximately 30--40 qubits~\cite{boothby2021zephyr}. For our problem, this advancement would have three concrete effects:
 
 \begin{enumerate}
-    \item \textbf{Larger chain-free subproblems:} Farm clusters of 5--7~farms (up to $\sim$126 variables for 6-Food, $\sim$189 for 27-Food) could embed without chains, reducing the number of partitions by 5--7$\times$ and proportionally reducing both QPU calls and coordination overhead.
+    \item \textbf{Larger chain-free subproblems:} Plot clusters of 5--7~plots (up to $\sim$126 variables for 6-Food, $\sim$189 for 27-Food) could embed without chains, reducing the number of partitions by 5--7$\times$ and proportionally reducing both QPU calls and coordination overhead.
 
     \item \textbf{Faster embedding for remaining chains:} Higher connectivity reduces the search space for MinorMiner~\cite{cai2014practical}, decreasing per-partition embedding time from the current 5--30\,s to projections of $<$1\,s for moderate subproblems.
 
@@ -1641,15 +1806,15 @@ Combining these effects, we conservatively estimate that Zephyr-class connectivi
 
 \subsubsection{Impact of Larger QPU Processors and Lower Noise}
 
-Beyond connectivity, future QPUs with more qubits would enable embedding larger subproblems -- or even entire problems -- without decomposition. Current Pegasus systems have $\sim$5,760 qubits~\cite{boothby2020next}; next-generation systems may offer 10,000--20,000+ qubits~\cite{boothby2021zephyr}. For our 200-farm 27-Food rotation problem (16,200 variables), a QPU with sufficient qubits and connectivity could eliminate decomposition entirely, removing boundary approximation errors, solving the global optimization in a single annealing call ($\sim$20\,ms), and producing solutions that respect global constraints natively.
+Beyond connectivity, future QPUs with more qubits would enable embedding larger subproblems -- or even entire problems -- without decomposition. Current Pegasus systems have $\sim$5,760 qubits~\cite{boothby2020next}; next-generation systems may offer 10,000--20,000+ qubits~\cite{boothby2021zephyr}. For our 200-plot 27-Food rotation problem (16,200 variables), a QPU with sufficient qubits and connectivity could eliminate decomposition entirely, removing boundary approximation errors, solving the global optimization in a single annealing call ($\sim$20\,ms), and producing solutions that respect global constraints natively.
 
 Improved qubit coherence and reduced thermal noise would further benefit our application. Our current chain break rate of $<$2\% is already low, but further reduction to $<$0.1\% would enable more aggressive penalty tuning. Currently, chain strength must be set conservatively (1.2--1.8$\times$ max coefficient) to prevent breaks, which can distort the energy landscape. Lower noise would allow tighter chain strengths, producing more faithful representations of the QUBO objective and potentially improving solution quality. Additionally, reduced sample variance would increase the probability that the best sample from each batch is close to the true ground state -- particularly impactful for problems with many nearly-degenerate local minima, such as our frustrated rotation landscapes.
 
 \subsubsection{Parallelization and Multi-QPU Architectures}
 
-Our decomposition approach is inherently parallelizable: independent farm clusters can be solved simultaneously on separate QPUs. For the 1,000-farm Multilevel(10) benchmark (102~partitions), a hypothetical 10-QPU array would reduce QPU time from 21.78\,s to $\sim$2.2\,s. The embedding bottleneck would also parallelize: each QPU independently embeds its assigned partitions, reducing embedding wall-clock time by a factor of 10.
+Our decomposition approach is inherently parallelizable: independent plot clusters can be solved simultaneously on separate QPUs. For the 1,000-plot Multilevel(10) benchmark (102~partitions), a hypothetical 10-QPU array would reduce QPU time from 21.78\,s to $\sim$2.2\,s. The embedding bottleneck would also parallelize: each QPU independently embeds its assigned partitions, reducing embedding wall-clock time by a factor of 10.
 
-Under such a parallel architecture, the 1,000-farm problem currently requiring $\sim$3,495\,s would complete in approximately $\sim$350\,s -- comparable to a single Gurobi timeout, but delivering a solution rather than hitting a time limit. Combined with Zephyr-class connectivity improvements, parallel multi-QPU execution could bring the 1,000-farm Variant~A problem to completion in under 100~seconds, and could solve the Variant~B rotation scenarios with 3.80$\times$ higher benefit in comparable time.
+Under such a parallel architecture, the 1,000-plot problem currently requiring $\sim$3,495\,s would complete in approximately $\sim$350\,s -- comparable to a single Gurobi timeout, but delivering a solution rather than hitting a time limit. Combined with Zephyr-class connectivity improvements, parallel multi-QPU execution could bring the 1,000-plot Variant~A problem to completion in under 100~seconds, and could solve the Variant~B rotation scenarios with 3.80$\times$ higher benefit in comparable time.
 
 \subsubsection{Conditions for Realistic Quantum \textit{Improvement}}
 
@@ -1662,7 +1827,7 @@ Based on the evidence from all three studies, we identify the following conditio
 
     \item \textbf{Decomposition quality must improve.} The 30--40\% optimality gaps observed in Study 2.A are acceptable for many practical applications but leave room for improvement. Larger native cliques, better boundary coordination algorithms, and hardware-aware decomposition strategies co-designed with QPU topology could close this gap substantially.
 
-    \item \textbf{Scale must be sufficient.} The QPU \textit{improvement} ratio grows with problem size (from 2.51$\times$ at 180~variables to 5.35$\times$ at 16,200~variables in Study 2.B). The linear QPU time extrapolation ($T = 0.78 \cdot N_{\text{vars}} + 51$\,ms) predicts $\sim$78~seconds for a 100,000-variable problem. Quantum \textit{improvement} is projected to be the most pronounced at scales relevant to regional agricultural planning (1,000--10,000~farms).
+    \item \textbf{Scale must be sufficient.} The QPU \textit{improvement} ratio grows with problem size (from 2.51$\times$ at 180~variables to 5.35$\times$ at 16,200~variables in Study 2.B). The linear QPU time extrapolation ($T = 0.78 \cdot N_{\text{vars}} + 51$\,ms) predicts $\sim$78~seconds for a 100,000-variable problem. Quantum \textit{improvement} is projected to be the most pronounced at scales relevant to regional agricultural planning (1,000--10,000~plots).
 \end{enumerate}
 
 These conditions are not speculative: they are directly derived from the quantitative findings of the three studies. The gap between current demonstration and deployment-ready \textit{improvement} is primarily an engineering challenge (embedding overhead, QPU connectivity) rather than a fundamental theoretical barrier.
@@ -1688,14 +1853,14 @@ Phase~3 established quantum annealing as a viable computational approach for lar
 
     \item \textbf{Transparency reveals genuine quantum contribution.} The transition from black-box hybrid solvers (Study 1.A.A) to transparent decomposition methods (Study 2.A) revealed that hybrid solver QPU usage is only 35--70\,ms (1.3\% of wall-clock time), motivating explicit quantum-classical separation. This transparency is essential for honest assessment of quantum contribution and for projecting performance on future hardware.
 
-    \item \textbf{Quantum solutions offer practical diversity benefits.} Decomposition methods naturally produce diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach), as documented in Table~\ref{tab:quality_1000farms}. For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}.
+    \item \textbf{Quantum solutions offer practical diversity benefits.} Decomposition methods naturally produce diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach), as documented in Table~\ref{tab:quality_1000plots}. For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}.
 
     \item \textbf{Violations are a manageable trade-off.} The 24.2\% violation rate in Study 2.B (Table~\ref{tab:violation_impact}) explains only $\sim$7\% of the objective gap (Figure~\ref{fig:violation_impact}); zero-violation methods exist for Study 2.A (Table~\ref{tab:violation_by_strategy}); and the nature of violations (fields left fallow) is easily corrected in post-processing.
 
-    \item \textbf{Future hardware improvements target the right bottleneck.} Higher qubit connectivity (Zephyr topology), larger processors, lower noise, and multi-QPU parallelization all directly address the classical embedding overhead that currently dominates runtime. If embedding overhead were eliminated, the 1,000-farm problem would complete in $\sim$22~seconds of QPU time -- a regime where quantum \textit{improvement} is decisive.
+    \item \textbf{Future hardware improvements target the right bottleneck.} Higher qubit connectivity (Zephyr topology), larger processors, lower noise, and multi-QPU parallelization all directly address the classical embedding overhead that currently dominates runtime. If embedding overhead were eliminated, the 1,000-plot problem would complete in $\sim$22~seconds of QPU time -- a regime where quantum \textit{improvement} is decisive.
 \end{enumerate}
 
-% These results justify progression to Phase~4 QPU-based proof-of-concept implementation, focusing on real-world deployment scenarios with multi-period rotation planning for agricultural systems. This Phase~3 study demonstrates practical quantum \textit{improvement} for a real-world optimization problem, provides transparent accounting of quantum versus classical computation, and establishes that quantum \textit{improvement} grows at larger scales. These findings provide a strong foundation for Phase~4 deployment, where the quantum optimization approach will be tested with real farm cooperatives in the field.
+% These results justify progression to Phase~4 QPU-based proof-of-concept implementation, focusing on real-world deployment scenarios with multi-period rotation planning for agricultural systems. This Phase~3 study demonstrates practical quantum \textit{improvement} for a real-world optimization problem, provides transparent accounting of quantum versus classical computation, and establishes that quantum \textit{improvement} grows at larger scales. These findings provide a strong foundation for Phase~4 deployment, where the quantum optimization approach will be tested with real plot cooperatives in the field.
 
 
 
@@ -1716,7 +1881,7 @@ Based on the results of the runs, and the further analysis using the OQI impact 
 
 \subsection{Local Impact Assessment}
 
-The food production optimization solution targets multiple dimensions of sustainable development across different time horizons. As described in Section~1, both local and global populations are impacted, with particular vulnerability among low-income communities and regions with limited arable land. The solution addresses the fundamental optimization challenge of allocating limited farms and arable land to feed the maximum number of people in a nutritionally intelligent way, at the lowest cost to the population, while minimizing environmental harm. The optimizer pursues this through five explicit objectives -- nutritional value, nutrient density, affordability, sustainability, and environmental impact -- each grounded in quantitative data from LCA and nutritional databases (see Section~3.1 for definitions).
+The food production optimization solution targets multiple dimensions of sustainable development across different time horizons. As described in Section~1, both local and global populations are impacted, with particular vulnerability among low-income communities and regions with limited arable land. The solution addresses the fundamental optimization challenge of allocating limited plots and arable land to feed the maximum number of people in a nutritionally intelligent way, at the lowest cost to the population, while minimizing environmental harm. The optimizer pursues this through five explicit objectives -- nutritional value, nutrient density, affordability, sustainability, and environmental impact -- each grounded in quantitative data from LCA and nutritional databases (see Section~3.1 for definitions).
 
 The anticipated impacts span nutritional security, environmental sustainability, and economic prosperity for agricultural communities.
 
@@ -1728,7 +1893,7 @@ The anticipated impacts span nutritional security, environmental sustainability,
 
 \textbf{SDG 9 (Industry, Innovation and Infrastructure):} The deployment of the digital mapping and quantum optimization platform provides stakeholders with accessible technology tools for agricultural planning, directly supporting SDG Target 9.a (facilitating sustainable infrastructure development in developing countries).
 
-\textbf{SDG 10 (Reduced Inequalities):} The optimization tool is designed as open-source software whose outputs -- crop allocation plans -- can be communicated through existing agricultural extension services without requiring specialized hardware from farmers. Critically, the underlying farm model explicitly represents the fragmented land distribution typical of low-income countries: sub-1\,ha farms constitute approximately 45\% of holdings \cite{lowder2016number}, and the optimizer handles these small parcels natively. This lowers the barrier for smallholder farmers to access data-driven decision support that was previously available only through costly private consultancy, addressing Target 10.2 (promoting social inclusion of all).
+\textbf{SDG 10 (Reduced Inequalities):} The optimization tool is designed as open-source software whose outputs -- crop allocation plans -- can be communicated through existing agricultural extension services without requiring specialized hardware from farmers. Critically, the underlying plot model explicitly represents the fragmented land distribution typical of low-income countries: sub-1\,ha plots constitute approximately 45\% of holdings \cite{lowder2016number}, and the optimizer handles these small plots natively. This lowers the barrier for smallholder farmers to access data-driven decision support that was previously available only through costly private consultancy, addressing Target 10.2 (promoting social inclusion of all).
 
 \subsubsection{Mid-Term Impacts (2-5 years)}
 
@@ -1740,13 +1905,13 @@ The anticipated impacts span nutritional security, environmental sustainability,
 
 \textbf{SDG 10 (Reduced Inequalities):} As smallholder farmers adopt the tool over successive planting seasons, the leveling effect of equal access to data-driven decision support may begin to narrow income gaps. However, we note that the optimizer does not directly target income inequality; rather, the mechanism is indirect -- providing small-scale producers with crop plans of comparable quality to those available to larger, better-resourced operations. Monitoring changes in income distribution among participating farmers can track progress toward Target 10.1 (income growth of bottom 40\%).
 
-\textbf{SDG 12 (Responsible Consumption and Production):} Farms adopting optimized production methods -- guided by the environmental impact and sustainability objectives that penalize high-damage crops -- increasingly shift toward environmentally sound practices. Practice surveys and certification records can document this transition, addressing Target 12.2 (sustainable management of natural resources).
+\textbf{SDG 12 (Responsible Consumption and Production):} Plots adopting optimized production methods -- guided by the environmental impact and sustainability objectives that penalize high-damage crops -- increasingly shift toward environmentally sound practices. Practice surveys and certification records can document this transition, addressing Target 12.2 (sustainable management of natural resources).
 
 \textbf{SDG 13 (Climate Action):} The environmental impact objective includes \texttt{Climate\_change\_mPt} at the production stage, while the sustainability objective captures climate change impact across the full lifecycle. When consistently applied, these objectives favor crop mixes with lower aggregate greenhouse gas emissions. GHG monitoring can quantify the resulting reductions in CO$_2$-equivalent emissions from agricultural activities, supporting climate mitigation efforts while maintaining food security.
 
 \textbf{SDG 15 (Life on Land):} The sustainability objective includes \texttt{Land\_use\_mPt} as an LCA damage category, meaning the optimizer penalizes crops with high land-use impact per unit of nutritional value. This may contribute to reduced pressure on natural habitats by favoring land-efficient crops. Ecological surveys measuring species richness and abundance can document whether this translates to improved ecosystem health on participating farmland, addressing Target 15.5 (reducing degradation and halting biodiversity loss).
 
-\textbf{SDG 17 (Partnerships for the Goals):} Successful adoption of the optimization solution requires multi-stakeholder partnerships between research institutions, government agencies, NGOs, and farmer cooperatives. Building these collaboration frameworks is a mid-term process; partnership agreements and MOUs documenting the resulting structures support Target 17.16 (enhanced global partnerships).
+\textbf{SDG 17 (Partnerships for the Goals):} Successful adoption of the optimization solution requires multi-stakeholder partnerships between research institutions, government agencies, NGOs, and ploter cooperatives. Building these collaboration frameworks is a mid-term process; partnership agreements and MOUs documenting the resulting structures support Target 17.16 (enhanced global partnerships).
 
 \subsubsection{Long-Term Impacts (5-10 years)}
 
@@ -1794,13 +1959,13 @@ The fundamental trade-off between maximizing food production and minimizing envi
 
 While quantum optimization provides powerful capabilities, it risks exacerbating inequalities if access is limited to well-resourced actors. Technology adoption may inadvertently widen the gap between large commercial operations and smallholder farmers, undermining poverty reduction (SDG 1) and equality (SDG 10) goals even while advancing innovation (SDG 9).
 
-\textit{Mitigation:} Access equity requires deliberate design choices including: open-source software releases ensuring zero-cost availability; user-friendly interfaces requiring minimal technical expertise; partnerships with agricultural extension services providing last-mile technology dissemination to smallholder farmers; community-based facilitator models bridging the digital divide; differentiated support mechanisms for smaller farms; cooperative models enabling resource pooling; and progressive pricing structures favoring disadvantaged farmers. Capacity-building programs ensure technology access translates to effective utilization.
+\textit{Mitigation:} Access equity requires deliberate design choices including: open-source software releases ensuring zero-cost availability; user-friendly interfaces requiring minimal technical expertise; partnerships with agricultural extension services providing last-mile technology dissemination to smallholder farmers; community-based facilitator models bridging the digital divide; differentiated support mechanisms for smaller plots; cooperative models enabling resource pooling; and progressive pricing structures favoring disadvantaged farmers. Capacity-building programs ensure technology access translates to effective utilization.
 
 \textbf{Climate Policy Costs (SDG 13 vs SDGs 1, 2, 8):}
 
 Environmental optimization may increase short-term costs for implementing sustainable practices, potentially harming poor households and slowing immediate economic growth. The transition to climate-smart agriculture requires upfront investments that may be prohibitive for resource-constrained farmers, creating tension between climate action and poverty reduction.
 
-\textit{Mitigation:} Balancing climate goals with poverty reduction and food security requires complementary policy interventions: phased implementation allowing gradual adaptation; transition subsidies protecting vulnerable households during the shift to sustainable practices; technical assistance reducing implementation costs through knowledge transfer; market development for sustainable products commanding premium prices; payments for ecosystem services compensating farmers for environmental benefits they generate; social protection systems providing safety nets during transitions; climate-resilient livelihood diversification reducing farmer vulnerability; and staged optimization ensuring affordability remains a weighted objective across all time horizons. Just transition frameworks ensure equitable distribution of costs and benefits.
+\textit{Mitigation:} Balancing climate goals with poverty reduction and food security requires complementary policy interventions: phased implementation allowing gradual adaptation; transition subsidies protecting vulnerable households during the shift to sustainable practices; technical assistance reducing implementation costs through knowledge transfer; market development for sustainable products commanding premium prices; payments for ecosystem services compensating farmers for environmental benefits they generate; social protection systems providing safety nets during transitions; climate-resilient livelihood diversification reducing ploter vulnerability; and staged optimization ensuring affordability remains a weighted objective across all time horizons. Just transition frameworks ensure equitable distribution of costs and benefits.
 
 \textbf{Conservation-Production Balance (SDG 15 vs SDG 2):}
 
@@ -1826,9 +1991,9 @@ The sustainability objective includes \texttt{Waste\_treatment\_mPt} as part of 
 
 \textbf{Unequal Partnership Structures (SDG 17 vs SDG 10):}
 
-Multi-stakeholder partnerships, while essential for technology deployment, may reinforce existing power imbalances if not carefully structured. Partnerships dominated by well-resourced institutions could marginalize smallholder farmer voices. Furthermore, quantum computing hardware and cloud services are predominantly provided by technology companies in North America and Europe, which could create technological dependencies for developing countries relying on these platforms for agricultural decision support.
+Multi-stakeholder partnerships, while essential for technology deployment, may reinforce existing power imbalances if not carefully structured. Partnerships dominated by well-resourced institutions could marginalize smallholder ploter voices. Furthermore, quantum computing hardware and cloud services are predominantly provided by technology companies in North America and Europe, which could create technological dependencies for developing countries relying on these platforms for agricultural decision support.
 
-\textit{Mitigation:} Participatory governance structures with farmer representatives in decision-making bodies ensure equitable influence. Transparent benefit-sharing agreements document how gains are distributed. Capacity building programs equalize negotiating power between partners. Regular stakeholder consultations verify that partnership benefits reach intended beneficiaries. To mitigate technological dependency, the optimization framework is designed to also run on classical solvers (Gurobi, SCIP) when quantum access is unavailable, ensuring the solution remains functional independently of quantum cloud providers.
+\textit{Mitigation:} Participatory governance structures with ploter representatives in decision-making bodies ensure equitable influence. Transparent benefit-sharing agreements document how gains are distributed. Capacity building programs equalize negotiating power between partners. Regular stakeholder consultations verify that partnership benefits reach intended beneficiaries. To mitigate technological dependency, the optimization framework is designed to also run on classical solvers (Gurobi, SCIP) when quantum access is unavailable, ensuring the solution remains functional independently of quantum cloud providers.
 
 \subsubsection{Monitoring and Adaptive Management}
 
@@ -1840,7 +2005,7 @@ The quantum-enabled crop optimization approach is highly transposable to diverse
 
 \subsubsection{Target Geographies}
 
-\textbf{Sub-Saharan Africa:} With 45\% of the population in rural areas and less than 10\% of health professionals serving these communities \cite{Fanzo2022}, optimized agricultural planning can address both nutritional deficiencies and economic development. Small-scale farms ($<$1 hectare) constitute approximately 45\% of farms but control only 10\% of agricultural land \cite{LOWDER201616}, making optimization critical for efficient resource utilization.
+\textbf{Sub-Saharan Africa:} With 45\% of the population in rural areas and less than 10\% of health professionals serving these communities \cite{Fanzo2022}, optimized agricultural planning can address both nutritional deficiencies and economic development. Small-scale plots ($<$1 hectare) constitute approximately 45\% of plots but control only 10\% of agricultural land \cite{LOWDER201616}, making optimization critical for efficient resource utilization.
 
 \textbf{South and Southeast Asia:} High population density, diverse crop systems, and significant climate risks make these regions ideal candidates. The methodology has been validated using Indonesian food data, demonstrating cultural adaptability through locally acceptable food baskets.
 
@@ -1850,7 +2015,7 @@ The quantum-enabled crop optimization approach is highly transposable to diverse
 
 \subsubsection{Data Requirements and Deployment Feasibility}
 
-The proof of concept requires three data categories, all of which are increasingly accessible in diverse global contexts. First, nutritional composition and environmental impact scores are available from GAIN databases and life-cycle assessments, providing standardized inputs across geographies. Second, local food preferences and prices can be collected through household surveys and market data, ensuring cultural relevance and economic realism. Third, farm characteristics and constraints are accessible through agricultural census data or participatory mapping exercises.
+The proof of concept requires three data categories, all of which are increasingly accessible in diverse global contexts. First, nutritional composition and environmental impact scores are available from GAIN databases and life-cycle assessments, providing standardized inputs across geographies. Second, local food preferences and prices can be collected through household surveys and market data, ensuring cultural relevance and economic realism. Third, plot characteristics and constraints are accessible through agricultural census data or participatory mapping exercises.
 
 These data types are becoming widely available through global initiatives like the Food Systems Dashboard, making deployment feasible in most contexts with appropriate partnerships. The modular architecture allows regions with partial data availability to implement simplified versions while building toward more comprehensive optimization as data infrastructure improves.
 
@@ -1858,7 +2023,7 @@ These data types are becoming widely available through global initiatives like t
 
 \subsubsection{Key Risks}
 
-Several risks could affect impact achievement across different time horizons and must be proactively managed. Income inequality between farms may persist or widen if optimization benefits apply primarily to well-resourced farmers rather than smallholders, affecting both short-term and mid-term outcomes. Lack of market access for new crops poses a significant barrier—even optimally selected crops cannot improve incomes if buyers are unavailable, particularly impacting short-term and mid-term economic gains. Regulatory barriers to new seed varieties or agricultural inputs may slow implementation at the short-term stage.
+Several risks could affect impact achievement across different time horizons and must be proactively managed. Income inequality between plots may persist or widen if optimization benefits apply primarily to well-resourced farmers rather than smallholders, affecting both short-term and mid-term outcomes. Lack of market access for new crops poses a significant barrier—even optimally selected crops cannot improve incomes if buyers are unavailable, particularly impacting short-term and mid-term economic gains. Regulatory barriers to new seed varieties or agricultural inputs may slow implementation at the short-term stage.
 
 Climate-related risks span multiple timeframes. Crops may not be resilient enough for accelerating climate change impacts, threatening both short-term and mid-term productivity gains. More acutely, severe climate shocks (droughts, floods, extreme temperatures) can dramatically reduce yields across all timeframes—short-term, mid-term, and long-term—potentially undermining the entire impact logic chain. Finally, poor quality or missing baseline data compromises the ability to measure impacts accurately in the short term, weakening evidence generation and adaptive management.
 
@@ -1873,7 +2038,7 @@ Three essential activities lay the groundwork for successful implementation. Con
 
 Successful implementation requires coordinated engagement with diverse stakeholders, each playing distinct roles in the impact pathway. The Ministry of Agriculture serves as both regulator and policy architect, with primary interests in ensuring food security and regulatory compliance. As a direct stakeholder, engagement occurs through policy dialogue mechanisms, establishing regulatory frameworks that enable innovation while protecting public interests.
 
-Farmers constitute the primary producers and direct beneficiaries of the optimization system. Their central interest -- increasing yields and income while managing risk -- drives adoption decisions. Direct engagement through field training programs builds capacity for using optimization tools and implementing recommended crop plans. Complementing farmer engagement, buyers and offtakers (including agricultural cooperatives, food processors, and wholesalers) require reliable supplies of nutritious crops. While indirect stakeholders, buyers are critical to closing the value chain. Market linkage activities connect optimized production with demand, ensuring farmers can sell diversified outputs profitably.
+farmers constitute the primary producers and direct beneficiaries of the optimization system. Their central interest -- increasing yields and income while managing risk -- drives adoption decisions. Direct engagement through field training programs builds capacity for using optimization tools and implementing recommended crop plans. Complementing ploter engagement, buyers and offtakers (including agricultural cooperatives, food processors, and wholesalers) require reliable supplies of nutritious crops. While indirect stakeholders, buyers are critical to closing the value chain. Market linkage activities connect optimized production with demand, ensuring farmers can sell diversified outputs profitably.
 
 Retailers sell nutrient-dense crops to end consumers, with interests in maintaining reliable supply of diverse, high-quality produce. As direct stakeholders, retailers are engaged through market linkage strategies that align optimized crop production with retail demand patterns and quality standards. The local community represents the ultimate beneficiaries -- end users of improved food systems seeking better nutrition, stable food access, and lower costs. Direct community engagement through outreach programs ensures the optimization system responds to local food preferences, affordability constraints, and cultural contexts, making nutrition improvements socially sustainable.
 
@@ -1926,7 +2091,7 @@ Retailers sell nutrient-dense crops to end consumers, with interests in maintain
 
 % \textbf{Decomposition as the Only Viable Strategy:}
 
-% Given these constraints, our hierarchical decomposition approach becomes not merely advantageous but necessary. Results demonstrate that standard analog quantum annealing hardware is at a disadvantage compared to classical digital annealers for fully-connected problems, highlighting the need to develop new approaches that overcome fundamental challenges~\cite{prxquantum2040322,albash2018adiabatic}. Our strategy of decomposing the 150-variable farm problem into multiple 27-variable subproblems ensures:
+% Given these constraints, our hierarchical decomposition approach becomes not merely advantageous but necessary. Results demonstrate that standard analog quantum annealing hardware is at a disadvantage compared to classical digital annealers for fully-connected problems, highlighting the need to develop new approaches that overcome fundamental challenges~\cite{prxquantum2040322,albash2018adiabatic}. Our strategy of decomposing the 150-variable plot problem into multiple 27-variable subproblems ensures:
 
 % \begin{enumerate}
 %     \item \textbf{Guaranteed Embeddability:} Subproblems remain well within the direct embedding success range
@@ -1938,7 +2103,7 @@ Retailers sell nutrient-dense crops to end consumers, with interests in maintain
 \subsection{Mapping to D-Wave QPU: Decomposition Strategies for Study 2.A}
 \label{appx:decomp}
 
-\textbf{Observation:} For our farm-level subproblems (27 variables), we consistently achieved chain length $\leq 1.2$ and embedding time $<0.5$ seconds, validating the suitability of Pegasus topology for our decomposition strategies. These metrics place our subproblems firmly within the ``sweet spot'' identified by embedding algorithm research, where direct embedding is both feasible and efficient.
+\textbf{Observation:} For our plot-level subproblems (27 variables), we consistently achieved chain length $\leq 1.2$ and embedding time $<0.5$ seconds, validating the suitability of Pegasus topology for our decomposition strategies. These metrics place our subproblems firmly within the ``sweet spot'' identified by embedding algorithm research, where direct embedding is both feasible and efficient.
 
 \subsubsection{Method 1: Direct Embedding Baseline}
 
@@ -1971,29 +2136,29 @@ Retailers sell nutrient-dense crops to end consumers, with interests in maintain
 \subsubsection{Method 2: Plot-Based Decomposition}
 
 \paragraph{Description}
-Plot-based decomposition partitions the problem by farm, creating one subproblem per farm plus a master problem for unique crop tracking. This ensures constraint preservation since farms are independent. This natural domain-aware partitioning exploits the independence structure inherent in agricultural planning, similar to decomposition strategies used in quantum annealing for scheduling~\cite{venturelli2015quantum} and graph coloring problems~\cite{titiloye2011quantum}.
+Plot-based decomposition partitions the problem by plot, creating one subproblem per plot plus a master problem for unique crop tracking. This ensures constraint preservation since plots are independent. This natural domain-aware partitioning exploits the independence structure inherent in agricultural planning, similar to decomposition strategies used in quantum annealing for scheduling~\cite{venturelli2015quantum} and graph coloring problems~\cite{titiloye2011quantum}.
 
 \paragraph{Mathematical Formulation}
 
-Partition variables into farm-specific subsets plus global U variables:
+Partition variables into plot-specific subsets plus global U variables:
 \begin{equation}
 \mathcal{P}_{\text{PlotBased}} = \{\mathcal{P}_1, \mathcal{P}_2, \ldots, \mathcal{P}_{|\mathcal{F}|}, \mathcal{P}_U\}
 \end{equation}
 
 where:
 \begin{itemize}
-\item $\mathcal{P}_i = \{Y_{f_i,c} : c \in \mathcal{C}\}$ for farm $f_i$
+\item $\mathcal{P}_i = \{Y_{f_i,c} : c \in \mathcal{C}\}$ for plot $f_i$
 \item $\mathcal{P}_U = \{U_c : c \in \mathcal{C}\}$
 \end{itemize}
 
-Each farm partition has $|\mathcal{C}|$ variables (one per crop), creating $|\mathcal{F}| + 1$ partitions.
+Each plot partition has $|\mathcal{C}|$ variables (one per crop), creating $|\mathcal{F}| + 1$ partitions.
 
 \begin{algorithm}
 \caption{Plot-Based Decomposition}
 \begin{algorithmic}[1]
-\Require Data with $|\mathcal{F}|$ farms, $|\mathcal{C}|$ crops
+\Require Data with $|\mathcal{F}|$ plots, $|\mathcal{C}|$ crops
 \Ensure Complete solution $\mathbf{x}$
-\State Create partitions: $\mathcal{P}_f = \{Y_{f,c} : c \in \mathcal{C}\}$ for each farm $f$
+\State Create partitions: $\mathcal{P}_f = \{Y_{f,c} : c \in \mathcal{C}\}$ for each plot $f$
 \State Create U partition: $\mathcal{P}_U = \{U_c : c \in \mathcal{C}\}$
 \State $\mathbf{x} \leftarrow \emptyset$
 \For{each partition $\mathcal{P}$ in $\{\mathcal{P}_1, \ldots, \mathcal{P}_{|\mathcal{F}|}, \mathcal{P}_U\}$}
@@ -2008,10 +2173,10 @@ Each farm partition has $|\mathcal{C}|$ variables (one per crop), creating $|\ma
 
 \paragraph{Conflict Resolution}
 
-When merging partition solutions, farm assignment conflicts are resolved by benefit comparison:
+When merging partition solutions, plot assignment conflicts are resolved by benefit comparison:
 
 \begin{algorithm}
-\caption{Conflict Resolution for Farm Assignments}
+\caption{Conflict Resolution for Plot Assignments}
 \begin{algorithmic}[1]
 \Require New assignment $Y_{f,c} = 1$, existing assignments $\mathbf{x}$
 \If{$\exists c' : \mathbf{x}[Y_{f,c'}] = 1$} \Comment{Conflict detected}
@@ -2033,17 +2198,17 @@ When merging partition solutions, farm assignment conflicts are resolved by bene
 \item \textbf{Partition size}: $|\mathcal{C}|$ variables each
 \item \textbf{Total QPU calls}: $|\mathcal{F}| + 1$
 \item \textbf{Embedding}: Fast (small partitions)
-\item \textbf{Constraint preservation}: Excellent (farms independent)
+\item \textbf{Constraint preservation}: Excellent (plots independent)
 \end{itemize}
 
 \subsubsection{Method 3: Multilevel Partitioning}
 
 \paragraph{Description}
-Multilevel partitioning groups farms into larger clusters of size $k$, reducing the number of partitions at the cost of partition size and potential constraint violations. This hierarchical approach is inspired by multilevel graph partitioning techniques widely used in VLSI design and parallel computing~\cite{karypis1998fast, hendrickson1995multilevel}.
+Multilevel partitioning groups plots into larger clusters of size $k$, reducing the number of partitions at the cost of partition size and potential constraint violations. This hierarchical approach is inspired by multilevel graph partitioning techniques widely used in VLSI design and parallel computing~\cite{karypis1998fast, hendrickson1995multilevel}.
 
 \paragraph{Mathematical Formulation}
 
-Group farms into clusters of size $k$:
+Group plots into clusters of size $k$:
 \begin{equation}
 \mathcal{P}_{\text{Multilevel}} = \{\mathcal{P}_1, \ldots, \mathcal{P}_{\lceil |\mathcal{F}|/k \rceil}, \mathcal{P}_U\}
 \end{equation}
@@ -2053,15 +2218,15 @@ where:
 \mathcal{P}_i = \{Y_{f,c} : f \in \mathcal{F}_i, c \in \mathcal{C}\}
 \end{equation}
 
-and $\mathcal{F}_i$ is a subset of $k$ farms. Each partition has $k \cdot |\mathcal{C}|$ variables.
+and $\mathcal{F}_i$ is a subset of $k$ plots. Each partition has $k \cdot |\mathcal{C}|$ variables.
 
 \begin{algorithm}
-\caption{Multilevel Partitioning ($k$-farm groups)}
+\caption{Multilevel Partitioning ($k$-plot groups)}
 \begin{algorithmic}[1]
-\Require Data with $|\mathcal{F}|$ farms, group size $k$
+\Require Data with $|\mathcal{F}|$ plots, group size $k$
 \Ensure Solution $\mathbf{x}$
-\State Divide farms into groups: $\mathcal{F} = \bigcup_{i=1}^{\lceil |\mathcal{F}|/k \rceil} \mathcal{F}_i$ where $|\mathcal{F}_i| \leq k$
-\For{each farm group $\mathcal{F}_i$}
+\State Divide plots into groups: $\mathcal{F} = \bigcup_{i=1}^{\lceil |\mathcal{F}|/k \rceil} \mathcal{F}_i$ where $|\mathcal{F}_i| \leq k$
+\For{each plot group $\mathcal{F}_i$}
     \State $\mathcal{P}_i \leftarrow \{Y_{f,c} : f \in \mathcal{F}_i, c \in \mathcal{C}\}$
     \State Build BQM for $\mathcal{P}_i$ with one-crop constraints for each $f \in \mathcal{F}_i$
     \State Solve partition on QPU
@@ -2077,7 +2242,7 @@ and $\mathcal{F}_i$ is a subset of $k$ farms. Each partition has $k \cdot |\math
 \item \textbf{Fewer partitions}: $\lceil |\mathcal{F}|/k \rceil + 1$ vs $|\mathcal{F}| + 1$
 \item \textbf{Larger partitions}: $k \cdot |\mathcal{C}|$ variables vs $|\mathcal{C}|$
 \item \textbf{Embedding difficulty}: Increases with $k$
-\item \textbf{Violations}: Can occur when farms in the same partitions compete for crops
+\item \textbf{Violations}: Can occur when plots in the same partitions compete for crops
 \end{itemize}
 
 \subsubsection{Method 4: Louvain Community Detection}
@@ -2192,7 +2357,7 @@ The sub-CQM extraction process preserves constraints:
 \subsubsection{Method 6: Coordinated Master-Subproblem}
 
 \paragraph{Description}
-Coordinated decomposition uses a rigorous two-level optimization where the master problem selects which crops to use (U variables) and farm subproblems independently assign these crops to farms. This hierarchical structure is inspired by classical decomposition techniques such as Benders decomposition~\cite{geoffrion1972generalized} and the master-subproblem framework for large-scale optimization~\cite{lasdon1970optimization}.
+Coordinated decomposition uses a rigorous two-level optimization where the master problem selects which crops to use (U variables) and plot subproblems independently assign these crops to plots. This hierarchical structure is inspired by classical decomposition techniques such as Benders decomposition~\cite{geoffrion1972generalized} and the master-subproblem framework for large-scale optimization~\cite{lasdon1970optimization}.
 
 \paragraph{Mathematical Formulation}
 
@@ -2205,7 +2370,7 @@ Coordinated decomposition uses a rigorous two-level optimization where the maste
 
 The master objective uses small penalties $\lambda_c$ to encourage crop selection while satisfying food group diversity.
 
-\textbf{Farm Subproblems (for each farm $f$):}
+\textbf{Plot Subproblems (for each plot $f$):}
 \begin{align}
 \text{maximize} \quad & \sum_{c \in \mathcal{C}} b_c \cdot L_p \cdot Y_{f,c} \label{eq:sub_obj}\\
 \text{subject to} \quad & \sum_{c \in \mathcal{C}} Y_{f,c} \leq 1 \label{eq:sub_one_crop}\\
@@ -2218,15 +2383,15 @@ where $U_c^*$ is the fixed value from the master solution.
 \begin{algorithm}
 \caption{Coordinated Master-Subproblem Decomposition}
 \begin{algorithmic}[1]
-\Require Data with farms $\mathcal{F}$, crops $\mathcal{C}$, food groups $\mathcal{G}$
+\Require Data with plots $\mathcal{F}$, crops $\mathcal{C}$, food groups $\mathcal{G}$
 \Ensure Solution $\mathbf{x} = (\mathbf{Y}, \mathbf{U})$
 \State \textbf{Step 1: Solve Master Problem}
 \State Build master BQM for U variables with food group constraints
 \State $\mathbf{U}^* \leftarrow \text{QPU.sample}(\text{BQM}_{\text{master}})$
 \State $\text{selected\_crops} \leftarrow \{c : U_c^* = 1\}$
-\State \textbf{Step 2: Solve Farm Subproblems}
-\For{each farm $f \in \mathcal{F}$}
-    \State Build farm BQM with objective $\max \sum_{c \in \text{selected\_crops}} b_c \cdot L_p \cdot Y_{f,c}$
+\State \textbf{Step 2: Solve Plot Subproblems}
+\For{each plot $f \in \mathcal{F}$}
+    \State Build plot BQM with objective $\max \sum_{c \in \text{selected\_crops}} b_c \cdot L_p \cdot Y_{f,c}$
     \State Add one-crop constraint: $\sum_{c} Y_{f,c} \leq 1$
     \State Add U-linking: $Y_{f,c} \leq U_c^*$ encoded as penalty
     \State $\mathbf{Y}_f^* \leftarrow \text{QPU.sample}(\text{BQM}_f)$
@@ -2239,9 +2404,9 @@ where $U_c^*$ is the fixed value from the master solution.
 \paragraph{Properties}
 \begin{itemize}
 \item \textbf{Hierarchical}: Clear master-subproblem structure
-\item \textbf{Independent subproblems}: Farms solved in parallel
+\item \textbf{Independent subproblems}: Plots solved in parallel
 \item \textbf{Global constraint enforcement}: Master ensures food group diversity
-\item \textbf{QPU calls}: $1 + |\mathcal{F}|$ (one master + one per farm)
+\item \textbf{QPU calls}: $1 + |\mathcal{F}|$ (one master + one per plot)
 \end{itemize}
 
 \subsubsection{Method 7: Spectral Clustering}
@@ -2291,11 +2456,11 @@ Given interaction graph $G = (\mathcal{V}, E)$, compute:
 \subsubsection{Method 8: HybridGrid Decomposition}
 
 \paragraph{Description}
-HybridGrid partitioning creates a 2D grid structure by dividing both farms \emph{and} crops simultaneously. This produces many small partitions that are easy to embed while maintaining local constraint coherence. The approach is inspired by domain decomposition methods used in parallel computing and numerical PDEs~\cite{toselli2005domain, smith1996domain}, adapted specifically for the bipartite structure of farm-crop assignment problems.
+HybridGrid partitioning creates a 2D grid structure by dividing both plots \emph{and} crops simultaneously. This produces many small partitions that are easy to embed while maintaining local constraint coherence. The approach is inspired by domain decomposition methods used in parallel computing and numerical PDEs~\cite{toselli2005domain, smith1996domain}, adapted specifically for the bipartite structure of plot-crop assignment problems.
 
 \paragraph{Mathematical Formulation}
 
-Given group sizes $k_F$ for farms and $k_C$ for crops, create a grid of partitions:
+Given group sizes $k_F$ for plots and $k_C$ for crops, create a grid of partitions:
 
 \begin{equation}
 \mathcal{P}_{\text{HybridGrid}} = \{\mathcal{P}_{(i,j)} : i \in [1, \lceil |\mathcal{F}|/k_F \rceil], j \in [1, \lceil |\mathcal{C}|/k_C \rceil]\} \cup \{\mathcal{P}_U\}
@@ -2306,17 +2471,17 @@ where each grid cell contains:
 \mathcal{P}_{(i,j)} = \{Y_{f,c} : f \in \mathcal{F}_{[k_F(i-1)+1:k_F \cdot i]}, c \in \mathcal{C}_{[k_C(j-1)+1:k_C \cdot j]}\}
 \end{equation}
 
-For example, with $k_F = 5$ farms and $k_C = 9$ crops:
+For example, with $k_F = 5$ plots and $k_C = 9$ crops:
 \begin{itemize}
 \item Partition size: $5 \times 9 = 45$ variables (very easy to embed)
-\item For 100 farms: $20 \times 3 = 60$ grid partitions + 1 U partition
-\item For 1000 farms: $200 \times 3 = 600$ grid partitions + 1 U partition
+\item For 100 plots: $20 \times 3 = 60$ grid partitions + 1 U partition
+\item For 1000 plots: $200 \times 3 = 600$ grid partitions + 1 U partition
 \end{itemize}
 
 \begin{algorithm}
 \caption{HybridGrid Decomposition}
 \begin{algorithmic}[1]
-\Require Farm group size $k_F$, crop group size $k_C$
+\Require Plot group size $k_F$, crop group size $k_C$
 \Ensure Partition set $\mathcal{P}$
 \State $\mathcal{P} \leftarrow \emptyset$
 \For{$i = 0$ to $\lfloor |\mathcal{F}|/k_F \rfloor$}
@@ -2373,52 +2538,52 @@ The challenge of embedding large optimization problems onto quantum annealers wi
 
 \subsection{Mapping to D-Wave QPU: Decomposition Strategies for Study 2.B}
 
-Direct embedding of large-scale optimization problems on current quantum annealing hardware faces significant challenges. The D-Wave Advantage system features over 5,600 qubits arranged in a Pegasus topology~\cite{dwave2020advantage, dwave2022pegasus}, where each qubit connects to approximately 15 neighbors. This represents a substantial improvement over the previous Chimera topology (6 connections per qubit)~\cite{boothler2022benchmarking}, but remains far from the all-to-all connectivity required by many optimization problems. Problems requiring dense connectivity between logical variables must use chains of physical qubits, which consumes the qubit budget rapidly and introduces chain break errors~\cite{date2019efficiently}. For our 100-farm instances with 1,800 variables, direct embedding is infeasible given current hardware constraints.
+Direct embedding of large-scale optimization problems on current quantum annealing hardware faces significant challenges. The D-Wave Advantage system features over 5,600 qubits arranged in a Pegasus topology~\cite{dwave2020advantage, dwave2022pegasus}, where each qubit connects to approximately 15 neighbors. This represents a substantial improvement over the previous Chimera topology (6 connections per qubit)~\cite{boothler2022benchmarking}, but remains far from the all-to-all connectivity required by many optimization problems. Problems requiring dense connectivity between logical variables must use chains of physical qubits, which consumes the qubit budget rapidly and introduces chain break errors~\cite{date2019efficiently}. For our 100-plot instances with 1,800 variables, direct embedding is infeasible given current hardware constraints.
 
 To overcome this limitation, we developed hierarchical decomposition strategies that partition the global problem into subproblems small enough to embed efficiently on the QPU while maintaining solution quality through iterative coordination. Our approach is motivated by recent advances in quantum annealing decomposition~\cite{booth2017partitioning, bass2021optimizing}, which demonstrate that problem-specific partitioning strategies can significantly improve solution quality compared to generic decomposition methods. The challenge of embedding large optimization problems onto quantum annealers with limited qubit connectivity has motivated extensive research into partitioning strategies~\cite{bian2020solving, yarkoni2022quantum, okada2020breaking}. Our key insight is that subproblems of 18 or fewer variables can be embedded as native cliques on the Pegasus topology, requiring no chains and thus eliminating embedding overhead entirely~\cite{dwave2022pegasus}.
 
-\subsubsection{Strategy 1: Clique Decomposition (Farm-by-Farm)}
+\subsubsection{Strategy 1: Clique Decomposition (Plot-by-Plot)}
 
-The clique decomposition strategy treats each farm as an independent subproblem, solving the crop allocation for that farm across all three time periods. This domain-aware partitioning exploits the natural independence structure of the agricultural planning problem, similar to decomposition strategies used in quantum annealing for scheduling~\cite{venturelli2015quantum} and graph coloring problems~\cite{titiloye2011quantum}. Each subproblem has $C \times T = 6 \times 3 = 18$ binary variables, which fits perfectly within a native clique on the Pegasus topology.
+The clique decomposition strategy treats each plot as an independent subproblem, solving the crop allocation for that plot across all three time periods. This domain-aware partitioning exploits the natural independence structure of the agricultural planning problem, similar to decomposition strategies used in quantum annealing for scheduling~\cite{venturelli2015quantum} and graph coloring problems~\cite{titiloye2011quantum}. Each subproblem has $C \times T = 6 \times 3 = 18$ binary variables, which fits perfectly within a native clique on the Pegasus topology.
 
 \paragraph{Mathematical Formulation}
 
-For each farm $f \in \mathcal{F}$, we construct a farm-specific optimization problem over variables $\{Y_{p,c,t}\}_{c \in \mathcal{C}, t \in \mathcal{T}}$ where $\mathcal{C}$ represents the 6 crop families and $\mathcal{T} = \{1,2,3\}$ represents the three time periods. The farm subproblem objective incorporates three components:
+For each plot $f \in \mathcal{F}$, we construct a plot-specific optimization problem over variables $\{Y_{p,c,t}\}_{c \in \mathcal{C}, t \in \mathcal{T}}$ where $\mathcal{C}$ represents the 6 crop families and $\mathcal{T} = \{1,2,3\}$ represents the three time periods. The plot subproblem objective incorporates three components:
 
 \begin{align}
-Z_f = & \sum_{c \in \mathcal{C}} \sum_{t \in \mathcal{T}} \frac{B_c \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c,t} \label{eq:farm_benefit} \\
-& + \sum_{t=2}^{T} \sum_{c_1, c_2 \in \mathcal{C}} \frac{\gamma_{\text{rot}} \cdot R_{c_1, c_2} \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c_1,t-1} \cdot Y_{p,c_2,t} \label{eq:farm_rotation} \\
-& + \sum_{f' \in \mathcal{N}(f)} \sum_{t \in \mathcal{T}} \sum_{c_1, c_2 \in \mathcal{C}} \frac{\gamma_{\text{spat}} \cdot S_{c_1,c_2}}{A_{\text{total}}} \cdot Y_{f,c_1,t} \cdot Y_{f',c_2,t}^{(k-1)} \label{eq:farm_spatial}
+Z_f = & \sum_{c \in \mathcal{C}} \sum_{t \in \mathcal{T}} \frac{B_c \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c,t} \label{eq:plot_benefit} \\
+& + \sum_{t=2}^{T} \sum_{c, c' \in \mathcal{C}} \frac{\gamma_{\text{rot}} \cdot R_{c, c'} \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c,t-1} \cdot Y_{p,c',t} \label{eq:plot_rotation} \\
+& + \sum_{f' \in \mathcal{N}(f)} \sum_{t \in \mathcal{T}} \sum_{c, c' \in \mathcal{C}} \frac{\gamma_{\text{spat}} \cdot S_{c,c'}}{A_{\text{total}}} \cdot Y_{f,c,t} \cdot Y_{f',c',t}^{(k-1)} \label{eq:plot_spatial}
 \end{align}
 
-where $Y_{f',c_2,t}^{(k-1)}$ denotes the assignment for neighboring farm $f'$ from the previous iteration $k-1$. The Binary Quadratic Model (BQM) is constructed by converting the objective to minimization form and adding penalty terms for the one-crop-per-period constraint~\cite{lucas2014ising}:
+where $Y_{f',c',t}^{(k-1)}$ denotes the assignment for neighboring plot $f'$ from the previous iteration $k-1$. The Binary Quadratic Model (BQM) is constructed by converting the objective to minimization form and adding penalty terms for the one-crop-per-period constraint~\cite{lucas2014ising}:
 
 \begin{equation}
 E_f(Y) = -Z_f + \lambda_{\text{penalty}} \sum_{t \in \mathcal{T}} \left(\sum_{c \in \mathcal{C}} Y_{p,c,t} -1\right)^2
 \end{equation}
 
-For each farm $f$, we construct a Binary Quadratic Model (BQM) over the variables $\{Y_{p,c,t}\}_{c \in \mathcal{C}, t \in \mathcal{T}}$. The linear terms encode the crop benefits (negated for minimization), the quadratic terms encode the rotation synergies between consecutive periods, and additional quadratic terms implement the one-hot penalty for each period~\cite{lucas2014ising}. The BQM is then submitted to the DWaveCliqueSampler, which automatically finds a native clique embedding and returns 100 samples per subproblem.
+For each plot $f$, we construct a Binary Quadratic Model (BQM) over the variables $\{Y_{p,c,t}\}_{c \in \mathcal{C}, t \in \mathcal{T}}$. The linear terms encode the crop benefits (negated for minimization), the quadratic terms encode the rotation synergies between consecutive periods, and additional quadratic terms implement the one-hot penalty for each period~\cite{lucas2014ising}. The BQM is then submitted to the DWaveCliqueSampler, which automatically finds a native clique embedding and returns 100 samples per subproblem.
 
 \paragraph{Iterative Boundary Refinement}
 
-Because the spatial interaction terms couple different farms, a single pass through the decomposition ignores neighbor effects. To address this, we employ iterative refinement over 3 boundary iterations, a technique inspired by domain decomposition methods in parallel computing~\cite{toselli2005domain}. In each iteration after the first, we add small bias terms to each farm's BQM based on the solutions found for neighboring farms in the previous iteration. 
+Because the spatial interaction terms couple different plots, a single pass through the decomposition ignores neighbor effects. To address this, we employ iterative refinement over 3 boundary iterations, a technique inspired by domain decomposition methods in parallel computing~\cite{toselli2005domain}. In each iteration after the first, we add small bias terms to each plot's BQM based on the solutions found for neighboring plots in the previous iteration. 
 
 The bias terms are computed as:
 \begin{equation}
 b_{f,c,t}^{(k)} = \sum_{f' \in \mathcal{N}(f)} \sum_{c' \in \mathcal{C}} \gamma_{\text{spat}} \cdot S_{c,c'} \cdot Y_{f',c',t}^{(k-1)}
 \end{equation}
 
-These biases approximate the spatial coupling terms, encouraging compatible crop choices across farm boundaries. Empirically, 3 iterations are sufficient for convergence, reducing the optimality gap from 20-25\% (single iteration) to 11-15\% (three iterations).
+These biases approximate the spatial coupling terms, encouraging compatible crop choices across plot boundaries. Empirically, 3 iterations are sufficient for convergence, reducing the optimality gap from 20-25\% (single iteration) to 11-15\% (three iterations).
 
 \begin{algorithm}
 \caption{Clique Decomposition with Iterative Refinement}
 \begin{algorithmic}[1]
-\Require Farms $\mathcal{F}$, crops $\mathcal{C}$, periods $\mathcal{T} = \{1,2,3\}$
-\Require Neighbor graph $\mathcal{N}(f)$ for each farm $f$
+\Require Plots $\mathcal{F}$, crops $\mathcal{C}$, periods $\mathcal{T} = \{1,2,3\}$
+\Require Neighbor graph $\mathcal{N}(f)$ for each plot $f$
 \Ensure Solution $\mathbf{Y} = \{Y_{p,c,t}\}$
 \State Initialize: $Y_{p,c,t}^{(0)} \leftarrow 0$ for all $f, c, t$
 \For{iteration $k = 1$ to $K_{\text{max}}$ (typically 3)}
-    \For{each farm $f \in \mathcal{F}$}
+    \For{each plot $f \in \mathcal{F}$}
         \State Compute neighbor biases: $b_{f,c,t}^{(k)} \leftarrow \sum_{f' \in \mathcal{N}(f)} \sum_{c'} \gamma_{\text{spat}} \cdot S_{c,c'} \cdot Y_{f',c',t}^{(k-1)}$
         \State Build BQM: $E_f = -Z_f + \lambda \sum_t (\sum_c Y_{p,c,t} -1)^2 -- \sum_{c,t} b_{f,c,t}^{(k)} \cdot Y_{p,c,t}$
         \State Embed BQM on QPU: $\phi_f \leftarrow \text{DWaveCliqueSampler.find\_embedding}(E_f)$
@@ -2434,11 +2599,11 @@ These biases approximate the spatial coupling terms, encouraging compatible crop
 \end{algorithmic}
 \end{algorithm}
 
-The algorithm proceeds as follows: we initialize all solutions to an empty assignment, then for each iteration from 1 to 3, we loop over all farms, building the BQM with neighbor biases from the previous iteration, sampling from the QPU, and updating the solution for that farm. After each iteration, we evaluate the global objective and retain the best solution found. This approach is highly parallelizable; in principle, all farm subproblems within an iteration could be solved simultaneously on separate QPU calls, similar to parallel quantum annealing strategies~\cite{pelofske2021parallel}.
+The algorithm proceeds as follows: we initialize all solutions to an empty assignment, then for each iteration from 1 to 3, we loop over all plots, building the BQM with neighbor biases from the previous iteration, sampling from the QPU, and updating the solution for that plot. After each iteration, we evaluate the global objective and retain the best solution found. This approach is highly parallelizable; in principle, all plot subproblems within an iteration could be solved simultaneously on separate QPU calls, similar to parallel quantum annealing strategies~\cite{pelofske2021parallel}.
 
 \paragraph{Complexity Analysis}
 \begin{itemize}
-\item \textbf{Subproblem size}: 18 variables per farm (fits native Pegasus cliques)
+\item \textbf{Subproblem size}: 18 variables per plot (fits native Pegasus cliques)
 \item \textbf{QPU calls}: $K_{\text{max}} \times |\mathcal{F}|$ (typically $3 \times F$)
 \item \textbf{Embedding time}: Near-zero (native clique, no chains)
 \item \textbf{Chain breaks}: $<$1\% (minimal chaining required)
@@ -2448,11 +2613,11 @@ The algorithm proceeds as follows: we initialize all solutions to an empty assig
 
 \subsubsection{Strategy 2: Spatial-Temporal Decomposition}
 
-The spatial-temporal decomposition strategy takes a different approach, partitioning the problem along both spatial and temporal dimensions simultaneously. This multi-dimensional decomposition is motivated by the observation that both spatial clustering and temporal decoupling can reduce problem complexity while preserving essential structure~\cite{ushijima2017graph}. Farms are grouped into spatial clusters of 2 to 5 neighboring farms using a simple nearest-neighbor heuristic, preserving local spatial interactions within each cluster. Within each cluster, we further slice by time period, solving one period at a time.
+The spatial-temporal decomposition strategy takes a different approach, partitioning the problem along both spatial and temporal dimensions simultaneously. This multi-dimensional decomposition is motivated by the observation that both spatial clustering and temporal decoupling can reduce problem complexity while preserving essential structure~\cite{ushijima2017graph}. Plots are grouped into spatial clusters of 2 to 5 neighboring plots using a simple nearest-neighbor heuristic, preserving local spatial interactions within each cluster. Within each cluster, we further slice by time period, solving one period at a time.
 
 \paragraph{Mathematical Formulation}
 
-Given a spatial clustering $\mathcal{F} = \bigcup_{i=1}^{N_c} \mathcal{F}_i$ where each cluster $\mathcal{F}_i$ contains $k_i \leq 5$ neighboring farms, we create cluster-period subproblems:
+Given a spatial clustering $\mathcal{F} = \bigcup_{i=1}^{N_c} \mathcal{F}_i$ where each cluster $\mathcal{F}_i$ contains $k_i \leq 5$ neighboring plots, we create cluster-period subproblems:
 
 \begin{equation}
 \mathcal{P}_{i,t} = \{Y_{p,c,t} : f \in \mathcal{F}_i, c \in \mathcal{C}\}
@@ -2461,23 +2626,23 @@ Given a spatial clustering $\mathcal{F} = \bigcup_{i=1}^{N_c} \mathcal{F}_i$ whe
 Each subproblem optimizes crop allocation for cluster $i$ in period $t$, with constraints:
 \begin{align}
 \text{maximize} \quad & \sum_{f \in \mathcal{F}_i} \sum_{c \in \mathcal{C}} \frac{B_c \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c,t} \\
-& + \sum_{(p_1,p_2) \in \mathcal{E}_i} \sum_{c_1,c_2 \in \mathcal{C}} \frac{\gamma_{\text{spat}} \cdot S_{c_1,c_2}}{A_{\text{total}}} \cdot Y_{p_1,c_1,t} \cdot Y_{p_2,c_2,t} \label{eq:intra_cluster_spatial}
+& + \sum_{(p_1,p_2) \in \mathcal{E}_i} \sum_{c,c' \in \mathcal{C}} \frac{\gamma_{\text{spat}} \cdot S_{c,c'}}{A_{\text{total}}} \cdot Y_{p_1,c,t} \cdot Y_{p_2,c',t} \label{eq:intra_cluster_spatial}
 \end{align}
 
 where $\mathcal{E}_i$ is the set of edges within cluster $i$. For period $t > 1$, rotation effects are incorporated by fixing previous period assignments:
 
 \begin{equation}
-\text{Rotation term:} \quad \sum_{f \in \mathcal{F}_i} \sum_{c_1,c_2 \in \mathcal{C}} \frac{\gamma_{\text{rot}} \cdot R_{c_1,c_2} \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c_1,t-1}^* \cdot Y_{p,c_2,t}
+\text{Rotation term:} \quad \sum_{f \in \mathcal{F}_i} \sum_{c,c' \in \mathcal{C}} \frac{\gamma_{\text{rot}} \cdot R_{c,c'} \cdot A_f}{A_{\text{total}}} \cdot Y_{p,c,t-1}^* \cdot Y_{p,c',t}
 \end{equation}
 
-where $Y_{p,c_1,t-1}^*$ are fixed assignments from the previous temporal slice.
+where $Y_{p,c,t-1}^*$ are fixed assignments from the previous temporal slice.
 
-This results in subproblems with at most $3 \text{ farms} \times 6 \text{ crops} \times 1 \text{ period} = 18$ variables, again fitting within native cliques. The temporal slicing allows rotation synergies within clusters to be handled through sequential solving: when solving period $t$, the solutions from period $t-1$ are fixed, providing a boundary condition that captures the rotation effects. This sequential approach is analogous to time-stepping methods in numerical simulation, where future states are computed based on fixed past states.
+This results in subproblems with at most $3 \text{ plots} \times 6 \text{ crops} \times 1 \text{ period} = 18$ variables, again fitting within native cliques. The temporal slicing allows rotation synergies within clusters to be handled through sequential solving: when solving period $t$, the solutions from period $t-1$ are fixed, providing a boundary condition that captures the rotation effects. This sequential approach is analogous to time-stepping methods in numerical simulation, where future states are computed based on fixed past states.
 
 \begin{algorithm}
 \caption{Spatial-Temporal Decomposition}
 \begin{algorithmic}[1]
-\Require Farms $\mathcal{F}$, spatial clustering $\{\mathcal{F}_1, \ldots, \mathcal{F}_{N_c}\}$
+\Require Plots $\mathcal{F}$, spatial clustering $\{\mathcal{F}_1, \ldots, \mathcal{F}_{N_c}\}$
 \Require Crops $\mathcal{C}$, periods $\mathcal{T} = \{1,2,3\}$
 \Ensure Solution $\mathbf{Y}$
 \State Initialize: $\mathbf{Y} \leftarrow \emptyset$
@@ -2498,7 +2663,7 @@ This results in subproblems with at most $3 \text{ farms} \times 6 \text{ crops}
 \end{algorithmic}
 \end{algorithm}
 
-Boundary coordination is required both between spatial clusters (to handle inter-cluster spatial interactions) and between time periods (already handled by sequential solving). The iterative refinement process is similar to clique decomposition but operates over cluster-period pairs rather than individual farms.
+Boundary coordination is required both between spatial clusters (to handle inter-cluster spatial interactions) and between time periods (already handled by sequential solving). The iterative refinement process is similar to clique decomposition but operates over cluster-period pairs rather than individual plots.
 
 This strategy is particularly effective when spatial interactions are strong, as it explicitly preserves neighbor relationships within clusters rather than approximating them through bias terms alone.
 
@@ -2506,9 +2671,9 @@ This strategy is particularly effective when spatial interactions are strong, as
 
 Spatial clusters are formed using a greedy nearest-neighbor algorithm:
 \begin{enumerate}
-    \item Sort farms by spatial coordinates
-    \item Initialize first cluster with first farm
-    \item For each remaining farm $f$:
+    \item Sort plots by spatial coordinates
+    \item Initialize first cluster with first plot
+    \item For each remaining plot $f$:
         \begin{itemize}
             \item Find cluster $\mathcal{F}_i$ with nearest centroid
             \item If $|\mathcal{F}_i| < k_{\max}$ (typically 5), add $f$ to $\mathcal{F}_i$
@@ -2529,7 +2694,7 @@ This produces spatially coherent clusters with bounded size, ensuring subproblem
 
 \subsubsection{Strategy 3: Hierarchical Multi-Level Approach}
 
-For the largest problem instances (50 to 100 farms), we employ a three-level hierarchical approach that combines aggregation with spatial decomposition. This method draws inspiration from multilevel graph partitioning techniques~\cite{karypis1998fast, hendrickson1995multilevel} and recent work on hierarchical quantum optimization~\cite{dash2025hierarchicalquantumoptimizationlargescale}. At the first level, crops are aggregated from 27 foods to 6 families, reducing the variable count by 4.5$\times$. At the second level, farms are partitioned into spatial clusters of approximately 5 farms each, based on k-means clustering of farm coordinates. At the third level, each cluster is solved on the QPU as a single subproblem with $5 \times 6 \times 3 = 90$ variables.
+For the largest problem instances (50 to 100 plots), we employ a three-level hierarchical approach that combines aggregation with spatial decomposition. This method draws inspiration from multilevel graph partitioning techniques~\cite{karypis1998fast, hendrickson1995multilevel} and recent work on hierarchical quantum optimization~\cite{dash2025hierarchicalquantumoptimizationlargescale}. At the first level, crops are aggregated from 27 foods to 6 families, reducing the variable count by 4.5$\times$. At the second level, plots are partitioned into spatial clusters of approximately 5 plots each, based on k-means clustering of plot coordinates. At the third level, each cluster is solved on the QPU as a single subproblem with $5 \times 6 \times 3 = 90$ variables.
 
 \paragraph{Three-Level Hierarchy}
 
@@ -2540,7 +2705,7 @@ For the largest problem instances (50 to 100 farms), we employ a three-level hie
 
 Aggregation preserves food group structure and nutritional characteristics through weighted averaging of benefit scores.
 
-\textbf{Level 2 (Spatial Clustering):} Partition farms into $N_c = \lceil |\mathcal{F}| / 5 \rceil$ clusters using k-means on $(x_f, y_f)$ coordinates:
+\textbf{Level 2 (Spatial Clustering):} Partition plots into $N_c = \lceil |\mathcal{F}| / 5 \rceil$ clusters using k-means on $(x_f, y_f)$ coordinates:
 \begin{equation}
 \mathcal{F} = \bigcup_{i=1}^{N_c} \mathcal{F}_i, \quad |\mathcal{F}_i| \approx 5
 \end{equation}
@@ -2553,7 +2718,7 @@ Aggregation preserves food group structure and nutritional characteristics throu
 \begin{algorithm}
 \caption{Hierarchical Multi-Level Decomposition}
 \begin{algorithmic}[1]
-\Require Farms $\mathcal{F}$, fine crops $\mathcal{C}_{\text{fine}}$ (27), periods $\mathcal{T}$
+\Require Plots $\mathcal{F}$, fine crops $\mathcal{C}_{\text{fine}}$ (27), periods $\mathcal{T}$
 \Ensure Solution $\mathbf{Y}$
 \State \textbf{Level 1: Crop Aggregation}
 \State $\mathcal{C}_{\text{coarse}} \leftarrow \text{aggregate\_crops}(\mathcal{C}_{\text{fine}})$ \Comment{27 $\to$ 6 families}
@@ -2577,7 +2742,7 @@ Aggregation preserves food group structure and nutritional characteristics throu
 \end{algorithmic}
 \end{algorithm}
 
-Subproblems of 90 variables require embedding rather than native clique solving, introducing some overhead. However, the DWaveCliqueSampler can still find efficient embeddings for problems of this size on the Pegasus topology~\cite{boothler2022benchmarking}, and the reduced number of subproblems (20 clusters for 100 farms) reduces the total number of QPU calls. The improved connectivity of Pegasus compared to Chimera topology results in shorter chain lengths, which correlates with better solution quality and faster convergence~\cite{dwave2020advantage}. Boundary coordination between clusters follows the same iterative refinement approach, with 3 iterations typically sufficient for convergence.
+Subproblems of 90 variables require embedding rather than native clique solving, introducing some overhead. However, the DWaveCliqueSampler can still find efficient embeddings for problems of this size on the Pegasus topology~\cite{boothler2022benchmarking}, and the reduced number of subproblems (20 clusters for 100 plots) reduces the total number of QPU calls. The improved connectivity of Pegasus compared to Chimera topology results in shorter chain lengths, which correlates with better solution quality and faster convergence~\cite{dwave2020advantage}. Boundary coordination between clusters follows the same iterative refinement approach, with 3 iterations typically sufficient for convergence.
 
 \paragraph{Embedding Considerations}
 
@@ -2600,18 +2765,18 @@ The hierarchical method achieves favorable scaling:
 
 compared to clique decomposition's $3F$ calls, achieving a $\sim$5$\times$ reduction in QPU access overhead. The trade-off is larger subproblems requiring non-trivial embedding.
 
-\paragraph{Performance Comparison at 100 Farms}
+\paragraph{Performance Comparison at 100 Plots}
 
 \begin{table}[H]
 \centering
-\caption{Decomposition Strategy Performance at 100-Farm Scale}
+\caption{Decomposition Strategy Performance at 100-Plot Scale}
 \label{tab:strategy_comparison}
 \small
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Strategy} & \textbf{QPU Calls} & \textbf{Embedding Time} & \textbf{Gap (\%)} & \textbf{Violations} \\
 \midrule
-Clique (farm-by-farm) & 300 & $\sim$0s & 13.8 & 0 \\
+Clique (plot-by-plot) & 300 & $\sim$0s & 13.8 & 0 \\
 Spatial-Temporal & 60 & $\sim$0s & 14.2 & 0 \\
 Hierarchical Multi-Level & 60 & 120s & 16.5 & 2 \\
 \midrule
@@ -2651,7 +2816,7 @@ $$n \in \{5, 10, 25, 50, 100\}$$
 
 For each refinement level $n$:
 \begin{enumerate}
-    \item \textbf{Continuous Baseline:} Solve with $n$ farms using \textbf{uneven distribution} (realistic sizes from \texttt{farm\_sampler})
+    \item \textbf{Continuous Baseline:} Solve with $n$ plots using \textbf{uneven distribution} (realistic sizes from \texttt{plot\_sampler})
     \item \textbf{Discretized:} Solve with $n$ plots using \textbf{even grid} (equal-sized plots via \texttt{plot\_sampler})
 \end{enumerate}
 
@@ -2675,7 +2840,7 @@ The test script (\texttt{Grid\_Refinement.py}) executes the following workflow:
 \State \textbf{Input:} Total land area $A_{\text{total}}$
 \For{$n \in \{5, 10, 25, 50, 100, 200\}$}
     \State \textbf{// Continuous Baseline}
-    \State Generate $n$ farms with uneven distribution (total area $A_{\text{total}}$)
+    \State Generate $n$ plots with uneven distribution (total area $A_{\text{total}}$)
     \State Load food data (2 foods per group for tractability)
     \State Create continuous CQM with $A_{f,c}$ and $Y_{f,c}$ variables
     \State Solve with PuLP/Gurobi $\to$ $Z_{\text{cont}}, t_{\text{cont}}$
@@ -2712,7 +2877,7 @@ $$\epsilon(n) \leq \sum_c B_c \cdot a_p = O\left(\frac{A_{\text{total}}}{n}\righ
 
 \textbf{Continuous Formulation:}
 \begin{itemize}
-    \item Variables: $2nc$ ($n$ farms, $c$ crops)
+    \item Variables: $2nc$ ($n$ plots, $c$ crops)
     \item Constraints: $O(nc)$
     \item Solve time: $O(2^{nc} \cdot \text{poly}(nc))$ (MILP worst-case)
 \end{itemize}
@@ -2737,7 +2902,7 @@ $$\epsilon(n) \leq \sum_c B_c \cdot a_p = O\left(\frac{A_{\text{total}}}{n}\righ
     \item Total land: 100 ha (fixed for all refinement levels)
     \item Food dataset: 27 foods across 5 food groups
     \item Solver: PuLP with Gurobi backend
-    \item Continuous: Uneven farm distribution (farm\_sampler)
+    \item Continuous: Uneven plot distribution (plot\_sampler)
     \item Discretized: Even grid with equal plot sizes (plot\_sampler)
 \end{itemize}
 
@@ -2779,7 +2944,7 @@ $n$ & $Z_{\text{cont}}$ & $Z_{\text{disc}}$ & Gap (\%) & $t_{\text{cont}}$ (s) &
     \item \textbf{Scalability Limits:}
     \begin{itemize}
         \item $n = 200$: Continuous formulation became infeasible
-        \item Possible causes: Too many small farms violating minimum area constraints
+        \item Possible causes: Too many small plots violating minimum area constraints
         \item Binary formulation avoids this issue through discrete plot assignment
     \end{itemize}
 \end{enumerate}
@@ -2807,19 +2972,19 @@ The fitted constant $C \approx 63.2$ shows good agreement with observed data, co
 \subsection{Cluster-Based Decomposition Structure}
 \label{sub:clusterbased}
 
-The hierarchical method partitions the problem by \emph{farms}, not by variables. Given $n_{\text{farms}}$ farms, approximately $n_{\text{farms}}/9$ clusters are created:
-$$n_{\text{clusters}} \approx \left\lceil \frac{n_{\text{farms}}}{9} \right\rceil$$
-Each cluster is solved independently on the QPU, incurring classical overhead for embedding ($\sim$6--8\,s per cluster) and coordination between cluster boundaries. The total number of variables $N = n_{\text{farms}} \times n_{\text{foods}} \times 3$ grows with both farm count and food granularity, but the \emph{decomposition overhead scales only with farm count}.
+The hierarchical method partitions the problem by \emph{plots}, not by variables. Given $n_{\text{plots}}$ plots, approximately $n_{\text{plots}}/9$ clusters are created:
+$$n_{\text{clusters}} \approx \left\lceil \frac{n_{\text{plots}}}{9} \right\rceil$$
+Each cluster is solved independently on the QPU, incurring classical overhead for embedding ($\sim$6--8\,s per cluster) and coordination between cluster boundaries. The total number of variables $N = n_{\text{plots}} \times n_{\text{foods}} \times 3$ grows with both plot count and food granularity, but the \emph{decomposition overhead scales only with plot count}.
 
 \paragraph{Implications for 6-Food vs 27-Food (Agg.) Comparison}
 
-This farm-based decomposition creates a critical difference when comparing formulations at the same variable count. The number of farms required to reach $N$ variables is:
+This plot-based decomposition creates a critical difference when comparing formulations at the same variable count. The number of plots required to reach $N$ variables is:
 \begin{align}
-    \text{6-Food:} \quad n_{\text{farms}} &= \frac{N}{6 \times 3} = \frac{N}{18} \\
-    \text{27-Food (Agg.):} \quad n_{\text{farms}} &= \frac{N}{27 \times 3} = \frac{N}{81}
+    \text{6-Food:} \quad n_{\text{plots}} &= \frac{N}{6 \times 3} = \frac{N}{18} \\
+    \text{27-Food (Agg.):} \quad n_{\text{plots}} &= \frac{N}{27 \times 3} = \frac{N}{81}
 \end{align}
 
-\noindent The ratio is $81/18 = 4.5$, meaning 6-Food requires \textbf{4.5$\times$ more farms} than 27-Food (Agg.) to achieve the same variable count. Since cluster count scales with farms, this directly translates to 4.5$\times$ more clusters and thus $\sim$4$\times$ higher total solve time for 6-Food (Table~\ref{tab:formulation_comparison}).
+\noindent The ratio is $81/18 = 4.5$, meaning 6-Food requires \textbf{4.5$\times$ more plots} than 27-Food (Agg.) to achieve the same variable count. Since cluster count scales with plots, this directly translates to 4.5$\times$ more clusters and thus $\sim$4$\times$ higher total solve time for 6-Food (Table~\ref{tab:formulation_comparison}).
 
 \begin{table}[H]
 \centering
@@ -2829,7 +2994,7 @@ This farm-based decomposition creates a critical difference when comparing formu
 \begin{adjustbox}{width=\textwidth}
 \begin{tabular}{lcccccc}
 \toprule
-\textbf{Formulation} & \textbf{Vars} & \textbf{Farms} & \textbf{Clusters} & \textbf{QPU Time (s)} & \textbf{Gurobi Time (s)} & \textbf{Gurobi MILP Gap} \\
+\textbf{Formulation} & \textbf{Vars} & \textbf{Plots} & \textbf{Clusters} & \textbf{QPU Time (s)} & \textbf{Gurobi Time (s)} & \textbf{Gurobi MILP Gap} \\
 \midrule
 6-Food & 1,800 & 100 & 12 & $\sim$107 & 100.7 & 1,764\% \\
 27-Food (Agg.) & 2,025 & 25 & 3 & $\sim$30 & 103.8 & 258\% \\
@@ -2928,7 +3093,7 @@ The following figures show how crop rankings change as each individual weight is
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{images/Plots/05_spinach_analysis.png}
-\caption[Spinach Dominance Analysis]{Decomposition of Spinach's composite benefit score compared to the crop average and top competitors. Spinach's advantage originates primarily from Nutritional Value~(0.226 vs.~0.12 average) and Nutrient Density~(0.187 vs.~0.07), compounded by a negligible environmental penalty~(0.001 vs.~0.02). The next-best crops (Cabbage, Pumpkin, Tempeh) trail by 0.10--0.15 benefit points, a 25--35\% disadvantage that compounds across farm assignments.}
+\caption[Spinach Dominance Analysis]{Decomposition of Spinach's composite benefit score compared to the crop average and top competitors. Spinach's advantage originates primarily from Nutritional Value~(0.226 vs.~0.12 average) and Nutrient Density~(0.187 vs.~0.07), compounded by a negligible environmental penalty~(0.001 vs.~0.02). The next-best crops (Cabbage, Pumpkin, Tempeh) trail by 0.10--0.15 benefit points, a 25--35\% disadvantage that compounds across plot assignments.}
 \label{fig:spinach_analysis}
 \end{figure}
 
@@ -3057,26 +3222,26 @@ These tables provide the complete numerical results underlying all figures in th
 \toprule
  & & & \multicolumn{4}{c}{\textbf{Gurobi (300\,s timeout)}} & \multicolumn{5}{c}{\textbf{QPU Hierarchical}} \\
 \cmidrule(lr){4-7} \cmidrule(lr){8-12}
-\textbf{Scenario} & \textbf{Farms} & \textbf{Vars} & \textbf{Obj.} & \textbf{Time (s)} & \textbf{MILP Gap} & \textbf{Status} & \textbf{Obj.} & \textbf{Wall (s)} & \textbf{QPU (s)} & \textbf{Ratio} & \textbf{Viol.} \\
+\textbf{Scenario} & \textbf{Plots} & \textbf{Vars} & \textbf{Obj.} & \textbf{Time (s)} & \textbf{MILP Gap} & \textbf{Status} & \textbf{Obj.} & \textbf{Wall (s)} & \textbf{QPU (s)} & \textbf{Ratio} & \textbf{Viol.} \\
 \midrule
 \multicolumn{12}{l}{\textit{6-Food Formulation}} \\
 \midrule
 rotation\_micro\_25 & 5 & 90 & 6.17 & 6.3 & 0.0\% & optimal & 4.86 & 7.9 & 0.12 & 0.79$\times$ & 1 \\
 rotation\_small\_50 & 10 & 180 & 8.69 & 100.1 & 307.1\% & timeout & 21.79 & 16.1 & 0.23 & 2.51$\times$ & 7 \\
-rotation\_15farms\_6foods & 15 & 270 & 9.68 & 26.3 & 361.4\% & feasible & 26.22 & 17.3 & 0.24 & 2.71$\times$ & 10 \\
+rotation\_15plots\_6foods & 15 & 270 & 9.68 & 26.3 & 361.4\% & feasible & 26.22 & 17.3 & 0.24 & 2.71$\times$ & 10 \\
 rotation\_medium\_100 & 20 & 360 & 12.78 & 100.2 & 260.2\% & timeout & 39.24 & 25.1 & 0.36 & 3.07$\times$ & 13 \\
-rotation\_25farms\_6foods & 25 & 450 & 13.45 & 100.2 & 573.2\% & timeout & 52.67 & 26.2 & 0.37 & 3.92$\times$ & 17 \\
+rotation\_25plots\_6foods & 25 & 450 & 13.45 & 100.2 & 573.2\% & timeout & 52.67 & 26.2 & 0.37 & 3.92$\times$ & 17 \\
 rotation\_large\_200 & 40 & 720 & 21.57 & 100.4 & 215.3\% & timeout & 94.64 & 75.7 & 0.75 & 4.39$\times$ & 32 \\
-rotation\_50farms\_6foods & 50 & 900 & 26.92 & 100.7 & 215.8\% & timeout & 109.67 & 52.3 & 0.75 & 4.07$\times$ & 34 \\
-rotation\_75farms\_6foods & 75 & 1,350 & 40.37 & 100.8 & 215.9\% & timeout & 161.44 & 78.7 & 1.09 & 4.00$\times$ & 54 \\
-rotation\_100farms\_6foods & 100 & 1,800 & 53.77 & 100.7 & 176,411\% & timeout & 229.14 & 106.8 & 1.49 & 4.26$\times$ & 79 \\
+rotation\_50plots\_6foods & 50 & 900 & 26.92 & 100.7 & 215.8\% & timeout & 109.67 & 52.3 & 0.75 & 4.07$\times$ & 34 \\
+rotation\_75plots\_6foods & 75 & 1,350 & 40.37 & 100.8 & 215.9\% & timeout & 161.44 & 78.7 & 1.09 & 4.00$\times$ & 54 \\
+rotation\_100plots\_6foods & 100 & 1,800 & 53.77 & 100.7 & 176,411\% & timeout & 229.14 & 106.8 & 1.49 & 4.26$\times$ & 79 \\
 \midrule
 \multicolumn{12}{l}{\textit{27-Food (Aggregated) Formulation}} \\
 \midrule
-rotation\_25farms\_27foods & 25 & 2,025 & 11.68 & 103.8 & 258.0\% & timeout & 57.60 & 29.9 & 0.37 & 4.93$\times$ & 16 \\
-rotation\_50farms\_27foods & 50 & 4,050 & 23.36 & 112.0 & 257.8\% & timeout & 102.61 & 59.3 & 0.75 & 4.39$\times$ & 32 \\
-rotation\_100farms\_27foods & 100 & 8,100 & 46.68 & 134.0 & 379.5\% & timeout & 235.11 & 177.6 & 1.49 & 5.04$\times$ & 74 \\
-rotation\_200farms\_27foods & 200 & 16,200 & 93.52 & 142.2 & 296.6\% & timeout & 500.59 & 323.2 & 2.87 & 5.35$\times$ & 157 \\
+rotation\_25plots\_27foods & 25 & 2,025 & 11.68 & 103.8 & 258.0\% & timeout & 57.60 & 29.9 & 0.37 & 4.93$\times$ & 16 \\
+rotation\_50plots\_27foods & 50 & 4,050 & 23.36 & 112.0 & 257.8\% & timeout & 102.61 & 59.3 & 0.75 & 4.39$\times$ & 32 \\
+rotation\_100plots\_27foods & 100 & 8,100 & 46.68 & 134.0 & 379.5\% & timeout & 235.11 & 177.6 & 1.49 & 5.04$\times$ & 74 \\
+rotation\_200plots\_27foods & 200 & 16,200 & 93.52 & 142.2 & 296.6\% & timeout & 500.59 & 323.2 & 2.87 & 5.35$\times$ & 157 \\
 \midrule
 \textbf{Average (all 13)} & --- & --- & \textbf{28.36} & --- & \textbf{16,308\%} & --- & \textbf{125.81} & --- & --- & \textbf{3.80$\times$} & \textbf{40.5} \\
 \bottomrule
@@ -3087,11 +3252,11 @@ rotation\_200farms\_27foods & 200 & 16,200 & 93.52 & 142.2 & 296.6\% & timeout &
 \noindent\textbf{Observations:}
 \begin{enumerate}[label=(\arabic*)]
 \item QPU outperforms Gurobi in objective value on 12/13 scenarios; the sole exception is the smallest instance (rotation\_micro\_25, 90 vars).
-\item Gurobi times out on 11/13 scenarios. The two non-timeout cases are the smallest (optimal solution found) and rotation\_15farms\_6foods (feasible but with 361\% MILP gap).
-\item The QPU benefit ratio increases monotonically with problem size: from 0.79$\times$ (5 farms) to 5.35$\times$ (200 farms).
-\item QPU access time ranges from 0.12\,s (5 farms) to 2.87\,s (200 farms), constituting 0.9--1.5\% of total wall time.
-\item One-hot violations scale approximately linearly with farm count (0.2--0.8 violations per farm).
-\item 6-Food formulation shows higher benefit/farm (due to denser constraint satisfaction) but larger MILP gaps at scale.
+\item Gurobi times out on 11/13 scenarios. The two non-timeout cases are the smallest (optimal solution found) and rotation\_15plots\_6foods (feasible but with 361\% MILP gap).
+\item The QPU benefit ratio increases monotonically with problem size: from 0.79$\times$ (5 plots) to 5.35$\times$ (200 plots).
+\item QPU access time ranges from 0.12\,s (5 plots) to 2.87\,s (200 plots), constituting 0.9--1.5\% of total wall time.
+\item One-hot violations scale approximately linearly with plot count (0.2--0.8 violations per plot).
+\item 6-Food formulation shows higher benefit/plot (due to denser constraint satisfaction) but larger MILP gaps at scale.
 \end{enumerate}
 
 
@@ -3107,33 +3272,33 @@ rotation\_200farms\_27foods & 200 & 16,200 & 93.52 & 142.2 & 296.6\% & timeout &
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{l r r r r r c}
 \toprule
-\textbf{Scenario} & \textbf{Farms} & \textbf{Foods} & \textbf{Vars} & \textbf{Objective} & \textbf{Time (s)} & \textbf{MILP Gap} \\
+\textbf{Scenario} & \textbf{Plots} & \textbf{Foods} & \textbf{Vars} & \textbf{Objective} & \textbf{Time (s)} & \textbf{MILP Gap} \\
 \midrule
 \multicolumn{7}{l}{\textit{6-Food Formulation}} \\
 \midrule
 rotation\_micro\_25 & 5 & 6 & 90 & 6.005 & 200.20 & 16.648\% \\
 rotation\_small\_50 & 10 & 6 & 180 & 8.234 & 200.31 & 62.171\% \\
-rotation\_15farms\_6foods & 15 & 6 & 270 & 9.460 & 200.28 & 80.335\% \\
+rotation\_15plots\_6foods & 15 & 6 & 270 & 9.460 & 200.28 & 80.335\% \\
 rotation\_medium\_100 & 20 & 6 & 360 & 12.506 & 200.32 & 90.040\% \\
-rotation\_25farms\_6foods & 25 & 6 & 450 & 13.450 & 200.24 & 89.573\% \\
+rotation\_25plots\_6foods & 25 & 6 & 450 & 13.450 & 200.24 & 89.573\% \\
 rotation\_large\_200 & 40 & 6 & 720 & 21.566 & 200.40 & 97.036\% \\
-rotation\_50farms\_6foods & 50 & 6 & 900 & 26.892 & 200.94 & 98.470\% \\
-rotation\_75farms\_6foods & 75 & 6 & 1,350 & 40.365 & 200.69 & 98.262\% \\
-rotation\_100farms\_6foods & 100 & 6 & 1,800 & 53.840 & 200.73 & 99.157\% \\
-rotation\_150farms\_6foods & 150 & 6 & 2,700 & 80.542 & 203.68 & 99.372\% \\
+rotation\_50plots\_6foods & 50 & 6 & 900 & 26.892 & 200.94 & 98.470\% \\
+rotation\_75plots\_6foods & 75 & 6 & 1,350 & 40.365 & 200.69 & 98.262\% \\
+rotation\_100plots\_6foods & 100 & 6 & 1,800 & 53.840 & 200.73 & 99.157\% \\
+rotation\_150plots\_6foods & 150 & 6 & 2,700 & 80.542 & 203.68 & 99.372\% \\
 \midrule
 \multicolumn{7}{l}{\textit{27-Food (Aggregated) Formulation}} \\
 \midrule
-rotation\_25farms\_27foods & 25 & 27 & 2,025 & 10.985 & 2.33 & 0.0\% \\
-rotation\_50farms\_27foods & 50 & 27 & 4,050 & 21.941 & 3.84 & 0.0\% \\
-rotation\_75farms\_27foods & 75 & 27 & 6,075 & 33.390 & 4.87 & 0.0\% \\
-rotation\_100farms\_27foods & 100 & 27 & 8,100 & 44.525 & 9.49 & 0.0\% \\
-rotation\_150farms\_27foods & 150 & 27 & 12,150 & 66.496 & 17.46 & 0.0\% \\
-rotation\_200farms\_27foods & 200 & 27 & 16,200 & 88.939 & 34.43 & 0.0\% \\
-rotation\_250farms\_27foods & 250 & 27 & 20,250 & 111.828 & 43.15 & 0.0\% \\
-rotation\_350farms\_27foods & 350 & 27 & 28,350 & 154.253 & 58.30 & 0.0\% \\
-rotation\_500farms\_27foods & 500 & 27 & 40,500 & 219.701 & 183.01 & 0.0\% \\
-rotation\_1000farms\_27foods & 1,000 & 27 & 81,000 & 437.971 & 202.27 & 2,518.892\% \\
+rotation\_25plots\_27foods & 25 & 27 & 2,025 & 10.985 & 2.33 & 0.0\% \\
+rotation\_50plots\_27foods & 50 & 27 & 4,050 & 21.941 & 3.84 & 0.0\% \\
+rotation\_75plots\_27foods & 75 & 27 & 6,075 & 33.390 & 4.87 & 0.0\% \\
+rotation\_100plots\_27foods & 100 & 27 & 8,100 & 44.525 & 9.49 & 0.0\% \\
+rotation\_150plots\_27foods & 150 & 27 & 12,150 & 66.496 & 17.46 & 0.0\% \\
+rotation\_200plots\_27foods & 200 & 27 & 16,200 & 88.939 & 34.43 & 0.0\% \\
+rotation\_250plots\_27foods & 250 & 27 & 20,250 & 111.828 & 43.15 & 0.0\% \\
+rotation\_350plots\_27foods & 350 & 27 & 28,350 & 154.253 & 58.30 & 0.0\% \\
+rotation\_500plots\_27foods & 500 & 27 & 40,500 & 219.701 & 183.01 & 0.0\% \\
+rotation\_1000plots\_27foods & 1,000 & 27 & 81,000 & 437.971 & 202.27 & 2,518.892\% \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -3143,7 +3308,7 @@ rotation\_1000farms\_27foods & 1,000 & 27 & 81,000 & 437.971 & 202.27 & 2,518.89
 \begin{enumerate}[label=(\arabic*)]
 \item Under the 200\,s cap, Gurobi times out on 11/20 scenarios.
 \item All 6-Food scenarios time out (10/10), with MILP gaps saturating near 100\% at medium and large scales.
-\item In contrast, 27-Food aggregated is solved to optimality in 9/10 scenarios; only the 1,000-farm case times out with very large gap.
+\item In contrast, 27-Food aggregated is solved to optimality in 9/10 scenarios; only the 1,000-plot case times out with very large gap.
 \item Timeout behavior is therefore formulation-dependent and scale-dependent, not uniformly monotonic across all Variant~B encodings.
 \item These 20-scenario results provide the updated classical baseline context for interpreting matched 13-scenario decomposition comparisons.
 \end{enumerate}
@@ -3165,17 +3330,17 @@ rotation\_1000farms\_27foods & 1,000 & 27 & 81,000 & 437.971 & 202.27 & 2,518.89
 \midrule
 rotation\_micro\_25 & 90 & 7.93 & 0.119 & 0.072 & 1.5\% \\
 rotation\_small\_50 & 180 & 16.09 & 0.232 & 0.138 & 1.4\% \\
-rotation\_15farms\_6foods & 270 & 17.27 & 0.244 & 0.150 & 1.4\% \\
+rotation\_15plots\_6foods & 270 & 17.27 & 0.244 & 0.150 & 1.4\% \\
 rotation\_medium\_100 & 360 & 25.07 & 0.362 & 0.220 & 1.4\% \\
-rotation\_25farms\_6foods & 450 & 26.16 & 0.371 & 0.229 & 1.4\% \\
+rotation\_25plots\_6foods & 450 & 26.16 & 0.371 & 0.229 & 1.4\% \\
 rotation\_large\_200 & 720 & 75.69 & 0.747 & 0.463 & 1.0\% \\
-rotation\_50farms\_6foods & 900 & 52.28 & 0.747 & 0.463 & 1.4\% \\
-rotation\_75farms\_6foods & 1,350 & 78.68 & 1.093 & 0.667 & 1.4\% \\
-rotation\_100farms\_6foods & 1,800 & 106.83 & 1.487 & 0.920 & 1.4\% \\
-rotation\_25farms\_27foods & 2,025 & 29.88 & 0.371 & 0.229 & 1.2\% \\
-rotation\_50farms\_27foods & 4,050 & 59.27 & 0.747 & 0.463 & 1.3\% \\
-rotation\_100farms\_27foods & 8,100 & 177.56 & 1.487 & 0.920 & 0.8\% \\
-rotation\_200farms\_27foods & 16,200 & 323.20 & 2.871 & 1.784 & 0.9\% \\
+rotation\_50plots\_6foods & 900 & 52.28 & 0.747 & 0.463 & 1.4\% \\
+rotation\_75plots\_6foods & 1,350 & 78.68 & 1.093 & 0.667 & 1.4\% \\
+rotation\_100plots\_6foods & 1,800 & 106.83 & 1.487 & 0.920 & 1.4\% \\
+rotation\_25plots\_27foods & 2,025 & 29.88 & 0.371 & 0.229 & 1.2\% \\
+rotation\_50plots\_27foods & 4,050 & 59.27 & 0.747 & 0.463 & 1.3\% \\
+rotation\_100plots\_27foods & 8,100 & 177.56 & 1.487 & 0.920 & 0.8\% \\
+rotation\_200plots\_27foods & 16,200 & 323.20 & 2.871 & 1.784 & 0.9\% \\
 \midrule
 \textbf{Total} & --- & \textbf{995.91} & \textbf{10.877} & \textbf{6.716} & \textbf{1.1\%} \\
 \bottomrule
@@ -3190,27 +3355,27 @@ rotation\_200farms\_27foods & 16,200 & 323.20 & 2.871 & 1.784 & 0.9\% \\
 
 \begin{table}[H]
 \centering
-\caption{Study 2.B: Constraint violation detail per scenario. ``Slots'' = farms $\times$ periods (total allocation decisions); ``Violations'' = one-hot constraint failures (farm-period with no crop assigned); ``Rate'' = Violations / Slots. All violations are one-hot type; no food-group violations were observed.}
+\caption{Study 2.B: Constraint violation detail per scenario. ``Slots'' = plots $\times$ periods (total allocation decisions); ``Violations'' = one-hot constraint failures (plot-period with no crop assigned); ``Rate'' = Violations / Slots. All violations are one-hot type; no food-group violations were observed.}
 \label{tab:study2b_violations_detail}
 \small
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{l r r r r r r}
 \toprule
-\textbf{Scenario} & \textbf{Farms} & \textbf{Periods} & \textbf{Slots} & \textbf{Violations} & \textbf{Rate} & \textbf{Benefit/Slot} \\
+\textbf{Scenario} & \textbf{Plots} & \textbf{Periods} & \textbf{Slots} & \textbf{Violations} & \textbf{Rate} & \textbf{Benefit/Slot} \\
 \midrule
 rotation\_micro\_25 & 5 & 3 & 15 & 1 & 6.7\% & 0.324 \\
 rotation\_small\_50 & 10 & 3 & 30 & 7 & 23.3\% & 0.726 \\
-rotation\_15farms\_6foods & 15 & 3 & 45 & 10 & 22.2\% & 0.583 \\
+rotation\_15plots\_6foods & 15 & 3 & 45 & 10 & 22.2\% & 0.583 \\
 rotation\_medium\_100 & 20 & 3 & 60 & 13 & 21.7\% & 0.654 \\
-rotation\_25farms\_6foods & 25 & 3 & 75 & 17 & 22.7\% & 0.702 \\
+rotation\_25plots\_6foods & 25 & 3 & 75 & 17 & 22.7\% & 0.702 \\
 rotation\_large\_200 & 40 & 3 & 120 & 32 & 26.7\% & 0.789 \\
-rotation\_50farms\_6foods & 50 & 3 & 150 & 34 & 22.7\% & 0.731 \\
-rotation\_75farms\_6foods & 75 & 3 & 225 & 54 & 24.0\% & 0.717 \\
-rotation\_100farms\_6foods & 100 & 3 & 300 & 79 & 26.3\% & 0.764 \\
-rotation\_25farms\_27foods & 25 & 3 & 75 & 16 & 21.3\% & 0.768 \\
-rotation\_50farms\_27foods & 50 & 3 & 150 & 32 & 21.3\% & 0.684 \\
-rotation\_100farms\_27foods & 100 & 3 & 300 & 74 & 24.7\% & 0.784 \\
-rotation\_200farms\_27foods & 200 & 3 & 600 & 157 & 26.2\% & 0.834 \\
+rotation\_50plots\_6foods & 50 & 3 & 150 & 34 & 22.7\% & 0.731 \\
+rotation\_75plots\_6foods & 75 & 3 & 225 & 54 & 24.0\% & 0.717 \\
+rotation\_100plots\_6foods & 100 & 3 & 300 & 79 & 26.3\% & 0.764 \\
+rotation\_25plots\_27foods & 25 & 3 & 75 & 16 & 21.3\% & 0.768 \\
+rotation\_50plots\_27foods & 50 & 3 & 150 & 32 & 21.3\% & 0.684 \\
+rotation\_100plots\_27foods & 100 & 3 & 300 & 74 & 24.7\% & 0.784 \\
+rotation\_200plots\_27foods & 200 & 3 & 600 & 157 & 26.2\% & 0.834 \\
 \midrule
 \textbf{Total} & --- & --- & \textbf{2,145} & \textbf{526} & \textbf{24.5\%} & \textbf{0.720} \\
 \bottomrule

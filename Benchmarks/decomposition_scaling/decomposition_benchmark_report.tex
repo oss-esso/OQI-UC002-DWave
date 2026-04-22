@@ -249,7 +249,12 @@ $\beta \in [0.1, 5.0]$.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{fig_solver_time_B_all.pdf}
-\caption{Variant B solver wall-clock time comparison across all decomposition methods.}
+\caption{Variant B (27-crop rotation) solver wall-clock time comparison across all
+  decomposition methods.  Gurobi\_full (red) is the monolithic baseline and is now
+  measured up to 2\,000 farms; Gurobi\_decomposed Clique (blue) and SpatialTemporal-5
+  (green) are the decomposed alternatives.  Farm sizes above 100 that were previously
+  skipped have been added; points that hit the 200\,s timeout are plotted at the timeout
+  wall-clock value.}
 \label{fig:solver-time-B}
 \end{figure}
 
@@ -257,8 +262,77 @@ $\beta \in [0.1, 5.0]$.
 \centering
 \includegraphics[width=0.85\textwidth]{fig_solver_quality_B_all.pdf}
 \caption{Variant B solution quality comparison across all decomposition methods.
-  Lower (more negative) energy values indicate better solutions (QUBO minimization).}
+  Higher objective values indicate better solutions.}
 \label{fig:solver-qual-B}
+\end{figure}
+
+\subsection{Study 2.B Three-Group Comparison (Track A: 27-crop)}
+\label{sec:study2b-track-a}
+
+The following figures extend the Variant~B benchmarks by adding a third group:
+the D-Wave QPU hierarchical pipeline from Study~2.B\@.  This enables a direct
+wall-clock time and solution-quality comparison across (i)~monolithic Gurobi,
+(ii)~the QPU hierarchical solver, and (iii)~Gurobi with farm-level decomposition.
+
+\textbf{Formulation note.} Solver-comparison and QPU runs use the same 27-crop
+rotation formulation (canonical Variant~B with \texttt{rotation\_gamma}$= 0.2$,
+\texttt{spatial\_gamma}$= 0.1$).  However, QPU \texttt{objective\_miqp} values
+are QUBO energies that include one-hot penalty contributions, whereas Gurobi
+reports the pure MIQP benefit; these scales differ by a factor of $\approx$5
+and are not directly comparable for solution quality.  The wall-clock time
+comparison is formulation-independent and fully valid.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{fig_study2b_time_track_a.pdf}
+\caption{Study 2.B Track A — wall-clock time scaling for all three solver groups
+  (27-crop Variant~B).  Gurobi full (red solid) is the monolithic baseline;
+  QPU hierarchical (orange, diamonds) shows D-Wave wall-clock time including
+  embedding and sampling overhead;
+  Gurobi decomposed Clique (blue dashed) and SpatialTemporal-5 (green dashed) are
+  the farm-level decomposition baselines.}
+\label{fig:study2b-time-a}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{fig_study2b_quality_track_a.pdf}
+\caption{Study 2.B Track A — solution quality comparison (27-crop Variant~B).
+  \emph{Left:} absolute MIQP objective values for Gurobi full and decomposed
+  (same scenario random grid, directly comparable).
+  \emph{Right:} quality ratio relative to Gurobi full (left panel) and QPU
+  benefit divided by Gurobi MIQP objective from matched scenario timeout runs
+  ($\dagger$\,different objective scales; ratio not a direct quality comparison).}
+\label{fig:study2b-qual-a}
+\end{figure}
+
+\subsection{Study 2.B Track B: 6-food + 27-crop Combined}
+\label{sec:study2b-track-b}
+
+Track~B extends the comparison to both the 6-food (food-group aggregated)
+and 27-crop formulations, using the full set of available QPU runs and
+the Gurobi timeout verification data for the 6-food scenarios.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_study2b_time_track_b.pdf}
+\caption{Study 2.B Track B — wall-clock time scaling for both 6-food and 27-crop
+  formulations.  Gurobi full 27-crop (red solid) and 6-food (red dotted) from
+  two different data sources; QPU 27-crop (orange solid, diamonds) and
+  QPU 6-food (orange dotted, diamonds); Gurobi decomposed Clique and
+  SpatialTemporal-5 for 27-crop (blue/green dashed).}
+\label{fig:study2b-time-b}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_study2b_quality_track_b.pdf}
+\caption{Study 2.B Track B — solution quality comparison for both formulations.
+  \emph{Left:} absolute Gurobi full objectives (27-crop from solver-comparison,
+  6-food from 200\,s timeout verification runs) showing linear scaling with farm
+  count.  \emph{Right:} QPU benefit divided by matched Gurobi MIQP objective
+  for each formulation ($\dagger$\,different normalizations between formulations).}
+\label{fig:study2b-qual-b}
 \end{figure}
 
 \subsection{Combined Panel}
@@ -633,6 +707,20 @@ sub-problems small enough for quantum hardware.  Our benchmarks show that:
     (here benchmarked up to 200 farms due to runtime caps) but scales poorly on
     larger sub-problems due to the
     $O(n^2)$ per-sweep cost of the Ising energy evaluation.
+  \item \textbf{D-Wave QPU (Study~2.B three-group comparison):}
+    The wall-clock time of the QPU hierarchical pipeline lies between
+    Gurobi full (slowest at large scales) and Gurobi decomposed (fastest).
+    For the 27-crop formulation, QPU total wall time scales approximately
+    linearly with $n_{\mathrm{farms}}$ up to 200 farms, dominated by
+    embedding and sampling overhead rather than problem complexity.
+    For the 6-food formulation, QPU wall time similarly outpaces Gurobi full
+    (which hits the 200\,s timeout for $\gtrsim 50$ farms) but is slower
+    than farm-level Gurobi decomposition.
+  \item \textbf{Gurobi full extended baseline:} Full MIQP Gurobi for Variant~B
+    is now measured up to 2\,000 farms (27-crop): solve times remain within
+    the 200\,s timeout for $\le 200$ farms but hit the timeout at 500 farms and
+    above, returning feasible partial solutions.  This confirms that decomposition
+    is necessary for large-scale 27-crop rotation problems.
   \item Both formulations can be reduced to MAX-$k$-SAT:
     Variant~B maps directly to weighted MAX-2-SAT;
     Variant~A requires MAX-3-SAT with auxiliary variables.

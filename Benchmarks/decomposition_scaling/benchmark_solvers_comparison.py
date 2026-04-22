@@ -11,7 +11,7 @@ Compares three solving approaches on each problem variant:
 For Variant A (Study 2.A): Binary Patch allocation, 27 crops
   - Decompositions: PlotBased, Multilevel(5), HybridGrid(5,9)
 
-For Variant B (Study 2.B): Multi-period rotation, 6 families × 3 periods
+For Variant B (Study 2.B): Multi-period rotation, 27 crops × 3 periods
   - Decompositions: Clique (farm-by-farm), SpatialTemporal(5)
 
 Output: JSON results.
@@ -972,16 +972,43 @@ def solve_gurobi_full_B(farm_names, land, food_names=None, timeout=300):
     Uses the true MIQP formulation from content_report.tex with correct
     rotation_gamma=0.2, spatial_gamma=0.1, synthetic rotation matrix.
     Returns objective_miqp (benefit + temporal + spatial - penalty + diversity).
+
+    Also extracts constraint violations and a simple healed-objective estimate:
+      healed_obj ≈ obj × (1 - violation_rate)  where
+      violation_rate = one_hot_violations / (n_farms × n_periods).
+    This is conservative (lower bound) — actual healed value would depend on
+    which crop assignments are removed. For Gurobi-optimal solutions violations
+    are zero, so healed_obj == obj.
     """
+    fn = food_names or FOOD_NAMES_27
     scenario_data = _build_scenario_data(farm_names, land, food_names)
     entry = solve_gurobi_ground_truth(scenario_data, timeout=timeout, verbose=False)
     obj = entry.objective_miqp if entry.status != "error" else None
+
+    # --- violation and healed-objective extraction ---
+    cv = entry.constraint_violations
+    total_viols = cv.total_violations if cv is not None else 0
+    one_hot_viols = cv.one_hot_violations if cv is not None else 0
+    feasible = entry.feasible if entry.feasible is not None else (total_viols == 0)
+    n_farm_periods = len(farm_names) * N_PERIODS  # each farm-period should have 1 crop
+    violation_rate = one_hot_viols / max(1, n_farm_periods)
+    if obj is not None and not feasible and n_farm_periods > 0:
+        healed_obj = max(0.0, obj * (1.0 - violation_rate))
+    else:
+        healed_obj = obj  # feasible → no correction needed; None stays None
+
     return {
         "solver": "Gurobi_full",
         "wall_time": entry.timing.total_wall_time if entry.timing else 0.0,
         "objective": obj,
         "status": entry.status,
-        "n_vars": len(farm_names) * len(food_names or FOOD_NAMES_27) * N_PERIODS,
+        "n_vars": len(farm_names) * len(fn) * N_PERIODS,
+        # violation fields (populated whenever Gurobi returns a solution)
+        "violations": total_viols,
+        "one_hot_violations": one_hot_viols,
+        "violation_rate_pct": violation_rate * 100.0,
+        "feasible": feasible,
+        "healed_objective": healed_obj,
     }
 
 
@@ -1459,7 +1486,8 @@ DECOMPOSITIONS_B = {
 }
 
 
-def run_all(timeout: float = 300.0, mode: str = "hard"):
+def run_all(timeout: float = 300.0, mode: str = "hard",
+            variant_b_full_max_farms: int = 100):
     results = []
     food_names = FOOD_NAMES_27[:27]
 
@@ -1520,14 +1548,14 @@ def run_all(timeout: float = 300.0, mode: str = "hard"):
                                 "variant": "B", "decomposition": dname,
                                 "n_farms": n_farms, "n_vars": n_vars_b, "status": "SKIPPED"})
         else:
-            # Skip Variant B full Gurobi beyond 100 farms (MIQP with diversity vars is memory-heavy)
-            if n_farms <= 100:
+            # Skip Variant B full Gurobi beyond variant_b_full_max_farms
+            if n_farms <= variant_b_full_max_farms:
                 LOG.info("[B] Gurobi full")
                 r = solve_gurobi_full_B(farm_names, land, food_names=food_names, timeout=timeout)
                 r.update(variant="B", decomposition="none", n_farms=n_farms, n_vars=n_vars_b)
                 results.append(r)
             else:
-                LOG.info(f"[B] Gurobi full SKIPPED (n_farms={n_farms} > 100)")
+                LOG.info(f"[B] Gurobi full SKIPPED (n_farms={n_farms} > {variant_b_full_max_farms})")
                 results.append({"solver": "Gurobi_full", "wall_time": 0, "objective": None,
                                 "variant": "B", "decomposition": "none",
                                 "n_farms": n_farms, "n_vars": n_vars_b, "status": "SKIPPED"})
@@ -1564,13 +1592,26 @@ if __name__ == "__main__":
                              "'soft': classic soft-penalty QUBO + distribute timeout evenly as "
                              "timeout/n_partitions per sub-problem (default: hard)"
                          ))
+    _parser.add_argument("--variant-b-full-max-farms", type=int, default=100,
+                         help=(
+                             "Run Gurobi full for Variant B up to this many farms. "
+                             "Set to 2000 to fill data up to the VARIANT_B_MAX_FARMS cap. "
+                             "Default: 100 (backward compatible)."
+                         ))
     _args = _parser.parse_args()
 
     out_dir = Path(__file__).parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    LOG.info(f"Gurobi timeout: {_args.timeout}s | decomposed-B mode: {_args.mode}")
-    all_results = run_all(timeout=_args.timeout, mode=_args.mode)
+    LOG.info(
+        f"Gurobi timeout: {_args.timeout}s | decomposed-B mode: {_args.mode} "
+        f"| variant-b-full-max-farms: {_args.variant_b_full_max_farms}"
+    )
+    all_results = run_all(
+        timeout=_args.timeout,
+        mode=_args.mode,
+        variant_b_full_max_farms=_args.variant_b_full_max_farms,
+    )
 
     # Serialize: convert any numpy types
     def _ser(obj):

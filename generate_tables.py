@@ -316,7 +316,7 @@ def table_variant_B(data, mode="soft"):
             r.get("n_partitions", "—"),
         ))
     return _table_env(
-        caption=f"Variant B solver comparison ({mode} mode, 200\\,s timeout, farms~$\\le$2000).",
+        caption=f"Variant B solver comparison ({mode} mode, 600\\,s timeout, farms~$\\le$2000).",
         label="tab:variant_B_full",
         cols="llrrrrr",
         rows=tex_rows,
@@ -439,6 +439,122 @@ def table_decomp_overhead(decomp_data):
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Table 6: Study 2.B three-group comparison (27-food, Variant B)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def table_study2b_three_group(solver_data):
+    _print_section("Table 6 — Study 2.B: Three-Group Comparison (27-crop, Variant B)")
+
+    # Gurobi full: from solver_comparison
+    gf_rows = {
+        r["n_farms"]: r
+        for r in solver_data
+        if r.get("variant") == "B" and r.get("decomposition") == "none"
+        and r.get("status") != "SKIPPED"
+    }
+
+    # Gurobi decomposed Clique / SpatialTemporal
+    decomp_rows = {}
+    for r in solver_data:
+        if r.get("variant") != "B" or r.get("status") == "SKIPPED":
+            continue
+        if r.get("solver") == "Gurobi_decomposed":
+            key = (r["n_farms"], r["decomposition"])
+            decomp_rows[key] = r
+
+    # QPU data
+    qpu_path = HERE / "qpu_hier_repaired.json"
+    qpu_27 = {}
+    if qpu_path.exists():
+        with open(qpu_path) as f:
+            raw = json.load(f)
+        runs = raw.get("runs", raw) if isinstance(raw, dict) else raw
+        for r in runs:
+            if r.get("n_foods") == 27:
+                nf = r["n_farms"]
+                timing = r.get("timing", {})
+                qpu_27[nf] = {
+                    "wall_time": timing.get("total_wall_time", 0.0),
+                    "benefit": -(r.get("objective_miqp") or 0.0),
+                }
+
+    all_farms = sorted(set(list(gf_rows) + list(qpu_27)))
+
+    headers = [
+        "Farms", "Vars",
+        "Gurobi full time(s)", "Gurobi full obj", "Status",
+        "QPU time(s)", "QPU obj†",
+        "Clique time(s)", "ST(5) time(s)",
+    ]
+    rows = []
+    for nf in all_farms:
+        gf = gf_rows.get(nf, {})
+        qpu = qpu_27.get(nf, {})
+        cl = decomp_rows.get((nf, "Clique"), {})
+        st = decomp_rows.get((nf, "SpatialTemporal(5)"), {})
+        rows.append([
+            nf,
+            gf.get("n_vars", "—"),
+            _f(gf.get("wall_time"), ".1f"),
+            _f(gf.get("objective")),
+            gf.get("status", "—"),
+            _f(qpu.get("wall_time"), ".1f"),
+            _f(qpu.get("benefit")),
+            _f(cl.get("wall_time"), ".1f"),
+            _f(st.get("wall_time"), ".1f"),
+        ])
+    _print_table(headers, rows)
+
+    # LaTeX
+    tex_rows = [_header_row(
+        "Farms", "Vars",
+        "GF Time(s)", "GF Obj", "Status",
+        "QPU Time(s)", "QPU Obj†",
+        "Cl. Time(s)", "ST-5 Time(s)",
+    )]
+    for nf in all_farms:
+        gf = gf_rows.get(nf, {})
+        qpu = qpu_27.get(nf, {})
+        cl = decomp_rows.get((nf, "Clique"), {})
+        st = decomp_rows.get((nf, "SpatialTemporal(5)"), {})
+        raw_status = gf.get("status", "—") if gf else "—"
+        is_infeasible = not gf.get("feasible", True) if gf else False
+        if raw_status == "timeout" and is_infeasible:
+            status_str = "TO/IF"
+        elif raw_status == "timeout":
+            status_str = "TO"
+        elif is_infeasible:
+            status_str = "opt/IF"
+        elif raw_status == "optimal":
+            status_str = "optimal"
+        else:
+            status_str = raw_status or "—"
+        tex_rows.append(_tex_row(
+            nf, gf.get("n_vars", "—"),
+            _f(gf.get("wall_time"), ".1f"),
+            _f(gf.get("objective"), ".2f"),
+            status_str,
+            _f(qpu.get("wall_time"), ".1f"),
+            _f(qpu.get("benefit"), ".2f"),
+            _f(cl.get("wall_time"), ".1f"),
+            _f(st.get("wall_time"), ".1f"),
+        ))
+    return _table_env(
+        caption=(
+            "Study 2.B three-group comparison: Gurobi full, QPU hierarchical, and "
+            "Gurobi decomposed (Clique / SpatialTemporal-5) on 27-crop Variant~B.  "
+            "All Gurobi runs use 600\\,s timeout.  "
+            "GF=Gurobi full, TO=timeout, opt/IF=Gurobi optimal but rotation constraints violated.  "
+            "$\\dagger$QPU benefit = $-$objective\\_miqp (QUBO sign-corrected); "
+            "includes violation contributions, not directly comparable to Gurobi MIQP."
+        ),
+        label="tab:study2b_three_group",
+        cols="rrrrrrrrr",
+        rows=tex_rows,
+    )
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -475,6 +591,7 @@ def main():
     })
     if decomp_data:
         tex_blocks["decomp_overhead"] = table_decomp_overhead(decomp_data)
+    tex_blocks["study2b_three_group"] = table_study2b_three_group(solver_data)
 
     # Write individual .tex files
     all_blocks = []

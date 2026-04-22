@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\caption{Study 2.B three-group comparison: Gurobi full, QPU hierarchical, and Gurobi decomposed (Clique / SpatialTemporal-5) on 27-crop Variant~B.  All Gurobi runs use 600\,s timeout.  GF=Gurobi full, TO=timeout, opt/IF=Gurobi optimal but rotation constraints violated.  $\dagger$QPU benefit = $-$objective\_miqp (QUBO sign-corrected); includes violation contributions, not directly comparable to Gurobi MIQP.}
+\label{tab:study2b_three_group}
+\begin{tabular}{rrrrrrrrr}
+\toprule
+    \textbf{Farms} & \textbf{Vars} & \textbf{GF Time(s)} & \textbf{GF Obj} & \textbf{Status} & \textbf{QPU Time(s)} & \textbf{QPU Obj†} & \textbf{Cl. Time(s)} & \textbf{ST-5 Time(s)} \\ \midrule
+    10 & 810 & 42.0 & 5.54 & optimal & — & — & 2.7 & 1.3 \\
+    25 & 2025 & 600.5 & 12.29 & TO & 29.9 & 57.60 & 12.7 & 3.6 \\
+    50 & 4050 & 25.3 & 23.49 & optimal & 59.3 & 102.61 & 14.9 & 7.0 \\
+    100 & 8100 & 59.6 & 43.63 & opt/IF & 177.6 & 235.11 & 22.6 & 12.2 \\
+    200 & 16200 & 328.3 & 86.60 & opt/IF & 323.2 & 500.59 & 12.0 & 25.6 \\
+    500 & 40500 & 601.6 & 216.42 & TO/IF & — & — & 30.7 & 64.8 \\
+    1000 & 81000 & 602.5 & 434.28 & TO/IF & — & — & 60.5 & 124.4 \\
+    2000 & 162000 & 605.1 & 866.26 & TO/IF & — & — & 135.6 & 278.5 \\
+\bottomrule
+\end{tabular}
+
+\end{table}
