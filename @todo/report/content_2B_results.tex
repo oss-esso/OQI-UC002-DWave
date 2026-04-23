@@ -1,0 +1,183 @@
+
+
+\subsection{Study 2.B Results}
+\label{subsec:quantum_advantage}
+
+This section presents benchmark results comparing D-Wave Advantage QPU performance against Gurobi 12.0.1 across 13 crop rotation optimization scenarios using Variant B (Section~\ref{subsec:formulation_b}).
+
+% \subsubsection{Experimental Setup}
+
+% \paragraph{Quantum Hardware}
+% All QPU experiments were conducted on the D-Wave Advantage system via Leap cloud access:
+% \begin{itemize}
+%     \item \textbf{Device:} D-Wave Advantage\_system4.1
+%     \item \textbf{Topology:} Pegasus (5,760 qubits, 15-way connectivity)
+%     \item \textbf{Method:} Hierarchical decomposition with plot clustering
+%     \item \textbf{Cluster size:} 9 plots per cluster (optimized for embedding)
+%     \item \textbf{Samples per call:} 100 reads
+%     \item \textbf{Chain strength:} Auto-scaled (1.2 to 1.8$\times$ max coefficient)
+% \end{itemize}
+
+% \paragraph{Classical Hardware}
+% \begin{itemize}
+%     \item \textbf{Solver:} Gurobi 12.0.1 (academic license)
+%     \item \textbf{CPU:} Intel Core i7-12700H (14 cores, 20 threads)
+%     \item \textbf{Memory:} 32 GB RAM
+%     \item \textbf{Timeout:} 300 seconds per scenario
+%     \item \textbf{MILP Gap:} 1\% tolerance
+% \end{itemize}
+
+\subsubsection{Key Findings}
+
+The Study 2.B section was re-generated after removing the diversity bonus from the
+classical full baseline to ensure objective and variable-space comparability with
+the decomposed/QPU baselines.
+
+\begin{enumerate}[label=\textbf{Result \arabic*.}, leftmargin=*, align=left, itemsep=1em]
+
+
+\item 
+Gurobi is optimal with one-hot violations remaining zero and only
+rotation violations increasing with size (see Figure~\ref{fig:study2b_healed_violations}
+and Table~\ref{tab:study2b_three_group}).
+
+\item
+
+For 27-crop Variant~B, Hierarchical Decomposed Gurobi stays well below full-Gurobi wall time at medium/large scales.
+
+\item
+
+The QPU hierarchical values remain useful for trend and scaling as the objective is much higher than Gurobi full and the runtime is in between Gurobi full and Hierarchical Decomposed Gurobi
+
+\item
+
+As problem size grows,
+classical orchestration and embedding dominate end-to-end runtime, while solver-side
+core optimization (classical or quantum) is not the only limiting factor.
+
+\end{enumerate}
+
+
+\subsubsection{Study 2.B Three-Group Comparison: Gurobi Full vs.\ QPU vs.\ Gurobi Decomposed}
+\label{subsec:study2b_three_group}
+
+This subsection extends the Study~2.B analysis by introducing a third comparison group:
+Gurobi with explicit hierarchical decomposition aligned to the QPU metadata
+(spatial-grid partitioning, 9 farms per cluster, 3 coordination iterations).
+The resulting three-group comparison provides a consistent efficiency-quality
+view for the 27-crop rotation problem on the common farm interval
+$\{25, 50, 100, 200\}$.
+
+\paragraph{Track A (27-crop formulation, canonical Variant~B).}
+Figure~\ref{fig:study2b_time_a} shows wall-clock time versus plot count for all three groups
+on the 27-crop formulation.  The time axis is directly comparable across all groups and
+independent of the QUBO versus MIQP objective scale difference noted earlier.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{images/Plots/fig_study2b_time_track_a.pdf}
+    \caption{Study 2.B Track A --- Wall-clock solve-time scaling for the 27-crop rotation
+      (Variant~B).  \textbf{Red solid}: Gurobi full (monolithic MIQP, 600\,s timeout).
+      \textbf{Orange diamonds}: QPU hierarchical pipeline (D-Wave Advantage, including embedding
+      and sampling overhead).  \textbf{Blue dashed}: Gurobi decomposed hierarchical
+      (spatial-grid, 9 farms/cluster, 3 iterations).}
+    \label{fig:study2b_time_a}
+\end{figure}
+
+Key observations from Track~A:
+\begin{itemize}
+    \item The three-group comparison is evaluated on the shared interval
+      $n \in \{25, 50, 100, 200\}$ for strict dataset alignment.
+    \item Gurobi full remains the slowest trajectory and approaches the 600\,s budget
+      at $n{=}200$.
+    \item QPU wall time grows approximately linearly with plot count and lies
+      \emph{between} Gurobi full (slower) and Gurobi decomposed hierarchical (faster).
+    \item Gurobi decomposed hierarchical is consistently faster than full-Gurobi
+      on the aligned interval while retaining the same Variant~B objective family.
+\end{itemize}
+
+Figure~\ref{fig:study2b_qual_a} presents the solution quality comparison.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Plots/fig_study2b_quality_track_a.pdf}
+    \caption{Study 2.B Track A --- Solution quality (27-crop).
+      \emph{Left:} Absolute MIQP objective for Gurobi full versus decomposed
+      hierarchical on the same random-grid scenario (directly comparable).
+      \emph{Right:} Quality ratio relative to Gurobi full.  Values below~1 indicate
+      the decomposed solver returns a lower MIQP objective.  The QPU ratio ($\dagger$)
+      uses different objective scales and should be interpreted as a relative trend
+      indicator, not an absolute quality comparison.}
+    \label{fig:study2b_qual_a}
+\end{figure}
+
+Figure~\ref{fig:study2b_healed_violations} provides a comprehensive dual-panel view
+combining solve-time scaling with objective-value trends and rotation-violation
+counts.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Plots/fig_study2b_healed_violations.pdf}
+        \caption{Study 2.B --- Comprehensive quality and violation overview (dual panel).
+          \emph{Left:} Wall-clock solve time (log--log) for all three series (Gurobi full,
+        hierarchical decomposed Gurobi, QPU hierarchical 27-crop).
+            \emph{Right:} Objective values (all four traces, primary axis) with
+            all rotation-violation histograms overlaid on a secondary axis.
+            The objective axis uses a symlog scale and is capped at $10^4$ on the
+            upper end for consistent cross-scale comparison.}
+    \label{fig:study2b_healed_violations}
+\end{figure}
+
+\paragraph{Three-group summary.}
+Table~\ref{tab:study2b_three_group} summarizes the three-group comparison for the 27-crop
+formulation, covering all plot sizes where at least two groups have data.
+
+\begin{table}[H]
+\centering
+\caption{Study 2.B three-group summary (27-crop, Variant~B, 600\,s timeout).
+  ``TO'' = time-out (solver hit budget without proving optimality).
+  ``opt/IF'' = Gurobi declared optimal but rotation-constraint penalties (soft in MIQP) are still violated;
+  one-hot constraints are always satisfied as hard LP rows.
+  ``TO/IF'' = timed out with rotation violations present.
+  Gurobi decomposed values use hierarchical spatial-grid decomposition
+  (9 farms/cluster, 3 coordination iterations).
+  QPU values include QUBO violation penalties and are not directly comparable to Gurobi MIQP.}
+\label{tab:study2b_three_group}
+\small
+\begin{tabular}{rrrrrrrr}
+\toprule
+\textbf{Plots} & \textbf{Vars} &
+\multicolumn{2}{c}{\textbf{Gurobi full (27-crop)}} &
+\multicolumn{2}{c}{\textbf{QPU hierarchical†}} &
+\multicolumn{2}{c}{\textbf{Gurobi decomp.\ (Hierarchical)}} \\
+& & \textbf{Time (s)} & \textbf{MIQP obj.} &
+    \textbf{Time (s)} & \textbf{obj.} &
+    \textbf{Time (s)} & \textbf{obj.} \\
+\midrule
+     25 &  2\,025 &  104.6         &  1.0815 &  29.9 &  57.60 & 35.9 & 0.0000 \\
+     50 &  4\,050 &   14.4         &  0.4454 &  59.3 & 102.61 & 70.9 & 0.0000 \\
+   100 &  8\,100 &   77.5         &  0.4333 & 177.6 & 235.11 & 133.4 & 0.0114 \\
+   200 & 16\,200 &  576.9         &  0.3526 & 323.2 & 500.59 & 86.4 & 0.8514 \\
+\bottomrule
+\multicolumn{8}{l}{\footnotesize †QPU objectives include QUBO violation penalties; not directly comparable to Gurobi MIQP objective.} \\
+\multicolumn{8}{l}{\footnotesize Decomposed Gurobi uses spatial-grid hierarchical partitioning (cluster size 9).} \\
+\end{tabular}
+\end{table}
+
+\subsection{Summary of Results}
+
+The comprehensive benchmark results establish several key findings:
+
+\begin{enumerate}
+    \item \textbf{Formulation-dependent advantage:} Classical solvers dominate on structured MILP (Variant A), while QPU excels on QUBO/rotation problems (Variant B)
+
+    \item \textbf{Classical Track-A baseline is now objective-aligned:} after removing diversity from the full Gurobi baseline, Study~2.B compares methods in the same MIQP objective family for the classical tracks (full and hierarchical decomposed).
+
+    \item \textbf{Gurobi full remains the runtime bottleneck on the aligned interval:} on 25--200 plots with 600\,s budget, full Gurobi is consistently slower than hierarchical decomposed Gurobi.
+
+    \item \textbf{QPU and classical objectives must be interpreted by role:} QPU curves are informative for trend and scaling, but not strict MIQP parity, due to decomposition and QUBO-penalty effects.
+
+    \item \textbf{Pure QPU time remains a small runtime share:} the decomposition studies still indicate that embedding/orchestration dominates end-to-end wall time.
+
+    \item \textbf{Embedding is the bottleneck:} Future hardware improvements in qubit connectivity would dramatically improve end-to-end performance
+\end{enumerate}

@@ -48,7 +48,7 @@ COLORS_A = {
     "CQM-First": "#bcbd22",
 }
 COLORS_B = {
-    "Clique(farm-by-farm)": "#1f77b4",
+    "Clique(plot-by-plot)": "#1f77b4",
     "SpatialTemporal(5)": "#ff7f0e",
     "SpatialTemporal(10)": "#2ca02c",
 }
@@ -79,7 +79,7 @@ def plot_decomposition_time(data, variant, title_suffix, fname):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Decomposition time (s)")
     ax.set_title(f"Decomposition Overhead — {title_suffix}")
     ax.legend(loc="upper left", framealpha=0.9)
@@ -109,7 +109,7 @@ def plot_partition_count(data, variant, title_suffix, fname):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Number of partitions")
     ax.set_title(f"Partition Count Scaling — {title_suffix}")
     ax.legend(loc="upper left", framealpha=0.9)
@@ -139,7 +139,7 @@ def plot_max_partition_size(data, variant, title_suffix, fname):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Max sub-problem size (variables)")
     ax.set_title(f"Largest Sub-Problem — {title_suffix}")
     ax.legend(loc="upper left", framealpha=0.9)
@@ -163,6 +163,7 @@ SOLVER_DECOMP_STYLES = {
     "Gurobi_decomposed|HybridGrid(5,9)": {"color": "#984ea3", "ls": "--", "marker": "D"},
     "Gurobi_decomposed|Clique": {"color": "#377eb8", "ls": "--", "marker": "s"},
     "Gurobi_decomposed|SpatialTemporal(5)": {"color": "#4daf4a", "ls": "--", "marker": "^"},
+    "Gurobi_decomposed|Hierarchical(spatial_grid,9)": {"color": "#377eb8", "ls": "--", "marker": "s"},
     # PT-ICM decomposed
     "PT-ICM_decomposed|PlotBased": {"color": "#ff7f00", "ls": "-.", "marker": "v"},
     "PT-ICM_decomposed|Multilevel(5)": {"color": "#ffff33", "ls": "-.", "marker": "<"},
@@ -203,7 +204,7 @@ def plot_solver_time_all(data, variant, fname):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Wall-clock time (s)")
     ax.set_title(f"Solver Comparison — Variant {variant} (All Decompositions)")
     ax.legend(loc="upper left", framealpha=0.9, fontsize=7)
@@ -237,7 +238,7 @@ def plot_solver_time(data, variant, decomp_name, fname):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Wall-clock time (s)")
     ax.set_title(f"Solver Comparison — Variant {variant}, {decomp_name}")
     ax.legend(framealpha=0.9)
@@ -280,7 +281,7 @@ def plot_solver_quality_all(data, variant, fname):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Objective value")
     ax.set_title(f"Solution Quality — Variant {variant} (All Decompositions)")
     ax.legend(loc="best", framealpha=0.9, fontsize=7)
@@ -315,7 +316,7 @@ def plot_solver_quality(data, variant, decomp_name, fname):
         ax.plot(xs_s, ys_s, label=sname, **sty, markersize=5)
 
     ax.set_xscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Objective value")
     ax.set_title(f"Solution Quality — Variant {variant}, {decomp_name}")
     ax.legend(framealpha=0.9)
@@ -342,7 +343,7 @@ def plot_combined_panel(data_solver, fname):
         ax.scatter(r["n_farms"], r["wall_time"], color=sty["color"],
                    marker=sty["marker"], s=30, alpha=0.7)
     ax.set_xscale("log"); ax.set_yscale("log")
-    ax.set_xlabel("Farms"); ax.set_ylabel("Time (s)")
+    ax.set_xlabel("plots"); ax.set_ylabel("Time (s)")
     ax.set_title("Variant A — Solve Time")
     ax.grid(True, alpha=0.3)
 
@@ -355,7 +356,7 @@ def plot_combined_panel(data_solver, fname):
         ax.scatter(r["n_farms"], r["objective"], color=sty["color"],
                    marker=sty["marker"], s=30, alpha=0.7)
     ax.set_xscale("log")
-    ax.set_xlabel("Farms"); ax.set_ylabel("Objective")
+    ax.set_xlabel("plots"); ax.set_ylabel("Objective")
     ax.set_title("Variant A — Solution Quality")
     ax.grid(True, alpha=0.3)
 
@@ -368,7 +369,7 @@ def plot_combined_panel(data_solver, fname):
         ax.scatter(r["n_farms"], r["wall_time"], color=sty["color"],
                    marker=sty["marker"], s=30, alpha=0.7)
     ax.set_xscale("log"); ax.set_yscale("log")
-    ax.set_xlabel("Farms"); ax.set_ylabel("Time (s)")
+    ax.set_xlabel("plots"); ax.set_ylabel("Time (s)")
     ax.set_title("Variant B — Solve Time")
     ax.grid(True, alpha=0.3)
 
@@ -381,7 +382,7 @@ def plot_combined_panel(data_solver, fname):
         ax.scatter(r["n_farms"], r["objective"], color=sty["color"],
                    marker=sty["marker"], s=30, alpha=0.7)
     ax.set_xscale("log")
-    ax.set_xlabel("Farms"); ax.set_ylabel("Objective (energy)")
+    ax.set_xlabel("plots"); ax.set_ylabel("Objective (energy)")
     ax.set_title("Variant B — Solution Quality")
     ax.grid(True, alpha=0.3)
 
@@ -401,6 +402,9 @@ def plot_combined_panel(data_solver, fname):
 # ============================================================================
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent  # OQI-UC002-DWave root
+STUDY2B_FARMS = [25, 50, 100, 200]
+STUDY2B_FARM_SET = set(STUDY2B_FARMS)
+STUDY2B_DECOMP_LABEL = "Hierarchical(spatial_grid,9)"
 
 
 def load_qpu_data_27food():
@@ -418,6 +422,8 @@ def load_qpu_data_27food():
     out = []
     for r in runs:
         if r.get("n_foods", 0) != 27:
+            continue
+        if r.get("n_farms") not in STUDY2B_FARM_SET:
             continue
         timing = r.get("timing", {})
         out.append({
@@ -497,7 +503,13 @@ def load_gurobi_timeout_data():
 
 def _solver_comparison_variant_b(data):
     """Extract Variant B rows (skipping SKIPPED entries) from solver_comparison data."""
-    rows = [r for r in data if r.get("variant") == "B" and r.get("status") != "SKIPPED"]
+    rows = [
+        r
+        for r in data
+        if r.get("variant") == "B"
+        and r.get("status") != "SKIPPED"
+        and r.get("n_farms") in STUDY2B_FARM_SET
+    ]
     return rows
 
 
@@ -513,8 +525,8 @@ THREE_GROUP_STYLES = {
     # QPU hierarchical
     "QPU 27-food":                   {"color": "#ff7f0e", "ls": "-",  "marker": "D", "lw": 2, "zorder": 4},
     "QPU 6-food":                    {"color": "#e6550d", "ls": ":",  "marker": "D", "lw": 2, "zorder": 4},
-    # Gurobi decomposed
-    "Gurobi decomp. Clique":         {"color": "#377eb8", "ls": "--", "marker": "s", "lw": 1.5},
+    # Gurobi decomposed hierarchical
+    "Gurobi decomp. Hier":           {"color": "#377eb8", "ls": "--", "marker": "s", "lw": 1.5},
     "Gurobi decomp. ST(5)":          {"color": "#4daf4a", "ls": "--", "marker": "^", "lw": 1.5},
     "Gurobi decomp. Clique (6-food)":{"color": "#1f77b4", "ls": "-.", "marker": "s", "lw": 1.5},
     "Gurobi decomp. ST(5) (6-food)": {"color": "#2ca02c", "ls": "-.", "marker": "^", "lw": 1.5},
@@ -529,7 +541,7 @@ def _sort_xy(xs, ys):
 def plot_study2b_time_track_a(data_solver, output_dir=None):
     """Track A: wall-clock time comparison for 27-food Variant B.
 
-    Groups: Gurobi full | QPU 27-food | Gurobi decomposed (Clique, ST)
+    Groups: Gurobi full | QPU 27-food | Gurobi decomposed hierarchical.
     """
     out = output_dir or OUT_DIR
     fig, ax = plt.subplots(figsize=(9, 5.5))
@@ -554,29 +566,19 @@ def plot_study2b_time_track_a(data_solver, output_dir=None):
         sty = THREE_GROUP_STYLES["QPU 27-food"]
         ax.plot(xs_q, ys_q, label="QPU (27-crop, hierarchical)", markersize=6, **sty)
 
-    # --- Gurobi decomposed Clique ---
+    # --- Gurobi decomposed hierarchical (spatial_grid, cluster=9) ---
     cl_xs, cl_ys = [], []
     for r in b_rows:
-        if r["solver"] == "Gurobi_decomposed" and r["decomposition"] == "Clique":
+        if r["solver"] == "Gurobi_decomposed" and r["decomposition"] == STUDY2B_DECOMP_LABEL:
             cl_xs.append(r["n_farms"]); cl_ys.append(r["wall_time"])
     if cl_xs:
         xs_s, ys_s = _sort_xy(cl_xs, cl_ys)
-        sty = THREE_GROUP_STYLES["Gurobi decomp. Clique"]
-        ax.plot(xs_s, ys_s, label="Gurobi decomp. (Clique)", markersize=5, **sty)
-
-    # --- Gurobi decomposed SpatialTemporal(5) ---
-    st_xs, st_ys = [], []
-    for r in b_rows:
-        if r["solver"] == "Gurobi_decomposed" and r["decomposition"] == "SpatialTemporal(5)":
-            st_xs.append(r["n_farms"]); st_ys.append(r["wall_time"])
-    if st_xs:
-        xs_s, ys_s = _sort_xy(st_xs, st_ys)
-        sty = THREE_GROUP_STYLES["Gurobi decomp. ST(5)"]
-        ax.plot(xs_s, ys_s, label="Gurobi decomp. (SpatialTemporal-5)", markersize=5, **sty)
+        sty = THREE_GROUP_STYLES["Gurobi decomp. Hier"]
+        ax.plot(xs_s, ys_s, label="Gurobi decomp. (hierarchical, spatial-grid 9)", markersize=5, **sty)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms (27 crops × 3 periods = 81F variables)")
+    ax.set_xlabel("Number of plots (27 crops × 3 periods = 81F variables)")
     ax.set_ylabel("Wall-clock time (s)")
     ax.set_title("Study 2.B — Solve Time Comparison (27-crop, Track A)")
     ax.legend(loc="upper left", framealpha=0.9)
@@ -596,7 +598,7 @@ def plot_study2b_time_track_b(data_solver, output_dir=None):
     """Track B: wall-clock time comparison — both 6-food and 27-food Variant B.
 
     Combines: Gurobi full (6-food from timeout, 27-food from solver_comparison),
-    QPU (6-food, 27-food), Gurobi decomposed 27-food (Clique, ST).
+    QPU (6-food, 27-food), Gurobi decomposed 27-food (hierarchical).
     """
     out = output_dir or OUT_DIR
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -639,29 +641,19 @@ def plot_study2b_time_track_b(data_solver, output_dir=None):
         sty = THREE_GROUP_STYLES["QPU 6-food"]
         ax.plot(xs_q, ys_q, label="QPU (6-food, hierarchical)", markersize=6, **sty)
 
-    # --- Gurobi decomposed Clique (27-food) ---
+    # --- Gurobi decomposed hierarchical (27-food) ---
     cl_xs, cl_ys = [], []
     for r in b_rows:
-        if r["solver"] == "Gurobi_decomposed" and r["decomposition"] == "Clique":
+        if r["solver"] == "Gurobi_decomposed" and r["decomposition"] == STUDY2B_DECOMP_LABEL:
             cl_xs.append(r["n_farms"]); cl_ys.append(r["wall_time"])
     if cl_xs:
         xs_s, ys_s = _sort_xy(cl_xs, cl_ys)
-        sty = THREE_GROUP_STYLES["Gurobi decomp. Clique"]
-        ax.plot(xs_s, ys_s, label="Gurobi decomp. Clique (27-crop)", markersize=5, **sty)
-
-    # --- Gurobi decomposed SpatialTemporal(5) (27-food) ---
-    st_xs, st_ys = [], []
-    for r in b_rows:
-        if r["solver"] == "Gurobi_decomposed" and r["decomposition"] == "SpatialTemporal(5)":
-            st_xs.append(r["n_farms"]); st_ys.append(r["wall_time"])
-    if st_xs:
-        xs_s, ys_s = _sort_xy(st_xs, st_ys)
-        sty = THREE_GROUP_STYLES["Gurobi decomp. ST(5)"]
-        ax.plot(xs_s, ys_s, label="Gurobi decomp. ST(5) (27-crop)", markersize=5, **sty)
+        sty = THREE_GROUP_STYLES["Gurobi decomp. Hier"]
+        ax.plot(xs_s, ys_s, label="Gurobi decomp. hierarchical (27-crop)", markersize=5, **sty)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("Wall-clock time (s)")
     ax.set_title("Study 2.B — Solve Time Comparison (6-food + 27-crop, Track B)")
     ax.legend(loc="upper left", framealpha=0.9)
@@ -695,88 +687,69 @@ def plot_study2b_quality_track_a(data_solver, output_dir=None):
                 full_obj[r["n_farms"]] = r["objective"]
 
     # Gurobi decomposed objectives
-    decomp_clique = {}
-    decomp_st = {}
+    decomp_hier = {}
     for r in b_rows:
         if r["solver"] != "Gurobi_decomposed" or r.get("objective") is None:
             continue
-        if r["decomposition"] == "Clique":
-            decomp_clique[r["n_farms"]] = r["objective"]
-        elif r["decomposition"] == "SpatialTemporal(5)":
-            decomp_st[r["n_farms"]] = r["objective"]
+        if r["decomposition"] == STUDY2B_DECOMP_LABEL:
+            decomp_hier[r["n_farms"]] = r["objective"]
 
     # QPU vs Gurobi timeout (scenario-matched comparison)
     qpu27 = load_qpu_data_27food()
     gf27_timeout, _ = load_gurobi_timeout_data()
-    timeout_by_farms = {r["n_farms"]: r["objective"] for r in gf27_timeout
+    timeout_by_plots = {r["n_farms"]: r["objective"] for r in gf27_timeout
                         if r.get("objective") is not None}
 
     fig, (ax_abs, ax_ratio) = plt.subplots(1, 2, figsize=(13, 5))
 
     # --- Left: absolute objectives (Gurobi scale, 27-food solver_comparison) ---
     if full_obj:
-        farms_sorted = sorted(full_obj.keys())
+        plots_sorted = sorted(full_obj.keys())
         sty = THREE_GROUP_STYLES["Gurobi full (27-food)"]
-        ax_abs.plot(farms_sorted, [full_obj[f] for f in farms_sorted],
+        ax_abs.plot(plots_sorted, [full_obj[f] for f in plots_sorted],
                     label="Gurobi full", markersize=6, **sty)
 
-    if decomp_clique:
-        xs_s, ys_s = _sort_xy(list(decomp_clique.keys()), list(decomp_clique.values()))
-        sty = THREE_GROUP_STYLES["Gurobi decomp. Clique"]
-        ax_abs.plot(xs_s, ys_s, label="Gurobi decomp. (Clique)", markersize=5, **sty)
-
-    if decomp_st:
-        xs_s, ys_s = _sort_xy(list(decomp_st.keys()), list(decomp_st.values()))
-        sty = THREE_GROUP_STYLES["Gurobi decomp. ST(5)"]
-        ax_abs.plot(xs_s, ys_s, label="Gurobi decomp. (SpatialTemporal-5)", markersize=5, **sty)
+    if decomp_hier:
+        xs_s, ys_s = _sort_xy(list(decomp_hier.keys()), list(decomp_hier.values()))
+        sty = THREE_GROUP_STYLES["Gurobi decomp. Hier"]
+        ax_abs.plot(xs_s, ys_s, label="Gurobi decomp. (hierarchical)", markersize=5, **sty)
 
     ax_abs.set_xscale("log")
     ax_abs.set_yscale("log")
-    ax_abs.set_xlabel("Number of farms")
+    ax_abs.set_xlabel("Number of plots")
     ax_abs.set_ylabel("MIQP objective value")
     ax_abs.set_title("Solution Quality — Gurobi full vs decomposed (27-crop)")
     ax_abs.legend(framealpha=0.9)
     ax_abs.grid(True, which="both", alpha=0.3)
 
     # --- Right: quality ratio relative to formulation-specific Gurobi full ---
-    ratio_farms_clique, ratio_clique = [], []
-    for nf, do in sorted(decomp_clique.items()):
+    ratio_plots_hier, ratio_hier = [], []
+    for nf, do in sorted(decomp_hier.items()):
         if nf in full_obj and full_obj[nf]:
-            ratio_farms_clique.append(nf)
-            ratio_clique.append(do / full_obj[nf])
-
-    ratio_farms_st, ratio_st = [], []
-    for nf, do in sorted(decomp_st.items()):
-        if nf in full_obj and full_obj[nf]:
-            ratio_farms_st.append(nf)
-            ratio_st.append(do / full_obj[nf])
+            ratio_plots_hier.append(nf)
+            ratio_hier.append(do / full_obj[nf])
 
     # QPU benefit / Gurobi timeout objective (scenario-matched)
-    qpu_farms, qpu_ratios = [], []
+    qpu_plots, qpu_ratios = [], []
     for r in sorted(qpu27, key=lambda x: x["n_farms"]):
         nf = r["n_farms"]
-        if nf in timeout_by_farms and timeout_by_farms[nf]:
-            qpu_farms.append(nf)
-            qpu_ratios.append(r["benefit"] / timeout_by_farms[nf])
+        if nf in timeout_by_plots and timeout_by_plots[nf]:
+            qpu_plots.append(nf)
+            qpu_ratios.append(r["benefit"] / timeout_by_plots[nf])
 
-    if ratio_clique:
-        sty = THREE_GROUP_STYLES["Gurobi decomp. Clique"]
-        ax_ratio.plot(ratio_farms_clique, ratio_clique,
-                      label="Gurobi decomp. Clique / full", markersize=5, **sty)
-
-    if ratio_st:
-        sty = THREE_GROUP_STYLES["Gurobi decomp. ST(5)"]
-        ax_ratio.plot(ratio_farms_st, ratio_st,
-                      label="Gurobi decomp. ST(5) / full", markersize=5, **sty)
+    if ratio_hier:
+        sty = THREE_GROUP_STYLES["Gurobi decomp. Hier"]
+        ax_ratio.plot(ratio_plots_hier, ratio_hier,
+                      label="Gurobi decomp. hierarchical / full", markersize=5, **sty)
 
     if qpu_ratios:
         sty = THREE_GROUP_STYLES["QPU 27-food"]
-        ax_ratio.plot(qpu_farms, qpu_ratios,
+        ax_ratio.plot(qpu_plots, qpu_ratios,
                       label="QPU benefit / Gurobi MIQP†", markersize=6, **sty)
 
     ax_ratio.axhline(1.0, color="#888", ls=":", lw=1)
     ax_ratio.set_xscale("log")
-    ax_ratio.set_xlabel("Number of farms")
+    ax_ratio.set_xlabel("Number of plots")
     ax_ratio.set_ylabel("Objective ratio (vs. Gurobi full)")
     ax_ratio.set_title("Quality Ratio — decomposed / full\n†QPU benefit / Gurobi MIQP (diff. scales)")
     ax_ratio.legend(framealpha=0.9, fontsize=8)
@@ -816,9 +789,9 @@ def plot_study2b_quality_track_b(data_solver, output_dir=None):
     # --- Left: absolute objectives (solver_comparison + timeout formulations) ---
     ax = axes[0]
     if full_obj_27:
-        farms_s = sorted(full_obj_27.keys())
+        plots_s = sorted(full_obj_27.keys())
         sty = THREE_GROUP_STYLES["Gurobi full (27-food)"]
-        ax.plot(farms_s, [full_obj_27[f] for f in farms_s],
+        ax.plot(plots_s, [full_obj_27[f] for f in plots_s],
                 label="Gurobi full 27-crop (solver_comp)", markersize=5, **sty)
 
     if timeout6:
@@ -828,7 +801,7 @@ def plot_study2b_quality_track_b(data_solver, output_dir=None):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("MIQP objective value")
     ax.set_title("Absolute Quality: Gurobi full (both formulations)")
     ax.legend(framealpha=0.9, fontsize=8)
@@ -837,33 +810,33 @@ def plot_study2b_quality_track_b(data_solver, output_dir=None):
     # --- Right: QPU quality vs Gurobi full (per formulation, same scenario) ---
     ax = axes[1]
     # QPU 27-food vs Gurobi 27-food timeout (scenario-matched)
-    qpu27_farms, qpu27_ratios = [], []
+    qpu27_plots, qpu27_ratios = [], []
     for r in sorted(qpu27, key=lambda x: x["n_farms"]):
         nf = r["n_farms"]
         ref = timeout27.get(nf)
         if ref:
-            qpu27_farms.append(nf)
+            qpu27_plots.append(nf)
             qpu27_ratios.append(r["benefit"] / ref)
 
     # QPU 6-food vs Gurobi 6-food timeout
-    qpu6_farms, qpu6_ratios = [], []
+    qpu6_plots, qpu6_ratios = [], []
     for r in sorted(qpu6, key=lambda x: x["n_farms"]):
         nf = r["n_farms"]
         ref = timeout6.get(nf)
         if ref:
-            qpu6_farms.append(nf)
+            qpu6_plots.append(nf)
             qpu6_ratios.append(r["benefit"] / ref)
 
     if qpu27_ratios:
         sty = THREE_GROUP_STYLES["QPU 27-food"]
-        ax.plot(qpu27_farms, qpu27_ratios, label="QPU 27-crop / Gurobi MIQP†", markersize=6, **sty)
+        ax.plot(qpu27_plots, qpu27_ratios, label="QPU 27-crop / Gurobi MIQP†", markersize=6, **sty)
     if qpu6_ratios:
         sty = THREE_GROUP_STYLES["QPU 6-food"]
-        ax.plot(qpu6_farms, qpu6_ratios, label="QPU 6-food / Gurobi MIQP†", markersize=6, **sty)
+        ax.plot(qpu6_plots, qpu6_ratios, label="QPU 6-food / Gurobi MIQP†", markersize=6, **sty)
 
     ax.axhline(1.0, color="#888", ls=":", lw=1)
     ax.set_xscale("log")
-    ax.set_xlabel("Number of farms")
+    ax.set_xlabel("Number of plots")
     ax.set_ylabel("QPU benefit / Gurobi MIQP objective†")
     ax.set_title("QPU vs Gurobi Quality Ratio (both formulations)\n†Different normalizations — ratio > 1 ≠ QPU outperforms")
     ax.legend(framealpha=0.9, fontsize=8)
@@ -883,7 +856,7 @@ def plot_study2b_quality_track_b(data_solver, output_dir=None):
 # ============================================================================
 
 def plot_study2b_quality_decomposed_abs(data_solver, output_dir=None):
-    """Absolute MIQP objective: Gurobi full vs Clique vs ST(5) for Variant B.
+    """Absolute MIQP objective: Gurobi full vs hierarchical decomposed for Variant B.
 
     Single-panel with raw objective values on log-log axes so scale differences
     between decompositions are immediately visible.
@@ -892,8 +865,7 @@ def plot_study2b_quality_decomposed_abs(data_solver, output_dir=None):
     b_rows = _solver_comparison_variant_b(data_solver)
 
     full_obj  = {}
-    clique_obj = {}
-    st_obj     = {}
+    hier_obj = {}
     for r in b_rows:
         if r.get("objective") is None:
             continue
@@ -901,10 +873,8 @@ def plot_study2b_quality_decomposed_abs(data_solver, output_dir=None):
         if r["solver"] == "Gurobi_full" and r["decomposition"] == "none":
             full_obj[nf] = r["objective"]
         elif r["solver"] == "Gurobi_decomposed":
-            if r["decomposition"] == "Clique":
-                clique_obj[nf] = r["objective"]
-            elif r["decomposition"] == "SpatialTemporal(5)":
-                st_obj[nf] = r["objective"]
+            if r["decomposition"] == STUDY2B_DECOMP_LABEL:
+                hier_obj[nf] = r["objective"]
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -913,19 +883,14 @@ def plot_study2b_quality_decomposed_abs(data_solver, output_dir=None):
         sty = THREE_GROUP_STYLES["Gurobi full (27-food)"]
         ax.plot(xs_s, ys_s, label="Gurobi full", markersize=6, **sty)
 
-    if clique_obj:
-        xs_s, ys_s = _sort_xy(list(clique_obj.keys()), list(clique_obj.values()))
-        sty = THREE_GROUP_STYLES["Gurobi decomp. Clique"]
-        ax.plot(xs_s, ys_s, label="Gurobi decomp. (Clique)", markersize=5, **sty)
-
-    if st_obj:
-        xs_s, ys_s = _sort_xy(list(st_obj.keys()), list(st_obj.values()))
-        sty = THREE_GROUP_STYLES["Gurobi decomp. ST(5)"]
-        ax.plot(xs_s, ys_s, label="Gurobi decomp. (SpatialTemporal-5)", markersize=5, **sty)
+    if hier_obj:
+        xs_s, ys_s = _sort_xy(list(hier_obj.keys()), list(hier_obj.values()))
+        sty = THREE_GROUP_STYLES["Gurobi decomp. Hier"]
+        ax.plot(xs_s, ys_s, label="Gurobi decomp. (hierarchical)", markersize=5, **sty)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Number of farms (27 crops × 3 periods)")
+    ax.set_xlabel("Number of plots (27 crops × 3 periods)")
     ax.set_ylabel("MIQP objective value")
     ax.set_title("Study 2.B — Solution Quality: Gurobi Full vs Decomposed (Variant B, 27-crop)")
     ax.legend(framealpha=0.9)
@@ -979,10 +944,10 @@ def _extract_b_healed_series(data_solver):
     if gf_data:
         series["Gurobi (Full)"] = gf_data
 
-    # --- Gurobi decomposed Clique ---
+    # --- Gurobi decomposed hierarchical ---
     cl_data = {}
     for r in b_rows:
-        if r["solver"] != "Gurobi_decomposed" or r["decomposition"] != "Clique":
+        if r["solver"] != "Gurobi_decomposed" or r["decomposition"] != STUDY2B_DECOMP_LABEL:
             continue
         nf = r["n_farms"]
         cl_data[nf] = {
@@ -992,22 +957,7 @@ def _extract_b_healed_series(data_solver):
             "time": r.get("wall_time", 0),
         }
     if cl_data:
-        series["Gurobi decomp. (Clique)"] = cl_data
-
-    # --- Gurobi decomposed ST(5) ---
-    st_data = {}
-    for r in b_rows:
-        if r["solver"] != "Gurobi_decomposed" or r["decomposition"] != "SpatialTemporal(5)":
-            continue
-        nf = r["n_farms"]
-        st_data[nf] = {
-            "raw": r.get("objective"),
-            "healed": r.get("healed_objective"),
-            "viols": r.get("violations", 0) or 0,
-            "time": r.get("wall_time", 0),
-        }
-    if st_data:
-        series["Gurobi decomp. (ST-5)"] = st_data
+        series["Gurobi decomp. (Hier)"] = cl_data
 
     # --- QPU 27-food ---
     qpu27 = load_qpu_data_27food()
@@ -1029,25 +979,23 @@ def _extract_b_healed_series(data_solver):
 # Color + style palette matching the reference PDFs
 _HEALED_STYLES = {
     "Gurobi (Full)":            {"color": "#e41a1c", "marker": "o", "lw": 2},
-    "Gurobi decomp. (Clique)":  {"color": "#377eb8", "marker": "s", "lw": 1.5},
-    "Gurobi decomp. (ST-5)":    {"color": "#4daf4a", "marker": "^", "lw": 1.5},
+    "Gurobi decomp. (Hier)":    {"color": "#377eb8", "marker": "s", "lw": 1.5},
     "QPU (27-crop, hier.)":     {"color": "#ff7f0e", "marker": "D", "lw": 2},
 }
 _VIOL_COLORS = {
     "Gurobi (Full)":            "#fb9a99",
-    "Gurobi decomp. (Clique)":  "#a6cee3",
-    "Gurobi decomp. (ST-5)":    "#b2df8a",
+    "Gurobi decomp. (Hier)":    "#a6cee3",
     "QPU (27-crop, hier.)":     "#fdbf6f",
 }
 
 
 def plot_study2b_healed_violations(data_solver, output_dir=None):
-    """Comprehensive dual-panel plot: solve time + gap/healed/violations.
+    """Comprehensive three-panel plot for Study 2.B.
 
-    Style mirrors study1_hybrid_performance.pdf and qpu_benchmark_comprehensive.pdf.
-    Left:  wall-clock time (log-log).
-    Right: |raw obj - Gurobi_full| (solid lines) + healed gap (dashed lines) on
-           primary Y-axis (log); violation counts as bars on secondary Y-axis.
+    Panel 1: wall-clock time (log-log).
+    Panel 2: objective values (all 4 traces) with violation histograms on a
+             secondary axis.
+    Panel 3: healed gap to healed Gurobi full baseline (comparison methods).
     """
     out = output_dir or OUT_DIR
 
@@ -1056,16 +1004,29 @@ def plot_study2b_healed_violations(data_solver, output_dir=None):
         print("  SKIP fig_study2b_healed_violations.pdf (no data)")
         return
 
-    fig, (ax_t, ax_g) = plt.subplots(1, 2, figsize=(14, 6))
-    ax_v = ax_g.twinx()  # secondary axis for violations
+    fig, (ax_t, ax_obj, ax_healed) = plt.subplots(1, 3, figsize=(20, 6))
+    ax_v = ax_obj.twinx()  # secondary axis for violations
 
-    bar_width_factor = 0.25  # fraction of x-span per bar group
     labels_order = list(_HEALED_STYLES.keys())
 
-    all_farms = sorted({nf for s in series.values() for nf in s})
-    x_pos = {nf: i for i, nf in enumerate(all_farms)}
+    all_plots = sorted({nf for s in series.values() for nf in s})
     n_series = sum(1 for k in labels_order if k in series)
-    bar_offsets = np.linspace(-0.35, 0.35, max(n_series, 1))
+    bar_offsets = np.linspace(-0.30, 0.30, max(n_series, 1))
+
+    compare_labels = [
+            "Gurobi decomp. (Hier)",
+        "QPU (27-crop, hier.)",
+    ]
+
+    # Healed baseline is Gurobi full healed if available, else raw.
+    full_healed = {}
+    full_series = series.get("Gurobi (Full)", {})
+    for nf, v in full_series.items():
+        healed_ref = v.get("healed")
+        if healed_ref is None:
+            healed_ref = v.get("raw")
+        if healed_ref is not None:
+            full_healed[nf] = healed_ref
 
     # ── Left: time ─────────────────────────────────────────────────────────
     for label in labels_order:
@@ -1074,92 +1035,127 @@ def plot_study2b_healed_violations(data_solver, output_dir=None):
         sty = _HEALED_STYLES[label]
         data = series[label]
         xs_s, ys_s = _sort_xy(list(data.keys()), [v["time"] for v in data.values()])
-        ax_t.plot(xs_s, ys_s, label=label, markersize=5,
-                  color=sty["color"], marker=sty["marker"], lw=sty["lw"])
+        clipped = [(x, y) for x, y in zip(xs_s, ys_s) if 20 <= x <= 200]
+        if clipped:
+            xs_s, ys_s = zip(*clipped)
+            ax_t.plot(xs_s, ys_s, label=label, markersize=5,
+                        color=sty["color"], marker=sty["marker"], lw=sty["lw"])
 
     ax_t.set_xscale("log"); ax_t.set_yscale("log")
-    ax_t.set_xlabel("Number of farms"); ax_t.set_ylabel("Wall-clock time (s)")
+    ax_t.set_xlabel("Number of plots"); ax_t.set_ylabel("Wall-clock time (s)")
     ax_t.set_title("Solve Time")
     ax_t.legend(loc="upper left", framealpha=0.9, fontsize=8)
     ax_t.grid(True, which="both", alpha=0.3)
 
-    # ── Right: gap + healed + violations ───────────────────────────────────
+    # ── Middle: objective values + violations ──────────────────────────────
     bar_idx = 0
     for label in labels_order:
         if label not in series:
             continue
         sty = _HEALED_STYLES[label]
         data = series[label]
-
-        # gap lines (primary Y, log scale)
-        raw_xs, raw_ys = [], []
-        healed_xs, healed_ys = [], []
-        viol_xs, viol_ys = [], []
-
+        xs, ys, viol_xs, viol_ys = [], [], [], []
         for nf in sorted(data.keys()):
-            v = data[nf]
-            ref = full_obj.get(nf)
-            raw = v["raw"]
-            healed = v["healed"]
-            viols = v["viols"]
-
-            # For Gurobi full itself, the "gap" is 0 by definition —
-            # show healed-objective delta instead (raw - healed)
-            if label == "Gurobi (Full)":
-                if raw is not None and healed is not None and raw != healed:
-                    raw_xs.append(nf)
-                    raw_ys.append(abs(raw - healed))
-                # no "healed gap" line for the reference itself
-            else:
-                if raw is not None and ref is not None:
-                    raw_xs.append(nf)
-                    raw_ys.append(abs(raw - ref))
-                if healed is not None and ref is not None:
-                    healed_xs.append(nf)
-                    healed_ys.append(abs(healed - ref))
-
+            if not (20 <= nf <= 200):          # ← clip panel 2
+                continue
+            raw = data[nf].get("raw")
+            viols = data[nf].get("viols", 0) or 0
+            if raw is None:
+                continue
+            xs.append(nf)
+            ys.append(raw)
             if viols > 0:
                 viol_xs.append(nf)
                 viol_ys.append(viols)
-
-        if raw_xs:
-            ax_g.plot(raw_xs, raw_ys, color=sty["color"], marker=sty["marker"],
-                      ls="-", lw=sty["lw"], markersize=5,
-                      label=label if label != "Gurobi (Full)" else "Gurobi full (raw−healed Δ)")
-        if healed_xs:
-            ax_g.plot(healed_xs, healed_ys, color=sty["color"], marker=sty["marker"],
-                      ls="--", lw=sty["lw"], markersize=5, alpha=0.8,
-                      label=f"{label} (healed)")
+        if xs:
+            ax_obj.plot(
+                xs, ys,
+                color=sty["color"], marker=sty["marker"],
+                ls="-", lw=sty["lw"], markersize=5,
+                label=label,
+            )
 
         # violation bars
         if viol_xs and viol_ys:
-            bar_x = [x_pos[nf] + bar_offsets[bar_idx] for nf in viol_xs]
-            ax_v.bar(bar_x, viol_ys, width=0.18,
+            offset_factor = 10 ** bar_offsets[bar_idx]
+            bar_x = [nf * offset_factor for nf in viol_xs]
+            bar_w = [nf * offset_factor * 0.14 for nf in viol_xs]
+            ax_v.bar(bar_x, viol_ys, width=bar_w,
                      color=_VIOL_COLORS.get(label, "#ccc"), alpha=0.55,
                      label=f"{label} viols")
 
         bar_idx += 1
 
-    # Reference line: Gurobi optimum (gap = 0)
-    ax_g.axhline(0, color="#888", ls=":", lw=1, label="Gurobi optimum (gap=0)")
-
-    ax_g.set_xscale("log")
-    ax_g.set_yscale("symlog", linthresh=1e-4)
-    ax_g.set_xlabel("Number of farms")
-    ax_g.set_ylabel("|Objective − Gurobi full|")
-    ax_g.set_title("Solution Gap + Constraint Violations")
+    ax_obj.set_xscale("log")
+    ax_obj.set_yscale("symlog", linthresh=1e-4)
+    ax_obj.set_ylim(-2.0, 1e3)                 # ← upper y-limit 1e3
+    ax_obj.set_xlim(20, 220)
+    ax_obj.set_xlabel("Number of plots")
+    ax_obj.set_ylabel("Objective value", fontsize=9)
+    ax_obj.set_title("Objective + Constraint Violations")
+    ax_obj.grid(True, which="both", alpha=0.3)
+    #ax_obj.set_xticks([20, 25, 50, 100, 200])
+    #ax_obj.set_xticklabels(["20", "25", "50", "100", "200"], rotation=30, ha="right")
 
     # Secondary Y-axis for violations
     ax_v.set_ylabel("Constraint Violations")
-    ax_v.set_xticks(range(len(all_farms)))
-    ax_v.set_xticklabels([str(nf) for nf in all_farms], rotation=30, ha="right")
+    ax_v.set_xscale("log")
+    ax_v.set_yscale("log")
+    ax_v.set_ylim(1, 1e4)
+
+    # ── Right: healed gap to healed Gurobi full baseline ──────────────────
+    for label in compare_labels:
+        if label not in series:
+            continue
+        sty = _HEALED_STYLES[label]
+        data = series[label]
+        xs, ys = [], []
+        for nf in sorted(data.keys()):
+            if not (20 <= nf <= 200):          # ← clip panel 3
+                continue
+            v = data[nf]
+            healed = v.get("healed")
+            if healed is None:
+                healed = v.get("raw")          # fallback for QPU
+            ref_h = full_healed.get(nf)
+            if healed is None or ref_h is None:
+                continue
+            xs.append(nf)
+            ys.append(abs(healed - ref_h))
+
+        if xs:
+            h_label = f"{label} (healed)"
+            if label == "QPU (27-crop, hier.)":
+                h_label = "QPU (healed n/a, raw used)"
+            ax_healed.plot(
+                xs, ys,
+                color=sty["color"], marker=sty["marker"],
+                ls="--", lw=sty["lw"], markersize=5, alpha=0.9,
+                label=h_label,
+            )
+
+    ax_healed.axhline(0, color="#888", ls=":", lw=1)
+    ax_healed.set_xscale("log")
+    ax_healed.set_yscale("symlog", linthresh=1e-4)
+    ax_healed.set_ylim(bottom=0, top=1e3)      # ← upper y-limit 1e3
+    ax_healed.set_xlim(20, 220)                # ← clip panel 3 axis
+    ax_healed.set_xlabel("Number of plots")
+    ax_healed.set_ylabel("|Healed objective − Gurobi full healed|", fontsize=9)
+    ax_healed.set_title("Healed Gap vs Healed Baseline")
+    ax_healed.grid(True, which="both", alpha=0.3)
+    #ax_healed.set_xticks([20, 25, 50, 100, 200])
+    #ax_healed.set_xticklabels(["20", "25", "50", "100", "200"], rotation=30, ha="right")
 
     # Combined legend at bottom
-    lines_g, labels_g = ax_g.get_legend_handles_labels()
+    lines_obj, labels_obj = ax_obj.get_legend_handles_labels()
     lines_v, labels_v = ax_v.get_legend_handles_labels()
-    fig.legend(lines_g + lines_v, labels_g + labels_v,
-               loc="lower center", ncol=4, framealpha=0.9, fontsize=7,
-               bbox_to_anchor=(0.5, -0.12))
+    lines_h, labels_h = ax_healed.get_legend_handles_labels()
+    fig.legend(
+        lines_obj + lines_v + lines_h,
+        labels_obj + labels_v + labels_h,
+        loc="lower center", ncol=5, framealpha=0.9, fontsize=7,
+        bbox_to_anchor=(0.5, -0.13),
+    )
 
     fig.suptitle(
         "Study 2.B — QPU Decomposition Benchmark — Comprehensive (Variant B, 27-crop)",
@@ -1212,7 +1208,7 @@ if __name__ == "__main__":
             plot_solver_time(data_solver, "A", decomp, f"fig_solver_time_A_{safe}.pdf")
             plot_solver_quality(data_solver, "A", decomp, f"fig_solver_quality_A_{safe}.pdf")
 
-        for decomp in ["Clique", "SpatialTemporal(5)"]:
+        for decomp in [STUDY2B_DECOMP_LABEL]:
             safe = decomp.replace("(", "").replace(")", "").replace(",", "_")
             plot_solver_time(data_solver, "B", decomp, f"fig_solver_time_B_{safe}.pdf")
             plot_solver_quality(data_solver, "B", decomp, f"fig_solver_quality_B_{safe}.pdf")

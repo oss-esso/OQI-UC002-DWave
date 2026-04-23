@@ -38,6 +38,9 @@ When editing decomposition or solver-comparison benchmarks, keep formulations al
     - use real `rotation_data/rotation_crop_matrix.csv`,
     - use `gamma=0.5` benchmark setting,
     - avoid adding non-canonical terms (no synthetic diversity bonuses or extra spatial couplings).
+        - when documenting Study 2.B three-group results, include decomposition-overhead context
+            (partition-time and partition-count scaling) to justify later Clique/SpatialTemporal traces,
+            and keep this context out of Study 2.A.
 
 ## 1. PRD Generation
 

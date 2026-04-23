@@ -200,7 +200,7 @@ def calculate_27food_objective(food_solution: Dict,
     config = original_data.get('config', {})
     params = config.get('parameters', {})
     rotation_gamma = params.get('rotation_gamma', 0.2)
-    diversity_bonus = params.get('diversity_bonus', 0.15)
+    diversity_bonus = 0
     one_hot_penalty = params.get('one_hot_penalty', 3.0)
     
     n_periods = 3

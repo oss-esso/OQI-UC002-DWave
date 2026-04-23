@@ -867,7 +867,7 @@ This section presents comprehensive benchmark results organized into three compl
 The crop allocation problem admits two fundamentally different formulations with distinct computational characteristics:
 
 \begin{itemize}
-    \item \textbf{Plot-level MILP (continuous $A_{fc}$):} Uses continuous allocation fractions $A_{fc} \in [0,1]$ representing the proportion of plot $f$ allocated to crop $c$, with binary indicators $U_c$ for crop selection. This formulation has approximately $54 \times |\mathcal{F}|$ variables (27 continuous $A_{fc}$ + 27 binary $Y_{fc}$ per plot, plus global $U_c$ indicators).
+    \item \textbf{Farm-level MILP (continuous $A_{fc}$):} Uses continuous allocation fractions $A_{fc} \in [0,1]$ representing the proportion of farm $f$ allocated to crop $c$, with binary indicators $U_c$ for crop selection. This formulation has approximately $54 \times |\mathcal{F}|$ variables (27 continuous $A_{fc}$ + 27 binary $Y_{fc}$ per farm, plus global $U_c$ indicators).
     
     \item \textbf{Binary Plot (BP):} Discretizes each plot into fixed-area plots, each assigned to exactly one crop via binary variables $Y_{p,c} \in \{0,1\}$. This formulation has $27 \times |\mathcal{P}|$ binary variables where $|\mathcal{P}|$ is the number of plots.
 \end{itemize}
@@ -880,7 +880,7 @@ Before going into the three studies we benchmark both formulations under two sol
 
 \begin{table}[H]
 \centering
-\caption{Gurobi solving time: Plot-level MILP vs Binary Plot (BP) formulation}
+\caption{Gurobi solving time: Farm-level MILP vs Binary Plot (BP) formulation}
 \label{tab:gurobi_formulation_comparison}
 \small
 \begin{adjustbox}{width=\textwidth}
@@ -959,7 +959,7 @@ Before going into the three studies we benchmark both formulations under two sol
     \item \textbf{Infeasibility at small scales:} The BP formulation is infeasible at 3 plots because the discrete plot structure cannot satisfy minimum area constraints that the continuous MILP formulation handles naturally.
 \end{enumerate}
 
-The plot-level MILP formulation benefits from Gurobi's aggressive presolve, which eliminates most binary variables through LP relaxation (the continuous $A_{fc}$ variables dominate the solve). The binary plot formulation faces exponential worst-case complexity due to the combinatorial explosion of discrete choices. This fundamental complexity barrier explains why QUBO-converted problems become computationally prohibitive at scale, motivating our investigation of quantum annealing approaches.
+The Farm-level MILP formulation benefits from Gurobi's aggressive presolve, which eliminates most binary variables through LP relaxation (the continuous $A_{fc}$ variables dominate the solve). The binary plot formulation faces exponential worst-case complexity due to the combinatorial explosion of discrete choices. This fundamental complexity barrier explains why QUBO-converted problems become computationally prohibitive at scale, motivating our investigation of quantum annealing approaches.
 
 
 
@@ -983,9 +983,9 @@ We conducted extensive benchmarking of D-Wave's hybrid solvers (LeapHybridCQMSol
 \label{tab:solver_configs}
 \begin{tabular}{llp{6cm}}
 \toprule
-\textbf{Configuration} & \textbf{Solver} & \textbf{Description} \\
+\textbf{Type} & \textbf{Solver} & \textbf{Description} \\
 \midrule
-\multirow{4}{*}{Plot} & Gurobi & Classical MILP solver on CQM formulation \\
+\multirow{4}{*}{Binary Plot} & Gurobi & Classical MILP solver on CQM formulation \\
 & D-Wave CQM & LeapHybridCQMSolver \\
 & Gurobi QUBO & Classical solver on BQM/QUBO formulation \\
 & D-Wave BQM & LeapHybridBQMSolver \\
@@ -1013,16 +1013,16 @@ When constraints are moved into quadratic penalties (BQM/QUBO submission), Gurob
 \label{tab:gurobi_qubo_degradation}
 \begin{tabular}{rccccc}
 \toprule
-\textbf{Plots} & \textbf{CQM Time (s)} & \textbf{CQM Obj.} & \textbf{BQM Time (s)} & \textbf{BQM Obj.} & \textbf{Status} \\
+\textbf{Plots} & \textbf{CQM Time (s)} & \textbf{CQM Obj.} & \textbf{BQM Time (s)} & \textbf{BQM Obj.} \\
 \midrule
-10 & 0.007 & 0.409 & 300.2 & 0.284 & Timeout \\
-15 & 0.007 & 0.413 & 301.5 & 0.305 & Timeout \\
-25 & 0.007 & 0.388 & 301.7 & 0.215 & Timeout \\
-50 & 0.011 & 0.242 & 301.4 & 0.238 & Timeout \\
-100 & 0.028 & 0.429 & 302.1 & 0.254 & Timeout \\
-200 & 0.048 & 0.430 & 302.8 & 0.018 & Timeout \\
-500 & 0.453 & 0.430 & 360.7 & 0.000 & Timeout \\
-1,000 & 0.266 & 0.430 & 769.2 & 0.000 & Timeout \\
+10 & 0.007 & 0.409 & 300.2 & 0.284     \\
+15 & 0.007 & 0.413 & 301.5 & 0.305     \\
+25 & 0.007 & 0.388 & 301.7 & 0.215     \\
+50 & 0.011 & 0.242 & 301.4 & 0.238     \\
+100 & 0.028 & 0.429 & 302.1 & 0.254    \\
+200 & 0.048 & 0.430 & 302.8 & 0.018    \\
+500 & 0.453 & 0.430 & 360.7 & 0.000    \\
+1,000 & 0.266 & 0.430 & 769.2 & 0.000  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1281,238 +1281,31 @@ This section presents benchmark results comparing D-Wave Advantage QPU performan
 
 \subsubsection{Key Findings}
 
-The updated Study 2.B findings combine decomposition outcomes with a newer timeout verification sweep.
+The Study 2.B section was re-generated after removing the diversity bonus from the
+classical full baseline to ensure objective and variable-space comparability with
+the decomposed/QPU baselines.
 
 \begin{enumerate}[label=\textbf{Result \arabic*.}, leftmargin=*, align=left, itemsep=1em]
 
-\item \textbf{Matched-scenario decomposition runs still show higher raw objective values.}
 
-On the matched 13-scenario comparison (Table~\ref{tab:qpu_advantage}), the decomposition-QPU pipeline still yields higher raw objective values in most scenarios. These raw gains remain informative, but must be interpreted jointly with violation rates and timeout-baseline behavior.
+\item 
+Gurobi is optimal with one-hot violations remaining zero and only
+rotation violations increasing with size (see Figure~\ref{fig:study2b_healed_violations}
+and Table~\ref{tab:study2b_three_group}).
 
-Figure~\ref{fig:comprehensive_scaling} presents the unified scaling behavior across all scenarios.
+\item
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_plots.pdf}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/Plots/scaling_objectives_by_vars.pdf}
-    \end{minipage}
-    \caption{Solution quality scaling: QPU Hierarchical (solid lines) versus Gurobi 300\,s timeout (dotted lines) objective values, separated by formulation type (6-Food and 27-Food Aggregated). \textit{Left:} Scaling by number of plots; QPU benefit diverges increasingly from Gurobi as plot count grows, while Gurobi objective grows slowly due to timeout-limited exploration. \textit{Right:} The same data plotted against total decision variables; 6-Food and 27-Food (Agg.) traces overlap in variable range because the two formulations reach similar variable counts via different combinations of plot and crop-per-plot. The exception at 90 variables (\texttt{rotation\_micro\_25}) is the sole scenario where Gurobi finds the global optimum ($0.79\times$ ratio).}
-    \label{fig:comprehensive_scaling}
-\end{figure}
+For 27-crop Variant~B, Hierarchical Decomposed Gurobi stays well below full-Gurobi wall time at medium/large scales.
 
-\begin{table}[H]
-\centering
-\caption{QPU vs Gurobi benefit comparison (higher = better)}
-\label{tab:qpu_advantage}
-\small
-\begin{adjustbox}{max width = \textwidth}
-\begin{tabular}{lrrrrrr}
-\toprule
-\textbf{Scenario} & \textbf{Vars} & \textbf{Gurobi} & \textbf{QPU} & \textbf{\textit{improvement}} & \textbf{Ratio} & \textbf{Violations} \\
-\midrule
-rotation\_micro\_25 & 90 & 6.17 & 4.86 & $-$1.31 & 0.79$\times$ & 1 \\
-rotation\_small\_50 & 180 & 8.69 & 21.79 & $+$13.10 & 2.51$\times$ & 7 \\
-rotation\_15plots\_6foods & 270 & 9.68 & 26.22 & $+$16.54 & 2.71$\times$ & 10 \\
-rotation\_medium\_100 & 360 & 12.78 & 39.24 & $+$26.46 & 3.07$\times$ & 13 \\
-rotation\_25plots\_6foods & 450 & 13.45 & 52.67 & $+$39.22 & 3.92$\times$ & 17 \\
-rotation\_50plots\_6foods & 900 & 26.92 & 109.67 & $+$82.75 & 4.07$\times$ & 34 \\
-rotation\_large\_200 & 720 & 21.57 & 94.64 & $+$73.07 & 4.39$\times$ & 32 \\
-rotation\_75plots\_6foods & 1,350 & 40.37 & 161.44 & $+$121.07 & 4.00$\times$ & 54 \\
-rotation\_100plots\_6foods & 1,800 & 53.77 & 229.14 & $+$175.38 & 4.26$\times$ & 79 \\
-rotation\_25plots\_27foods & 2,025 & 11.68 & 57.60 & $+$45.93 & 4.93$\times$ & 16 \\
-rotation\_50plots\_27foods & 4,050 & 23.36 & 102.61 & $+$79.26 & 4.39$\times$ & 32 \\
-rotation\_100plots\_27foods & 8,100 & 46.68 & 235.11 & $+$188.43 & 5.04$\times$ & 74 \\
-rotation\_200plots\_27foods & 16,200 & 93.52 & 500.59 & $+$407.08 & 5.35$\times$ & 157 \\
-\midrule
-\textbf{Average} & N/A & \textbf{28.36} & \textbf{125.81} & \textbf{$+$97.46} & \textbf{3.80$\times$} & \textbf{40.5} \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
+\item
 
-\end{enumerate}
+The QPU hierarchical values remain useful for trend and scaling as the objective is much higher than Gurobi full and the runtime is in between Gurobi full and Hierarchical Decomposed Gurobi
 
-\begin{enumerate}[label=\textbf{Result \arabic*.}, leftmargin=*, align=left, itemsep=1em, start=3]
+\item
 
-\item \textbf{Updated timeout verification reveals strong formulation asymmetry.}
-
-In the latest timeout verification sweep (20 scenarios, 200~s cap), Gurobi times out on 11/20 scenarios overall. Timeout behavior is highly formulation-dependent: 6-Food times out on 10/10 scenarios, whereas 27-Food aggregated solves to optimality on 9/10 scenarios, with only the 1,000-plot case timing out.
-
-\subsubsection{Formulation-Specific Analysis}
-
-Figure~\ref{fig:split_analysis} presents a detailed split analysis comparing the 6-Food and 27-Food (Agg.) formulations.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{images/Plots/quantum_advantage_split_analysis.pdf}
-\caption{Split formulation analysis separating 6-Food (blue circles) from 27-Food (Agg.) (red diamonds) formulations. (Top left) Solution quality on log-log scale with Gurobi (solid) and QPU (dashed) objectives by formulation. (Top center) Optimality gap analysis with 100\% and 500\% reference lines; 6-Food achieves lower gaps (150--350\%) than 27-Food (Agg.) (200--500\%). (Top right) Solve time comparison on log-log scale with 100s timeout reference. (Bottom left) Speedup ratio (Gurobi/QPU) with break-even line at 1.0. (Bottom center) Pure QPU time linear regression showing 6-Food scales at 0.78ms/var and 27-Food (Agg.) at 0.18ms/var. (Bottom right) Gurobi MILP gap versus problem size demonstrating that classical solver difficulty increases exponentially with scale.}
-\label{fig:split_analysis}
-\end{figure}
-
-\paragraph{Why 6-Food Shows Higher Solve Times per Variable}
-\label{sec:formulation_timing}
-
-A counterintuitive result in Figure~\ref{fig:split_analysis} is that 6-Food exhibits \emph{higher} solve time per variable (0.78~ms/var) than 27-Food (Agg.) (0.18~ms/var). This occurs because the hierarchical decomposition creates clusters based on \emph{plots}, not variables. At the same variable count:
-\begin{itemize}
-    \item \textbf{6-Food:} 111 plots $\rightarrow$ 12 clusters $\rightarrow$ $\sim$100s total time
-    \item \textbf{27-Food (Agg.):} 25 plots $\rightarrow$ 3 clusters $\rightarrow$ $\sim$30s total time
-\end{itemize}
-
-Since 6-Food has fewer crops per plot (18 vars/plot) than 27-Food (Agg.) (81 vars/plot), it requires \textbf{4.5$\times$ more plots} to reach the same variable count, resulting in 4.5$\times$ more clusters and thus $\sim$4$\times$ higher solve time. The pure QPU access time per cluster is nearly identical ($\sim$0.12s); the difference comes entirely from classical embedding overhead that scales with cluster count. See Section~\ref{sub:clusterbased} for the mathematical details of the cluster-based decomposition.
-
-\paragraph{Why 6-Food Also Shows Higher Gurobi Objective and Solve Time}
-
-The same plot-count effect explains why \emph{Gurobi} also shows higher objective values and longer solve times for 6-Food compared to 27-Food (Agg.) at similar variable counts.
-
-\textbf{Higher objective values:} The objective function sums benefit across all plots. At similar variable counts, 6-Food has 4.5$\times$ more plots, so the total benefit is naturally higher:
-\begin{itemize}
-    \item \textbf{6-Food (1,800 vars):} 100 plots $\times$ 0.54 avg benefit/plot $=$ 53.77 total
-    \item \textbf{27-Food (Agg.) (2,025 vars):} 25 plots $\times$ 0.47 avg benefit/plot $=$ 11.68 total
-\end{itemize}
-The per-plot average is actually slightly \emph{lower} for 6-Food; the higher total is purely due to plot count.
-
-\textbf{Longer Gurobi solve time:} The 6-Food formulation creates a \emph{harder} optimization problem for Gurobi due to denser constraint structure:
-\begin{enumerate}
-    \item \textbf{More plot-level constraints:} At 1,800 vars, 6-Food has 100 plots $\times$ 3 periods $=$ 300 one-hot constraints, versus 25 plots $\times$ 3 $=$ 75 for 27-Food (Agg.) at 2,025 vars.
-    \item \textbf{Denser rotation conflict graph:} With only 6 crop families, each family represents 1/6 of choices, creating tighter coupling in the rotation penalty matrix. With 27 foods, each crop is 1/27 of choices, yielding a sparser conflict structure.
-    \item \textbf{Exponentially worse MILP gaps:} As shown in Table~\ref{tab:gurobi_struggles}, 6-Food (large) reaches MILP gaps of 176,411\%, compared to 319--379\% for 27-Food (Agg.), indicating Gurobi's branch-and-bound struggles far more with 6-Food's constraint density.
-\end{enumerate}
-
-% \subsubsection{Objective Gap Analysis}
-
-% Figure~\ref{fig:objective_gap_analysis} provides deep analysis of the gap between QPU and Gurobi objectives.
-
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=\textwidth]{images/Plots/quantum_advantage_objective_gap_analysis.pdf}
-% \caption{Objective gap analysis across all scenarios. (Top left) Absolute objective comparison bars on log scale: Gurobi (green) versus QPU Hierarchical (blue). (Top center) Objective ratio (QPU/Gurobi) per scenario with color coding -- green for ratio $<$2$\times$, orange for 2--5$\times$, red for $>$5$\times$ -- with reference lines at 1$\times$, 2$\times$, and 5$\times$. (Top right) Correlation scatter between Gurobi MILP gap and QPU-Gurobi gap on log-log scale, demonstrating that problems where Gurobi struggles (high MILP gap) correlate with larger QPU gaps. (Bottom left) 6-Food formulation: objective scaling by number of plots. (Bottom center) 27-Food (Agg.) formulation: objective scaling by number of plots. (Bottom right) Summary statistics table with metrics by formulation including scenario count, variable range, average gaps, timeout rates, and solve times.}
-% \label{fig:objective_gap_analysis}
-% \end{figure}
-
-\subsubsection{Why QPU Outperforms Gurobi in Parts of Variant~B}
-
-The updated timeout reruns indicate two simultaneous regimes: (i) monolithic Gurobi remains brittle on 6-Food at all tested scales under a 200~s cap, and (ii) several 27-Food aggregated cases are solved to optimality. Therefore, Study~2.B should be interpreted as a decomposition-versus-timeout trade-off rather than a single uniform hardness regime.
-
-\begin{table}[H]
-\centering
-\caption{Updated timeout verification summary on Variant~B MIQP (20 scenarios, 200~s cap).}
-\label{tab:gurobi_struggles}
-\begin{adjustbox}{max width=\textwidth}
-\small
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Formulation} & \textbf{Timeout Rate} & \textbf{Avg MILP Gap} & \textbf{Max MILP Gap} & \textbf{Interpretation} \\
-\midrule
-6-Food (all tested) & 10/10 & 83.1\% & 99.4\% & Uniform timeout regime \\
-27-Food (Agg.) (all tested) & 1/10 & 251.9\% & 2,518.9\% & Mostly solved; one large-case failure \\
-\midrule
-\textbf{Overall} & \textbf{11/20} & \textbf{167.5\%} & \textbf{2,518.9\%} & \textbf{Mixed regime with scale threshold} \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
-
-\item \textbf{Violations Enable Higher Benefit Exploration.}
-
-The QPU solutions have constraint violations (average 21.9\% violation rate), but these violations are a \textit{beneficial trade-off}:
-
-\begin{itemize}
-    \item \textbf{Nature of violations:} One-hot constraint failures where some plot-periods have no crop assigned (24.2\% violation rate)
-    \item \textbf{Practical impact:} Minor; some fields left fallow, easily corrected in post-processing
-    \item \textbf{Benefit:} Allows QPU to explore solution space beyond Gurobi's strict feasibility constraints
-    \item \textbf{Net result:} 3.80$\times$ higher total agricultural benefit despite violations
-\end{itemize}
-
-
-\item \textbf{Violations Account for Only 7\% of Objective Gap.}
-
-Figure~\ref{fig:violation_impact} and Table~\ref{tab:violation_impact} present the detailed violation impact assessment.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{images/Plots/violation_impact_assessment.pdf}
-\caption{Violation impact assessment quantifying the effect of constraint violations on solution quality. (Left) One-hot violation rate per scenario: bars colored red ($>$10\%), orange (5--10\%), or green ($<$5\%) with dashed line showing average rate of 21.9\%. (Center) Gap versus estimated violation impact: grouped bars comparing total objective gap (red) against estimated benefit lost due to violations (blue) per scenario. (Right) Triple objective comparison: Gurobi (green), QPU raw (red), and QPU violation-adjusted (blue) showing that adjustment closes only a small portion of the gap. The figure demonstrates that violations explain approximately 7\% of the objective difference.}
-\label{fig:violation_impact}
-\end{figure}
-
-\begin{table}[H]
-\centering
-\caption{Violation impact analysis}
-\label{tab:violation_impact}
-\small
-\begin{tabular}{lcc}
-\toprule
-\textbf{Metric} & \textbf{Value} & \textbf{Interpretation} \\
-\midrule
-Total plot-period slots & 2,175 & Across all 13 scenarios \\
-Slots with violations & 526 & No crop assigned \\
-Overall violation rate & 24.2\% & Plot-periods without allocation \\
-\midrule
-Avg Gurobi benefit & 28.36 & Strictly feasible \\
-Avg QPU benefit & 125.81 & With violations \\
-\textbf{QPU \textit{improvement}} & \textbf{$+$97.46} & \textbf{Higher even with correction} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-% \subsubsection{Deep Dive: Gap Attribution}
-
-% Figure~\ref{fig:gap_deep_dive} investigates the sources of the objective gap between QPU and Gurobi solutions.
-
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=\textwidth]{images/Plots/gap_deep_dive.pdf}
-% \caption{Deep dive analysis investigating the sources of the QPU--Gurobi objective gap. (Top left) Triple bar comparison: Gurobi objective, |QPU| raw (absolute value), and |QPU| corrected after accounting for violation-induced benefit loss. (Top center) Ratio comparison showing raw ratio ($\sim$3.8$\times$) versus corrected ratio ($\sim$3.6$\times$) with parity reference at 1.0, demonstrating minimal correction impact. (Top right) Pie chart attributing the gap: violations explain only $\sim$7\% while other factors (decomposition approximation, boundary effects, stochastic sampling) account for $\sim$93\%. (Bottom left) QPU versus Gurobi scatter with parity line revealing systematic above-parity pattern. (Bottom center) Per-scenario violation impact as percentage of gap (typically $<$15\%), with average reference line. (Bottom right) Summary findings text panel with key conclusions.}
-% \label{fig:gap_deep_dive}
-% \end{figure}
-
-% \textbf{Key Finding:} Violations explain only $\sim$7\% of the objective gap. The remaining 93\% arises from:
-% \begin{itemize}
-%     \item Decomposition approximation errors at partition boundaries
-%     \item Stochastic sampling variance in quantum annealing
-%     \item Coordinate descent convergence to local optima during post-processing
-% \end{itemize}
-
-\item \textbf{Pure QPU Time is 1.1\% of Wall Time; Embedding is the Bottleneck.}
-
-Pure QPU time totals only 10.88 seconds across all 13 scenarios (Table~\ref{tab:timing_comparison}), scaling linearly at $T = 0.78 \cdot N_{\text{vars}} + 51$\,ms. Classical embedding and coordination consume the remaining 99\% of runtime. Extrapolation: a 100,000-variable problem would require $\sim$78 seconds of pure QPU time.
-
-\begin{table}[H]
-\centering
-\caption{Solve time comparison}
-\label{tab:timing_comparison}
-\small
-\begin{adjustbox}{max width = \textwidth}
-\begin{tabular}{lccccc}
-\toprule
-\textbf{Formulation} & \textbf{Gurobi (s)} & \textbf{QPU Wall (s)} & \textbf{QPU Pure (s)} & \textbf{QPU \%} & \textbf{Speedup} \\
-\midrule
-6-Food (9 scenarios) & 735.5 & 405.8 & 5.40 & 1.3\% & 1.8$\times$ \\
-27-Food (Agg.) (4 scenarios) & 492.0 & 589.9 & 5.48 & 0.9\% & 0.8$\times$ \\
-
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
-
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_plots.pdf}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/Plots/scaling_qpu_breakdown_by_vars.pdf}
-    \end{minipage}
-    \caption{QPU solve time breakdown on log scale. \textit{Solid lines:} QPU total wall time (embedding + classical overhead + quantum access). \textit{Dashed lines:} pure QPU access time only. \textit{Dotted lines:} Gurobi solve time (near-flat at 300\,s timeout for 11 of 13 scenarios). \textit{Left:} Scaling by number of plots. \textit{Right:} Scaling by number of decision variables. The gap between solid and dashed curves represents classical embedding and coordination overhead, which accounts for 97--99\% of total QPU wall time across all scenarios. The 6-Food formulation (blue) incurs higher wall time per variable than 27-Food (Agg.) (orange) because it requires $\sim$4.5$\times$ more plot clusters at the same variable count (Section~\ref{sec:formulation_timing}). Pure QPU access time (dashed) remains below 1\,s per call regardless of scale.}
-    \label{fig:scaling_qpu_timing}
-\end{figure}
+As problem size grows,
+classical orchestration and embedding dominate end-to-end runtime, while solver-side
+core optimization (classical or quantum) is not the only limiting factor.
 
 \end{enumerate}
 
@@ -1521,9 +1314,39 @@ Pure QPU time totals only 10.88 seconds across all 13 scenarios (Table~\ref{tab:
 \label{subsec:study2b_three_group}
 
 This subsection extends the Study~2.B analysis by introducing a third comparison group:
-Gurobi with explicit plot-level \emph{decomposition} (Clique and SpatialTemporal-5 strategies
+Gurobi with explicit plot-level \emph{decompopeosition} (Clique and SpatialTemporal-5 strategies
 from Section~\ref{subsec:decomp_b}).  The resulting three-group comparison enables a complete
 picture of the efficiency-quality trade-off spectrum for the 27-crop rotation problem.
+
+\paragraph{Why decomposed Clique and SpatialTemporal data are included.}
+Before reading Track~A/Track~B, we quantify decomposition overhead itself. For Variant~B,
+both partitioners used in Study~2.B (Clique and SpatialTemporal-5) are linear-time in
+problem size, with practical complexity $O(FKT)$ for $F$ farms (plots), $K$ crops,
+and $T$ periods. The key systems point is that partition construction is not the dominant
+cost at scale: decomposition stays in the millisecond regime for these linear partitioners,
+while end-to-end runtime growth is driven by solving/orchestration as subproblem size and
+count increase. This is the reason later figures explicitly report decomposed Clique and
+SpatialTemporal traces alongside full Gurobi and QPU.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/fig_decomp_time_B.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/Plots/fig_partition_count_B.pdf}
+    \end{minipage}
+    \caption{Variant~B decomposition overhead context used to interpret Study~2.B three-group
+      results. \emph{Left:} decomposition time versus number of plots. \emph{Right:} partition
+      count growth versus number of plots. Clique keeps fixed subproblem size ($27T=81$ variables)
+      with one partition per plot, whereas SpatialTemporal-5 uses larger subproblems
+      ($27\times5=135$ variables) with fewer partitions. The plots show why decomposition data are
+      reported explicitly in Track~A/Track~B: overhead is small, but partition strategy determines
+      the downstream runtime-quality trade-off.}
+    \label{fig:study2b_decomp_overhead}
+\end{figure}
 
 \paragraph{Track A (27-crop formulation, canonical Variant~B).}
 Figure~\ref{fig:study2b_time_a} shows wall-clock time versus plot count for all three groups
@@ -1532,7 +1355,7 @@ independent of the QUBO versus MIQP objective scale difference noted earlier.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.88\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_time_track_a.pdf}
+    \includegraphics[width=0.88\textwidth]{images/Plots/fig_study2b_time_track_a.pdf}
     \caption{Study 2.B Track A --- Wall-clock solve-time scaling for the 27-crop rotation
       (Variant~B).  \textbf{Red solid}: Gurobi full (monolithic MIQP, now extended to 2\,000 plots).
       \textbf{Orange diamonds}: QPU hierarchical pipeline (D-Wave Advantage, including embedding
@@ -1544,7 +1367,7 @@ independent of the QUBO versus MIQP objective scale difference noted earlier.
 Key observations from Track~A:
 \begin{itemize}
     \item Gurobi full times out ($\ge600$\,s) for $\ge 500$ plots (40\,500 variables);
-      with the extended budget, $n{=}200$ plots now solves to optimality in 328\,s
+    with the extended budget, $n{=}200$ plots now solves to optimality in 584.7\,s
       (though rotation-constraint violations remain --- see Table~\ref{tab:study2b_three_group}).
     \item QPU wall time grows approximately linearly with plot count and lies
       \emph{between} Gurobi full (slower) and Gurobi decomposed (faster) for
@@ -1557,7 +1380,7 @@ Figure~\ref{fig:study2b_qual_a} presents the solution quality comparison.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_quality_track_a.pdf}
+    \includegraphics[width=0.95\textwidth]{images/Plots/fig_study2b_quality_track_a.pdf}
     \caption{Study 2.B Track A --- Solution quality (27-crop).
       \emph{Left:} Absolute MIQP objective for Gurobi full versus decomposed on the
       same random-grid scenario (directly comparable).  Decomposed Clique and
@@ -1576,7 +1399,7 @@ formulation alongside the 27-crop results.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_time_track_b.pdf}
+    \includegraphics[width=0.95\textwidth]{images/Plots/fig_study2b_time_track_b.pdf}
     \caption{Study 2.B Track B --- Wall-clock time for both 6-food and 27-crop Variant~B.
       Gurobi full 6-food (red dotted) times out consistently from 50 plots
       onward ($\ge900$ variables).  Gurobi full 27-crop (red solid) remains solvable
@@ -1590,7 +1413,7 @@ Figure~\ref{fig:study2b_qual_b} compares solution quality across both formulatio
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_quality_track_b.pdf}
+    \includegraphics[width=0.95\textwidth]{images/Plots/fig_study2b_quality_track_b.pdf}
     \caption{Study 2.B Track B --- Solution quality for 6-food and 27-crop formulations.
       \emph{Left:} Absolute Gurobi full objectives showing linear scaling with plot count
       for both formulations; 27-crop objectives are larger in absolute value because the
@@ -1606,7 +1429,7 @@ for absolute MIQP objectives, making the divergence at large plot counts directl
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.88\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_quality_decomposed_abs.pdf}
+    \includegraphics[width=0.88\textwidth]{images/Plots/fig_study2b_quality_decomposed_abs.pdf}
     \caption{Study 2.B --- Absolute MIQP objective for Gurobi full, Clique, and
       SpatialTemporal-5 on 27-crop Variant~B (log--log scale).  Gurobi full objectives
       scale linearly with plot count (sum-over-plots structure).  Clique stays nearly
@@ -1617,22 +1440,19 @@ for absolute MIQP objectives, making the divergence at large plot counts directl
 \end{figure}
 
 Figure~\ref{fig:study2b_healed_violations} provides a comprehensive dual-panel view
-combining solve-time scaling with the gap from the Gurobi full reference and rotation-violation
+combining solve-time scaling with objective-value trends and rotation-violation
 counts.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{../../Benchmarks/decomposition_scaling/fig_study2b_healed_violations.pdf}
-    \caption{Study 2.B --- Comprehensive quality and violation overview (dual panel).
-      \emph{Left:} Wall-clock solve time (log--log) for all four series (Gurobi full,
-      Clique, SpatialTemporal-5, QPU hierarchical 27-crop).
-      \emph{Right:} Absolute gap between each solver's MIQP objective and the
-      Gurobi full reference (solid lines, primary $y$-axis, log scale); dashed lines
-      show healed objectives where available.  Bar chart (secondary $y$-axis, right):
-      rotation-violation counts for Gurobi full.  Gurobi always satisfies one-hot
-      constraints as hard LP rows ($\texttt{one\_hot\_violations}=0$), so
-      healed\,$=$\,raw throughout; the non-zero bars reflect rotation-penalty terms that
-      are only softly enforced in the MIQP and accumulate under the timeout pressure.}
+    \includegraphics[width=0.95\textwidth]{images/Plots/fig_study2b_healed_violations.pdf}
+        \caption{Study 2.B --- Comprehensive quality and violation overview (dual panel).
+            \emph{Left:} Wall-clock solve time (log--log) for all four series (Gurobi full,
+            Clique, SpatialTemporal-5, QPU hierarchical 27-crop).
+            \emph{Right:} Objective values (all four traces, primary axis) with
+            all rotation-violation histograms overlaid on a secondary axis.
+            The objective axis uses a symlog scale and is capped at $10^4$ on the
+            upper end for consistent cross-scale comparison.}
     \label{fig:study2b_healed_violations}
 \end{figure}
 
@@ -1658,17 +1478,17 @@ formulation, covering all plot sizes where at least two groups have data.
 \multicolumn{2}{c}{\textbf{QPU hierarchical†}} &
 \multicolumn{2}{c}{\textbf{Gurobi decomp.\ (Clique)}} \\
 & & \textbf{Time (s)} & \textbf{MIQP obj.} &
-  \textbf{Time (s)} & \textbf{obj.} &
-  \textbf{Time (s)} & \textbf{obj.} \\
+    \textbf{Time (s)} & \textbf{obj.} &
+    \textbf{Time (s)} & \textbf{obj.} \\
 \midrule
-  10 &     810 &  42.0          &  5.54 &   --  &   --   &  2.7 & 1.14 \\
-  25 &  2\,025 & 600.5 (TO)     & 12.29 &  29.9 &  57.60 & 12.7 & 1.14 \\
-  50 &  4\,050 &  25.3          & 23.49 &  59.3 & 102.61 & 14.9 & 1.14 \\
- 100 &  8\,100 &  59.6 (opt/IF) & 43.63 & 177.6 & 235.11 & 22.6 & 1.14 \\
- 200 & 16\,200 & 328.3 (opt/IF) & 86.60 & 323.2 & 500.59 & 12.0 & 0.63 \\
- 500 & 40\,500 & 601.6 (TO/IF)  & 216.42 & -- & -- & 30.7 & 0.63 \\
-1000 & 81\,000 & 602.5 (TO/IF)  & 434.28 & -- & -- & 60.5 & 0.63 \\
-2000 & 162\,000 & 605.1 (TO/IF) & 866.26 & -- & -- & 135.6 & 0.63 \\
+    10 &     810 &   35.0         &  1.1048 &   --  &   --   &  3.2 & 1.1364 \\
+    25 &  2\,025 &  119.3         &  1.0815 &  29.9 &  57.60 & 10.8 & 1.1364 \\
+    50 &  4\,050 &   18.8         &  0.4454 &  59.3 & 102.61 & 14.9 & 1.1364 \\
+ 100 &  8\,100 &   95.6         &  0.4333 & 177.6 & 235.11 & 22.5 & 1.1364 \\
+ 200 & 16\,200 &  584.7         &  0.3526 & 323.2 & 500.59 & 18.0 & 0.6315 \\
+ 500 & 40\,500 &  601.6 (TO/IF) &  0.1160 &  --   &   --   & 39.6 & 0.6315 \\
+1000 & 81\,000 &  612.0 (TO/IF) & -0.2729 &  --   &   --   & 82.0 & 0.6315 \\
+2000 & 162\,000 & 1769.6 (TO/IF) & -1.0406 &  --  &   --   & 123.0 & 0.6315 \\
 \bottomrule
 \multicolumn{8}{l}{\footnotesize †QPU objectives include QUBO violation penalties; not directly comparable to Gurobi MIQP objective.} \\
 \multicolumn{8}{l}{\footnotesize Gurobi decomposed Clique/ST results available in \texttt{fig\_study2b\_time\_track\_a.pdf}.} \\
@@ -1681,15 +1501,15 @@ The comprehensive benchmark results establish several key findings:
 
 \begin{enumerate}
     \item \textbf{Formulation-dependent advantage:} Classical solvers dominate on structured MILP (Variant A), while QPU excels on QUBO/rotation problems (Variant B)
-    
-    \item \textbf{QPU achieves 3.80$\times$ higher benefit score:} On the crop rotation formulation, QPU consistently outperforms Gurobi in solution quality, even when accounting for violations
-    
-    \item \textbf{Improvement increases with scale:} QPU benefit ratio grows from 2.51$\times$ (180 variables) to 5.35$\times$ (16,200 variables)
-    
-    \item \textbf{Pure QPU time is negligible:} Only 1.1\% of total solve time, with linear scaling enabling extrapolation to larger problems
-    
-    \item \textbf{Violations are acceptable trade-off:} 24\% violation rate but 3.80$\times$ higher benefit; violations easily repaired in post-processing
-    
+
+    \item \textbf{Classical Track-A baseline is now objective-aligned:} after removing diversity from the full Gurobi baseline, Study~2.B compares methods in the same MIQP objective family for the classical tracks (full, Clique, SpatialTemporal-5).
+
+    \item \textbf{Gurobi full has a clear scale threshold at 600s:} it is optimal up to 200 plots and then times out at 500+ plots; decomposed Gurobi remains substantially faster at large sizes.
+
+    \item \textbf{QPU and classical objectives must be interpreted by role:} QPU curves are informative for trend and scaling, but not strict MIQP parity, due to decomposition and QUBO-penalty effects.
+
+    \item \textbf{Pure QPU time remains a small runtime share:} the decomposition studies still indicate that embedding/orchestration dominates end-to-end wall time.
+
     \item \textbf{Embedding is the bottleneck:} Future hardware improvements in qubit connectivity would dramatically improve end-to-end performance
 \end{enumerate}
 
@@ -1736,24 +1556,24 @@ The solution quality comparison at 1,000~plots (Table~\ref{tab:quality_1000plots
 
 The violation healing analysis (Section~\ref{subsec:qpu_decomposition}) shows that a meaningful part of apparent raw advantage in some methods is violation-driven. Methods such as CQM-First maintain zero violations across full-span runs, while Coordinated's violations grow with scale. The comprehensive benchmark results (Figures~\ref{fig:qpu_benchmark_small},~\ref{fig:qpu_benchmark_large}, and~\ref{fig:qpu_benchmark_comprehensive}) indicate that Multilevel(10) and CQM-First provide the most stable feasibility-aware trade-off across scales.
 
-\subsubsection{Study 2.B: Variant~B -- Quantum \textit{Improvement} on Crop Rotation}
+\subsubsection{Study 2.B: Variant~B -- Decomposition Versus Monolithic Scaling}
 
-Study 2.B (Section~\ref{subsec:quantum_advantage}) remains the exploratory setting where decomposition-QPU can reach high raw objective values on matched scenarios (Table~\ref{tab:qpu_advantage}). The updated timeout verification, however, shows that conclusions are formulation- and scale-dependent rather than uniformly favorable to one paradigm.
+After re-running the classical baseline with diversity removed, Study~2.B now reflects a fairer classical comparison for the 27-crop Track~A objective. The refreshed 600s sweep shows a clear threshold: full Gurobi is optimal through 200 plots, then times out for 500 plots and above (Table~\ref{tab:study2b_three_group}).
 
-The updated timeout verification indicates a mixed hardness landscape rather than a single uniform regime. Under the 200~s sweep, Gurobi times out on all tested 6-Food scenarios, while most 27-Food aggregated scenarios are solved to optimality except the largest case.
+The three-group analysis (Figure~\ref{fig:study2b_time_a}) indicates that decomposed Gurobi remains the fastest classical option at larger scales, while full Gurobi becomes timeout-limited. QPU remains valuable as a complementary trend line on decomposed/QUBO-style objectives, but should not be interpreted as direct MIQP parity in absolute value (Figure~\ref{fig:study2b_qual_a}).
 
-The timing analysis (Table~\ref{tab:timing_comparison}) confirms that the embedding bottleneck pattern observed in Study 2.A persists in Study 2.B: QPU time totals only 10.88~seconds across all 13~scenarios (1.1\% of wall time), scaling linearly at $T = 0.78 \cdot N_{\text{vars}} + 51$\,ms. Classical embedding and coordination consume the remaining 99\% of runtime. The formulation-specific analysis (Figure~\ref{fig:split_analysis}) further reveals that this overhead scales with \textit{plot count} rather than variable count.
+The runtime structure remains consistent with Study~2.A: embedding and orchestration are still the dominant bottlenecks in quantum-assisted pipelines, reinforcing that end-to-end performance is currently systems-limited rather than purely anneal-time-limited.
 
 \subsubsection{Cross-Study Conclusions}
 
 Three patterns emerge consistently across all studies:
 
 \begin{enumerate}
-    \item \textbf{Quantum \textit{improvement} is formulation-dependent.} Classical Gurobi dominates on Variant~A's structured MILP (Study 1.A.A), but the QPU achieves 3.80$\times$ higher benefit on Variant~B's MIQP rotation formulation (Study 2.B). Quantum \textit{improvement} emerges specifically for problems where quadratic coupling creates frustrated landscapes~\cite{barahona1982computational, lucasIsingFormulationsMany2014} that defeat classical branch-and-bound.
+    \item \textbf{Quantum \textit{improvement} is formulation-dependent.} Classical Gurobi dominates on Variant~A's structured MILP (Study 1.A.A), while Variant~B exhibits a decomposition-versus-timeout trade-off: monolithic full Gurobi becomes timeout-limited at larger sizes, whereas decomposed methods and QPU-assisted approaches remain tractable. Quantum \textit{improvement} therefore appears in specific objective/encoding regimes rather than as a universal effect~\cite{barahona1982computational, lucasIsingFormulationsMany2014}.
 
-    \item \textbf{Classical embedding is the dominant bottleneck.} In Study 1.A, QPU time is a small fraction of hybrid wall-clock time. In Study 2.A, embedding consumes roughly 76--86\% of total time at scale (Table~\ref{tab:qpu_time_scaling}). In Study 2.B, pure QPU time remains a minor share of wall-clock runtime (Table~\ref{tab:timing_comparison}). The QPU scaling ($O(f)$, linear) is already favorable; the bottleneck is the classical embedding step, which grows as $\sim O(f^{1.5})$~\cite{zbinden2020embedding}.
+    \item \textbf{Classical embedding is the dominant bottleneck.} In Study 1.A, QPU time is a small fraction of hybrid wall-clock time. In Study 2.A, embedding consumes roughly 76--86\% of total time at scale (Table~\ref{tab:qpu_time_scaling}). In Study 2.B, the refreshed three-group plots retain the same qualitative behavior: end-to-end runtime is dominated by classical orchestration around quantum calls. The QPU scaling ($O(f)$, linear) is already favorable; the bottleneck is the classical embedding step, which grows as $\sim O(f^{1.5})$~\cite{zbinden2020embedding}.
 
-    \item \textbf{Decomposition methods produce practically valuable solutions.} Quantum decomposition yields diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach, Table~\ref{tab:quality_1000plots}). A sensitivity analysis over 10,000~random weight configurations confirms that this monoculture outcome is a robust property of the benefit score structure rather than an artefact of a single weight vector (Appendix~\ref{app:sensitivity}). For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}. Where constraint violations occur (Study 2.A: Table~\ref{tab:violation_by_strategy}; Study 2.B: Table~\ref{tab:violation_impact}), their nature -- fields left temporarily fallow -- is easily corrected in post-processing and may even be agronomically desirable~\cite{dury2012cropping, hobbs2008conservation}.
+    \item \textbf{Decomposition methods produce practically valuable solutions.} Quantum decomposition yields diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach, Table~\ref{tab:quality_1000plots}). A sensitivity analysis over 10,000~random weight configurations confirms that this monoculture outcome is a robust property of the benefit score structure rather than an artefact of a single weight vector (Appendix~\ref{app:sensitivity}). For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}. Where constraint violations occur (Study 2.A: Table~\ref{tab:violation_by_strategy}; Study 2.B: Figure~\ref{fig:study2b_healed_violations}), their nature -- fields left temporarily fallow or rotation soft-penalty violations -- is addressable in post-processing and may in part reflect deliberate soft-constraint design choices~\cite{dury2012cropping, hobbs2008conservation}.
 \end{enumerate}
 
 % -----------------------------------------------------------------------------
@@ -1814,7 +1634,7 @@ Improved qubit coherence and reduced thermal noise would further benefit our app
 
 Our decomposition approach is inherently parallelizable: independent plot clusters can be solved simultaneously on separate QPUs. For the 1,000-plot Multilevel(10) benchmark (102~partitions), a hypothetical 10-QPU array would reduce QPU time from 21.78\,s to $\sim$2.2\,s. The embedding bottleneck would also parallelize: each QPU independently embeds its assigned partitions, reducing embedding wall-clock time by a factor of 10.
 
-Under such a parallel architecture, the 1,000-plot problem currently requiring $\sim$3,495\,s would complete in approximately $\sim$350\,s -- comparable to a single Gurobi timeout, but delivering a solution rather than hitting a time limit. Combined with Zephyr-class connectivity improvements, parallel multi-QPU execution could bring the 1,000-plot Variant~A problem to completion in under 100~seconds, and could solve the Variant~B rotation scenarios with 3.80$\times$ higher benefit in comparable time.
+Under such a parallel architecture, the 1,000-plot problem currently requiring $\sim$3,495\,s would complete in approximately $\sim$350\,s -- comparable to a single Gurobi timeout, but delivering a solution rather than hitting a time limit. Combined with Zephyr-class connectivity improvements, parallel multi-QPU execution could bring the 1,000-plot Variant~A problem to completion in under 100~seconds, and could solve larger Variant~B rotation scenarios in time regimes where monolithic full Gurobi currently times out.
 
 \subsubsection{Conditions for Realistic Quantum \textit{Improvement}}
 
@@ -1827,7 +1647,7 @@ Based on the evidence from all three studies, we identify the following conditio
 
     \item \textbf{Decomposition quality must improve.} The 30--40\% optimality gaps observed in Study 2.A are acceptable for many practical applications but leave room for improvement. Larger native cliques, better boundary coordination algorithms, and hardware-aware decomposition strategies co-designed with QPU topology could close this gap substantially.
 
-    \item \textbf{Scale must be sufficient.} The QPU \textit{improvement} ratio grows with problem size (from 2.51$\times$ at 180~variables to 5.35$\times$ at 16,200~variables in Study 2.B). The linear QPU time extrapolation ($T = 0.78 \cdot N_{\text{vars}} + 51$\,ms) predicts $\sim$78~seconds for a 100,000-variable problem. Quantum \textit{improvement} is projected to be the most pronounced at scales relevant to regional agricultural planning (1,000--10,000~plots).
+    \item \textbf{Scale must be sufficient.} In Study~2.B, the refreshed three-group analysis shows a clear size threshold where monolithic full Gurobi becomes timeout-limited while decomposed classical and QPU-assisted pipelines continue to return solutions. Quantum \textit{improvement} is therefore projected to be most relevant at larger regional planning scales (1,000--10,000 plots), where decomposition and orchestration strategy dominate runtime behavior.
 \end{enumerate}
 
 These conditions are not speculative: they are directly derived from the quantitative findings of the three studies. The gap between current demonstration and deployment-ready \textit{improvement} is primarily an engineering challenge (embedding overhead, QPU connectivity) rather than a fundamental theoretical barrier.
@@ -1836,7 +1656,7 @@ These conditions are not speculative: they are directly derived from the quantit
 
 While our work uses quantum annealing rather than gate-based quantum computing, the broader trajectory toward fault-tolerant quantum computation (FTQC)~\cite{campbell2017roads} has implications for the problem class studied here. Fault-tolerant quantum optimization algorithms (e.g., quantum approximate optimization algorithm variants~\cite{edwardfarhiQuantumApproximateOptimization2014} with error correction) could in principle solve QUBO problems with guaranteed approximation ratios, removing the stochastic variability inherent in current quantum annealing.
 
-However, for the near term, the relevant question is whether \textit{current NISQ-era} quantum annealers can deliver practical \textit{improvement} for our specific problem class. Our results suggest the answer is conditionally affirmative: the QPU delivers 3.80$\times$ higher benefit values on Variant~B (Table~\ref{tab:qpu_advantage}) with the \textit{improvement} ratio growing with scale, but end-to-end wall-clock time is currently dominated by classical embedding overhead rather than quantum computation limits.
+However, for the near term, the relevant question is whether \textit{current NISQ-era} quantum annealers can deliver practical \textit{improvement} for our specific problem class. Our results suggest the answer is conditionally affirmative in decomposition-oriented regimes, but the refreshed Study~2.B results also show that conclusions depend on objective family and comparability assumptions. End-to-end wall-clock time remains dominated by classical embedding overhead rather than quantum computation limits.
 
 % =============================================================================
 \subsection{Conclusions}
@@ -1855,7 +1675,7 @@ Phase~3 established quantum annealing as a viable computational approach for lar
 
     \item \textbf{Quantum solutions offer practical diversity benefits.} Decomposition methods naturally produce diverse crop allocations (all 27~crops in Multilevel(10)) compared to Gurobi's monoculture optimum (99.6\% spinach), as documented in Table~\ref{tab:quality_1000plots}. For agricultural planning, this diversity provides resilience, nutritional variety, and soil health benefits that raw objective value does not capture~\cite{lin2011resilience, bowles2020longterm}.
 
-    \item \textbf{Violations are a manageable trade-off.} The 24.2\% violation rate in Study 2.B (Table~\ref{tab:violation_impact}) explains only $\sim$7\% of the objective gap (Figure~\ref{fig:violation_impact}); zero-violation methods exist for Study 2.A (Table~\ref{tab:violation_by_strategy}); and the nature of violations (fields left fallow) is easily corrected in post-processing.
+    \item \textbf{Violations are a manageable trade-off.} Zero-violation methods exist for Study 2.A (Table~\ref{tab:violation_by_strategy}), while Study~2.B confirms one-hot feasibility for full Gurobi and highlights that most reported violations are tied to soft rotation penalties and decomposition approximations. These effects are diagnosable and can be mitigated in post-processing.
 
     \item \textbf{Future hardware improvements target the right bottleneck.} Higher qubit connectivity (Zephyr topology), larger processors, lower noise, and multi-QPU parallelization all directly address the classical embedding overhead that currently dominates runtime. If embedding overhead were eliminated, the 1,000-plot problem would complete in $\sim$22~seconds of QPU time -- a regime where quantum \textit{improvement} is decisive.
 \end{enumerate}
@@ -2508,9 +2328,9 @@ For example, with $k_F = 5$ plots and $k_C = 9$ crops:
 
 \subsubsection{Comparison of Methods}
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
-\caption{Decomposition Method Comparison}
+\caption{QPU vs Gurobi objective, timing, and violations across all 13 scenarios (legacy 300\,s comparison dataset; retained for traceability).}
 \label{tab:method_comparison}
 \scriptsize
 \begin{tabular}{lccccc}
@@ -3197,7 +3017,7 @@ These tables provide the complete numerical results underlying all figures in th
 \end{adjustbox}
 \end{table}
 
-\noindent\textbf{Observations:}
+\noindent\textbf{Observations (legacy dataset):}
 \begin{enumerate}[label=(\arabic*)]
 \item Gurobi CQM solves all instances optimally in $<$0.33\,s, scaling sub-linearly.
 \item D-Wave CQM shows near-constant $\sim$5.3\,s wall time up to 500 plots; jumps to 11\,s at 1,000 plots. Actual QPU fraction is 0.3--1.3\%.

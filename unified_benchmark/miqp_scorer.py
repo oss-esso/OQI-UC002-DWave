@@ -87,7 +87,7 @@ def compute_miqp_objective(
     rotation_gamma = params.get("rotation_gamma", 0.2)
     spatial_gamma = params.get("spatial_gamma", 0.1)
     one_hot_penalty = params.get("one_hot_penalty", 3.0)
-    diversity_bonus = params.get("diversity_bonus", 0.15)
+    diversity_bonus = 0.0
     
     # Build rotation matrix if not provided
     if R is None:

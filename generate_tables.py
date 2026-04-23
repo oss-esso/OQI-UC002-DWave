@@ -445,6 +445,9 @@ def table_decomp_overhead(decomp_data):
 
 def table_study2b_three_group(solver_data):
     _print_section("Table 6 — Study 2.B: Three-Group Comparison (27-crop, Variant B)")
+    study2b_farms = [25, 50, 100, 200]
+    study2b_farm_set = set(study2b_farms)
+    hier_label = "Hierarchical(spatial_grid,9)"
 
     # Gurobi full: from solver_comparison
     gf_rows = {
@@ -452,6 +455,7 @@ def table_study2b_three_group(solver_data):
         for r in solver_data
         if r.get("variant") == "B" and r.get("decomposition") == "none"
         and r.get("status") != "SKIPPED"
+        and r.get("n_farms") in study2b_farm_set
     }
 
     # Gurobi decomposed Clique / SpatialTemporal
@@ -473,26 +477,27 @@ def table_study2b_three_group(solver_data):
         for r in runs:
             if r.get("n_foods") == 27:
                 nf = r["n_farms"]
+                if nf not in study2b_farm_set:
+                    continue
                 timing = r.get("timing", {})
                 qpu_27[nf] = {
                     "wall_time": timing.get("total_wall_time", 0.0),
                     "benefit": -(r.get("objective_miqp") or 0.0),
                 }
 
-    all_farms = sorted(set(list(gf_rows) + list(qpu_27)))
+    all_farms = [nf for nf in study2b_farms if nf in set(list(gf_rows) + list(qpu_27))]
 
     headers = [
         "Farms", "Vars",
         "Gurobi full time(s)", "Gurobi full obj", "Status",
         "QPU time(s)", "QPU obj†",
-        "Clique time(s)", "ST(5) time(s)",
+        "Hier time(s)", "Hier obj",
     ]
     rows = []
     for nf in all_farms:
         gf = gf_rows.get(nf, {})
         qpu = qpu_27.get(nf, {})
-        cl = decomp_rows.get((nf, "Clique"), {})
-        st = decomp_rows.get((nf, "SpatialTemporal(5)"), {})
+        hier = decomp_rows.get((nf, hier_label), {})
         rows.append([
             nf,
             gf.get("n_vars", "—"),
@@ -501,8 +506,8 @@ def table_study2b_three_group(solver_data):
             gf.get("status", "—"),
             _f(qpu.get("wall_time"), ".1f"),
             _f(qpu.get("benefit")),
-            _f(cl.get("wall_time"), ".1f"),
-            _f(st.get("wall_time"), ".1f"),
+            _f(hier.get("wall_time"), ".1f"),
+            _f(hier.get("objective")),
         ])
     _print_table(headers, rows)
 
@@ -511,13 +516,12 @@ def table_study2b_three_group(solver_data):
         "Farms", "Vars",
         "GF Time(s)", "GF Obj", "Status",
         "QPU Time(s)", "QPU Obj†",
-        "Cl. Time(s)", "ST-5 Time(s)",
+        "Hier Time(s)", "Hier Obj",
     )]
     for nf in all_farms:
         gf = gf_rows.get(nf, {})
         qpu = qpu_27.get(nf, {})
-        cl = decomp_rows.get((nf, "Clique"), {})
-        st = decomp_rows.get((nf, "SpatialTemporal(5)"), {})
+        hier = decomp_rows.get((nf, hier_label), {})
         raw_status = gf.get("status", "—") if gf else "—"
         is_infeasible = not gf.get("feasible", True) if gf else False
         if raw_status == "timeout" and is_infeasible:
@@ -537,13 +541,14 @@ def table_study2b_three_group(solver_data):
             status_str,
             _f(qpu.get("wall_time"), ".1f"),
             _f(qpu.get("benefit"), ".2f"),
-            _f(cl.get("wall_time"), ".1f"),
-            _f(st.get("wall_time"), ".1f"),
+            _f(hier.get("wall_time"), ".1f"),
+            _f(hier.get("objective"), ".2f"),
         ))
     return _table_env(
         caption=(
             "Study 2.B three-group comparison: Gurobi full, QPU hierarchical, and "
-            "Gurobi decomposed (Clique / SpatialTemporal-5) on 27-crop Variant~B.  "
+            "Gurobi decomposed hierarchical (spatial\\_grid, farms\\_per\\_cluster=9, iterations=3) "
+            "on 27-crop Variant~B. "
             "All Gurobi runs use 600\\,s timeout.  "
             "GF=Gurobi full, TO=timeout, opt/IF=Gurobi optimal but rotation constraints violated.  "
             "$\\dagger$QPU benefit = $-$objective\\_miqp (QUBO sign-corrected); "

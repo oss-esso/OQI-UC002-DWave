@@ -108,7 +108,7 @@ def solve_gurobi_ground_truth(
     rotation_gamma = params.get("rotation_gamma", 0.2)
     spatial_gamma = params.get("spatial_gamma", 0.1)
     one_hot_penalty = params.get("one_hot_penalty", 3.0)
-    diversity_bonus = params.get("diversity_bonus", 0.15)
+    diversity_bonus = 0
     k_neighbors = params.get("k_neighbors", 4)
     
     # Build rotation matrix
@@ -138,12 +138,10 @@ def solve_gurobi_ground_truth(
         model.setParam("Presolve", 2)
 
         # ── Variable layout ──────────────────────────────────────────────────
-        # Flat binary vector x = [Y_flat, Z_flat]
+        # Flat binary vector x = [Y_flat]  (diversity Z variables removed)
         # Y[f, c, t] → x[f*n_foods*n_periods + c*n_periods + t]   (t: 0-based)
-        # Z[f, c]    → x[n_Y + f*n_foods + c]
         n_Y = n_farms * n_foods * n_periods
-        n_Z = n_farms * n_foods
-        n_x = n_Y + n_Z
+        n_x = n_Y
         x = model.addMVar(n_x, vtype=GRB.BINARY, name="x")
 
         fa = np.arange(n_farms)
@@ -154,8 +152,6 @@ def solve_gurobi_ground_truth(
         Y_idx = (fa[:, None, None] * n_foods * n_periods
                  + ca[None, :, None] * n_periods
                  + ta[None, None, :])
-        # Z_idx[f, c]: integer index into x  (shape n_farms × n_foods)
-        Z_idx = n_Y + fa[:, None] * n_foods + ca[None, :]
 
         # ── Pre-compute coefficient arrays ───────────────────────────────────
         area_arr = np.array([land_availability[farm] / total_area for farm in farm_names])
@@ -169,7 +165,7 @@ def solve_gurobi_ground_truth(
         # One-hot linear contribution +penalty per Y  (from expanding -(sum-1)^2)
         c_vec[:n_Y] += one_hot_penalty
         # Diversity bonus per Z[f,c]
-        c_vec[Z_idx.ravel()] += diversity_bonus
+        #c_vec[Z_idx.ravel()] += diversity_bonus
 
         # ── Quadratic matrix Q (sparse, symmetric) ───────────────────────────
         # setMObjective convention: max 0.5·x'Qx + c'x
@@ -232,27 +228,6 @@ def solve_gurobi_ground_truth(
         model.addMConstr(A_yt, x, '<', 2.0 * np.ones(n_ft))  # max 2 crops/farm/period
         model.addMConstr(A_yt, x, '>', np.ones(n_ft))         # min 1 crop/farm/period
 
-        # Diversity: Z[f,c] ≥ (1/T)·Σ_t Y[f,c,t]  and  Z[f,c] ≤ Σ_t Y[f,c,t]
-        fg2, cg2, tg2 = np.meshgrid(fa, ca, ta, indexing='ij')  # (n_farms, n_foods, n_periods)
-        dy_r  = (fg2 * n_foods + cg2).ravel()
-        dy_c  = Y_idx[fg2, cg2, tg2].ravel()
-        dz_r  = (fa[:, None] * n_foods + ca[None, :]).ravel()
-        dz_c  = Z_idx.ravel()
-        n_fc  = n_farms * n_foods
-        ny_d  = len(dy_c)
-        A_dlb = scipy.sparse.csr_matrix(
-            (np.concatenate([-np.ones(ny_d) / n_periods, np.ones(n_fc)]),
-             (np.concatenate([dy_r, dz_r]), np.concatenate([dy_c, dz_c]))),
-            shape=(n_fc, n_x),
-        )
-        model.addMConstr(A_dlb, x, '>', np.zeros(n_fc))  # Z - (1/T)·ΣY ≥ 0
-        A_dub = scipy.sparse.csr_matrix(
-            (np.concatenate([np.ones(ny_d), -np.ones(n_fc)]),
-             (np.concatenate([dy_r, dz_r]), np.concatenate([dy_c, dz_c]))),
-            shape=(n_fc, n_x),
-        )
-        model.addMConstr(A_dub, x, '>', np.zeros(n_fc))  # ΣY - Z ≥ 0
-
         entry.timing.model_build_time = time.time() - build_start
         logger.model_build_done(entry.timing.model_build_time)
         
@@ -294,11 +269,12 @@ def solve_gurobi_ground_truth(
             
             entry.solution = solution
             
-            # Recompute MIQP objective (validation)
+            # Recompute MIQP objective (validation) — no diversity bonus to match model
             miqp_start = time.time()
+            scorer_params = {**params, "diversity_bonus": 0.0}
             entry.objective_miqp, breakdown = compute_miqp_objective(
                 solution, scenario_data, R=R, neighbor_edges=neighbor_edges,
-                params=params, return_breakdown=True
+                params=scorer_params, return_breakdown=True
             )
             entry.timing.miqp_recompute_time = time.time() - miqp_start
             
